@@ -843,15 +843,16 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
 
     @staticmethod
     def _sh_caller():
-        # Keep only a short Python call path; no locals, arguments, or SQL values.
-        frames = traceback.extract_stack(limit=12)[:-2]
+        # Capture the complete Python call path; never capture locals,
+        # arguments, or SQL values. Drop only this helper and its emitter frames.
+        frames = traceback.extract_stack()[:-2]
         return [
             {
-                "file": os.path.basename(frame.filename),
+                "file": frame.filename,
                 "line": frame.lineno,
                 "function": frame.name,
             }
-            for frame in frames[-6:]
+            for frame in frames
         ]
 
     def _sh_begin_transition(self, was_in_transaction, operation):
@@ -1583,6 +1584,8 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                 error=detail,
             )
             return "DISCOVERY_PARTIAL", persisted, detail
+        finally:
+            conn.close()
 
     detail = f"persist_complete;discovered={new_count};saved={persisted};queued={queued}"
     _set_sync_state(
@@ -3412,16 +3415,19 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
 
 def _set_sync_state(store, status, started_at=None, finished_at=None, discovered_count=0, fetched_count=0, error=None):
     conn = db()
-    now = time.time()
-    conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-       VALUES(?,?,?,?,?,?,?)
-       ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-       started_at=excluded.started_at,finished_at=excluded.finished_at,
-       discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
-       error=excluded.error""",
-       (store, status, started_at if started_at is not None else now, finished_at,
-        discovered_count, fetched_count, error))
-    conn.commit(); conn.close()
+    try:
+        now = time.time()
+        conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+           VALUES(?,?,?,?,?,?,?)
+           ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+           started_at=excluded.started_at,finished_at=excluded.finished_at,
+           discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
+           error=excluded.error""",
+           (store, status, started_at if started_at is not None else now, finished_at,
+            discovered_count, fetched_count, error))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def discover_store(store):
