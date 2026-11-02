@@ -63,6 +63,22 @@ class Store(Base):
     reliability_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+class IngestionRaw(Base):
+    __tablename__ = "ingestion_raw"
+    __table_args__ = (Index("ix_ingestion_raw_store_status", "store_id", "status"), CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"))
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
+    raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    external_product_id: Mapped[str | None] = mapped_column(String(240))
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
+    product_variant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("product_variants.id", ondelete="RESTRICT"))
+    match_method: Mapped[str | None] = mapped_column(String(60))
+    match_confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class Offer(Base):
     __tablename__ = "offers"
     __table_args__ = (
@@ -74,6 +90,7 @@ class Offer(Base):
         Index("ix_offers_status", "status"), Index("ix_offers_captured_at", "captured_at"), Index("ix_offers_price", "price"), Index("ix_offers_store_id", "store_id"), Index("ix_offers_product_variant_id", "product_variant_id"), CheckConstraint("status <> 'active' OR (length(trim(url)) > 0 AND availability IS NOT NULL)", name="active_offer_required_fields"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ingestion_raw_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("ingestion_raw.id", ondelete="RESTRICT"), unique=True)
     store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
     # NULL means the retailer item is not yet safely matched to a canonical variant.
     product_variant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("product_variants.id", ondelete="RESTRICT"))
