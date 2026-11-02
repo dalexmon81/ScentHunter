@@ -1,0 +1,163 @@
+name: Phase 2 read-only SQLite verification
+
+on:
+  push:
+    branches:
+      - chore/phase2-readonly-verification
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Phase 2 SQLite without writes
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Query Phase 2 database in read-only mode
+        id: audit
+        continue-on-error: true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p phase2-readonly-verification
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          import shlex
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          remote_script = r"""
+          import json
+          import os
+          import sqlite3
+          import sys
+
+          path = "/data/catalog/catalog.sqlite3"
+          result = {"database_path_expected": path}
+          try:
+              if not os.path.isfile(path):
+                  raise RuntimeError("Expected Phase 2 database file does not exist")
+              conn = sqlite3.connect("file:" + path + "?mode=ro", uri=True, timeout=10)
+              conn.row_factory = sqlite3.Row
+              conn.execute("PRAGMA query_only=ON")
+              db_list = [dict(row) for row in conn.execute("PRAGMA database_list")]
+              result["database_list"] = db_list
+              main_path = next((row["file"] for row in db_list if row["name"] == "main"), None)
+              result["database_path_actual"] = main_path
+              if os.path.realpath(main_path or "") != os.path.realpath(path):
+                  raise RuntimeError("Connected database is not the expected Phase 2 database")
+
+              tables = {row[0] for row in conn.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+              )}
+              result["alembic_version"] = (
+                  [row[0] for row in conn.execute("SELECT version_num FROM alembic_version")]
+                  if "alembic_version" in tables else None
+              )
+
+              required_new = (
+                  "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map"
+              )
+              result["new_tables"] = {}
+              for table in required_new:
+                  exists = table in tables
+                  result["new_tables"][table] = {
+                      "exists": exists,
+                      "count": conn.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+                      if exists else None
+                  }
+
+              historical = (
+                  "brands", "fragrances", "product_variants",
+                  "offers", "price_history", "match_audit"
+              )
+              result["historical_counts"] = {}
+              for table in historical:
+                  if table not in tables:
+                      result["historical_counts"][table] = {"exists": False, "count": None}
+                  else:
+                      result["historical_counts"][table] = {
+                          "exists": True,
+                          "count": conn.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+                      }
+
+              result["integrity_check"] = conn.execute("PRAGMA integrity_check").fetchone()[0]
+              conn.close()
+              result["read_only"] = True
+              result["ok"] = (
+                  result["database_path_actual"] == path
+                  and bool(result["alembic_version"])
+                  and all(v["exists"] for v in result["new_tables"].values())
+                  and result["historical_counts"]["brands"]["count"] == 60
+                  and result["historical_counts"]["fragrances"]["count"] == 1375
+                  and result["historical_counts"]["product_variants"]["count"] == 511
+                  and result["historical_counts"]["offers"]["count"] == 0
+                  and result["historical_counts"]["price_history"]["count"] == 0
+                  and result["historical_counts"]["match_audit"]["count"] == 0
+                  and result["integrity_check"] == "ok"
+              )
+          except Exception as exc:
+              result["ok"] = False
+              result["error"] = type(exc).__name__ + ": " + str(exc)
+          print("PHASE2_READONLY_RESULT=" + json.dumps(result, sort_keys=True), flush=True)
+          if not result.get("ok"):
+              sys.exit(1)
+          """
+
+          encoded = base64.b64encode(remote_script.encode()).decode()
+          remote_command = "/app/.venv/bin/python -c " + shlex.quote(
+              "exec(__import__('base64').b64decode('" + encoded + "'))"
+          )
+          try:
+              proc = subprocess.run(
+                  ["flyctl", "ssh", "console", "--app", "scenthunter",
+                   "--select=false", "-C", remote_command],
+                  text=True, capture_output=True, timeout=300,
+              )
+              raw = "STDOUT:\n" + proc.stdout + "\nSTDERR:\n" + proc.stderr
+              Path("phase2-readonly-verification/console-output.txt").write_text(raw)
+              marker = "PHASE2_READONLY_RESULT="
+              line = next((line for line in proc.stdout.splitlines() if marker in line), None)
+              if line:
+                  payload = json.loads(line.split(marker, 1)[1])
+              else:
+                  payload = {"ok": False, "error": "No structured read-only result returned",
+                             "fly_exit_code": proc.returncode}
+              Path("phase2-readonly-verification/report.json").write_text(
+                  json.dumps(payload, indent=2, sort_keys=True) + "\n"
+              )
+              print(json.dumps(payload, indent=2, sort_keys=True))
+              if proc.returncode != 0 or not payload.get("ok"):
+                  sys.exit(1)
+          except Exception as exc:
+              payload = {"ok": False, "error": type(exc).__name__ + ": " + str(exc)}
+              Path("phase2-readonly-verification/report.json").write_text(
+                  json.dumps(payload, indent=2) + "\n"
+              )
+              print(json.dumps(payload, indent=2))
+              sys.exit(1)
+          PY
+
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-readonly-verification
+          path: phase2-readonly-verification/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail if verification did not pass
+        if: steps.audit.outcome != 'success'
+        run: |
+          echo "Phase 2 read-only verification did not pass. Inspect the artifact."
+          exit 1
