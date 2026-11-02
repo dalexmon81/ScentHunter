@@ -5972,6 +5972,8 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             'url': chosen['url'],
             'lease_token': token,
             'attempts': int(chosen['attempts'] or 0) + 1,
+            'claimed_at': now,
+            'lease_seconds': float(lease_seconds),
         }
     except sqlite3.OperationalError as exc:
         try:
@@ -6096,6 +6098,39 @@ def _queue_mark_error(task, error, http_status=None):
 
 
 def _hydrate_one_task(task):
+    """Trace one durable hydration task from lease claim through queue outcome."""
+    started = time.monotonic()
+    claimed_at = task.get('claimed_at')
+    lease_seconds = float(task.get('lease_seconds') or HYDRATION_LEASE_SECONDS)
+    worker = threading.current_thread().name
+    print(
+        'CATALOG HYDRATION TASK START '
+        f"store={task.get('store')} attempt={task.get('attempts')} "
+        f"worker={worker} lease_seconds={lease_seconds:g} "
+        f"claimed_at={claimed_at!r} url={task.get('url')!r}",
+        flush=True,
+    )
+    outcome = 'exception'
+    try:
+        result = _hydrate_one_task_impl(task)
+        outcome = 'done' if result is True else 'error' if result is False else 'no_result'
+        return result
+    except BaseException as exc:
+        outcome = f'exception:{type(exc).__name__}'
+        raise
+    finally:
+        elapsed = max(0.0, time.monotonic() - started)
+        lease_age = max(0.0, time.time() - float(claimed_at)) if claimed_at is not None else elapsed
+        print(
+            'CATALOG HYDRATION TASK FINISH '
+            f"store={task.get('store')} attempt={task.get('attempts')} "
+            f"worker={worker} outcome={outcome} elapsed_sec={elapsed:.3f} "
+            f"lease_age_sec={lease_age:.3f} lease_seconds={lease_seconds:g} "
+            f"lease_overrun={lease_age > lease_seconds} url={task.get('url')!r}",
+            flush=True,
+        )
+
+def _hydrate_one_task_impl(task):
     """Execute one claimed page fetch and transition its queue state.
 
     A parsed product name alone is not a successful price refresh. A fresh
@@ -6301,6 +6336,17 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
                     errors += 1
 
         if timed_out:
+            for future in pending:
+                pending_task = futures[future]
+                claimed_at = pending_task.get('claimed_at')
+                lease_age = max(0.0, time.time() - float(claimed_at)) if claimed_at is not None else None
+                print(
+                    'CATALOG HYDRATION TASK DEADLINE '
+                    f"store={pending_task.get('store')} attempt={pending_task.get('attempts')} "
+                    f"lease_age_sec={lease_age!r} lease_seconds={pending_task.get('lease_seconds', HYDRATION_LEASE_SECONDS)!r} "
+                    f"future_running={future.running()} url={pending_task.get('url')!r}",
+                    flush=True,
+                )
             print(
                 'CATALOG HYDRATION BATCH DEADLINE '
                 f'pending={timed_out} lease_seconds={HYDRATION_LEASE_SECONDS:g}',
