@@ -921,10 +921,11 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
             raise
 
     def close(self):
+        was_in_transaction = self.in_transaction
         try:
             return super().close()
         finally:
-            self._sh_emit("close", in_transaction=self.in_transaction)
+            self._sh_emit("close", in_transaction=was_in_transaction)
 
 
 def db():
