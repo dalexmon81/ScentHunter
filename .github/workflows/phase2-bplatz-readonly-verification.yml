@@ -1,0 +1,166 @@
+name: Phase 2 - Bplatz production read-only verification
+
+on:
+  push:
+    branches:
+      - ops/phase2-bplatz-readonly-20261102
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    name: Read-only Bplatz hydration and SQLite verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify production health
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error --output health.json --write-out '%{http_code}' https://scenthunter.fly.dev/health)"
+          cat health.json
+          echo
+          echo "HEALTH_HTTP_STATUS=$code"
+          test "$code" = "200"
+
+      - name: Capture recent production logs (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${FLY_API_TOKEN:-}"
+          flyctl logs --app scenthunter --no-tail 2>&1 | tail -n 800 > bplatz-production-logs.txt
+          grep -Ein -i 'bplatz|hydration|phase.?2|ingestion_raw|promot|worker|Traceback|SQLite|locked' bplatz-production-logs.txt > bplatz-relevant-logs.txt || true
+          echo "Captured production log lines: $(wc -l < bplatz-production-logs.txt)"
+          echo "Relevant lines: $(wc -l < bplatz-relevant-logs.txt)"
+          cat bplatz-relevant-logs.txt
+
+      - name: Inspect Phase 2 SQLite catalog in read-only mode
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/phase2_bplatz_readonly.py <<'PY'
+          import json
+          import sqlite3
+          import sys
+
+          uri = "file:/data/catalog/catalog.sqlite3?mode=ro"
+          con = sqlite3.connect(uri, uri=True, timeout=15)
+          con.row_factory = sqlite3.Row
+          try:
+              tables = {r["name"] for r in con.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+              )}
+              expected = {
+                  "stores", "offers", "price_history", "match_audit",
+                  "ingestion_raw", "ingestion_runs",
+              }
+              missing = sorted(expected - tables)
+              if missing:
+                  raise RuntimeError("Missing Phase 2 tables: " + repr(missing))
+
+              integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
+              journal = con.execute("PRAGMA journal_mode").fetchone()[0].lower()
+              fk_violations = len(con.execute("PRAGMA foreign_key_check").fetchall())
+
+              store = con.execute(
+                  "SELECT id, name, slug FROM stores WHERE slug='bplatz'"
+              ).fetchone()
+              if store is None:
+                  raise RuntimeError("Bplatz store row is missing")
+              sid = store["id"]
+
+              offers = con.execute(
+                  "SELECT COUNT(*) FROM offers WHERE store_id=?", (sid,)
+              ).fetchone()[0]
+              duplicates = con.execute("""
+                  SELECT COUNT(*) FROM (
+                    SELECT external_product_id
+                    FROM offers
+                    WHERE store_id=? AND external_product_id IS NOT NULL
+                    GROUP BY external_product_id HAVING COUNT(*) > 1
+                  )
+              """, (sid,)).fetchone()[0]
+              history = con.execute("""
+                  SELECT COUNT(*) FROM price_history ph
+                  JOIN offers o ON o.id=ph.offer_id
+                  WHERE o.store_id=?
+              """, (sid,)).fetchone()[0]
+              audits = con.execute("""
+                  SELECT COUNT(*) FROM match_audit ma
+                  JOIN offers o ON o.id=ma.offer_id
+                  WHERE o.store_id=?
+              """, (sid,)).fetchone()[0]
+              raw_statuses = {
+                  r["status"]: r["n"] for r in con.execute("""
+                    SELECT status, COUNT(*) AS n FROM ingestion_raw
+                    WHERE store_id=? GROUP BY status
+                  """, (sid,))
+              }
+              promoted_without_offer = con.execute("""
+                  SELECT COUNT(*) FROM ingestion_raw ir
+                  LEFT JOIN offers o ON o.ingestion_raw_id=ir.id
+                  WHERE ir.store_id=? AND ir.status='promoted' AND o.id IS NULL
+              """, (sid,)).fetchone()[0]
+              latest_raw = con.execute("""
+                  SELECT MAX(created_at) FROM ingestion_raw WHERE store_id=?
+              """, (sid,)).fetchone()[0]
+              latest_offer = con.execute("""
+                  SELECT MAX(captured_at) FROM offers WHERE store_id=?
+              """, (sid,)).fetchone()[0]
+              latest_run = con.execute("""
+                  SELECT status, started_at, finished_at, products_discovered,
+                         offers_created, offers_updated, offers_rejected
+                  FROM ingestion_runs WHERE store_id=?
+                  ORDER BY started_at DESC LIMIT 1
+              """, (sid,)).fetchone()
+
+              report = {
+                  "database": "/data/catalog/catalog.sqlite3",
+                  "store": dict(store),
+                  "journal_mode": journal,
+                  "integrity_check": integrity,
+                  "foreign_key_violations": fk_violations,
+                  "bplatz_offers": offers,
+                  "duplicate_external_product_ids": duplicates,
+                  "bplatz_price_history_rows": history,
+                  "bplatz_match_audit_rows": audits,
+                  "bplatz_ingestion_raw_statuses": raw_statuses,
+                  "promoted_raw_without_offer": promoted_without_offer,
+                  "latest_raw_created_at": latest_raw,
+                  "latest_offer_captured_at": latest_offer,
+                  "latest_ingestion_run": dict(latest_run) if latest_run else None,
+              }
+              print("PHASE2_BPLATZ_READONLY_REPORT=" + json.dumps(report, default=str))
+              if integrity != "ok" or journal != "wal" or fk_violations:
+                  raise RuntimeError("SQLite integrity/journal/foreign-key check failed")
+              if duplicates or promoted_without_offer:
+                  raise RuntimeError("Bplatz idempotency or promotion consistency check failed")
+              if not offers or not history or not audits:
+                  raise RuntimeError("Bplatz offer/history/audit evidence is incomplete")
+          finally:
+              con.close()
+          PY
+
+          REMOTE_SCRIPT_B64="$(base64 -w0 /tmp/phase2_bplatz_readonly.py)"
+          remote_command="/bin/sh -lc 'echo ${REMOTE_SCRIPT_B64} | base64 -d > /tmp/phase2_bplatz_readonly.py && /app/.venv/bin/python /tmp/phase2_bplatz_readonly.py'"
+          timeout 90s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
+      - name: Upload read-only verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-bplatz-readonly-evidence
+          path: |
+            health.json
+            bplatz-production-logs.txt
+            bplatz-relevant-logs.txt
+          if-no-files-found: warn
+          retention-days: 14
