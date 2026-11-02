@@ -537,6 +537,8 @@ def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
         hydrated = catalog_engine.refresh_url("bplatz", record["product_url"])
         assert hydrated is not None
         assert hydrated["name"] == record["raw_name"]
+        # The opt-in Bplatz path must not initialize or touch the legacy DB.
+        assert not legacy_db.exists()
 
         with Session(phase2_engine) as session:
             offers = session.scalars(select(Offer)).all()
