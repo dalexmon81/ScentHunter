@@ -252,9 +252,29 @@ def test_real_canonical_matcher_resolves_bplatz_against_actual_catalog():
     sys.path.insert(0, str(ROOT / "backend"))
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
+    from scrapers.bplatz.scraper import parse_product_html
+
     catalog_path = ROOT / "backend" / "product_catalog.json"
     service = NextEngineService.from_catalog_file(catalog_path)
-    record = parse_liquid_brun_fixture()
+    meta = json.loads(META.read_text(encoding="utf-8"))
+    parsed = parse_product_html(
+        FIXTURE.read_text(encoding="utf-8"),
+        meta["url_final"],
+        "French Avenue Liquid Brun",
+    )
+    assert parsed is not None
+    record = {
+        "raw_name": parsed["name"],
+        "brand_raw": parsed["brand"],
+        "size_ml": parsed["size_ml"],
+        "price": parsed["price_num"],
+        "currency": parsed["offer"]["currency"],
+        "product_url": parsed["url"],
+        "availability": parsed["availability"],
+        "sku": parsed["sku"],
+        "gtin": parsed["gtin"],
+    }
+    assert record["sku"] == record["gtin"] == "6290360375694"
 
     result = service.process_records([record], retailer="Bplatz", currency_default="EUR")
     aggregation = result.aggregation
