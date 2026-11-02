@@ -809,12 +809,41 @@ def _ensure_schema(conn):
 
 
 
-class _TelemetrySQLiteConnection(sqlite3.Connection):
-    """Opt-in, stdout-only transaction telemetry for legacy SQLite diagnosis.
+class _TelemetrySQLiteCursor(sqlite3.Cursor):
+    """Cursor wrapper that reports transaction transitions for cursor SQL APIs."""
 
-    Disabled unless SCENTHUNTER_SQLITE_TXN_TELEMETRY=1. Emits lifecycle events
-    without issuing SQL or writing to the database.
-    """
+    def execute(self, sql, parameters=(), /):
+        before = self.connection.in_transaction
+        try:
+            result = super().execute(sql, parameters)
+            self.connection._sh_begin_transition(before, "cursor.execute")
+            return result
+        except Exception as exc:
+            self.connection._sh_emit(
+                "exception", operation="cursor.execute",
+                error_type=type(exc).__name__, error=str(exc)[:500],
+                sql=str(sql)[:240],
+            )
+            raise
+
+    def executemany(self, sql, seq_of_parameters, /):
+        before = self.connection.in_transaction
+        try:
+            result = super().executemany(sql, seq_of_parameters)
+            self.connection._sh_begin_transition(before, "cursor.executemany")
+            return result
+        except Exception as exc:
+            self.connection._sh_emit(
+                "exception", operation="cursor.executemany",
+                error_type=type(exc).__name__, error=str(exc)[:500],
+                sql=str(sql)[:240],
+            )
+            raise
+
+
+class _TelemetrySQLiteConnection(sqlite3.Connection):
+    """SQLite connection with opt-in transaction diagnostics."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._sh_txn_telemetry = os.environ.get(
@@ -823,6 +852,9 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
         self._sh_connection_id = hex(id(self))
         self._sh_transaction_started = None
         self._sh_db_path = str(DB_PATH)
+
+    def cursor(self, factory=_TelemetrySQLiteCursor):
+        return super().cursor(factory)
 
     def _sh_emit(self, event, **fields):
         if not self._sh_txn_telemetry:
@@ -835,6 +867,7 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
             "pid": os.getpid(),
             "thread_ident": threading.get_ident(),
             "thread_native_id": threading.get_native_id(),
+            "thread_name": threading.current_thread().name,
             "connection_id": self._sh_connection_id,
             "db_path": self._sh_db_path,
         }
@@ -843,26 +876,17 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
 
     @staticmethod
     def _sh_caller():
-        # Capture the complete Python call path; never capture locals,
-        # arguments, or SQL values. Drop only this helper and its emitter frames.
+        # Capture the complete Python call path without locals or argument values.
         frames = traceback.extract_stack()[:-2]
         return [
-            {
-                "file": frame.filename,
-                "line": frame.lineno,
-                "function": frame.name,
-            }
+            {"file": frame.filename, "line": frame.lineno, "function": frame.name}
             for frame in frames
         ]
 
     def _sh_begin_transition(self, was_in_transaction, operation):
         if not was_in_transaction and self.in_transaction:
             self._sh_transaction_started = time.monotonic()
-            self._sh_emit(
-                "begin",
-                operation=operation,
-                caller=self._sh_caller(),
-            )
+            self._sh_emit("begin", operation=operation, caller=self._sh_caller())
 
     def execute(self, sql, parameters=(), /):
         before = self.in_transaction
@@ -901,7 +925,9 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
 
     def _sh_finish(self, event):
         started = self._sh_transaction_started
-        duration_ms = round((time.monotonic() - started) * 1000, 3) if started else None
+        if started is None:
+            return
+        duration_ms = round((time.monotonic() - started) * 1000, 3)
         self._sh_emit(event, duration_ms=duration_ms)
         self._sh_transaction_started = None
 
