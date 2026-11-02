@@ -171,7 +171,6 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing = session.scalar(select(Offer).where(
             Offer.store_id == row.store_id,
             Offer.product_variant_id == row.product_variant_id,
-            Offer.url == url,
         ).order_by(Offer.captured_at.desc()).limit(1))
     if existing is not None and existing.product_variant_id != row.product_variant_id:
         raise PromotionRejected(
