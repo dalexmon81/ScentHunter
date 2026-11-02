@@ -57,6 +57,48 @@ class SQLiteTransactionTelemetryTests(unittest.TestCase):
         self.assertEqual(sum(event["event"] == "commit" for event in events), 1)
         self.assertFalse(any(event["event"] == "rollback" for event in events))
 
+    def test_cursor_executemany_and_explicit_rollback_are_tracked(self):
+        output = io.StringIO()
+        with patch.dict(os.environ, {"SCENTHUNTER_SQLITE_TXN_TELEMETRY": "1"}):
+            with contextlib.redirect_stdout(output):
+                conn = sqlite3.connect(":memory:", factory=_TelemetrySQLiteConnection)
+                conn.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY)")
+                conn.commit()
+                conn.cursor().executemany(
+                    "INSERT INTO sample (id) VALUES (?)", [(1,), (2,)]
+                )
+                conn.rollback()
+                conn.close()
+
+        events = self._events(output)
+        begins = [event for event in events if event["event"] == "begin"]
+        rollbacks = [event for event in events if event["event"] == "rollback"]
+        self.assertEqual(len(begins), 1)
+        self.assertEqual(begins[0]["operation"], "cursor.executemany")
+        self.assertEqual(len(rollbacks), 1)
+        self.assertGreaterEqual(rollbacks[0]["duration_ms"], 0)
+
+    def test_close_records_implicit_rollback_of_open_transaction(self):
+        output = io.StringIO()
+        with patch.dict(os.environ, {"SCENTHUNTER_SQLITE_TXN_TELEMETRY": "1"}):
+            with contextlib.redirect_stdout(output):
+                conn = sqlite3.connect(":memory:", factory=_TelemetrySQLiteConnection)
+                conn.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY)")
+                conn.commit()
+                conn.execute("INSERT INTO sample DEFAULT VALUES")
+                self.assertTrue(conn.in_transaction)
+                conn.close()
+
+        events = self._events(output)
+        close_rollbacks = [
+            event for event in events if event["event"] == "close_rollback"
+        ]
+        close_events = [event for event in events if event["event"] == "close"]
+        self.assertEqual(len(close_rollbacks), 1)
+        self.assertGreaterEqual(close_rollbacks[0]["duration_ms"], 0)
+        self.assertEqual(len(close_events), 1)
+        self.assertTrue(close_events[0]["in_transaction"])
+
     def test_telemetry_is_off_by_default(self):
         output = io.StringIO()
         with patch.dict(os.environ, {}, clear=True):
