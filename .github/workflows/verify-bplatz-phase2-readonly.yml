@@ -23,9 +23,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          remote_command="/bin/sh -lc 'SCENTHUNTER_CATALOG_DATABASE_URL=sqlite:////data/catalog/catalog.sqlite3 /app/.venv/bin/python - <<\\\x27PY\\\x27
-          import json, os, sqlite3
-          db=os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"].replace("sqlite:////", "/")
+          cat > /tmp/verify_bplatz.py <<'PY'
+          import json, sqlite3
+          db="/data/catalog/catalog.sqlite3"
           con=sqlite3.connect("file:"+db+"?mode=ro", uri=True, timeout=30)
           con.row_factory=sqlite3.Row
           try:
@@ -41,7 +41,7 @@ jobs:
                   JOIN fragrances f ON f.id=pv.fragrance_id
                   JOIN brands b ON b.id=f.brand_id
                   JOIN ingestion_raw ir ON ir.id=o.ingestion_raw_id
-                  WHERE s.slug=\\\x27bplatz\\\x27 AND lower(f.name) LIKE \\\x27%liquid brun%\\\x27
+                  WHERE s.slug='bplatz' AND lower(f.name) LIKE '%liquid brun%'
                   ORDER BY o.captured_at DESC""").fetchall()
               result=[dict(r) for r in rows]
               good=any(r["status"]=="active" and r["raw_status"]=="promoted"
@@ -54,8 +54,11 @@ jobs:
                   "integrity_check":integrity,"foreign_key_errors":len(fk),
                   "liquid_brun_offers":result},default=str),flush=True)
               if not good or integrity!="ok" or fk: raise SystemExit(1)
-          finally: con.close()
-          PY' "
+          finally:
+              con.close()
+          PY
+          SCRIPT_B64="$(base64 -w0 /tmp/verify_bplatz.py)"
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/verify_bplatz.py && /app/.venv/bin/python /tmp/verify_bplatz.py'"
           timeout 300s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
       - name: Verify production health
         run: |
