@@ -104,11 +104,22 @@ jobs:
                     WHERE store_id=? GROUP BY status
                   """, (sid,))
               }
+              # A refreshed offer is an upsert: ingestion_raw_id is reassigned
+              # to the latest raw row. Older raw rows can remain "promoted"
+              # without being the offer's current source row.
               promoted_without_offer = con.execute("""
                   SELECT COUNT(*) FROM ingestion_raw ir
                   LEFT JOIN offers o ON o.ingestion_raw_id=ir.id
                   WHERE ir.store_id=? AND ir.status='promoted' AND o.id IS NULL
               """, (sid,)).fetchone()[0]
+              linked_promoted_rows = con.execute("""
+                  SELECT COUNT(*) FROM offers o
+                  JOIN ingestion_raw ir ON ir.id=o.ingestion_raw_id
+                  WHERE o.store_id=? AND ir.status='promoted'
+              """, (sid,)).fetchone()[0]
+              active_offers = con.execute(
+                  "SELECT COUNT(*) FROM offers WHERE store_id=? AND status='active'", (sid,)
+              ).fetchone()[0]
               latest_raw = con.execute("""
                   SELECT MAX(created_at) FROM ingestion_raw WHERE store_id=?
               """, (sid,)).fetchone()[0]
@@ -133,7 +144,9 @@ jobs:
                   "bplatz_price_history_rows": history,
                   "bplatz_match_audit_rows": audits,
                   "bplatz_ingestion_raw_statuses": raw_statuses,
-                  "promoted_raw_without_offer": promoted_without_offer,
+                  "promoted_raw_without_offer_informational": promoted_without_offer,
+                  "current_offer_linked_to_promoted_raw": linked_promoted_rows,
+                  "bplatz_active_offers": active_offers,
                   "latest_raw_created_at": latest_raw,
                   "latest_offer_captured_at": latest_offer,
                   "latest_ingestion_run": dict(latest_run) if latest_run else None,
@@ -141,8 +154,8 @@ jobs:
               print("PHASE2_BPLATZ_READONLY_REPORT=" + json.dumps(report, default=str))
               if integrity != "ok" or journal != "wal" or fk_violations:
                   raise RuntimeError("SQLite integrity/journal/foreign-key check failed")
-              if duplicates or promoted_without_offer:
-                  raise RuntimeError("Bplatz idempotency or promotion consistency check failed")
+              if duplicates or not linked_promoted_rows or not active_offers:
+                  raise RuntimeError("Bplatz idempotency or current promotion consistency check failed")
               if not offers or not history or not audits:
                   raise RuntimeError("Bplatz offer/history/audit evidence is incomplete")
           finally:
