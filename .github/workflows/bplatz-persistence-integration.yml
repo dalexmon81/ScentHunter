@@ -10,6 +10,7 @@ on:
       - backend/app/services/ingestion_persistence.py
       - backend/alembic/versions/0002_ingestion_raw.py
       - tests/test_bplatz_persistence_service.py
+      - tests/test_phase2_schema_contract.py
       - .github/workflows/bplatz-persistence-integration.yml
 
 permissions:
