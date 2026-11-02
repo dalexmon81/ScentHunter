@@ -105,6 +105,10 @@ def main() -> int:
         "--baseline", type=Path,
         help="compare current read-only state with a JSON snapshot",
     )
+    parser.add_argument(
+        "--snapshot-file", type=Path,
+        help="write a clean JSON baseline file (without console status lines)",
+    )
     parser.add_argument("--worker-ingestion-raw-id", help="raw UUID from the normal-worker correlation log")
     parser.add_argument("--worker-offer-id", help="offer UUID from the normal-worker correlation log")
     parser.add_argument("--worker-sku", help="SKU from the normal-worker correlation log")
@@ -128,6 +132,11 @@ def main() -> int:
 
         if args.snapshot:
             failed = [name for name, passed in checks.items() if not passed]
+            if args.snapshot_file:
+                args.snapshot_file.write_text(
+                    json.dumps(report, indent=2, sort_keys=True, default=str) + "\\n",
+                    encoding="utf-8",
+                )
             if failed:
                 print("BASELINE=FAIL checks=" + ",".join(failed))
                 return 1
