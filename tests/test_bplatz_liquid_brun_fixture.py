@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import pytest
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
@@ -318,3 +319,278 @@ def test_real_canonical_matcher_resolves_bplatz_against_actual_catalog():
     assert len(insufficient_result.unresolved) == 1
 
 # Keep this file covered by the dedicated branch-specific offline workflow.
+
+
+def _production_parser_record():
+    """Build one raw row exclusively from the real Bplatz production parser."""
+    import sys
+    sys.path.insert(0, str(ROOT / "backend"))
+    from scrapers.bplatz.scraper import parse_product_html
+
+    meta = json.loads(META.read_text(encoding="utf-8"))
+    parsed = parse_product_html(
+        FIXTURE.read_text(encoding="utf-8"),
+        meta["url_final"],
+        "French Avenue Liquid Brun",
+    )
+    assert parsed is not None
+    return {
+        "raw_name": parsed["name"],
+        "brand_raw": parsed["brand"],
+        "size_ml": parsed["size_ml"],
+        "price": parsed["price_num"],
+        "currency": parsed["offer"]["currency"],
+        "product_url": parsed["url"],
+        "availability": parsed["availability"],
+        "sku": parsed["sku"],
+        "gtin": parsed["gtin"],
+    }
+
+
+def _make_pipeline_db(path):
+    """Create a disposable SQLite schema for the ingestion/promotion contract."""
+    connection = sqlite3.connect(path)
+    connection.execute("PRAGMA foreign_keys=ON")
+    connection.executescript("""
+        CREATE TABLE ingestion_raw (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            raw_json TEXT NOT NULL,
+            normalized_json TEXT NOT NULL,
+            canonical_product_id TEXT,
+            product_variant_id TEXT,
+            status TEXT NOT NULL CHECK(status IN ('pending','unmatched','matched','promoted'))
+        );
+        CREATE TABLE offers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ingestion_raw_id INTEGER NOT NULL UNIQUE
+                REFERENCES ingestion_raw(id),
+            store TEXT NOT NULL,
+            canonical_product_id TEXT NOT NULL CHECK(length(trim(canonical_product_id)) > 0),
+            product_variant_id TEXT NOT NULL CHECK(length(trim(product_variant_id)) > 0),
+            price NUMERIC NOT NULL CHECK(price > 0),
+            currency TEXT NOT NULL CHECK(length(currency) = 3 AND currency = upper(currency)),
+            url TEXT NOT NULL CHECK(length(trim(url)) > 0),
+            availability TEXT NOT NULL CHECK(availability IN ('in_stock','out_of_stock'))
+        );
+    """)
+    return connection
+
+
+def _normalized_json(offer):
+    return json.dumps({
+        "retailer": offer.retailer,
+        "raw_name": offer.raw_name,
+        "product_url": offer.product_url,
+        "retailer_product_id": offer.retailer_product_id,
+        "brand_raw": offer.brand_raw,
+        "size_ml": offer.size_ml,
+        "price": str(offer.price) if offer.price is not None else None,
+        "currency": offer.currency,
+        "availability": offer.availability,
+        "retailer_image_url": offer.retailer_image_url,
+        "raw_payload": dict(offer.raw_payload),
+    }, ensure_ascii=False, default=str)
+
+
+def _stage_raw(connection, raw_record, normalized):
+    cursor = connection.execute(
+        "INSERT INTO ingestion_raw(store,raw_json,normalized_json,status) VALUES(?,?,?,'pending')",
+        ("Bplatz", json.dumps(raw_record, ensure_ascii=False, default=str),
+         _normalized_json(normalized)),
+    )
+    connection.commit()
+    return cursor.lastrowid
+
+
+def _save_match(connection, raw_id, aggregation):
+    if aggregation.matched_offer_count == 1 and len(aggregation.groups) == 1:
+        group = aggregation.groups[0]
+        connection.execute(
+            "UPDATE ingestion_raw SET canonical_product_id=?, product_variant_id=?, status='matched' WHERE id=?",
+            (group.canonical_product_id, group.canonical_variant_id, raw_id),
+        )
+    else:
+        # Ambiguous and unresolved outcomes never receive a guessed variant ID.
+        connection.execute(
+            "UPDATE ingestion_raw SET canonical_product_id=NULL, product_variant_id=NULL, status='unmatched' WHERE id=?",
+            (raw_id,),
+        )
+    connection.commit()
+
+
+def _promote_staged_offer(connection, raw_id):
+    """Test-local promotion gate; only persisted, certain, valid rows reach offers."""
+    row = connection.execute(
+        "SELECT store,normalized_json,canonical_product_id,product_variant_id,status "
+        "FROM ingestion_raw WHERE id=?",
+        (raw_id,),
+    ).fetchone()
+    if row is None:
+        return False
+    store, normalized_json, product_id, variant_id, status = row
+    if status != "matched" or not product_id or not variant_id:
+        return False
+
+    normalized = json.loads(normalized_json)
+    try:
+        price = float(normalized["price"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    url = normalized.get("product_url")
+    availability = normalized.get("availability")
+    currency = normalized.get("currency")
+    parsed_url = urlparse(url or "")
+    if not (price > 0 and parsed_url.scheme in {"http", "https"} and parsed_url.netloc):
+        return False
+    if availability not in {"in_stock", "out_of_stock"}:
+        return False
+    if not isinstance(currency, str) or len(currency) != 3 or not currency.isalpha() or currency != currency.upper():
+        return False
+
+    with connection:
+        connection.execute(
+            "INSERT INTO offers(ingestion_raw_id,store,canonical_product_id,product_variant_id,price,currency,url,availability) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            (raw_id, store, product_id, variant_id, price, currency, url, availability),
+        )
+        connection.execute(
+            "UPDATE ingestion_raw SET status='promoted' WHERE id=?",
+            (raw_id,),
+        )
+    return True
+
+
+def _real_pipeline_components(record):
+    """Run the real normalizer and real matcher against the read-only real catalog."""
+    import sys
+    sys.path.insert(0, str(ROOT / "backend"))
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+    from scenthunter_next_engine.offer_normalizer import normalize_offer
+
+    normalized = normalize_offer(record, retailer="Bplatz", currency_default="EUR")
+    service = NextEngineService.from_catalog_file(ROOT / "backend" / "product_catalog.json")
+    aggregation = service.process_offers([normalized])
+    return normalized, aggregation
+
+
+def test_full_positive_bplatz_pipeline_persists_promotes_and_reads_offer():
+    raw_record = _production_parser_record()
+    assert raw_record["brand_raw"] == "French Avenue"
+    assert raw_record["size_ml"] == 100
+    assert raw_record["price"] is not None and float(raw_record["price"]) > 0
+    assert raw_record["availability"] == "in_stock"
+
+    normalized, aggregation = _real_pipeline_components(raw_record)
+    assert aggregation.matched_offer_count == 1
+    assert len(aggregation.groups) == 1
+    group = aggregation.groups[0]
+    assert group.canonical_product_id == "SH-0030"
+    assert group.canonical_variant_id == VARIANT_ID
+
+    with tempfile.TemporaryDirectory(prefix="scenthunter-bplatz-e2e-positive-") as tmp:
+        connection = _make_pipeline_db(Path(tmp) / "isolated.sqlite3")
+        try:
+            raw_id = _stage_raw(connection, raw_record, normalized)
+            assert connection.execute(
+                "SELECT status FROM ingestion_raw WHERE id=?", (raw_id,)
+            ).fetchone()[0] == "pending"
+
+            _save_match(connection, raw_id, aggregation)
+            staged = connection.execute(
+                "SELECT canonical_product_id,product_variant_id,status FROM ingestion_raw WHERE id=?",
+                (raw_id,),
+            ).fetchone()
+            assert staged == ("SH-0030", VARIANT_ID, "matched")
+
+            assert _promote_staged_offer(connection, raw_id) is True
+            # Close and reopen the temporary database to verify durable persistence,
+            # not merely visibility inside the connection that performed the insert.
+            connection.close()
+            connection = sqlite3.connect(Path(tmp) / "isolated.sqlite3")
+            connection.execute("PRAGMA foreign_keys=ON")
+            reread = connection.execute(
+                "SELECT id,store,canonical_product_id,product_variant_id,price,currency,url,availability "
+                "FROM offers WHERE ingestion_raw_id=?",
+                (raw_id,),
+            ).fetchone()
+            assert reread is not None
+            offer_id, store, product_id, variant_id, price, currency, url, availability = reread
+            assert store == "Bplatz"
+            assert product_id == "SH-0030" and variant_id == VARIANT_ID
+            assert float(price) == float(normalized.price)
+            assert currency == "EUR" and url == normalized.product_url
+            assert availability == "in_stock"
+            assert connection.execute(
+                "SELECT status FROM ingestion_raw WHERE id=?", (raw_id,)
+            ).fetchone()[0] == "promoted"
+            assert connection.execute("SELECT COUNT(*) FROM offers").fetchone()[0] == 1
+            print(f"PERSISTED_OFFER_ID={offer_id}")
+        finally:
+            connection.close()
+
+
+@pytest.mark.parametrize("case", ["wrong_brand", "wrong_size", "insufficient_identity"])
+def test_uncertain_bplatz_identity_stays_in_ingestion_raw_without_offer(case):
+    raw_record = _production_parser_record()
+    if case == "wrong_brand":
+        raw_record["brand_raw"] = "Fragrance World"
+    elif case == "wrong_size":
+        raw_record["size_ml"] = 150
+    else:
+        raw_record["raw_name"] = "Liquid"
+        raw_record["brand_raw"] = None
+        raw_record["size_ml"] = None
+
+    normalized, aggregation = _real_pipeline_components(raw_record)
+    assert aggregation.matched_offer_count == 0
+    assert not aggregation.groups
+    assert aggregation.unresolved or aggregation.ambiguous
+
+    with tempfile.TemporaryDirectory(prefix=f"scenthunter-bplatz-e2e-{case}-") as tmp:
+        connection = _make_pipeline_db(Path(tmp) / "isolated.sqlite3")
+        try:
+            raw_id = _stage_raw(connection, raw_record, normalized)
+            _save_match(connection, raw_id, aggregation)
+            staged = connection.execute(
+                "SELECT canonical_product_id,product_variant_id,status FROM ingestion_raw WHERE id=?",
+                (raw_id,),
+            ).fetchone()
+            assert staged == (None, None, "unmatched")
+            assert _promote_staged_offer(connection, raw_id) is False
+            assert connection.execute(
+                "SELECT COUNT(*) FROM offers"
+            ).fetchone()[0] == 0
+            print(f"NEGATIVE_CASE={case};STATUS=unmatched;OFFERS=0")
+        finally:
+            connection.close()
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("price", 0),
+        ("product_url", "file:///tmp/not-a-retailer-offer"),
+        ("availability", "unknown"),
+    ],
+)
+def test_matched_bplatz_offer_is_not_promoted_when_offer_data_is_invalid(field, invalid_value):
+    raw_record = _production_parser_record()
+    raw_record[field] = invalid_value
+    normalized, aggregation = _real_pipeline_components(raw_record)
+    # Identity can be certain while offer data is not publishable.
+    assert aggregation.matched_offer_count == 1
+    assert len(aggregation.groups) == 1
+
+    with tempfile.TemporaryDirectory(prefix=f"scenthunter-bplatz-invalid-{field}-") as tmp:
+        connection = _make_pipeline_db(Path(tmp) / "isolated.sqlite3")
+        try:
+            raw_id = _stage_raw(connection, raw_record, normalized)
+            _save_match(connection, raw_id, aggregation)
+            assert connection.execute(
+                "SELECT status FROM ingestion_raw WHERE id=?", (raw_id,)
+            ).fetchone()[0] == "matched"
+            assert _promote_staged_offer(connection, raw_id) is False
+            assert connection.execute("SELECT COUNT(*) FROM offers").fetchone()[0] == 0
+        finally:
+            connection.close()

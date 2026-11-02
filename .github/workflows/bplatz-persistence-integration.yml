@@ -1,0 +1,33 @@
+name: Bplatz persistence integration tests
+
+on:
+  push:
+    branches:
+      - test/bplatz-sqlite-persistence-followup
+    paths:
+      - backend/app/models/catalog.py
+      - backend/app/models/__init__.py
+      - backend/app/services/ingestion_persistence.py
+      - backend/scripts/seed_catalog.py
+      - tests/test_phase2_seed_catalog.py
+      - backend/alembic/versions/0002_ingestion_raw.py
+      - tests/test_bplatz_persistence_service.py
+      - tests/test_phase2_schema_contract.py
+      - .github/workflows/bplatz-persistence-integration.yml
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install -r backend/requirements.txt pytest
+      - name: Run isolated persistence tests
+        run: python -m pytest -q -s tests/test_bplatz_liquid_brun_fixture.py tests/test_bplatz_persistence_service.py

@@ -15,6 +15,7 @@ def test_phase2_declares_all_core_tables():
     assert set(Base.metadata.tables) == {
         "brands", "fragrances", "product_variants", "stores",
         "offers", "price_history", "match_audit", "ingestion_runs",
+        "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
     }
 
 def test_canonical_identity_is_separate_from_retailer_offers():
@@ -56,6 +57,7 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
         assert {
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
+            "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
             "alembic_version",
         } <= tables
         with engine.begin() as connection:
