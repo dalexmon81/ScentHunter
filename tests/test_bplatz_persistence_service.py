@@ -303,3 +303,102 @@ def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
             assert session.scalar(select(Offer.id)) == result.offer_id
     finally:
         engine.dispose()
+
+
+def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_path):
+    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    _parsed, record, normalized, _group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
+        with Session(engine) as session, session.begin():
+            store_id = _create_bplatz_store(session)
+            first = persist_bplatz_record(
+                session, store_id=store_id, raw_record=dict(record), matcher=matcher,
+            )
+            assert first.status == "promoted"
+        updated_record = dict(record)
+        updated_record["price"] = record["price"] + 1
+        with Session(engine) as session, session.begin():
+            second = persist_bplatz_record(
+                session, store_id=store_id, raw_record=updated_record, matcher=matcher,
+            )
+            assert second.status == "promoted"
+            assert second.offer_id == first.offer_id
+        with Session(engine) as session:
+            offers = session.scalars(select(Offer)).all()
+            history = session.scalars(
+                select(PriceHistory).where(PriceHistory.offer_id == first.offer_id)
+            ).all()
+            assert len(offers) == 1
+            assert len(history) == 2
+            assert offers[0].price == Decimal(str(updated_record["price"]))
+            assert offers[0].ingestion_raw_id == second.ingestion_raw_id
+    finally:
+        engine.dispose()
+
+
+def test_bplatz_unmatched_record_remains_pending_without_offer(tmp_path):
+    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
+        unknown = {
+            "raw_name": "Completely Unknown Fragrance Product 987654",
+            "brand_raw": "Unknown Test Brand",
+            "size_ml": 100,
+            "price": 29.90,
+            "currency": "EUR",
+            "product_url": "https://en.bplatz.de/products/unknown-test",
+            "availability": "in_stock",
+            "sku": "BPLATZ-UNKNOWN-987654",
+        }
+        with Session(engine) as session, session.begin():
+            store_id = _create_bplatz_store(session)
+            result = persist_bplatz_record(
+                session, store_id=store_id, raw_record=unknown, matcher=matcher,
+            )
+            assert result.status == "pending"
+            assert result.offer_id is None
+        with Session(engine) as session:
+            raw = session.get(IngestionRaw, result.ingestion_raw_id)
+            assert raw is not None and raw.status == "pending"
+            assert raw.product_variant_id is None
+            assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
+
+
+def test_bplatz_phase2_feature_flag_and_store_gate_are_safe(monkeypatch, tmp_path):
+    import sqlite3
+    import catalog_engine
+
+    phase2_db = tmp_path / "phase2-flag-off.sqlite3"
+    sqlite3.connect(phase2_db).close()
+    monkeypatch.setenv("BPLATZ_PHASE2_PERSISTENCE", "off")
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "sqlite:///" + str(phase2_db))
+    catalog_engine._maybe_persist_bplatz_phase2(
+        {"name": "Liquid Brun", "price_num": 29.90}, "https://en.bplatz.de/products/liquid-brun",
+    )
+    connection = sqlite3.connect(phase2_db)
+    try:
+        assert connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall() == []
+    finally:
+        connection.close()
+
+    eligible = {"price_num": 29.90, "availability": "in_stock"}
+    assert catalog_engine._should_persist_bplatz_phase2("bplatz", eligible) is True
+    assert catalog_engine._should_persist_bplatz_phase2("bplatz", None) is False
+    for store in (
+        "deloox", "parfumcity", "parfumzentrum", "perfumemarket",
+        "sabina", "orioudh", "easycosmetic", "notino",
+    ):
+        assert catalog_engine._should_persist_bplatz_phase2(store, eligible) is False
