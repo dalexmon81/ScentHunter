@@ -340,27 +340,30 @@ def offer_list(product):
     return []
 
 
-def product_from_page(session, url, query):
-    try:
-        response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        if response.status_code >= 400:
-            response.close()
-            return None
-        html = response.text
-        final_url = response.url
-        response.close()
-    except requests.RequestException:
-        return None
+def parse_product_html(html, final_url, query):
+    """Parse one already-fetched Bplatz product page without network access.
 
+    SKU and GTIN are copied only from the structured Product JSON-LD. Missing
+    identifiers remain None; they are never inferred from one another.
+    """
     soup = BeautifulSoup(html, "html.parser")
     data = jsonld_product(soup)
     h1 = soup.find("h1")
     name = clean((data or {}).get("name") or (h1.get_text(" ", strip=True) if h1 else ""))
-    if not name or not matches(f"{name} {(data.get('brand') or {}).get('name','') if isinstance(data.get('brand'),dict) else data.get('brand','')}", query):
+    brand_value = data.get("brand")
+    brand = clean(brand_value.get("name")) if isinstance(brand_value, dict) else clean(brand_value)
+    if not name or not matches(f"{name} {brand}", query):
         return None
 
-    brand = data.get("brand")
-    brand = clean(brand.get("name")) if isinstance(brand, dict) else clean(brand)
+    sku_value = data.get("sku")
+    gtin_value = next(
+        (data.get(key) for key in ("gtin13", "gtin12", "gtin14", "gtin8", "gtin")
+         if data.get(key) not in (None, "")),
+        None,
+    )
+    sku = clean(sku_value) if sku_value not in (None, "") else None
+    gtin = clean(gtin_value) if gtin_value not in (None, "") else None
+
     size = size_ml(name, soup.get_text(" ", strip=True))
     offers = offer_list(data)
     price = None
@@ -382,9 +385,9 @@ def product_from_page(session, url, query):
 
     if price is None:
         price_patterns = [
-            r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"retail\\s+price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
         ]
         for pattern in price_patterns:
             m = re.search(pattern, page_text, re.I)
@@ -407,13 +410,15 @@ def product_from_page(session, url, query):
     return {
         "store": STORE,
         "source": {"source_name": name, "source_brand": brand or None, "url": final_url, "image": image},
-        "identity": {"gtin": None, "mpn": None, "sku": None, "store_product_id": {"value": final_url, "source": "product_url"}, "store_variant_id": None},
+        "identity": {"gtin": gtin, "mpn": None, "sku": sku, "store_product_id": {"value": final_url, "source": "product_url"}, "store_variant_id": None},
         "attributes": {"size_ml": {"value": size, "source": "product_page"} if size is not None else None, "concentration": {"value": concentration(name), "source": "product_title"} if concentration(name) else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
         "offer": {"price": price, "currency": "EUR", "availability": availability},
         "provenance": {"source_page": final_url, "product_source": "shopify_product_page"},
         "raw_data": {"jsonld": data},
         "name": name,
         "brand": brand,
+        "sku": sku,
+        "gtin": gtin,
         "price": f"{price:.2f} €" if price is not None else None,
         "price_num": price,
         "url": final_url,
@@ -424,6 +429,20 @@ def product_from_page(session, url, query):
         "concentration": concentration(name),
         "image": image,
     }
+
+
+def product_from_page(session, url, query):
+    try:
+        response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        if response.status_code >= 400:
+            response.close()
+            return None
+        html = response.text
+        final_url = response.url
+        response.close()
+    except requests.RequestException:
+        return None
+    return parse_product_html(html, final_url, query)
 
 
 def _search_report(query):
