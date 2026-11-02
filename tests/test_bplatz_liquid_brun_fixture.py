@@ -243,3 +243,58 @@ def test_negative_without_certain_association_stays_raw_and_not_offers():
 # Re-run offline verification after adding pytest to the dedicated workflow.
 
 # Trigger rerun with requests installed for production parser import.
+
+
+
+def test_real_canonical_matcher_resolves_bplatz_against_actual_catalog():
+    """Exercise the real catalog adapter and matcher; no controlled variant assignment."""
+    import sys
+    sys.path.insert(0, str(ROOT / "backend"))
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    catalog_path = ROOT / "backend" / "product_catalog.json"
+    service = NextEngineService.from_catalog_file(catalog_path)
+    record = parse_liquid_brun_fixture()
+
+    result = service.process_records([record], retailer="Bplatz", currency_default="EUR")
+    aggregation = result.aggregation
+    assert aggregation.matched_offer_count == 1
+    assert len(aggregation.groups) == 1
+    group = aggregation.groups[0]
+    assert group.canonical_product_id == "SH-0030"
+    assert group.canonical_variant_id == VARIANT_ID
+    assert group.offers[0].retailer == "Bplatz"
+
+    # A wrong brand must not be rescued by a matching product title.
+    wrong_brand = dict(record)
+    wrong_brand["brand_raw"] = "Fragrance World"
+    wrong_brand_result = service.process_records(
+        [wrong_brand], retailer="Bplatz", currency_default="EUR"
+    ).aggregation
+    assert wrong_brand_result.matched_offer_count == 0
+    assert not wrong_brand_result.groups
+    assert len(wrong_brand_result.unresolved) == 1
+
+    # A 150 ml claim cannot be attached to the declared 100 ml variant.
+    wrong_size = dict(record)
+    wrong_size["size_ml"] = 150
+    wrong_size_result = service.process_records(
+        [wrong_size], retailer="Bplatz", currency_default="EUR"
+    ).aggregation
+    assert wrong_size_result.matched_offer_count == 0
+    assert not wrong_size_result.groups
+    assert len(wrong_size_result.unresolved) == 1
+
+    # An insufficient title without brand or format remains unresolved.
+    insufficient_identity = dict(record)
+    insufficient_identity["raw_name"] = "Liquid"
+    insufficient_identity["brand_raw"] = None
+    insufficient_identity["size_ml"] = None
+    insufficient_result = service.process_records(
+        [insufficient_identity], retailer="Bplatz", currency_default="EUR"
+    ).aggregation
+    assert insufficient_result.matched_offer_count == 0
+    assert not insufficient_result.groups
+    assert len(insufficient_result.unresolved) == 1
+
+# Keep this file covered by the dedicated branch-specific offline workflow.
