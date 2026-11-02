@@ -1,0 +1,105 @@
+name: Phase 2 - wait for normal Bplatz hydration
+
+on:
+  workflow_run:
+    workflows:
+      - Fly Deploy
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  wait-for-normal-bplatz-worker:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: Wait for natural Bplatz worker cycle and verify Phase 2
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Capture read-only Bplatz baseline
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/verify_catalog.py --snapshot > /tmp/phase2-bplatz-baseline.json && cat /tmp/phase2-bplatz-baseline.json && echo BASELINE=PASS'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee phase2-bplatz-baseline.log
+          grep -q 'BASELINE=PASS' phase2-bplatz-baseline.log
+
+      - name: Wait for a real normal-worker success log, then verify DB deltas
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + 21000))
+          attempt=0
+          : > phase2-bplatz-worker-logs.txt
+
+          while (( SECONDS < deadline )); do
+            attempt=$((attempt + 1))
+            flyctl logs --app scenthunter --no-tail 2>&1 | tee latest-production-logs.txt >> phase2-bplatz-worker-logs.txt || true
+
+            line="$(grep -E 'hydration_worker bplatz product=[^ ]+ phase2_persisted=true .*offer_id=[^ ]+ ingestion_raw_id=[^ ]+' latest-production-logs.txt | tail -n 1 || true)"
+            if [[ -n "$line" ]]; then
+              sku="$(sed -nE 's/.*product=([^ ]+).*/\1/p' <<< "$line")"
+              offer_id="$(sed -nE 's/.*offer_id=([^ ]+).*/\1/p' <<< "$line")"
+              raw_id="$(sed -nE 's/.*ingestion_raw_id=([^ ]+).*/\1/p' <<< "$line")"
+
+              if [[ "$sku" =~ ^[A-Za-z0-9._:-]+$ && "$offer_id" =~ ^[A-Fa-f0-9-]+$ && "$raw_id" =~ ^[A-Fa-f0-9-]+$ ]]; then
+                echo "NORMAL_WORKER_CORRELATION=$line"
+                remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/verify_catalog.py --baseline /tmp/phase2-bplatz-baseline.json --worker-ingestion-raw-id $raw_id --worker-offer-id $offer_id --worker-sku $sku'"
+                if flyctl ssh console --app scenthunter --select=false -C "$remote_command" > phase2-bplatz-verifier.log 2>&1; then
+                  cat phase2-bplatz-verifier.log
+                  echo "NORMAL_HYDRATION=PASS"
+                  exit 0
+                fi
+                echo "A correlation log was found, but its raw/offer pair or baseline deltas are not yet verifiable. Waiting for the next normal Bplatz worker observation."
+                cat phase2-bplatz-verifier.log
+              fi
+            fi
+
+            echo "Waiting for normal Bplatz worker cycle (poll $attempt)..."
+            sleep 60
+          done
+
+          echo "NORMAL_HYDRATION=TIMEOUT"
+          echo "No verifiable normal Bplatz worker success was observed within the six-hour window."
+          exit 1
+
+      - name: Verify production health
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error --output health.json --write-out '%{http_code}' https://scenthunter.fly.dev/health)"
+          cat health.json
+          echo
+          echo "HEALTH_HTTP_STATUS=$code"
+          test "$code" = "200"
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-bplatz-natural-worker-evidence
+          path: |
+            phase2-bplatz-baseline.log
+            phase2-bplatz-worker-logs.txt
+            latest-production-logs.txt
+            phase2-bplatz-verifier.log
+            health.json
+          if-no-files-found: warn
+          retention-days: 30
