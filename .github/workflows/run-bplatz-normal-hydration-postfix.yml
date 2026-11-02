@@ -3,7 +3,7 @@ name: Run one normal Bplatz hydration and verify Phase 2
 on:
   push:
     branches:
-      - ops/run-bplatz-normal-hydration-20261102
+      - ops/run-bplatz-normal-hydration-postfix-20261102
 
 jobs:
   hydrate:
