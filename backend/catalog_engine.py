@@ -4019,7 +4019,11 @@ def _maybe_persist_bplatz_phase2(item, url):
             )
             return
 
-        required_tables = {\n            "stores", "brands", "fragrances", "product_variants", "offers",\n            "price_history", "match_audit", "ingestion_raw",\n            "legacy_product_id_map", "legacy_variant_id_map",\n        }
+        required_tables = {
+            "stores", "brands", "fragrances", "product_variants", "offers",
+            "price_history", "match_audit", "ingestion_raw",
+            "legacy_product_id_map", "legacy_variant_id_map",
+        }
         missing = sorted(required_tables - tables)
         revision = revision_row[0] if revision_row else None
         if revision != "0002_ingestion_raw" or missing:
