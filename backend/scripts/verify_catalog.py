@@ -50,6 +50,9 @@ def collect_report(connection):
         "offers": connection.execute(text(
             "SELECT COUNT(*) FROM offers WHERE store_id = :store_id"
         ), {"store_id": store_id}).scalar_one(),
+        "raw_rows": connection.execute(text(
+            "SELECT COUNT(*) FROM ingestion_raw WHERE store_id = :store_id"
+        ), {"store_id": store_id}).scalar_one(),
         "active_offers": connection.execute(text(
             "SELECT COUNT(*) FROM offers WHERE store_id = :store_id AND status = 'active'"
         ), {"store_id": store_id}).scalar_one(),
@@ -102,6 +105,9 @@ def main() -> int:
         "--baseline", type=Path,
         help="compare current read-only state with a JSON snapshot",
     )
+    parser.add_argument("--worker-ingestion-raw-id", help="raw UUID from the normal-worker correlation log")
+    parser.add_argument("--worker-offer-id", help="offer UUID from the normal-worker correlation log")
+    parser.add_argument("--worker-sku", help="SKU from the normal-worker correlation log")
     args = parser.parse_args()
 
     engine = make_engine()
@@ -135,6 +141,7 @@ def main() -> int:
             checks["OFFER_UPSERT"] = after["offers"] == before["offers"]
             checks["PRICE_HISTORY"] = after["price_history"] > before["price_history"]
             checks["MATCH_AUDIT"] = after["match_audit"] > before["match_audit"]
+            checks["RAW_INGESTION"] = after["raw_rows"] > before["raw_rows"]
 
             print(
                 "OFFER_UPSERT="
@@ -151,6 +158,42 @@ def main() -> int:
                 + ("PASS" if checks["MATCH_AUDIT"] else "FAIL")
                 + f" baseline={before['match_audit']} current={after['match_audit']}"
             )
+            print(
+                "RAW_INGESTION="
+                + ("PASS" if checks["RAW_INGESTION"] else "FAIL")
+                + f" baseline={before['raw_rows']} current={after['raw_rows']}"
+            )
+
+        if args.worker_ingestion_raw_id or args.worker_offer_id or args.worker_sku:
+            if not (args.worker_ingestion_raw_id and args.worker_offer_id and args.worker_sku):
+                raise ValueError("worker proof requires raw ID, offer ID, and SKU together")
+            with engine.connect() as connection:
+                store_id = connection.execute(text(
+                    "SELECT id FROM stores WHERE slug = 'bplatz'"
+                )).scalar_one()
+                worker_row = connection.execute(text("""
+                    SELECT ir.status, ir.raw_payload
+                    FROM ingestion_raw ir
+                    JOIN offers o ON o.ingestion_raw_id = ir.id
+                    WHERE ir.id = :raw_id AND o.id = :offer_id
+                      AND ir.store_id = :store_id AND o.store_id = :store_id
+                """), {
+                    "raw_id": args.worker_ingestion_raw_id,
+                    "offer_id": args.worker_offer_id,
+                    "store_id": store_id,
+                }).mappings().first()
+            payload = worker_row["raw_payload"] if worker_row else None
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+            worker_proof = bool(
+                worker_row
+                and worker_row["status"] == "promoted"
+                and isinstance(payload, dict)
+                and str(payload.get("sku") or "") == args.worker_sku
+            )
+            checks["WORKER_LOG"] = worker_proof
+            print("WORKER_LOG=" + ("PASS" if worker_proof else "FAIL")
+                  + f" sku={args.worker_sku} raw_id={args.worker_ingestion_raw_id}")
 
         for name, passed in checks.items():
             if name in {"OFFER_UPSERT", "PRICE_HISTORY", "MATCH_AUDIT"} and not args.baseline:
