@@ -64,16 +64,7 @@ jobs:
             echo LEGACY_DB_INODES_AND_TIMESTAMPS
             ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
             echo CURRENT_DISCOVERY_SYNC_STATE_READ_ONLY
-            /app/.venv/bin/python - <<PY
-import sqlite3
-conn = sqlite3.connect("file:/data/store_catalog.sqlite3?mode=ro", uri=True, timeout=2)
-conn.execute("PRAGMA query_only=ON")
-try:
-    rows = conn.execute("SELECT store,status,started_at,finished_at,error FROM sync_state WHERE status=\"DISCOVERY_RUNNING\"").fetchall()
-    print(rows)
-finally:
-    conn.close()
-PY
+            echo aW1wb3J0IHNxbGl0ZTMKY29ubiA9IHNxbGl0ZTMuY29ubmVjdCgiZmlsZTovZGF0YS9zdG9yZV9jYXRhbG9nLnNxbGl0ZTM/bW9kZT1ybyIsIHVyaT1UcnVlLCB0aW1lb3V0PTIpCmNvbm4uZXhlY3V0ZSgiUFJBR01BIHF1ZXJ5X29ubHk9T04iKQp0cnk6CiAgICBwcmludCgiQUNUSVZFX0RJU0NPVkVSWV9ST1dTIiwgY29ubi5leGVjdXRlKCJTRUxFQ1Qgc3RvcmUsc3RhdHVzLHN0YXJ0ZWRfYXQsZmluaXNoZWRfYXQsZXJyb3IgRlJPTSBzeW5jX3N0YXRlIFdIRVJFIHN0YXR1cz0nRElTQ09WRVJZX1JVTk5JTkcnIikuZmV0Y2hhbGwoKSkKICAgIHByaW50KCJERUxPT1hfQ0xFQU5VUF9NQVJLRVIiLCBjb25uLmV4ZWN1dGUoIlNFTEVDVCB2YWx1ZSx1cGRhdGVkX2F0IEZST00gY2F0YWxvZ19kaXNjb3ZlcnlfbWV0YSBXSEVSRSBrZXk9J2RlbG9veF9pbnZhbGlkX2FjdGl2ZV91cmxfY2xlYW51cF92MSciKS5mZXRjaGFsbCgpKQpmaW5hbGx5OgogICAgY29ubi5jbG9zZSgpCg== | base64 -d | /app/.venv/bin/python
             echo PROCESS_614_LOCKS
             cat /proc/locks 2>&1
           }
