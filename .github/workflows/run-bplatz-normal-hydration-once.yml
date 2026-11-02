@@ -1,0 +1,132 @@
+name: Run one normal Bplatz hydration and verify Phase 2
+
+on:
+  push:
+    branches:
+      - ops/run-bplatz-normal-hydration-20261102
+
+jobs:
+  hydrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Backup both production catalogs and run normal hydration path
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/run_normal_bplatz.py <<'PY'
+          import json, os, shutil, sqlite3, sys, time
+          from pathlib import Path
+          phase2 = Path("/data/catalog/catalog.sqlite3")
+          legacy = Path("/data/store_catalog.sqlite3")
+          backups = Path("/data/backups")
+          backups.mkdir(parents=True, exist_ok=True)
+          run = os.environ.get("GITHUB_RUN_ID", "manual")
+          def backup(source, target):
+              if not source.is_file():
+                  raise SystemExit("missing production database: " + str(source))
+              if target.exists():
+                  raise SystemExit("refusing to overwrite backup: " + str(target))
+              src = sqlite3.connect(str(source), timeout=30)
+              dst = sqlite3.connect(str(target), timeout=30)
+              try:
+                  src.backup(dst)
+                  dst.commit()
+              finally:
+                  dst.close()
+                  src.close()
+              check = sqlite3.connect("file:" + str(target) + "?mode=ro", uri=True, timeout=30)
+              try:
+                  integrity = check.execute("PRAGMA integrity_check").fetchone()[0]
+                  fk = check.execute("PRAGMA foreign_key_check").fetchall()
+              finally:
+                  check.close()
+              if integrity != "ok" or fk:
+                  raise SystemExit("backup verification failed: " + str(target))
+              return {"path":str(target),"bytes":target.stat().st_size,"integrity":integrity,"foreign_key_errors":len(fk)}
+          backups_report = [
+              backup(phase2, backups / ("phase2-pre-normal-hydration-" + run + ".sqlite3")),
+              backup(legacy, backups / ("legacy-pre-normal-hydration-" + run + ".sqlite3")),
+          ]
+          print("VERIFIED_PRE_HYDRATION_BACKUPS=" + json.dumps(backups_report), flush=True)
+          if os.environ.get("BPLATZ_PHASE2_PERSISTENCE") != "1":
+              raise SystemExit("production Bplatz Phase 2 flag is not enabled")
+          sys.path.insert(0, "/app/backend")
+          import catalog_engine
+          target = "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
+          before = sqlite3.connect("file:" + str(phase2) + "?mode=ro", uri=True, timeout=30)
+          try:
+              prior = before.execute("""
+                SELECT o.id,o.price,
+                       (SELECT COUNT(*) FROM price_history ph WHERE ph.offer_id=o.id),
+                       (SELECT COUNT(*) FROM match_audit ma WHERE ma.offer_id=o.id)
+                FROM offers o JOIN stores s ON s.id=o.store_id
+                JOIN product_variants pv ON pv.id=o.product_variant_id
+                JOIN fragrances f ON f.id=pv.fragrance_id
+                JOIN brands b ON b.id=f.brand_id
+                WHERE s.slug='bplatz' AND lower(b.name)='french avenue'
+                  AND lower(f.name) LIKE '%liquid brun%' AND pv.size_ml=100
+              """).fetchall()
+          finally:
+              before.close()
+          if len(prior) != 1:
+              raise SystemExit("expected exactly one existing Liquid Brun offer before hydration: " + repr(prior))
+          result = catalog_engine.refresh_url("bplatz", target)
+          if not isinstance(result, dict) or not result.get("name"):
+              raise SystemExit("normal catalog_engine.refresh_url hydration failed or returned no product")
+          after = sqlite3.connect("file:" + str(phase2) + "?mode=ro", uri=True, timeout=30)
+          after.row_factory = sqlite3.Row
+          try:
+              integrity = after.execute("PRAGMA integrity_check").fetchone()[0]
+              fk = after.execute("PRAGMA foreign_key_check").fetchall()
+              rows = after.execute("""
+                SELECT o.id,o.price,o.currency,o.availability,o.status,
+                       ir.status raw_status,
+                       (SELECT COUNT(*) FROM price_history ph WHERE ph.offer_id=o.id) history_count,
+                       (SELECT COUNT(*) FROM match_audit ma WHERE ma.offer_id=o.id) audit_count
+                FROM offers o JOIN stores s ON s.id=o.store_id
+                JOIN product_variants pv ON pv.id=o.product_variant_id
+                JOIN fragrances f ON f.id=pv.fragrance_id
+                JOIN brands b ON b.id=f.brand_id
+                JOIN ingestion_raw ir ON ir.id=o.ingestion_raw_id
+                WHERE s.slug='bplatz' AND lower(b.name)='french avenue'
+                  AND lower(f.name) LIKE '%liquid brun%' AND pv.size_ml=100
+              """).fetchall()
+              final = [dict(x) for x in rows]
+          finally:
+              after.close()
+          if len(final) != 1:
+              raise SystemExit("normal hydration duplicated or lost the canonical offer: " + json.dumps(final, default=str))
+          offer = final[0]
+          if str(offer["id"]).replace("-","") != str(prior[0][0]).replace("-",""):
+              raise SystemExit("normal hydration changed offer identity")
+          if offer["status"] != "active" or offer["raw_status"] != "promoted" or offer["history_count"] < 1 or offer["audit_count"] <= prior[0][3]:
+              raise SystemExit("normal hydration did not update Phase 2 audit/promotion contract: " + json.dumps(offer, default=str))
+          if integrity != "ok" or fk:
+              raise SystemExit("Phase 2 database integrity/FK verification failed")
+          print("BPLATZ_NORMAL_HYDRATION_RESULT=" + json.dumps({
+              "status":"success","path":"catalog_engine.refresh_url",
+              "feature_flag":os.environ.get("BPLATZ_PHASE2_PERSISTENCE"),
+              "legacy_hydration_name":result.get("name"),
+              "offer":offer,"previous_offer_id":prior[0][0],
+              "price_history_before":prior[0][2],"price_history_after":offer["history_count"],
+              "match_audit_before":prior[0][3],"match_audit_after":offer["audit_count"],
+              "offer_count":len(final),"integrity_check":integrity,"foreign_key_errors":len(fk),
+              "backups":backups_report
+          }, default=str), flush=True)
+          PY
+          SCRIPT_B64="$(base64 -w0 /tmp/run_normal_bplatz.py)"
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/run_normal_bplatz.py && GITHUB_RUN_ID=${GITHUB_RUN_ID} /app/.venv/bin/python /tmp/run_normal_bplatz.py'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+      - name: Verify production health
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          with urllib.request.urlopen("https://scenthunter.fly.dev/health", timeout=20) as response:
+              data=json.loads(response.read().decode())
+              assert response.status == 200 and data.get("status") == "healthy", data
+          print("FLY_PRODUCTION_HEALTH=PASS")
+          PY
