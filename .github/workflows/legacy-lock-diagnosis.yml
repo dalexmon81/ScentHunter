@@ -39,23 +39,23 @@ jobs:
             ls -l /proc/614/task/620/fd 2>&1
             echo TID_620_SQLITE_FD_TARGETS_AND_FDINFO
             for fd in /proc/614/task/620/fd/*; do
-              target=\$(readlink "\$fd" 2>/dev/null) || continue
-              case "\$target" in
+              target=\$(readlink \$fd 2>/dev/null) || continue
+              case \$target in
                 /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
                   echo --- \$fd -\> \$target ---
                   info_fd=\${fd##*/}
-                  cat "/proc/614/task/620/fdinfo/\$info_fd" 2>&1
+                  cat /proc/614/task/620/fdinfo/\$info_fd 2>&1
                   ;;
               esac
             done
             echo PROCESS_614_CMDLINE
             cat /proc/614/cmdline 2>&1
             echo PROCESS_614_STATUS
-            grep -E "^(Name|State|Threads|voluntary_ctxt_switches|nonvoluntary_ctxt_switches):" /proc/614/status 2>&1
+            grep -E ^(Name|State|Threads|voluntary_ctxt_switches|nonvoluntary_ctxt_switches): /proc/614/status 2>&1
             echo PROCESS_614_LEGACY_FD_TARGETS
             for fd in /proc/614/fd/*; do
-              target=\$(readlink "\$fd" 2>/dev/null) || continue
-              case "\$target" in
+              target=\$(readlink \$fd 2>/dev/null) || continue
+              case \$target in
                 /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
                   echo \$fd -\> \$target
                   ;;
