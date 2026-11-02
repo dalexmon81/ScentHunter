@@ -126,3 +126,5 @@ def test_invalid_offer_fields_block_promotion(changes):
             assert session.get(IngestionRaw, raw_id).status == "matched"
     finally:
         engine.dispose()
+
+# CI includes the complete fixture suite alongside these SQLAlchemy persistence tests.
