@@ -63,6 +63,17 @@ jobs:
             done
             echo LEGACY_DB_INODES_AND_TIMESTAMPS
             ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
+            echo CURRENT_DISCOVERY_SYNC_STATE_READ_ONLY
+            /app/.venv/bin/python - <<PY
+import sqlite3
+conn = sqlite3.connect("file:/data/store_catalog.sqlite3?mode=ro", uri=True, timeout=2)
+conn.execute("PRAGMA query_only=ON")
+try:
+    rows = conn.execute("SELECT store,status,started_at,finished_at,error FROM sync_state WHERE status=\"DISCOVERY_RUNNING\"").fetchall()
+    print(rows)
+finally:
+    conn.close()
+PY
             echo PROCESS_614_LOCKS
             cat /proc/locks 2>&1
           }
