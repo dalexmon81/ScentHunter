@@ -969,6 +969,10 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
         try:
             return super().close()
         finally:
+            # sqlite3.close() silently rolls back an open transaction. Record
+            # that terminal transition so its duration is not lost.
+            if was_in_transaction:
+                self._sh_finish("close_rollback")
             self._sh_emit("close", in_transaction=was_in_transaction)
 
 
