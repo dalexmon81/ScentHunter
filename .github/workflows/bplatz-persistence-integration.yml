@@ -8,6 +8,8 @@ on:
       - backend/app/models/catalog.py
       - backend/app/models/__init__.py
       - backend/app/services/ingestion_persistence.py
+      - backend/scripts/seed_catalog.py
+      - tests/test_phase2_seed_catalog.py
       - backend/alembic/versions/0002_ingestion_raw.py
       - tests/test_bplatz_persistence_service.py
       - tests/test_phase2_schema_contract.py
