@@ -1,4 +1,4 @@
-name: Read-only legacy SQLite lock diagnosis (two samples)
+name: Read-only legacy SQLite thread diagnosis
 
 on:
   push:
@@ -9,32 +9,32 @@ permissions:
   contents: read
 
 jobs:
-  inspect-fly-processes:
-    name: Compare PID 614 SQLite locks before and after 45 seconds
+  inspect-fly-threads:
+    name: Inspect PID 614 threads and legacy SQLite locks (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Collect two read-only process and lock snapshots
+      - name: Collect read-only thread and lock evidence
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -u
-          : > legacy-lock-diagnosis.txt
-          remote_command="/bin/sh -lc 'echo === SAMPLE_1_BEFORE ===; date -u; echo === /proc/locks ===; cat /proc/locks; echo === PID_614_FD ===; ls -l /proc/614/fd; echo === PID_614_CMDLINE ===; cat /proc/614/cmdline; echo; echo === PID_614_STATUS ===; cat /proc/614/status; echo === PID_614_WCHAN ===; cat /proc/614/wchan; echo; echo === DATABASE_INODES_AND_TIMESTAMPS ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1; echo === DATABASE_FD_TARGETS ===; for fd in /proc/614/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*) echo \"\$fd -> \$target\";; esac; done; echo === WAITING_45_SECONDS ===; sleep 45; echo === SAMPLE_2_AFTER ===; date -u; echo === /proc/locks ===; cat /proc/locks; echo === PID_614_FD ===; ls -l /proc/614/fd; echo === PID_614_CMDLINE ===; cat /proc/614/cmdline; echo; echo === PID_614_STATUS ===; cat /proc/614/status; echo === PID_614_WCHAN ===; cat /proc/614/wchan; echo; echo === DATABASE_INODES_AND_TIMESTAMPS ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1; echo === DATABASE_FD_TARGETS ===; for fd in /proc/614/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*) echo \"\$fd -> \$target\";; esac; done'"
-          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee legacy-lock-diagnosis.txt
+          : > legacy-thread-diagnosis.txt
+          remote_command="/bin/sh -lc 'echo === SNAPSHOT_TIME_UTC ===; date -u; echo === PID_614_CMDLINE ===; cat /proc/614/cmdline; echo; echo === PID_614_STATUS ===; cat /proc/614/status; echo === PID_614_WCHAN ===; cat /proc/614/wchan; echo; echo === LEGACY_LOCKS ===; cat /proc/locks; echo === LEGACY_DB_INODES ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1; echo === PID_614_DB_FDS ===; for fd in /proc/614/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*) echo \"\$fd -> \$target\";; esac; done; echo === THREAD_DETAILS_BEGIN ===; for task in /proc/614/task/[0-9]*; do [ -d \"\$task\" ] || continue; tid=\${task##*/}; echo --- TID_\$tid ---; echo COMM; cat \"\$task/comm\" 2>&1; echo STAT; cat \"\$task/stat\" 2>&1; echo WCHAN; cat \"\$task/wchan\" 2>&1; echo STATUS_SUMMARY; grep -E \"^(State|voluntary_ctxt_switches|nonvoluntary_ctxt_switches):\" \"\$task/status\" 2>&1; echo KERNEL_STACK_READ_ONLY; cat \"\$task/stack\" 2>&1; done; echo === THREAD_DETAILS_END ==='"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee legacy-thread-diagnosis.txt
           ssh_status=${PIPESTATUS[0]}
-          echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a legacy-lock-diagnosis.txt
+          echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a legacy-thread-diagnosis.txt
           exit "$ssh_status"
 
-      - name: Upload diagnosis evidence
+      - name: Upload thread diagnosis evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: legacy-lock-diagnosis-two-samples
-          path: legacy-lock-diagnosis.txt
+          name: legacy-thread-diagnosis
+          path: legacy-thread-diagnosis.txt
           if-no-files-found: warn
           retention-days: 30
