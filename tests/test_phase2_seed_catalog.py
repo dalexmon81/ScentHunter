@@ -98,9 +98,20 @@ def test_seed_apply_imports_identity_without_creating_variant_or_offer(tmp_path)
     assert report["database_counts"]["brands"] == 1
     assert report["database_counts"]["fragrances"] == 2
     assert report["database_counts"]["product_variants"] == 1
+    assert report["database_counts"]["legacy_product_id_map"] == 2
+    assert report["database_counts"]["legacy_variant_id_map"] == 1
     assert report["database_counts"]["offers"] == 0
 
     with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT fragrance_id FROM legacy_product_id_map WHERE legacy_product_id='P1'"
+        ).fetchone()[0]
+        assert connection.execute(
+            "SELECT product_variant_id FROM legacy_variant_id_map WHERE legacy_variant_id='V1'"
+        ).fetchone()[0]
+        assert connection.execute(
+            "SELECT COUNT(*) FROM legacy_product_id_map"
+        ).fetchone()[0] == 2
         assert connection.execute(
             "SELECT COUNT(*) FROM fragrances f "
             "LEFT JOIN product_variants v ON v.fragrance_id = f.id "
