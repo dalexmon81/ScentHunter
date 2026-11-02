@@ -63,6 +63,19 @@ class Store(Base):
     reliability_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+
+class LegacyProductIdMap(Base):
+    __tablename__ = "legacy_product_id_map"
+    legacy_product_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    fragrance_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False, unique=True)
+
+
+class LegacyVariantIdMap(Base):
+    __tablename__ = "legacy_variant_id_map"
+    legacy_variant_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    product_variant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False, unique=True)
+
+
 class IngestionRaw(Base):
     __tablename__ = "ingestion_raw"
     __table_args__ = (Index("ix_ingestion_raw_store_status", "store_id", "status"), CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"))
@@ -70,6 +83,8 @@ class IngestionRaw(Base):
     store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     external_product_id: Mapped[str | None] = mapped_column(String(240))
+    legacy_product_id: Mapped[str | None] = mapped_column(String(80))
+    legacy_variant_id: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
     product_variant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("product_variants.id", ondelete="RESTRICT"))
     match_method: Mapped[str | None] = mapped_column(String(60))
