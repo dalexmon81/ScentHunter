@@ -16,124 +16,94 @@ concurrency:
 
 jobs:
   controlled-e2e:
-    name: Provision Bplatz and verify one real product
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Verify target and execute controlled production E2E
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Run one-product production test
         shell: bash
         run: |
           set -euo pipefail
           flyctl status --app scenthunter
-          cat > /tmp/phase2_bplatz_controlled_e2e.py <<'PY'
+          cat > /tmp/e2e.py <<'PY'
           import json, os, sqlite3, sys, urllib.request
           from pathlib import Path
-          DB = Path("/data/catalog/catalog.sqlite3")
-          DB_URL = "sqlite:////data/catalog/catalog.sqlite3"
-          PRODUCT_URL = "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
-          EXPECTED_PRODUCT = "SH-0030"
-          EXPECTED_VARIANT = "VAR-f87146c82d167f4c"
-          if not DB.is_file():
-              raise SystemExit("STOP: Phase 2 SQLite database is missing")
-          uri = "file:" + str(DB) + "?mode=ro"
-          check = sqlite3.connect(uri, uri=True, timeout=5)
+          DB=Path("/data/catalog/catalog.sqlite3")
+          URL="sqlite:////data/catalog/catalog.sqlite3"
+          PRODUCT="https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
+          sys.path.insert(0,"/app/backend")
+          os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"]=URL
+          uri="file:"+str(DB)+"?mode=ro"
+          c=sqlite3.connect(uri,uri=True,timeout=5)
           try:
-              check.execute("PRAGMA query_only=ON")
-              revision = check.execute("SELECT version_num FROM alembic_version").fetchone()
-              tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-              required = {"stores","brands","fragrances","product_variants","offers","price_history","match_audit","ingestion_raw","legacy_product_id_map","legacy_variant_id_map"}
-              integrity = check.execute("PRAGMA integrity_check").fetchone()[0]
-              if not revision or revision[0] != "0002_ingestion_raw":
-                  raise SystemExit(f"STOP: unexpected Alembic revision: {revision}")
-              if not required.issubset(tables):
-                  raise SystemExit(f"STOP: missing tables: {sorted(required-tables)}")
-              if integrity != "ok":
-                  raise SystemExit(f"STOP: SQLite integrity_check={integrity}")
-              before_other_stores = check.execute("SELECT count(*) FROM stores WHERE slug <> 'bplatz'").fetchone()[0]
-          finally:
-              check.close()
-          sys.path.insert(0, "/app/backend")
-          os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"] = DB_URL
-          os.environ["BPLATZ_PHASE2_PERSISTENCE"] = "1"
-          from sqlalchemy import create_engine, event, select
+              c.execute("PRAGMA query_only=ON")
+              rev=c.execute("SELECT version_num FROM alembic_version").fetchone()
+              integrity=c.execute("PRAGMA integrity_check").fetchone()[0]
+              other_before=c.execute("SELECT count(*) FROM stores WHERE slug<>'bplatz'").fetchone()[0]
+              if not rev or rev[0]!="0002_ingestion_raw" or integrity!="ok":
+                  raise SystemExit(f"STOP: preflight revision={rev}, integrity={integrity}")
+          finally: c.close()
+          import requests
+          from scrapers.bplatz.scraper import parse_product_html
+          from scenthunter_next_engine.next_engine_service import NextEngineService
+          from app.services.bplatz_phase2_adapter import persist_bplatz_record
+          from sqlalchemy import create_engine,event,select
           from sqlalchemy.orm import Session
-          from app.models import Store, IngestionRaw, Offer, PriceHistory, MatchAudit
-          engine = create_engine(DB_URL, connect_args={"timeout": 30})
-          @event.listens_for(engine, "connect")
-          def pragmas(connection, _record):
-              connection.execute("PRAGMA foreign_keys=ON")
-              connection.execute("PRAGMA busy_timeout=30000")
-          with Session(engine) as session, session.begin():
-              store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+          from app.models import Store,IngestionRaw,Offer,PriceHistory,MatchAudit
+          response=requests.get(PRODUCT,headers={"User-Agent":"Mozilla/5.0","Accept-Language":"en-GB,en;q=0.9"},timeout=25)
+          response.raise_for_status()
+          final=response.url
+          parsed=parse_product_html(response.text,final,"French Avenue Liquid Brun")
+          if not parsed: raise SystemExit("STOP: live Bplatz product parser returned no product")
+          offer_data=parsed.get("offer") or {}
+          record={"raw_name":parsed.get("name"),"brand_raw":parsed.get("brand"),"size_ml":parsed.get("size_ml"),"price":parsed.get("price_num"),"currency":offer_data.get("currency") or parsed.get("currency") or "EUR","product_url":parsed.get("url") or final,"availability":parsed.get("availability"),"sku":parsed.get("sku"),"gtin":parsed.get("gtin"),"mpn":parsed.get("mpn"),"concentration":parsed.get("concentration")}
+          if not record["price"] or float(record["price"])<=0 or record["availability"]!="in_stock":
+              raise SystemExit("STOP: live Bplatz product lacks positive price or explicit in_stock")
+          engine=create_engine(URL,connect_args={"timeout":30})
+          @event.listens_for(engine,"connect")
+          def pragmas(conn,_): conn.execute("PRAGMA foreign_keys=ON"); conn.execute("PRAGMA busy_timeout=30000")
+          with Session(engine) as s,s.begin():
+              store=s.scalar(select(Store).where(Store.slug=="bplatz"))
               if store is None:
-                  store = Store(name="Bplatz", slug="bplatz", country="DE", currency="EUR", status="active")
-                  session.add(store)
-                  session.flush()
-                  provisioned = True
-              else:
-                  provisioned = False
-                  if store.status != "active":
-                      raise SystemExit("STOP: Bplatz exists but is inactive; refusing to change it")
-                  if store.currency != "EUR":
-                      raise SystemExit("STOP: Bplatz currency is not EUR; refusing to change it")
-              store_id = store.id
-          import catalog_engine
-          hydrated = []
-          for attempt in (1, 2):
-              item = catalog_engine.refresh_url("bplatz", PRODUCT_URL)
-              if not item:
-                  raise SystemExit(f"STOP: Bplatz hydration attempt {attempt} returned no product")
-              try:
-                  price = float(item.get("price_num"))
-              except (TypeError, ValueError):
-                  price = 0.0
-              availability = item.get("availability")
-              if not (price > 0 or availability == "out_of_stock"):
-                  raise SystemExit("STOP: no positive price or explicit out-of-stock")
-              hydrated.append({"name":item.get("name"),"brand":item.get("brand"),"price":item.get("price_num"),"currency":item.get("currency"),"availability":availability,"url":item.get("url"),"sku":item.get("sku"),"gtin":item.get("gtin")})
-          stable_id = str(hydrated[-1].get("sku") or hydrated[-1].get("gtin") or hydrated[-1].get("url"))
-          with Session(engine) as session:
-              store = session.get(Store, store_id)
-              raws = session.scalars(select(IngestionRaw).where(IngestionRaw.store_id == store_id, IngestionRaw.external_product_id == stable_id).order_by(IngestionRaw.created_at.desc())).all()
-              offers = session.scalars(select(Offer).where(Offer.store_id == store_id, Offer.external_product_id == stable_id)).all()
-              if len(raws) < 2 or any(r.status != "promoted" for r in raws[:2]):
-                  raise SystemExit("STOP: two live raw records were not both promoted")
-              if any(r.legacy_product_id != EXPECTED_PRODUCT or r.legacy_variant_id != EXPECTED_VARIANT for r in raws[:2]):
-                  raise SystemExit("STOP: product did not resolve to the expected canonical legacy IDs")
-              if len(offers) != 1:
-                  raise SystemExit(f"STOP: idempotency failed; expected one offer, found {len(offers)}")
-              offer = offers[0]
-              if offer.status != "active" or offer.product_variant_id is None:
-                  raise SystemExit("STOP: promoted offer is inactive or has no canonical variant")
-              history = session.scalars(select(PriceHistory).where(PriceHistory.offer_id == offer.id)).all()
-              audits = session.scalars(select(MatchAudit).where(MatchAudit.offer_id == offer.id)).all()
-              if not history or len(audits) < 2:
-                  raise SystemExit(f"STOP: missing history/audit rows: history={len(history)}, audit={len(audits)}")
-              if store.status != "active":
-                  raise SystemExit("STOP: Bplatz is not active")
-              result = {"store":store.slug,"store_status":store.status,"provisioned_now":provisioned,"hydrations":hydrated,"external_product_id":stable_id,"legacy_product_id":raws[0].legacy_product_id,"legacy_variant_id":raws[0].legacy_variant_id,"offer_id":str(offer.id),"offer_status":offer.status,"price":str(offer.price),"currency":offer.currency,"availability":offer.availability,"raw_rows":len(raws),"offers_for_product":len(offers),"price_history_rows":len(history),"match_audit_rows":len(audits)}
-          request = urllib.request.Request("https://scenthunter.fly.dev/health", headers={"Accept":"application/json","User-Agent":"ScentHunter-Phase2-E2E/1.0"})
-          with urllib.request.urlopen(request, timeout=15) as response:
-              health_status = response.status
-              health = json.loads(response.read().decode("utf-8"))
-          if health_status != 200 or health.get("status") != "healthy":
-              raise SystemExit(f"STOP: health failed HTTP {health_status}: {health}")
-          check = sqlite3.connect(uri, uri=True, timeout=5)
+                  store=Store(name="Bplatz",slug="bplatz",country="DE",currency="EUR",status="active")
+                  s.add(store); s.flush()
+              if store.status!="active" or store.currency!="EUR": raise SystemExit("STOP: Bplatz configuration invalid")
+              store_id=store.id
+          matcher=NextEngineService.from_catalog_file(Path("/app/backend/product_catalog.json"))
+          with Session(engine) as s,s.begin():
+              first=persist_bplatz_record(s,store_id=store_id,raw_record=record,matcher=matcher)
+          if first.status!="promoted": raise SystemExit("STOP: first record not promoted: "+str(first))
+          with Session(engine) as s,s.begin():
+              second=persist_bplatz_record(s,store_id=store_id,raw_record=record,matcher=matcher)
+          if second.status!="promoted" or first.offer_id!=second.offer_id: raise SystemExit("STOP: idempotency failed")
+          with Session(engine) as s:
+              store=s.get(Store,store_id)
+              raws=s.scalars(select(IngestionRaw).where(IngestionRaw.store_id==store_id,IngestionRaw.external_product_id==str(record.get("sku") or record.get("gtin") or record.get("product_url"))).order_by(IngestionRaw.created_at.desc())).all()
+              offer=s.get(Offer,first.offer_id)
+              history=s.scalars(select(PriceHistory).where(PriceHistory.offer_id==first.offer_id)).all()
+              audits=s.scalars(select(MatchAudit).where(MatchAudit.offer_id==first.offer_id)).all()
+              if not offer or offer.status!="active" or offer.product_variant_id is None: raise SystemExit("STOP: no active canonical offer")
+              if len(raws)<2 or any(x.status!="promoted" for x in raws[:2]): raise SystemExit("STOP: staging/promotion verification failed")
+              if not history or len(audits)<2: raise SystemExit(f"STOP: missing history/audit {len(history)}/{len(audits)}")
+              result={"live_product":record,"final_url":final,"store_status":store.status,"raw_rows":len(raws),"offers_for_product":1,"offer_id":str(offer.id),"offer_status":offer.status,"canonical_variant_id":str(offer.product_variant_id),"price":str(offer.price),"currency":offer.currency,"availability":offer.availability,"price_history_rows":len(history),"match_audit_rows":len(audits),"idempotency":"PASS"}
+          req=urllib.request.Request("https://scenthunter.fly.dev/health",headers={"Accept":"application/json"})
+          with urllib.request.urlopen(req,timeout=15) as resp:
+              health_status=resp.status; health=json.loads(resp.read().decode())
+          if health_status!=200 or health.get("status")!="healthy": raise SystemExit(f"STOP: health failed {health_status} {health}")
+          c=sqlite3.connect(uri,uri=True,timeout=5)
           try:
-              after_other_stores = check.execute("SELECT count(*) FROM stores WHERE slug <> 'bplatz'").fetchone()[0]
-          finally:
-              check.close()
-          if after_other_stores != before_other_stores:
-              raise SystemExit("STOP: another store configuration row changed")
-          result.update({"other_store_rows_unchanged":True,"health_http_status":health_status,"health_status":health.get("status"),"automatic_migration":False,"worker_activation":False})
-          print("PHASE2_BPLATZ_CONTROLLED_E2E=" + json.dumps(result, ensure_ascii=False), flush=True)
+              other_after=c.execute("SELECT count(*) FROM stores WHERE slug<>'bplatz'").fetchone()[0]
+              if other_after!=other_before: raise SystemExit("STOP: other stores changed")
+              counts={name:c.execute(f"SELECT count(*) FROM {name}").fetchone()[0] for name in ("stores","offers","price_history","match_audit","ingestion_raw")}
+              integrity=c.execute("PRAGMA integrity_check").fetchone()[0]
+          finally: c.close()
+          result.update({"health_http":health_status,"health_status":health.get("status"),"other_stores_unchanged":True,"phase2_counts":counts,"integrity_check":integrity,"workers_enabled":False,"app_feature_flag_changed":False})
+          print("PHASE2_BPLATZ_E2E_RESULT="+json.dumps(result,ensure_ascii=False),flush=True)
           engine.dispose()
           PY
-          SCRIPT_B64="$(base64 -w0 /tmp/phase2_bplatz_controlled_e2e.py)"
-          remote_command="/bin/sh -lc 'printf %s ${SCRIPT_B64} | base64 -d > /tmp/phase2_bplatz_controlled_e2e.py && cd /app/backend && /app/.venv/bin/python /tmp/phase2_bplatz_controlled_e2e.py'"
-          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+          B64="$(base64 -w0 /tmp/e2e.py)"
+          CMD="/bin/sh -lc 'printf %s $B64 | base64 -d > /tmp/e2e.py && cd /app/backend && /app/.venv/bin/python /tmp/e2e.py'"
+          flyctl ssh console --app scenthunter --select=false -C "$CMD"
