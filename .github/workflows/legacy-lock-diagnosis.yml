@@ -1,4 +1,4 @@
-name: Read-only TID 620 legacy SQLite lock diagnosis
+name: Read-only Python stack and legacy SQLite lock diagnosis
 
 on:
   push:
@@ -9,80 +9,76 @@ permissions:
   contents: read
 
 jobs:
-  inspect-tid-620:
-    name: Compare two read-only TID 620 and legacy lock samples
+  inspect-python-stacks:
+    name: Check py-spy and compare two Python stack dumps
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Collect two targeted read-only samples
+      - name: Check py-spy and collect two read-only dumps
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -u
-          : > tid-620-lock-diagnosis.txt
-          remote_command="/bin/sh -lc 'sample() {
-            label=\$1
-            echo === \$label ===
-            echo SNAPSHOT_TIME_UTC
-            date -u
-            echo TID_620_STACK
-            cat /proc/614/task/620/stack 2>&1
-            echo TID_620_WCHAN
-            cat /proc/614/task/620/wchan 2>&1
-            echo TID_620_STATUS
-            cat /proc/614/task/620/status 2>&1
-            echo TID_620_FD_LIST
-            ls -l /proc/614/task/620/fd 2>&1
-            echo TID_620_SQLITE_FD_TARGETS_AND_FDINFO
-            for fd in /proc/614/task/620/fd/*; do
-              target=\$(readlink \$fd 2>/dev/null) || continue
-              case \$target in
-                /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
-                  echo --- \$fd -\> \$target ---
-                  info_fd=\${fd##*/}
-                  cat /proc/614/task/620/fdinfo/\$info_fd 2>&1
-                  ;;
-              esac
-            done
-            echo PROCESS_614_CMDLINE
-            cat /proc/614/cmdline 2>&1
-            echo PROCESS_614_STATUS
-            cat /proc/614/status 2>&1
-            echo PROCESS_614_LEGACY_FD_TARGETS
-            for fd in /proc/614/fd/*; do
-              target=\$(readlink \$fd 2>/dev/null) || continue
-              case \$target in
-                /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
-                  echo \$fd -\> \$target
-                  ;;
-              esac
-            done
-            echo LEGACY_DB_INODES_AND_TIMESTAMPS
-            ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
-            echo CURRENT_DISCOVERY_SYNC_STATE_READ_ONLY
-            echo aW1wb3J0IHNxbGl0ZTMKY29ubiA9IHNxbGl0ZTMuY29ubmVjdCgiZmlsZTovZGF0YS9zdG9yZV9jYXRhbG9nLnNxbGl0ZTM/bW9kZT1ybyIsIHVyaT1UcnVlLCB0aW1lb3V0PTIpCmNvbm4uZXhlY3V0ZSgiUFJBR01BIHF1ZXJ5X29ubHk9T04iKQp0cnk6CiAgICBwcmludCgiQUNUSVZFX0RJU0NPVkVSWV9ST1dTIiwgY29ubi5leGVjdXRlKCJTRUxFQ1Qgc3RvcmUsc3RhdHVzLHN0YXJ0ZWRfYXQsZmluaXNoZWRfYXQsZXJyb3IgRlJPTSBzeW5jX3N0YXRlIFdIRVJFIHN0YXR1cz0nRElTQ09WRVJZX1JVTk5JTkcnIikuZmV0Y2hhbGwoKSkKICAgIHByaW50KCJERUxPT1hfQ0xFQU5VUF9NQVJLRVIiLCBjb25uLmV4ZWN1dGUoIlNFTEVDVCB2YWx1ZSx1cGRhdGVkX2F0IEZST00gY2F0YWxvZ19kaXNjb3ZlcnlfbWV0YSBXSEVSRSBrZXk9J2RlbG9veF9pbnZhbGlkX2FjdGl2ZV91cmxfY2xlYW51cF92MSciKS5mZXRjaGFsbCgpKQpmaW5hbGx5OgogICAgY29ubi5jbG9zZSgpCg== | base64 -d | /app/.venv/bin/python
-            echo PROCESS_614_LOCKS
-            cat /proc/locks 2>&1
-          }
-          sample SAMPLE_1
-          echo WAITING_45_SECONDS_WITHOUT_TOUCHING_DATABASES
-          sleep 45
-          sample SAMPLE_2
+          : > pyspy-lock-diagnosis.txt
+          remote_command="/bin/sh -lc '
+            echo === PY_SPY_AVAILABILITY ===
+            if command -v py-spy >/dev/null 2>&1; then
+              command -v py-spy
+              py-spy --version 2>&1
+              PYSPY_AVAILABLE=1
+            else
+              echo py-spy-not-installed
+              PYSPY_AVAILABLE=0
+            fi
+            sample() {
+              label=\$1
+              echo === \$label ===
+              date -u
+              echo PROCESS_CMDLINE
+              cat /proc/614/cmdline 2>&1
+              echo PROCESS_STATUS
+              grep -E "^(Name|State|Threads):" /proc/614/status 2>&1
+              echo LEGACY_INODES
+              ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
+              echo PROCESS_LEGACY_FDS
+              for fd in /proc/614/fd/*; do
+                target=\$(readlink \$fd 2>/dev/null) || continue
+                case \$target in
+                  /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
+                    echo \$fd -\> \$target
+                    ;;
+                esac
+              done
+              echo PROCESS_LOCKS
+              cat /proc/locks 2>&1
+              if [ "\$PYSPY_AVAILABLE" = 1 ]; then
+                echo PY_SPY_DUMP_BEGIN
+                py-spy dump --pid 614 2>&1
+                echo PY_SPY_DUMP_EXIT=\$?
+                echo PY_SPY_DUMP_END
+              else
+                echo PY_SPY_DUMP_SKIPPED_NOT_INSTALLED
+              fi
+            }
+            sample SAMPLE_1
+            echo WAITING_45_SECONDS_NO_DATABASE_OR_PROCESS_MODIFICATION
+            sleep 45
+            sample SAMPLE_2
           '"
-          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee tid-620-lock-diagnosis.txt
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee pyspy-lock-diagnosis.txt
           ssh_status=${PIPESTATUS[0]}
-          echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a tid-620-lock-diagnosis.txt
+          echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a pyspy-lock-diagnosis.txt
           exit "$ssh_status"
 
-      - name: Upload TID 620 diagnosis evidence
+      - name: Upload Python stack diagnosis evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tid-620-lock-diagnosis-two-samples
-          path: tid-620-lock-diagnosis.txt
+          name: pyspy-lock-diagnosis-two-samples
+          path: pyspy-lock-diagnosis.txt
           if-no-files-found: warn
           retention-days: 30
