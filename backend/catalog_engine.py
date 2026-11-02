@@ -841,10 +841,28 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
         payload.update(fields)
         print("SQLITE_TXN_TELEMETRY " + json.dumps(payload, sort_keys=True, default=str), flush=True)
 
+    @staticmethod
+    def _sh_caller():
+        # Keep only a short Python call path; no locals, arguments, or SQL values.
+        frames = traceback.extract_stack(limit=12)[:-2]
+        return [
+            {
+                "file": os.path.basename(frame.filename),
+                "line": frame.lineno,
+                "function": frame.name,
+            }
+            for frame in frames[-6:]
+            if os.path.basename(frame.filename) != os.path.basename(__file__)
+        ]
+
     def _sh_begin_transition(self, was_in_transaction, operation):
         if not was_in_transaction and self.in_transaction:
             self._sh_transaction_started = time.monotonic()
-            self._sh_emit("begin", operation=operation)
+            self._sh_emit(
+                "begin",
+                operation=operation,
+                caller=self._sh_caller(),
+            )
 
     def execute(self, sql, parameters=(), /):
         before = self.in_transaction
