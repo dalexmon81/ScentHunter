@@ -37,8 +37,6 @@ jobs:
           date -u
           uname -a
           id
-          command -v curl || true
-          command -v wget || true
           command -v python3 || true
 
           echo === INSTALL_TEMPORARY_PY_SPY ===
@@ -48,14 +46,8 @@ jobs:
             aarch64|arm64) ASSET=py-spy-linux-aarch64 ;;
             *) echo "UNSUPPORTED_ARCH=$ARCH"; exit 2 ;;
           esac
-          if command -v curl >/dev/null 2>&1; then
-            curl -fL --retry 2 "https://github.com/benfred/py-spy/releases/latest/download/$ASSET" -o "$TMP_PYSPY"
-          elif command -v wget >/dev/null 2>&1; then
-            wget -O "$TMP_PYSPY" "https://github.com/benfred/py-spy/releases/latest/download/$ASSET"
-          else
-            echo NO_CURL_OR_WGET
-            exit 3
-          fi
+          python3 -c 'import sys,urllib.request; urllib.request.urlretrieve(sys.argv[1],sys.argv[2])' \
+            "https://github.com/benfred/py-spy/releases/latest/download/$ASSET" "$TMP_PYSPY"
           chmod 700 "$TMP_PYSPY"
           "$TMP_PYSPY" --version
 
