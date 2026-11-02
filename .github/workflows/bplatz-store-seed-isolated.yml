@@ -1,0 +1,31 @@
+name: Bplatz store seed isolated SQLite tests
+
+on:
+  push:
+    branches:
+      - feat/bplatz-store-seed
+    paths:
+      - backend/app/models/**
+      - backend/alembic/**
+      - backend/scripts/seed_catalog.py
+      - tests/test_phase2_seed_catalog.py
+      - tests/test_bplatz_persistence_service.py
+      - tests/fixtures/bplatz/**
+      - .github/workflows/bplatz-store-seed-isolated.yml
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install -r backend/requirements.txt pytest
+      - name: Run Phase 2 seed and Bplatz adapter tests on temporary SQLite
+        run: python -m pytest -q -s tests/test_phase2_seed_catalog.py tests/test_bplatz_persistence_service.py

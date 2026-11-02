@@ -57,6 +57,7 @@ class Store(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     slug: Mapped[str] = mapped_column(String(180), nullable=False, unique=True)
+    domain: Mapped[str | None] = mapped_column(String(255))
     country: Mapped[str | None] = mapped_column(String(2))
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR", server_default="EUR")
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="active", server_default="active")

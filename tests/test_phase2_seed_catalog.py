@@ -5,7 +5,7 @@ import os
 import sqlite3
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path\n\nfrom sqlalchemy import create_engine, inspect, select
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +62,10 @@ def test_seed_dry_run_keeps_products_without_inventing_variants(tmp_path):
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "validated"
+    assert report["stores_to_seed"] == [{
+        "name": "Bplatz", "slug": "bplatz", "domain": "bplatz.de",
+        "country": "DE", "currency": "EUR", "status": "active",
+    }]
     assert report["brands"] == 1
     assert report["fragrances"] == 2
     assert report["variants"] == 1
@@ -176,7 +180,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
     env.pop("SCENTHUNTER_DATABASE_URL", None)
 
     migration = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "0002_ingestion_raw"],
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=BACKEND, env=env, capture_output=True, text=True, check=False,
     )
     assert migration.returncode == 0, migration.stderr
@@ -241,5 +245,71 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
             assert session.scalar(select(LegacyVariantIdMap.legacy_variant_id).limit(1))
             assert len(list(session.scalars(select(LegacyProductIdMap)))) == len(products)
             assert len(list(session.scalars(select(LegacyVariantIdMap)))) == len(variants)
+    finally:
+        engine.dispose()
+
+
+
+def test_bplatz_store_seed_is_idempotent_and_leaves_other_eight_stores_untouched(tmp_path):
+    from sqlalchemy.orm import Session
+
+    sys.path.insert(0, str(BACKEND))
+    from app.models import Store
+
+    catalog_path = BACKEND / "product_catalog.json"
+    database_path = tmp_path / "stores-idempotency.sqlite3"
+    database_url = f"sqlite:///{database_path}"
+    env = os.environ.copy()
+    env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+    env.pop("SCENTHUNTER_DATABASE_URL", None)
+
+    migration = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=BACKEND, env=env, capture_output=True, text=True, check=False,
+    )
+    assert migration.returncode == 0, migration.stderr
+
+    other_stores = [
+        ("deloox", "Deloox", "deloox.example", "NL", "EUR", "inactive"),
+        ("parfumcity", "Parfumcity", "parfumcity.example", "DE", "EUR", "inactive"),
+        ("parfumzentrum", "Parfumzentrum", "parfumzentrum.example", "DE", "EUR", "inactive"),
+        ("perfumemarket", "Perfumemarket", "perfumemarket.example", "IT", "EUR", "inactive"),
+        ("sabina", "Sabina", "sabina.example", "ES", "EUR", "inactive"),
+        ("orioudh", "Orioudh", "orioudh.example", "FR", "EUR", "inactive"),
+        ("easycosmetic", "Easycosmetic", "easycosmetic.example", "DE", "EUR", "inactive"),
+        ("notino", "Notino", "notino.example", "CZ", "EUR", "inactive"),
+    ]
+    engine = create_engine(database_url)
+    try:
+        with Session(engine) as session, session.begin():
+            for slug, name, domain, country, currency, status in other_stores:
+                session.add(Store(
+                    name=name, slug=slug, domain=domain, country=country,
+                    currency=currency, status=status,
+                ))
+        with Session(engine) as session:
+            before = {
+                row.slug: (row.name, row.domain, row.country, row.currency, row.status)
+                for row in session.scalars(select(Store)).all()
+            }
+        assert set(before) == {row[0] for row in other_stores}
+
+        first = run_seed(catalog_path, database_url, "--apply")
+        assert first.returncode == 0, first.stderr
+        second = run_seed(catalog_path, database_url, "--apply")
+        assert second.returncode == 0, second.stderr
+
+        with Session(engine) as session:
+            rows = session.scalars(select(Store)).all()
+            by_slug = {row.slug: row for row in rows}
+            assert len(rows) == 9
+            assert set(by_slug) == set(before) | {"bplatz"}
+            for slug, expected in before.items():
+                row = by_slug[slug]
+                assert (row.name, row.domain, row.country, row.currency, row.status) == expected
+            bplatz = by_slug["bplatz"]
+            assert (bplatz.name, bplatz.domain, bplatz.country, bplatz.currency, bplatz.status) == (
+                "Bplatz", "bplatz.de", "DE", "EUR", "active",
+            )
     finally:
         engine.dispose()

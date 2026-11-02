@@ -35,7 +35,7 @@ def _migrated_database(tmp_path):
     env["SCENTHUNTER_CATALOG_DATABASE_URL"] = db_url
     env["PYTHONPATH"] = str(BACKEND) + os.pathsep + env.get("PYTHONPATH", "")
     result = subprocess.run(
-        [sys.executable, "-m", "alembic", "-c", "alembic.ini", "upgrade", "0002_ingestion_raw"],
+        [sys.executable, "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
         cwd=BACKEND, env=env, text=True, capture_output=True, check=False,
     )
     assert result.returncode == 0, (
@@ -98,9 +98,14 @@ def _real_bplatz_components():
 
 
 def _create_bplatz_store(session):
-    store = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
-    session.add(store)
-    session.flush()
+    store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+    if store is None:
+        store = Store(
+            name="Bplatz", slug="bplatz", domain="bplatz.de",
+            country="DE", currency="EUR", status="active",
+        )
+        session.add(store)
+        session.flush()
     return store.id
 
 
@@ -120,8 +125,8 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         assert "ingestion_raw_id" in offer_columns
         with engine.connect() as connection:
             revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
-        assert revision == "0002_ingestion_raw"
-        print("ALEMBIC_REVISION=0002_ingestion_raw")
+        assert revision == "0003_store_domain"
+        print("ALEMBIC_REVISION=0003_store_domain")
         print("MIGRATION_TABLES=OK")
     finally:
         engine.dispose()
@@ -460,6 +465,11 @@ def test_missing_bplatz_store_skips_phase2_without_creating_configuration(monkey
     engine, db_url, _ = _migrated_database(tmp_path)
     try:
         _seed_real_catalog(db_url)
+        # Exercise the hard fail-closed path after explicitly removing Bplatz.
+        with Session(engine) as session, session.begin():
+            seeded_store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            assert seeded_store is not None
+            session.delete(seeded_store)
         monkeypatch.setenv("BPLATZ_PHASE2_PERSISTENCE", "true")
         monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", db_url)
         catalog_engine._maybe_persist_bplatz_phase2(
