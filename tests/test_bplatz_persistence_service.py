@@ -583,23 +583,19 @@ def test_normal_bplatz_hydration_worker_logs_only_after_phase2_persistence(
 
     monkeypatch.setattr(catalog_engine, "_foreground_search_running", lambda: False)
     monkeypatch.setattr(catalog_engine, "_queue_mark_done", lambda task: None)
-    monkeypatch.setattr(
-        catalog_engine,
-        "refresh_url",
-        lambda store, url: (
-            setattr(
-                catalog_engine._thread_local.hydration_worker_context,
-                "phase2_persisted",
-                True,
-            )
-            or {
-                "name": "Liquid Brun",
-                "sku": "BPLATZ-LIQUID-BRUN-100",
-                "price_num": 29.90,
-                "availability": "in_stock",
-            }
-        ),
-    )
+    def fake_refresh_url(store, url):
+        context = catalog_engine._thread_local.hydration_worker_context
+        context["phase2_persisted"] = True
+        context["offer_id"] = "offer-test-id"
+        context["ingestion_raw_id"] = "raw-test-id"
+        return {
+            "name": "Liquid Brun",
+            "sku": "BPLATZ-LIQUID-BRUN-100",
+            "price_num": 29.90,
+            "availability": "in_stock",
+        }
+
+    monkeypatch.setattr(catalog_engine, "refresh_url", fake_refresh_url)
 
     result = catalog_engine._hydrate_one_task({
         "store": "bplatz",
