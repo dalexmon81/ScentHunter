@@ -55,7 +55,7 @@ jobs:
               "note": "Prezzo atteso 25,90 EUR solo come riferimento indicizzato; non e' un dato imposto o inventato nel payload."
           }
           (out / "6295151504031.meta.json").write_text(
-              json.dumps(meta, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+              json.dumps(meta, ensure_ascii=False, indent=2) + chr(10), encoding="utf-8"
           )
           print(json.dumps(meta, ensure_ascii=False, indent=2))
           if not payload:
