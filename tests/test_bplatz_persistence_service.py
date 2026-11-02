@@ -402,3 +402,53 @@ def test_bplatz_phase2_feature_flag_and_store_gate_are_safe(monkeypatch, tmp_pat
         "sabina", "orioudh", "easycosmetic", "notino",
     ):
         assert catalog_engine._should_persist_bplatz_phase2(store, eligible) is False
+
+
+def test_failed_bplatz_hydration_never_invokes_phase2_hook(monkeypatch, tmp_path):
+    import catalog_engine
+
+    legacy_db = tmp_path / "legacy-catalog.sqlite3"
+    monkeypatch.setattr(catalog_engine, "DB_PATH", legacy_db)
+    monkeypatch.setattr(catalog_engine, "_SCHEMA_READY", False)
+    monkeypatch.setattr(catalog_engine, "http_get", lambda *args, **kwargs: (503, args[0], b""))
+    calls = []
+    monkeypatch.setattr(
+        catalog_engine, "_maybe_persist_bplatz_phase2",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    result = catalog_engine.refresh_url(
+        "bplatz", "https://en.bplatz.de/products/failing-test",
+    )
+    assert result is None
+    assert calls == []
+
+
+def test_phase2_schema_preflight_skips_without_writing_when_tables_missing(monkeypatch, tmp_path):
+    import sqlite3
+    import catalog_engine
+
+    phase2_db = tmp_path / "phase2-incomplete.sqlite3"
+    connection = sqlite3.connect(phase2_db)
+    try:
+        connection.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)")
+        connection.execute("INSERT INTO alembic_version(version_num) VALUES ('0002_ingestion_raw')")
+        connection.commit()
+    finally:
+        connection.close()
+
+    monkeypatch.setenv("BPLATZ_PHASE2_PERSISTENCE", "true")
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "sqlite:///" + str(phase2_db))
+    catalog_engine._maybe_persist_bplatz_phase2(
+        {"name": "Liquid Brun", "price_num": 29.90, "availability": "in_stock"},
+        "https://en.bplatz.de/products/liquid-brun",
+    )
+    connection = sqlite3.connect(phase2_db)
+    try:
+        tables = {
+            row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        assert tables == {"alembic_version"}
+    finally:
+        connection.close()
