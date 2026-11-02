@@ -153,3 +153,98 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["products_without_variants"] == 1063
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
+
+
+def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path):
+    import sys
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    sys.path.insert(0, str(BACKEND))
+    from app.models import LegacyProductIdMap, LegacyVariantIdMap
+    from app.services.ingestion_persistence import resolve_legacy_ids
+
+    catalog_path = BACKEND / "product_catalog.json"
+    raw_catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    products = raw_catalog["products"]
+    variants = raw_catalog["variants"]
+    database_path = tmp_path / "full-catalog.sqlite3"
+    database_url = f"sqlite:///{database_path}"
+    env = os.environ.copy()
+    env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+    env.pop("SCENTHUNTER_DATABASE_URL", None)
+
+    migration = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "0002_ingestion_raw"],
+        cwd=BACKEND, env=env, capture_output=True, text=True, check=False,
+    )
+    assert migration.returncode == 0, migration.stderr
+
+    first = run_seed(catalog_path, database_url, "--apply")
+    assert first.returncode == 0, first.stderr
+    first_report = json.loads(first.stdout)
+    assert first_report["status"] == "seeded"
+    assert first_report["database_counts"]["fragrances"] == len(products)
+    assert first_report["database_counts"]["legacy_product_id_map"] == len(products)
+    assert first_report["database_counts"]["product_variants"] == len(variants)
+    assert first_report["database_counts"]["legacy_variant_id_map"] == len(variants)
+
+    engine = create_engine(database_url)
+    try:
+        with Session(engine) as session:
+            product_ids = set(session.scalars(select(LegacyProductIdMap.legacy_product_id)))
+            variant_ids = set(session.scalars(select(LegacyVariantIdMap.legacy_variant_id)))
+            assert product_ids == {str(row["product_id"]) for row in products}
+            assert variant_ids == {str(row["variant_id"]) for row in variants}
+
+            # Every product ID has a persisted fragrance UUID, including products
+            # that intentionally have no declared variant.
+            for legacy_product_id in product_ids:
+                mapping = session.get(LegacyProductIdMap, legacy_product_id)
+                assert mapping is not None and mapping.fragrance_id is not None
+
+            # Every variant resolves together with its owning historical product ID.
+            for variant in variants:
+                resolved = resolve_legacy_ids(
+                    session,
+                    legacy_product_id=str(variant["product_id"]),
+                    legacy_variant_id=str(variant["variant_id"]),
+                )
+                assert resolved is not None, (
+                    f"unresolved legacy IDs: {variant['product_id']} / {variant['variant_id']}"
+                )
+
+            first_product_id = str(products[0]["product_id"])
+            first_variant = next(
+                (row for row in variants if str(row["product_id"]) == first_product_id),
+                None,
+            )
+            missing_variant_id = "LEGACY-VARIANT-ID-DOES-NOT-EXIST"
+            resolved_missing = resolve_legacy_ids(
+                session,
+                legacy_product_id=first_product_id,
+                legacy_variant_id=missing_variant_id,
+            )
+            assert resolved_missing is None
+
+        # Re-running the seed must be a no-op for both mapping tables.
+        second = run_seed(catalog_path, database_url, "--apply")
+        assert second.returncode == 0, second.stderr
+        second_report = json.loads(second.stdout)
+        assert second_report["database_counts"]["legacy_product_id_map"] == len(products)
+        assert second_report["database_counts"]["legacy_variant_id_map"] == len(variants)
+
+        # Re-running the migration must preserve all rows and the target revision.
+        migration_again = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "0002_ingestion_raw"],
+            cwd=BACKEND, env=env, capture_output=True, text=True, check=False,
+        )
+        assert migration_again.returncode == 0, migration_again.stderr
+        with Session(engine) as session:
+            assert session.scalar(select(LegacyProductIdMap.legacy_product_id).limit(1))
+            assert session.scalar(select(LegacyVariantIdMap.legacy_variant_id).limit(1))
+            assert len(list(session.scalars(select(LegacyProductIdMap)))) == len(products)
+            assert len(list(session.scalars(select(LegacyVariantIdMap)))) == len(variants)
+    finally:
+        engine.dispose()
