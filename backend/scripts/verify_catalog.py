@@ -130,6 +130,11 @@ def main() -> int:
     parser.add_argument("--worker-offer-id", help="offer UUID from the normal-worker correlation log")
     parser.add_argument("--worker-sku", help="SKU from the normal-worker correlation log")
     args = parser.parse_args()
+    worker_args = (args.worker_ingestion_raw_id, args.worker_offer_id, args.worker_sku)
+    if any(worker_args) and not all(worker_args):
+        raise ValueError("worker proof requires raw ID, offer ID, and SKU together")
+    if any(worker_args) and not args.baseline:
+        raise ValueError("worker proof must be compared with a pre-hydration baseline")
 
     engine = make_engine()
     try:
@@ -160,7 +165,6 @@ def main() -> int:
             if failed:
                 print("BASELINE=FAIL checks=" + ",".join(failed))
                 return 1
-            print("BASELINE=PASS")
             return 0
 
         if args.baseline:
@@ -195,8 +199,6 @@ def main() -> int:
             )
 
         if args.worker_ingestion_raw_id or args.worker_offer_id or args.worker_sku:
-            if not (args.worker_ingestion_raw_id and args.worker_offer_id and args.worker_sku):
-                raise ValueError("worker proof requires raw ID, offer ID, and SKU together")
             with engine.connect() as connection:
                 store_id = connection.execute(text(
                     "SELECT id FROM stores WHERE slug = 'bplatz'"
