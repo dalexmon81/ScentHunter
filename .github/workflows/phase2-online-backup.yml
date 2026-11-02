@@ -1,0 +1,223 @@
+name: Phase 2 online SQLite backup
+
+on:
+  push:
+    branches:
+      - chore/phase2-readonly-verification
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Create and verify online Phase 2 backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create online backup and verify it on Fly
+        id: backup
+        continue-on-error: true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p phase2-online-backup-verification
+          python - <<'PY'
+          import base64
+          import json
+          import shlex
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          remote_script = r"""
+          import hashlib
+          import json
+          import os
+          import sqlite3
+          import sys
+          from datetime import datetime, timezone
+
+          source_path = "/data/catalog/catalog.sqlite3"
+          expected_counts = {
+              "brands": 60,
+              "fragrances": 1375,
+              "product_variants": 511,
+              "offers": 0,
+              "price_history": 0,
+              "match_audit": 0,
+          }
+          result = {"source_path": source_path, "backup_directory": "/data/backups"}
+          source = None
+          target = None
+          try:
+              if not os.path.isfile(source_path):
+                  raise RuntimeError("Phase 2 source database does not exist")
+              source = sqlite3.connect("file:" + source_path + "?mode=ro", uri=True, timeout=30)
+              source.row_factory = sqlite3.Row
+              source.execute("PRAGMA query_only=ON")
+              db_rows = [dict(row) for row in source.execute("PRAGMA database_list")]
+              result["source_database_list"] = db_rows
+              actual_path = next((row["file"] for row in db_rows if row["name"] == "main"), None)
+              result["source_path_actual"] = actual_path
+              if os.path.realpath(actual_path or "") != os.path.realpath(source_path):
+                  raise RuntimeError("Connected source is not the expected Phase 2 database")
+
+              source_tables = {r[0] for r in source.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+              )}
+              if "alembic_version" not in source_tables:
+                  raise RuntimeError("alembic_version table is missing")
+              revision = [r[0] for r in source.execute(
+                  "SELECT version_num FROM alembic_version"
+              )]
+              if revision != ["0002_ingestion_raw"]:
+                  raise RuntimeError("Unexpected Alembic revision: " + repr(revision))
+
+              new_tables = ("ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map")
+              new_counts = {}
+              for table in new_tables:
+                  if table not in source_tables:
+                      raise RuntimeError("Required table is missing: " + table)
+                  new_counts[table] = source.execute(
+                      'SELECT COUNT(*) FROM "' + table + '"'
+                  ).fetchone()[0]
+
+              source_counts = {}
+              for table, expected in expected_counts.items():
+                  if table not in source_tables:
+                      raise RuntimeError("Historical table is missing: " + table)
+                  count = source.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+                  source_counts[table] = count
+                  if count != expected:
+                      raise RuntimeError(
+                          "Source count mismatch for " + table + ": " + str(count)
+                      )
+              source_integrity = source.execute("PRAGMA integrity_check").fetchone()[0]
+              if source_integrity != "ok":
+                  raise RuntimeError("Source integrity_check failed: " + source_integrity)
+
+              os.makedirs("/data/backups", mode=0o700, exist_ok=True)
+              stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+              backup_path = "/data/backups/phase2-catalog-" + stamp + ".sqlite3"
+              fd = os.open(backup_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+              os.close(fd)
+              target = sqlite3.connect(backup_path, timeout=30)
+              source.backup(target, pages=256, sleep=0.05)
+              target.close()
+              target = None
+              source.close()
+              source = None
+
+              verify = sqlite3.connect("file:" + backup_path + "?mode=ro", uri=True, timeout=30)
+              verify.row_factory = sqlite3.Row
+              verify.execute("PRAGMA query_only=ON")
+              backup_integrity = verify.execute("PRAGMA integrity_check").fetchone()[0]
+              backup_tables = {r[0] for r in verify.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+              )}
+              backup_revision = [r[0] for r in verify.execute(
+                  "SELECT version_num FROM alembic_version"
+              )] if "alembic_version" in backup_tables else None
+              backup_counts = {
+                  table: verify.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+                  for table in expected_counts
+              }
+              backup_new_counts = {
+                  table: verify.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+                  for table in new_tables
+              }
+              verify.close()
+
+              digest = hashlib.sha256()
+              with open(backup_path, "rb") as stream:
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              result.update({
+                  "backup_path": backup_path,
+                  "backup_size_bytes": os.path.getsize(backup_path),
+                  "backup_sha256": digest.hexdigest(),
+                  "alembic_version": revision,
+                  "source_counts": source_counts,
+                  "new_table_counts": new_counts,
+                  "backup_alembic_version": backup_revision,
+                  "backup_counts": backup_counts,
+                  "backup_new_table_counts": backup_new_counts,
+                  "source_integrity_check": source_integrity,
+                  "backup_integrity_check": backup_integrity,
+                  "online_backup_api": "sqlite3.Connection.backup",
+                  "source_opened_read_only": True,
+              })
+              result["ok"] = (
+                  backup_integrity == "ok"
+                  and backup_revision == revision
+                  and backup_counts == expected_counts
+                  and backup_new_counts == new_counts
+                  and os.path.getsize(backup_path) > 0
+              )
+              if not result["ok"]:
+                  raise RuntimeError("Backup verification did not match the source")
+          except Exception as exc:
+              if target is not None:
+                  target.close()
+              if source is not None:
+                  source.close()
+              result["ok"] = False
+              result["error"] = type(exc).__name__ + ": " + str(exc)
+
+          print("PHASE2_BACKUP_RESULT=" + json.dumps(result, sort_keys=True), flush=True)
+          if not result.get("ok"):
+              sys.exit(1)
+          """
+
+          encoded = base64.b64encode(remote_script.encode()).decode()
+          remote_command = "/app/.venv/bin/python -c " + shlex.quote(
+              "exec(__import__('base64').b64decode('" + encoded + "'))"
+          )
+          try:
+              proc = subprocess.run(
+                  ["flyctl", "ssh", "console", "--app", "scenthunter",
+                   "--select=false", "-C", remote_command],
+                  text=True, capture_output=True, timeout=600,
+              )
+              raw = "STDOUT:\n" + proc.stdout + "\nSTDERR:\n" + proc.stderr
+              Path("phase2-online-backup-verification/console-output.txt").write_text(raw)
+              marker = "PHASE2_BACKUP_RESULT="
+              line = next((line for line in proc.stdout.splitlines() if marker in line), None)
+              payload = json.loads(line.split(marker, 1)[1]) if line else {
+                  "ok": False, "error": "No structured backup result returned",
+                  "fly_exit_code": proc.returncode
+              }
+              Path("phase2-online-backup-verification/report.json").write_text(
+                  json.dumps(payload, indent=2, sort_keys=True) + "\n"
+              )
+              print(json.dumps(payload, indent=2, sort_keys=True))
+              if proc.returncode != 0 or not payload.get("ok"):
+                  sys.exit(1)
+          except Exception as exc:
+              payload = {"ok": False, "error": type(exc).__name__ + ": " + str(exc)}
+              Path("phase2-online-backup-verification/report.json").write_text(
+                  json.dumps(payload, indent=2) + "\n"
+              )
+              print(json.dumps(payload, indent=2))
+              sys.exit(1)
+          PY
+
+      - name: Upload backup verification report only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-online-backup-verification
+          path: phase2-online-backup-verification/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail if backup verification did not pass
+        if: steps.backup.outcome != 'success'
+        run: |
+          echo "Online backup verification did not pass. Do not run the seed."
+          exit 1
