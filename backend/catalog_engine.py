@@ -5642,7 +5642,9 @@ def prioritize_hydration_candidates(rows, priority=0):
         return 0
 
     now = time.time()
-    conn = sqlite3.connect(str(DB_PATH), timeout=0.15)
+    conn = sqlite3.connect(
+        str(DB_PATH), timeout=0.15, factory=_TelemetrySQLiteConnection
+    )
     conn.execute('PRAGMA busy_timeout=150')
     requeue_stale_done_sql = """UPDATE hydration_queue
                                    SET state='PENDING',
@@ -5881,7 +5883,9 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     token = uuid.uuid4().hex
     # Claiming is a hot-path operation shared with discovery and coverage.
     # Do not let this worker sit behind SQLite's global 45s busy timeout.
-    conn = sqlite3.connect(str(DB_PATH), timeout=2.0)
+    conn = sqlite3.connect(
+        str(DB_PATH), timeout=2.0, factory=_TelemetrySQLiteConnection
+    )
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=2000')
     try:
@@ -7156,7 +7160,9 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
     current_time = time.time() if now is None else float(now)
     priced_cutoff = current_time - 24 * 60 * 60
     missing_cutoff = current_time - _MISSING_PRICE_RETRY_SECONDS
-    conn = sqlite3.connect(str(DB_PATH), timeout=0.2)
+    conn = sqlite3.connect(
+        str(DB_PATH), timeout=0.2, factory=_TelemetrySQLiteConnection
+    )
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=200')
     requeued = 0
