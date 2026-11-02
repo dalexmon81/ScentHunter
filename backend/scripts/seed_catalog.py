@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
-from app.models import Brand, Fragrance, ProductVariant
+from app.models import Brand, Fragrance, ProductVariant, LegacyProductIdMap, LegacyVariantIdMap
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -191,6 +191,12 @@ def main() -> int:
                     session.add(fragrance)
                 session.flush()
 
+                product_map = session.get(LegacyProductIdMap, pid)
+                if product_map is None:
+                    session.add(LegacyProductIdMap(legacy_product_id=pid, fragrance_id=fragrance.id))
+                elif product_map.fragrance_id != fragrance.id:
+                    raise RuntimeError(f"Legacy product ID {pid} is already mapped to a different fragrance UUID.")
+
                 for variant in by_product.get(pid, []):
                     source_id = str(variant["variant_id"]).strip()
                     concentration = variant.get("concentration") or product.get("concentration")
@@ -206,8 +212,9 @@ def main() -> int:
                         source_id,
                     ))
                     variant_id = stable_id("variant", source_id)
-                    if session.get(ProductVariant, variant_id) is None:
-                        session.add(ProductVariant(
+                    variant_row = session.get(ProductVariant, variant_id)
+                    if variant_row is None:
+                        variant_row = ProductVariant(
                             id=variant_id,
                             fragrance_id=fragrance.id,
                             concentration=concentration,
@@ -217,12 +224,26 @@ def main() -> int:
                             is_gift_set=variant.get("is_gift_set"),
                             gtin=variant.get("gtin"),
                             canonical_key=key[:320],
+                        )
+                        session.add(variant_row)
+                        session.flush()
+                    elif variant_row.fragrance_id != fragrance.id:
+                        raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
+
+                    variant_map = session.get(LegacyVariantIdMap, source_id)
+                    if variant_map is None:
+                        session.add(LegacyVariantIdMap(
+                            legacy_variant_id=source_id,
+                            product_variant_id=variant_row.id,
                         ))
+                    elif variant_map.product_variant_id != variant_row.id:
+                        raise RuntimeError(f"Legacy variant ID {source_id} is already mapped to a different variant UUID.")
 
         inspector = inspect(engine)
         expected_tables = {
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
+            "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
         }
         actual_tables = set(inspector.get_table_names())
         if not expected_tables.issubset(actual_tables):
