@@ -34,7 +34,7 @@ jobs:
           tests/test_bplatz_persistence_service.py
 
   production-bplatz:
-    name: Backup, seed Bplatz and perform one Liquid Brun hydration on Fly.io
+    name: Back up both SQLite databases and retry one Bplatz hydration without schema reinitialization
     needs: isolated-tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -42,27 +42,26 @@ jobs:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Verify Fly app and persistent volume before connecting
+      - name: Verify Fly app and persistent volume
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          flyctl status --app scenthunter --json | tee /tmp/fly-status.json
-          flyctl machines list --app scenthunter --json | tee /tmp/fly-machines.json
+          flyctl status --app scenthunter --json
+          flyctl machines list --app scenthunter --json
           flyctl volumes list --app scenthunter | tee /tmp/fly-volumes.txt
           grep -Fq 'scenthunter_data' /tmp/fly-volumes.txt
           grep -Fq 'ams' /tmp/fly-volumes.txt
-          echo "Fly app and persistent volume are visible; no machine or volume changes requested."
 
-      - name: Create verified online backup, apply idempotent Bplatz seed, hydrate Liquid Brun once
+      - name: Back up both databases and perform one bounded hydration retry
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
 
-          cat > /tmp/phase2_bplatz_production.py <<'PY'
+          cat > /tmp/phase2_bplatz_retry.py <<'PY'
           from __future__ import annotations
           import json
           import os
@@ -70,176 +69,186 @@ jobs:
           import sqlite3
           import subprocess
           import sys
+          import time
           from pathlib import Path
 
           BACKEND = Path("/app/backend")
           PYTHON = "/app/.venv/bin/python"
-          DB = Path("/data/catalog/catalog.sqlite3")
+          PHASE2_DB = Path("/data/catalog/catalog.sqlite3")
+          LEGACY_DB = Path("/data/store_catalog.sqlite3")
           TARGET_URL = "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
-          REQUIRED_TABLES = {
+          PRIOR_BACKUP = Path("/data/backups/phase2-pre-bplatz-41458629766.sqlite3")
+          REQUIRED_PHASE2 = {
               "alembic_version", "brands", "fragrances", "product_variants",
               "stores", "offers", "price_history", "match_audit",
               "ingestion_runs", "ingestion_raw",
               "legacy_product_id_map", "legacy_variant_id_map",
           }
-          BPLATZ_STORE = {
-              "name": "Bplatz", "slug": "bplatz", "domain": "bplatz.de",
-              "country": "DE", "currency": "EUR", "status": "active",
-          }
 
           def fail(message):
               raise SystemExit("STOP: " + message)
 
-          def open_readonly(path):
-              return sqlite3.connect("file:" + str(path) + "?mode=ro", uri=True, timeout=30)
+          def readonly(path):
+              return sqlite3.connect("file:" + str(path) + "?mode=ro", uri=True, timeout=45)
 
-          def inspect_database(path):
-              con = open_readonly(path)
+          def inspect_db(path, required_tables=None):
+              con = readonly(path)
               try:
                   tables = {
                       row[0] for row in con.execute(
                           "SELECT name FROM sqlite_master WHERE type='table'"
                       )
                   }
-                  missing = sorted(REQUIRED_TABLES - tables)
+                  missing = sorted((required_tables or set()) - tables)
                   if missing:
-                      fail(f"missing Phase 2 tables: {missing}")
+                      fail(f"{path}: missing tables {missing}")
                   integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
                   fk_errors = con.execute("PRAGMA foreign_key_check").fetchall()
-                  revision = con.execute(
-                      "SELECT version_num FROM alembic_version"
-                  ).fetchone()[0]
                   counts = {
                       table: con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                      for table in sorted(REQUIRED_TABLES - {"alembic_version"})
+                      for table in sorted((required_tables or set()) - {"alembic_version"})
                   }
-                  stores = [
-                      tuple(row) for row in con.execute(
-                          "SELECT name,slug,domain,country,currency,status "
-                          "FROM stores ORDER BY slug"
-                      ).fetchall()
-                  ]
                   return {
                       "integrity_check": integrity,
                       "foreign_key_errors": len(fk_errors),
-                      "revision": revision,
                       "counts": counts,
-                      "stores": stores,
+                      "tables": sorted(tables),
                   }
               finally:
                   con.close()
 
-          def run_json(args, expected_status=None):
-              result = subprocess.run(
-                  args, cwd=BACKEND, env=os.environ.copy(),
-                  text=True, capture_output=True, check=False,
-              )
-              if result.stdout:
-                  print(result.stdout, end="", flush=True)
-              if result.stderr:
-                  print(result.stderr, file=sys.stderr, end="", flush=True)
-              if result.returncode:
-                  fail(f"command failed ({result.returncode}): {args}")
+          def online_backup(source_path, destination_path, required_tables=None):
+              if not source_path.is_file() or source_path.stat().st_size <= 0:
+                  fail(f"database missing or empty: {source_path}")
+              if destination_path.exists():
+                  fail(f"refusing to overwrite backup: {destination_path}")
+              destination_path.parent.mkdir(parents=True, exist_ok=True)
+              required_free = max(source_path.stat().st_size * 2, 20 * 1024 * 1024)
+              free_bytes = shutil.disk_usage(destination_path.parent).free
+              if free_bytes < required_free:
+                  fail(f"insufficient free space for {source_path}: free={free_bytes}, required={required_free}")
+
+              before = inspect_db(source_path, required_tables)
+              if before["integrity_check"] != "ok" or before["foreign_key_errors"]:
+                  fail(f"source database failed integrity check: {source_path}: {before}")
+
+              started = time.monotonic()
+              source = sqlite3.connect(str(source_path), timeout=45)
+              destination = sqlite3.connect(str(destination_path), timeout=45)
               try:
-                  payload = json.loads(result.stdout)
-              except json.JSONDecodeError as exc:
-                  fail(f"command returned non-JSON output: {args}; {exc}")
-              if expected_status and payload.get("status") != expected_status:
-                  fail(f"unexpected status from {args}: {payload}")
-              return payload
+                  source.execute("PRAGMA busy_timeout=45000")
+                  destination.execute("PRAGMA busy_timeout=45000")
+                  def progress(_status, _remaining, _total):
+                      if time.monotonic() - started > 120:
+                          raise TimeoutError(f"online backup timed out: {source_path}")
+                  source.backup(destination, pages=512, progress=progress, sleep=0.05)
+                  destination.commit()
+              finally:
+                  destination.close()
+                  source.close()
 
-          if not DB.is_file() or DB.stat().st_size <= 0:
-              fail(f"persistent Phase 2 database missing or empty: {DB}")
+              after = inspect_db(destination_path, required_tables)
+              if after != before:
+                  fail(f"backup does not match source snapshot: {source_path}")
+              return {
+                  "path": str(destination_path),
+                  "bytes": destination_path.stat().st_size,
+                  "integrity_check": after["integrity_check"],
+                  "foreign_key_errors": after["foreign_key_errors"],
+                  "counts": after["counts"],
+              }
 
-          # Strict read-only preflight before the first production write.
-          before = inspect_database(DB)
-          if before["revision"] != "0003_store_domain":
-              fail(f"unexpected Alembic revision: {before['revision']!r}")
-          if before["integrity_check"] != "ok" or before["foreign_key_errors"]:
-              fail(f"production database failed preflight: {before}")
+          if not PRIOR_BACKUP.is_file():
+              fail(f"previous pre-seed backup is missing: {PRIOR_BACKUP}")
+          prior = inspect_db(PRIOR_BACKUP, REQUIRED_PHASE2)
+          if prior["integrity_check"] != "ok" or prior["foreign_key_errors"]:
+              fail(f"previous pre-seed backup no longer verifies: {prior}")
 
-          # Online SQLite backup to the same persistent Fly volume.
-          backup_dir = Path("/data/backups")
-          backup_dir.mkdir(parents=True, exist_ok=True)
-          run_id = os.environ.get("GITHUB_RUN_ID", "manual")
-          backup_path = backup_dir / f"phase2-pre-bplatz-{run_id}.sqlite3"
-          if backup_path.exists():
-              fail(f"refusing to overwrite existing backup: {backup_path}")
-          required_free = max(DB.stat().st_size * 2, 20 * 1024 * 1024)
-          free_bytes = shutil.disk_usage(backup_dir).free
-          if free_bytes < required_free:
-              fail(f"insufficient free space for verified backup: free={free_bytes}, required={required_free}")
-
-          source = sqlite3.connect(str(DB), timeout=30)
-          destination = sqlite3.connect(str(backup_path), timeout=30)
+          phase2_before = inspect_db(PHASE2_DB, REQUIRED_PHASE2)
+          if phase2_before["integrity_check"] != "ok" or phase2_before["foreign_key_errors"]:
+              fail(f"Phase 2 database failed preflight: {phase2_before}")
+          con = readonly(PHASE2_DB)
           try:
-              source.backup(destination)
-              destination.commit()
+              revision = con.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+              bplatz = con.execute(
+                  "SELECT name,slug,domain,country,currency,status FROM stores WHERE slug='bplatz'"
+              ).fetchall()
           finally:
-              destination.close()
-              source.close()
+              con.close()
+          if revision != "0003_store_domain":
+              fail(f"unexpected Phase 2 Alembic revision: {revision!r}")
+          if bplatz != [("Bplatz", "bplatz", "bplatz.de", "DE", "EUR", "active")]:
+              fail(f"Bplatz store is not active and canonical: {bplatz}")
 
-          backup = inspect_database(backup_path)
-          if backup != before:
-              fail("backup verification differs from the pre-write database snapshot")
-          if backup["integrity_check"] != "ok" or backup["foreign_key_errors"]:
-              fail(f"backup integrity verification failed: {backup}")
+          # The failed attempt reached the product parser but failed when the
+          # one-off process reran _ensure_schema() and its large legacy Deloox
+          # priority backfill. Preserve both current databases, then bypass only
+          # that already-completed startup initializer after checking its tables.
+          run_id = os.environ.get("GITHUB_RUN_ID", "manual")
+          backup_dir = Path("/data/backups")
+          phase2_backup = online_backup(
+              PHASE2_DB, backup_dir / f"phase2-pre-liquid-brun-retry-{run_id}.sqlite3",
+              REQUIRED_PHASE2,
+          )
 
-          print("PHASE2_BACKUP_VERIFIED=" + json.dumps({
-              "path": str(backup_path),
-              "bytes": backup_path.stat().st_size,
-              "revision": backup["revision"],
-              "counts": backup["counts"],
-              "integrity_check": backup["integrity_check"],
-              "foreign_key_errors": backup["foreign_key_errors"],
+          legacy_required = {"store_urls", "store_products", "hydration_queue", "catalog_discovery_queue"}
+          legacy_before = inspect_db(LEGACY_DB)
+          if legacy_before["integrity_check"] != "ok":
+              fail(f"legacy catalog failed integrity check: {legacy_before}")
+          legacy_backup = online_backup(
+              LEGACY_DB, backup_dir / f"legacy-pre-liquid-brun-retry-{run_id}.sqlite3",
+          )
+          legacy_con = readonly(LEGACY_DB)
+          try:
+              legacy_tables = {
+                  row[0] for row in legacy_con.execute(
+                      "SELECT name FROM sqlite_master WHERE type='table'"
+                  )
+              }
+              missing = sorted(legacy_required - legacy_tables)
+              if missing:
+                  fail(f"legacy catalog schema is incomplete: {missing}")
+              store_url_columns = {
+                  row[1] for row in legacy_con.execute("PRAGMA table_info(store_urls)")
+              }
+              store_product_columns = {
+                  row[1] for row in legacy_con.execute("PRAGMA table_info(store_products)")
+              }
+              if not {"store", "url", "slug", "discovered_at", "active"}.issubset(store_url_columns):
+                  fail(f"store_urls columns are incomplete: {sorted(store_url_columns)}")
+              if not {"store", "url", "name", "brand", "price", "currency", "availability", "fetch_status"}.issubset(store_product_columns):
+                  fail(f"store_products columns are incomplete: {sorted(store_product_columns)}")
+          finally:
+              legacy_con.close()
+
+          print("PHASE2_BACKUPS_VERIFIED=" + json.dumps({
+              "previous_pre_seed_backup": str(PRIOR_BACKUP),
+              "phase2_backup": phase2_backup,
+              "legacy_backup": legacy_backup,
+              "phase2_revision": revision,
+              "phase2_counts": phase2_before["counts"],
+              "legacy_counts": legacy_before["counts"],
           }, ensure_ascii=False), flush=True)
 
-          # Revalidate source catalog immediately before the idempotent seed.
-          os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"] = "sqlite:////data/catalog/catalog.sqlite3"
-          dry = run_json([PYTHON, "scripts/seed_catalog.py"], "validated")
-          expected_source = {"brands": 60, "fragrances": 1389, "variants": 511}
-          actual_source = {key: dry.get(key) for key in expected_source}
-          if actual_source != expected_source or dry.get("database_written") is not False:
-              fail("seed dry-run differs from the reviewed catalog: " + json.dumps(dry, ensure_ascii=False))
-          if dry.get("stores_to_seed") != [BPLATZ_STORE]:
-              fail("seed dry-run does not declare exactly the approved Bplatz store")
-
-          applied = run_json([PYTHON, "scripts/seed_catalog.py", "--apply"], "seeded")
-          if applied.get("database_written") is not True or applied.get("offers_imported") != 0:
-              fail("seed did not confirm a store/catalog-only write: " + json.dumps(applied, ensure_ascii=False))
-          if applied.get("seeded_store") != BPLATZ_STORE:
-              fail("seeded store does not match the approved Bplatz configuration")
-
-          after_seed = inspect_database(DB)
-          if after_seed["integrity_check"] != "ok" or after_seed["foreign_key_errors"]:
-              fail(f"database integrity failed after seed: {after_seed}")
-          other_stores_before = [row for row in before["stores"] if row[1] != "bplatz"]
-          other_stores_after = [row for row in after_seed["stores"] if row[1] != "bplatz"]
-          if other_stores_before != other_stores_after:
-              fail("seed unexpectedly changed a store other than Bplatz")
-          bplatz = [row for row in after_seed["stores"] if row[1] == "bplatz"]
-          if bplatz != [(
-              "Bplatz", "bplatz", "bplatz.de", "DE", "EUR", "active"
-          )]:
-              fail(f"Bplatz store was not seeded exactly as approved: {bplatz}")
-
-          # Enable the Phase 2 hook only inside this one-off process. No Fly
-          # secret or persistent app environment variable is changed.
           hydration_code = r'''
           import json, sys
           sys.path.insert(0, "/app/backend")
           import catalog_engine
+          # The deployed app already initialized and uses these exact legacy
+          # tables. Avoid re-running _ensure_schema(), which also rewrites the
+          # large Deloox priority frontier and caused the previous SQLite lock.
+          catalog_engine._SCHEMA_READY = True
           target = "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
           item = catalog_engine.refresh_url("bplatz", target)
           if not isinstance(item, dict):
-              raise SystemExit("Bplatz Liquid Brun hydration returned no product")
+              raise SystemExit("Bplatz Liquid Brun refresh returned no product")
           try:
               price = float(item.get("price_num"))
           except (TypeError, ValueError):
               price = 0.0
           availability = str(item.get("availability") or "").strip().lower()
           if price <= 0 or availability not in {"in_stock", "out_of_stock"}:
-              raise SystemExit("Bplatz Liquid Brun hydration returned invalid price/availability: " + repr(item))
+              raise SystemExit("Bplatz Liquid Brun refresh returned invalid price/availability: " + repr(item))
           print("BPLATZ_LIQUID_BRUN_HYDRATION=" + json.dumps({
               "name": item.get("name"),
               "brand": item.get("brand"),
@@ -264,18 +273,15 @@ jobs:
           if hydrated.stderr:
               print(hydrated.stderr, file=sys.stderr, end="", flush=True)
           if hydrated.returncode:
-              fail(f"single Bplatz hydration failed with exit code {hydrated.returncode}")
+              fail(f"single bounded Bplatz hydration retry failed with exit code {hydrated.returncode}")
           marker = "BPLATZ_LIQUID_BRUN_HYDRATION="
-          hydration_line = next(
-              (line for line in hydrated.stdout.splitlines() if marker in line), None
-          )
-          if not hydration_line:
+          line = next((x for x in hydrated.stdout.splitlines() if marker in x), None)
+          if not line:
               fail("hydration returned no structured product result")
-          item = json.loads(hydration_line.split(marker, 1)[1])
+          item = json.loads(line.split(marker, 1)[1])
           product_url = item.get("url") or TARGET_URL
 
-          # Read-only end-to-end verification of the exact hydrated product.
-          con = open_readonly(DB)
+          con = readonly(PHASE2_DB)
           try:
               rows = con.execute(
                   """
@@ -296,26 +302,26 @@ jobs:
                   fail(f"expected exactly one Bplatz Liquid Brun offer, found {len(rows)}")
               offer = rows[0]
               (offer_id, raw_id, variant_id, saved_url, saved_price, currency,
-               availability, status, source_name, store_slug, size_ml,
-               concentration, fragrance_name, brand_name) = offer
+               availability, status, _source, store_slug, size_ml,
+               _concentration, fragrance_name, brand_name) = offer
               if not variant_id or store_slug != "bplatz" or status != "active":
                   fail(f"offer is not safely promoted/active: {offer}")
               if abs(float(saved_price) - float(item["price"])) > 0.01:
-                  fail(f"saved price differs from the freshly parsed price: {offer}")
+                  fail(f"saved price differs from parsed price: {offer}")
               if currency != item["currency"] or availability != item["availability"]:
-                  fail(f"saved currency/availability differs from the parsed offer: {offer}")
+                  fail(f"saved currency/availability differs from parsed offer: {offer}")
               if not brand_name or "french avenue" not in brand_name.lower():
-                  fail(f"offer matched to unexpected brand: {brand_name!r}")
+                  fail(f"unexpected matched brand: {brand_name!r}")
               if not fragrance_name or "liquid brun" not in fragrance_name.lower():
-                  fail(f"offer matched to unexpected fragrance: {fragrance_name!r}")
+                  fail(f"unexpected matched fragrance: {fragrance_name!r}")
               if size_ml is None or abs(float(size_ml) - 100.0) > 0.01:
-                  fail(f"offer matched to unexpected size: {size_ml!r}")
+                  fail(f"unexpected matched size: {size_ml!r}")
               raw = con.execute(
                   "SELECT status,product_variant_id FROM ingestion_raw WHERE id=?",
                   (raw_id,),
               ).fetchone()
               if not raw or raw[0] != "promoted" or raw[1] != variant_id:
-                  fail(f"raw ingestion record was not promoted consistently: {raw}")
+                  fail(f"raw ingestion record not promoted consistently: {raw}")
               history_count = con.execute(
                   "SELECT COUNT(*) FROM price_history WHERE offer_id=?", (offer_id,)
               ).fetchone()[0]
@@ -323,62 +329,76 @@ jobs:
                   "SELECT COUNT(*) FROM match_audit WHERE offer_id=?", (offer_id,)
               ).fetchone()[0]
               if history_count < 1 or audit_count < 1:
-                  fail(f"offer is missing price history or match audit: history={history_count}, audit={audit_count}")
-              post_counts = {
-                  table: con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                  for table in sorted(REQUIRED_TABLES - {"alembic_version"})
-              }
+                  fail(f"missing price history/match audit: history={history_count}, audit={audit_count}")
               invalid_active = con.execute(
                   "SELECT COUNT(*) FROM offers WHERE status='active' AND "
                   "(price IS NULL OR url IS NULL OR length(trim(url))=0 OR availability IS NULL)"
               ).fetchone()[0]
-              revision = con.execute(
-                  "SELECT version_num FROM alembic_version"
-              ).fetchone()[0]
+              post_counts = {
+                  table: con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                  for table in sorted(REQUIRED_PHASE2 - {"alembic_version"})
+              }
               integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
               fk_errors = con.execute("PRAGMA foreign_key_check").fetchall()
+              final_revision = con.execute("SELECT version_num FROM alembic_version").fetchone()[0]
           finally:
               con.close()
 
-          if revision != "0003_store_domain" or integrity != "ok" or fk_errors or invalid_active:
-              fail("final database integrity/validation checks failed")
+          legacy_con = readonly(LEGACY_DB)
+          try:
+              legacy_rows = legacy_con.execute(
+                  "SELECT name,brand,price,currency,availability,fetch_status "
+                  "FROM store_products WHERE store='bplatz' "
+                  "AND (url=? OR lower(url) LIKE '%liquid-brun%')",
+                  (product_url,),
+              ).fetchall()
+          finally:
+              legacy_con.close()
+          if len(legacy_rows) != 1:
+              fail(f"expected one persisted legacy Bplatz Liquid Brun row, found {len(legacy_rows)}")
+          legacy_row = legacy_rows[0]
+          if legacy_row[2] is None or float(legacy_row[2]) <= 0 or legacy_row[5] != "OK":
+              fail(f"legacy Bplatz product row is not a confirmed offer: {legacy_row}")
 
-          print("PHASE2_BPLATZ_PRODUCTION_RESULT=" + json.dumps({
+          if final_revision != "0003_store_domain" or integrity != "ok" or fk_errors or invalid_active:
+              fail("final Phase 2 integrity/validation checks failed")
+
+          print("PHASE2_BPLATZ_RETRY_RESULT=" + json.dumps({
               "status": "success",
-              "database": str(DB),
-              "backup": str(backup_path),
+              "phase2_database": str(PHASE2_DB),
+              "phase2_backup": phase2_backup["path"],
+              "legacy_database": str(LEGACY_DB),
+              "legacy_backup": legacy_backup["path"],
               "backup_verified": True,
-              "revision": revision,
-              "store": {
-                  "name": "Bplatz", "slug": store_slug, "domain": "bplatz.de",
-                  "country": "DE", "currency": "EUR", "status": "active",
-              },
+              "revision": final_revision,
+              "store": {"name": "Bplatz", "slug": "bplatz", "domain": "bplatz.de", "country": "DE", "currency": "EUR", "status": "active"},
               "hydrated_offer": {
                   "id": offer_id, "brand": brand_name, "fragrance": fragrance_name,
                   "size_ml": size_ml, "price": float(saved_price), "currency": currency,
                   "availability": availability, "status": status, "url": saved_url,
                   "ingestion_raw_status": raw[0],
-                  "price_history_rows": history_count,
-                  "match_audit_rows": audit_count,
+                  "price_history_rows": history_count, "match_audit_rows": audit_count,
               },
-              "counts_before": before["counts"],
+              "legacy_offer": {
+                  "name": legacy_row[0], "brand": legacy_row[1],
+                  "price": float(legacy_row[2]), "currency": legacy_row[3],
+                  "availability": legacy_row[4], "fetch_status": legacy_row[5],
+              },
               "counts_after": post_counts,
               "invalid_active_offers": invalid_active,
               "integrity_check": integrity,
               "foreign_key_errors": len(fk_errors),
-              "other_stores_unchanged": True,
-              "phase0_touched": False,
               "persistent_feature_flag_changed": False,
               "deploy_or_restart_requested": False,
           }, ensure_ascii=False, default=str), flush=True)
           PY
 
-          python -m py_compile /tmp/phase2_bplatz_production.py
-          SCRIPT_B64="$(base64 -w0 /tmp/phase2_bplatz_production.py)"
-          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/phase2_bplatz_production.py && GITHUB_RUN_ID=${GITHUB_RUN_ID} /app/.venv/bin/python /tmp/phase2_bplatz_production.py'"
+          python -m py_compile /tmp/phase2_bplatz_retry.py
+          SCRIPT_B64="$(base64 -w0 /tmp/phase2_bplatz_retry.py)"
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/phase2_bplatz_retry.py && GITHUB_RUN_ID=${GITHUB_RUN_ID} /app/.venv/bin/python /tmp/phase2_bplatz_retry.py'"
           timeout 600s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
-      - name: Verify production health after the single hydration
+      - name: Verify production health after the single retry
         shell: bash
         run: |
           set -euo pipefail
