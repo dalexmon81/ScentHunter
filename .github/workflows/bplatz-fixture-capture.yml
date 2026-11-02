@@ -1,0 +1,69 @@
+name: Bplatz raw fixture capture
+
+on:
+  push:
+    branches:
+      - feat/phase2-bplatz-staging-pipeline
+    paths:
+      - .github/workflows/bplatz-fixture-capture.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Capture original Bplatz response
+        env:
+          PRODUCT_URL: https://en.bplatz.de/Products/riiffs-freeze-extrait-de-parfum-100-ml
+        run: |
+          python - <<'PY'
+          import datetime, hashlib, json, os, pathlib, urllib.request
+          from urllib.error import HTTPError
+
+          out = pathlib.Path("capture")
+          out.mkdir()
+          url = os.environ["PRODUCT_URL"]
+          request = urllib.request.Request(url, headers={
+              "User-Agent": "Mozilla/5.0 (compatible; ScentHunterFixtureCapture/1.0)",
+              "Accept": "text/html,application/xhtml+xml"
+          })
+          try:
+              with urllib.request.urlopen(request, timeout=25) as response:
+                  payload = response.read()
+                  status = response.status
+                  final_url = response.geturl()
+                  content_type = response.headers.get("Content-Type", "")
+          except HTTPError as exc:
+              payload = exc.read()
+              status = exc.code
+              final_url = exc.geturl()
+              content_type = exc.headers.get("Content-Type", "")
+          (out / "6295151504031.raw.html").write_bytes(payload)
+          meta = {
+              "url_final": final_url,
+              "acquired_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "http_status": status,
+              "content_type": content_type,
+              "sha256": hashlib.sha256(payload).hexdigest(),
+              "note": "Prezzo atteso 25,90 EUR solo come riferimento indicizzato; non e' un dato imposto o inventato nel payload."
+          }
+          (out / "6295151504031.meta.json").write_text(
+              json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+          )
+          print(json.dumps(meta, ensure_ascii=False, indent=2))
+          if not payload:
+              raise SystemExit("Bplatz returned an empty response body")
+          if not 200 <= status < 300:
+              raise SystemExit(f"Bplatz HTTP status not successful: {status}")
+          PY
+      - name: Upload captured response
+        uses: actions/upload-artifact@v4
+        with:
+          name: bplatz-raw-fixture-capture
+          path: capture/
+          if-no-files-found: error
+          retention-days: 7
