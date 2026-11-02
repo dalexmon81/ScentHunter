@@ -3968,7 +3968,7 @@ _BPLATZ_PHASE2_MATCHER_LOCK = threading.Lock()
 
 
 def _maybe_persist_bplatz_phase2(item, url):
-    """Opt-in Phase 2 persistence after a successful legacy Bplatz hydration."""
+    """Opt-in Phase 2 persistence for a successfully parsed Bplatz hydration."""
     flag = str(os.environ.get("BPLATZ_PHASE2_PERSISTENCE", "")).strip().lower()
     if flag not in {"1", "true", "yes", "on"}:
         return False
