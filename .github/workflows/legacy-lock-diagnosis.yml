@@ -10,14 +10,14 @@ permissions:
 
 jobs:
   inspect-python-stacks:
-    name: Check py-spy and compare two Python stack dumps
+    name: Capture dynamic WAL lock owner and Python stacks
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Check py-spy and collect two read-only dumps
+      - name: Install temporary py-spy and collect two read-only dumps
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
@@ -25,45 +25,88 @@ jobs:
           set -u
           : > pyspy-lock-diagnosis.txt
           remote_script=$(cat <<'REMOTE'
-          echo === PY_SPY_AVAILABILITY ===
-          if command -v py-spy >/dev/null 2>&1; then
-            command -v py-spy
-            py-spy --version 2>&1
-            PYSPY_AVAILABLE=1
+          set -u
+          TMP_PYSPY=/tmp/scenthunter-py-spy
+          cleanup() {
+            rm -f "$TMP_PYSPY"
+            echo TEMPORARY_PY_SPY_REMOVED
+          }
+          trap cleanup EXIT
+
+          echo === ENVIRONMENT ===
+          date -u
+          uname -a
+          id
+          command -v curl || true
+          command -v wget || true
+          command -v python3 || true
+
+          echo === INSTALL_TEMPORARY_PY_SPY ===
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64|amd64) ASSET=py-spy-linux-x86_64 ;;
+            aarch64|arm64) ASSET=py-spy-linux-aarch64 ;;
+            *) echo "UNSUPPORTED_ARCH=$ARCH"; exit 2 ;;
+          esac
+          if command -v curl >/dev/null 2>&1; then
+            curl -fL --retry 2 "https://github.com/benfred/py-spy/releases/latest/download/$ASSET" -o "$TMP_PYSPY"
+          elif command -v wget >/dev/null 2>&1; then
+            wget -O "$TMP_PYSPY" "https://github.com/benfred/py-spy/releases/latest/download/$ASSET"
           else
-            echo py-spy-not-installed
-            PYSPY_AVAILABLE=0
+            echo NO_CURL_OR_WGET
+            exit 3
           fi
+          chmod 700 "$TMP_PYSPY"
+          "$TMP_PYSPY" --version
+
+          find_lock_owner() {
+            shm=/data/store_catalog.sqlite3-shm
+            [ -e "$shm" ] || return 1
+            inode=$(stat -c '%i' "$shm" 2>/dev/null) || return 1
+            awk -v inode="$inode" '
+              $1=="POSIX" && $3=="WRITE" {
+                n=split($5, devino, ":")
+                if (n >= 3 && devino[3] == inode) print $4
+              }
+            ' /proc/locks | sort -u
+          }
+
           sample() {
             label=$1
-            echo === $label ===
+            echo === "$label" ===
             date -u
-            echo PROCESS_CMDLINE
-            cat /proc/614/cmdline 2>&1
-            echo PROCESS_STATUS
-            grep -E '^(Name|State|Threads):' /proc/614/status 2>&1
-            echo LEGACY_INODES
-            ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
-            echo PROCESS_LEGACY_FDS
-            for fd in /proc/614/fd/*; do
-              target=$(readlink "$fd" 2>/dev/null) || continue
-              case "$target" in
-                /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
-                  echo "$fd -> $target"
-                  ;;
-              esac
-            done
-            echo PROCESS_LOCKS
+            echo LEGACY_FILES
+            ls -li --time-style=long-iso /data/store_catalog.sqlite3* 2>&1
+            echo LOCK_TABLE
             cat /proc/locks 2>&1
-            if [ "$PYSPY_AVAILABLE" = 1 ]; then
+            PIDS=$(find_lock_owner || true)
+            if [ -z "$PIDS" ]; then
+              echo NO_WRITE_LOCK_OWNER_FOUND_FOR_STORE_CATALOG_SHM
+              return
+            fi
+            for PID in $PIDS; do
+              echo === LOCK_OWNER_PID_$PID ===
+              echo PROCESS_CMDLINE
+              tr '\000' ' ' < "/proc/$PID/cmdline" 2>&1
+              echo
+              echo PROCESS_STATUS
+              grep -E '^(Name|State|Threads):' "/proc/$PID/status" 2>&1
+              echo PROCESS_LEGACY_FDS
+              for fd in /proc/"$PID"/fd/*; do
+                target=$(readlink "$fd" 2>/dev/null) || continue
+                case "$target" in
+                  /data/store_catalog.sqlite3|/data/store_catalog.sqlite3-*)
+                    echo "$fd -> $target"
+                    ;;
+                esac
+              done
               echo PY_SPY_DUMP_BEGIN
-              py-spy dump --pid 614 2>&1
+              "$TMP_PYSPY" dump --pid "$PID" 2>&1
               echo PY_SPY_DUMP_EXIT=$?
               echo PY_SPY_DUMP_END
-            else
-              echo PY_SPY_DUMP_SKIPPED_NOT_INSTALLED
-            fi
+            done
           }
+
           sample SAMPLE_1
           echo WAITING_45_SECONDS_NO_DATABASE_OR_PROCESS_MODIFICATION
           sleep 45
