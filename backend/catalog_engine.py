@@ -5940,25 +5940,21 @@ def _hydrate_one_task(task):
     try:
         item = refresh_url(task['store'], task['url'])
         if task.get("store") == "bplatz" and worker_context.get("phase2_persisted") is True:
-            sku = str(
-                (item or {}).get("sku")
-                or (item or {}).get("gtin")
-                or (item or {}).get("mpn")
-                or "unknown"
-            ).strip()
-            sku = re.sub(r"\s+", "_", sku)
-            timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-            print(
-                "hydration_worker bplatz "
-                f"product={sku} phase2_persisted=true "
-                f"timestamp={timestamp} "
-                f"worker={worker_context['worker']} "
-                f"attempt={worker_context['attempt']} "
-                f"offer_id={worker_context.get('offer_id')} "
-                f"ingestion_raw_id={worker_context.get('ingestion_raw_id')} "
-                f"url={task.get('url')}",
-                flush=True,
-            )
+            sku = str((item or {}).get("sku") or "").strip()
+            if sku:
+                sku = re.sub(r"[^A-Za-z0-9._:-]", "_", sku)
+                timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                print(
+                    "hydration_worker bplatz "
+                    f"product={sku} phase2_persisted=true "
+                    f"timestamp={timestamp} "
+                    f"worker={worker_context['worker']} "
+                    f"attempt={worker_context['attempt']} "
+                    f"offer_id={worker_context.get('offer_id')} "
+                    f"ingestion_raw_id={worker_context.get('ingestion_raw_id')} "
+                    f"url={task.get('url')}",
+                    flush=True,
+                )
 
         if item and item.get('name'):
             has_valid_offer = False
