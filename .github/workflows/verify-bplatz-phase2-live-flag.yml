@@ -1,0 +1,72 @@
+name: Verify Bplatz Phase 2 live flag
+
+on:
+  push:
+    branches:
+      - ops/verify-bplatz-phase2-live-flag-20261102
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Read production flag, catalog integrity, and health
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/verify_live.py <<'PY'
+          import json, os, sqlite3, urllib.request
+          db = "/data/catalog/catalog.sqlite3"
+          con = sqlite3.connect("file:" + db + "?mode=ro", uri=True, timeout=30)
+          con.row_factory = sqlite3.Row
+          try:
+              integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
+              fk = con.execute("PRAGMA foreign_key_check").fetchall()
+              row = con.execute("""
+                SELECT o.id,o.price,o.currency,o.availability,o.status,
+                       (SELECT COUNT(*) FROM price_history ph WHERE ph.offer_id=o.id) history_count,
+                       (SELECT COUNT(*) FROM match_audit ma WHERE ma.offer_id=o.id) audit_count,
+                       ir.status raw_status
+                FROM offers o JOIN stores s ON s.id=o.store_id
+                JOIN product_variants pv ON pv.id=o.product_variant_id
+                JOIN fragrances f ON f.id=pv.fragrance_id
+                JOIN brands b ON b.id=f.brand_id
+                JOIN ingestion_raw ir ON ir.id=o.ingestion_raw_id
+                WHERE s.slug='bplatz' AND lower(b.name)='french avenue'
+                  AND lower(f.name) LIKE '%liquid brun%' AND pv.size_ml=100
+              """).fetchall()
+              print("BPLATZ_PHASE2_LIVE=" + json.dumps({
+                "flag": os.environ.get("BPLATZ_PHASE2_PERSISTENCE", "<unset>"),
+                "offer_count": len(row),
+                "offers": [dict(x) for x in row],
+                "integrity_check": integrity,
+                "foreign_key_errors": len(fk)
+              }, default=str), flush=True)
+              if os.environ.get("BPLATZ_PHASE2_PERSISTENCE") != "1":
+                  raise SystemExit("BPLATZ_PHASE2_PERSISTENCE is not enabled")
+              if len(row) != 1 or integrity != "ok" or fk:
+                  raise SystemExit("Production catalog invariant failed")
+          finally:
+              con.close()
+          PY
+          SCRIPT_B64="$(base64 -w0 /tmp/verify_live.py)"
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/verify_live.py && BPLATZ_PHASE2_PERSISTENCE=\$BPLATZ_PHASE2_PERSISTENCE /app/.venv/bin/python /tmp/verify_live.py'"
+          # The env value must come from the deployed Fly machine, not the runner.
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/verify_live.py && /app/.venv/bin/python -c \"import os; print(os.environ.get(\\\"BPLATZ_PHASE2_PERSISTENCE\\\", \\\"<unset>\\\"))\"'"
+          flag="$(flyctl ssh console --app scenthunter --select=false -C "$remote_command" | tail -n1)"
+          if [ "$flag" != "1" ]; then
+            echo "Production Bplatz Phase 2 flag is not enabled: $flag" >&2
+            exit 1
+          fi
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/verify_live.py && /app/.venv/bin/python /tmp/verify_live.py'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+          python - <<'PY'
+          import json, urllib.request
+          with urllib.request.urlopen("https://scenthunter.fly.dev/health", timeout=20) as response:
+              payload = json.loads(response.read().decode())
+              assert response.status == 200 and payload.get("status") == "healthy", payload
+          print("FLY_PRODUCTION_HEALTH=PASS")
+          PY
