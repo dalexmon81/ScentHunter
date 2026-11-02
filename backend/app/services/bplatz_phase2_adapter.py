@@ -38,17 +38,16 @@ def persist_bplatz_record(
     if not isinstance(raw_record, dict):
         raise TypeError("raw_record must be a dict")
 
-    stable_id = raw_record.get("sku") or raw_record.get("gtin") or raw_record.get("product_url") or raw_record.get("url")
-    raw_id = stage_raw_offer(
-        session, store_id=store_id, raw_payload=raw_record,
-        external_product_id=str(stable_id) if stable_id else None,
-    )
-
     try:
         normalized = normalize_offer(
             raw_record, retailer="Bplatz", currency_default=currency_default,
         )
     except (TypeError, ValueError) as exc:
+        stable_id = raw_record.get("sku") or raw_record.get("gtin") or raw_record.get("product_url") or raw_record.get("url")
+        raw_id = stage_raw_offer(
+            session, store_id=store_id, raw_payload=raw_record,
+            external_product_id=str(stable_id) if stable_id else None,
+        )
         reason = f"normalization_failed:{type(exc).__name__}:{exc}"
         record_match(
             session, ingestion_raw_id=raw_id, product_variant_id=None,
@@ -56,6 +55,12 @@ def persist_bplatz_record(
             unresolved_status="pending",
         )
         return BplatzPhase2Result(raw_id, "pending", reason=reason)
+
+    stable_id = raw_record.get("sku") or raw_record.get("gtin") or raw_record.get("product_url") or raw_record.get("url")
+    raw_id = stage_raw_offer(
+        session, store_id=store_id, raw_payload=raw_record,
+        external_product_id=str(stable_id) if stable_id else None,
+    )
 
     aggregation = matcher.process_offers([normalized])
     if (aggregation.input_count != 1 or aggregation.matched_offer_count != 1
