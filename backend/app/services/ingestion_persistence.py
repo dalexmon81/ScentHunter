@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -197,6 +198,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing.external_product_id = row.external_product_id or existing.external_product_id
         existing.product_variant_id = row.product_variant_id
         existing.url = url
+        existing.captured_at = datetime.now(timezone.utc)
         existing.price = price
         existing.currency = currency
         existing.availability = availability
