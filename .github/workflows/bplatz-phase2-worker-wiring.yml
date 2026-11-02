@@ -1,0 +1,37 @@
+name: Bplatz Phase 2 worker wiring isolated tests
+
+on:
+  push:
+    branches:
+      - feat/bplatz-phase2-worker-wiring
+    paths:
+      - backend/catalog_engine.py
+      - backend/app/services/bplatz_phase2_adapter.py
+      - backend/app/services/ingestion_persistence.py
+      - backend/app/models/**
+      - backend/app/db.py
+      - backend/scenthunter_next_engine/**
+      - backend/alembic/**
+      - backend/scripts/seed_catalog.py
+      - backend/product_catalog.json
+      - backend/scrapers/bplatz/**
+      - tests/test_bplatz_persistence_service.py
+      - tests/fixtures/bplatz/**
+      - .github/workflows/bplatz-phase2-worker-wiring.yml
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install -r backend/requirements.txt pytest
+      - name: Run Bplatz Phase 2 integration and regression tests
+        run: python -m pytest -q -s tests/test_bplatz_persistence_service.py
