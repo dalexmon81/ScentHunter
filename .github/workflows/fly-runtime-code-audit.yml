@@ -31,20 +31,4 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$FLY_API_TOKEN"
-          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import os,glob,hashlib; ps=[]; 
-          for p in glob.glob("/proc/[0-9]*"):
-           try:
-            cmd=open(p+"/cmdline","rb").read().replace(bytes([0]),b" ").decode(errors="replace")
-            if "uvicorn" in cmd:
-             pid=p.rsplit("/",1)[1]; cwd=os.readlink(p+"/cwd"); print("UVICORN_PID="+pid); print("PROCESS_CWD="+cwd)
-             candidates=[cwd+"/backend/catalog_engine.py", "/app/backend/catalog_engine.py", cwd+"/catalog_engine.py"]
-             seen=set()
-             for f in candidates:
-              if f in seen or not os.path.isfile(f): continue
-              seen.add(f); data=open(f,"rb").read(); lines=data.decode(errors="replace").splitlines()
-              print("SOURCE_PATH="+f); print("SOURCE_SHA256="+hashlib.sha256(data).hexdigest())
-              for i,line in enumerate(lines,1):
-               if "class _TelemetrySQLiteConnection" in line or "factory=_TelemetrySQLiteConnection" in line or "def _save_discovery" in line: print("SOURCE_MARKER="+str(i)+":"+line.strip())
-           except (OSError,PermissionError): pass
-          if not any("uvicorn" in open(p+"/cmdline","rb").read().replace(bytes([0]),b" ").decode(errors="replace") for p in glob.glob("/proc/[0-9]*") if os.path.exists(p+"/cmdline")): print("UVICORN_PROCESS_NOT_FOUND")
-          print("RUNTIME_AUDIT=READ_ONLY")'"
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import os,glob,hashlib; ps=[p for p in glob.glob(\x27/proc/[0-9]*\x27) if \x27uvicorn\x27 in open(p+\x27/comm\x27).read()]; print(\x27UVICORN_PIDS=\x27+\x27,\x27.join(p.rsplit(\x27/\x27,1)[1] for p in ps)); [(lambda f: (print(\x27PROCESS_CWD=\x27+os.readlink(p+\x27/cwd\x27)), print(\x27SOURCE_PATH=\x27+f), print(\x27SOURCE_SHA256=\x27+hashlib.sha256(open(f,\x27rb\x27).read()).hexdigest()), [print(\x27SOURCE_MARKER=\x27+str(i+1)+\x27:\x27+s.strip()) for i,s in enumerate(open(f).read().splitlines()) if any(m in s for m in (\x27class _TelemetrySQLiteConnection\x27,\x27factory=_TelemetrySQLiteConnection\x27,\x27def _save_discovery\x27))]))(os.readlink(p+\x27/cwd\x27)+\x27/backend/catalog_engine.py\x27) for p in ps if os.path.isfile(os.readlink(p+\x27/cwd\x27)+\x27/backend/catalog_engine.py\x27)]; print(\x27RUNTIME_AUDIT=READ_ONLY\x27)'"
