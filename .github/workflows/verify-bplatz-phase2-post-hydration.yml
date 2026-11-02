@@ -5,7 +5,7 @@ on:
     branches:
       - ops/bplatz-phase2-direct-persistence-20261102
     paths:
-      - .github/workflows/verify-bplatz-phase2-readonly.yml
+      - .github/workflows/verify-bplatz-phase2-post-hydration.yml
 
 permissions:
   contents: read
