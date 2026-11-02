@@ -52,7 +52,18 @@ jobs:
                   stores = con.execute("SELECT name,slug,domain,country,currency,status FROM stores ORDER BY slug").fetchall()
                   counts = {t: con.execute("SELECT COUNT(*) FROM " + t).fetchone()[0] for t in
                             ("brands","fragrances","product_variants","stores","offers","price_history","match_audit","ingestion_raw")}
-                  return {"revision":revision,"integrity":integrity,"fk_errors":len(fk),"stores":stores,"counts":counts}
+                  target = con.execute("""
+                      SELECT o.id,o.price,o.currency,o.availability,o.status,
+                             (SELECT COUNT(*) FROM price_history ph WHERE ph.offer_id=o.id) AS history_count
+                      FROM offers o JOIN stores s ON s.id=o.store_id
+                      JOIN product_variants pv ON pv.id=o.product_variant_id
+                      JOIN fragrances f ON f.id=pv.fragrance_id
+                      JOIN brands b ON b.id=f.brand_id
+                      WHERE s.slug='bplatz' AND lower(b.name)='french avenue'
+                        AND lower(f.name) LIKE '%liquid brun%' AND pv.size_ml=100
+                  """).fetchall()
+                  target_offers = [dict(zip(("id","price","currency","availability","status","history_count"), row)) for row in target]
+                  return {"revision":revision,"integrity":integrity,"fk_errors":len(fk),"stores":stores,"counts":counts,"target_offers":target_offers}
               finally:
                   con.close()
 
@@ -172,8 +183,18 @@ jobs:
           after=snapshot(DB)
           if after["integrity"]!="ok" or after["fk_errors"] or after["revision"]!="0003_store_domain":
               stop("post-write integrity check failed: "+json.dumps(after))
-          if after["counts"]["offers"] < before["counts"]["offers"]+1:
-              stop("offer count did not increase")
+          target_offers = after["target_offers"]
+          if len(target_offers) != 1:
+              stop("expected exactly one Bplatz French Avenue Liquid Brun 100 ml offer; got " + json.dumps(target_offers))
+          persisted = target_offers[0]
+          if str(persisted["id"]).replace("-", "") != payload["offer_id"].replace("-", ""):
+              stop("idempotency failed: adapter offer id differs from the single persisted target offer")
+          if persisted["status"] != "active" or persisted["currency"] != payload["currency"]:
+              stop("persisted target offer status/currency mismatch: " + json.dumps(persisted))
+          if abs(float(persisted["price"]) - float(payload["price"])) > 0.01:
+              stop("persisted target price differs from adapter result: " + json.dumps(persisted))
+          if persisted["history_count"] < 1:
+              stop("target offer has no price_history")
           print("PHASE2_BPLATZ_FINAL="+json.dumps({
               "status":"success","backup":str(backup),"backup_verified":True,
               "before":before["counts"],"after":after["counts"],
