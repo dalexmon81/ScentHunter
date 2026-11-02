@@ -1,4 +1,4 @@
-name: Read-only legacy SQLite thread diagnosis
+name: Read-only TID 620 legacy SQLite lock diagnosis
 
 on:
   push:
@@ -9,32 +9,78 @@ permissions:
   contents: read
 
 jobs:
-  inspect-fly-threads:
-    name: Inspect PID 614 threads and legacy SQLite locks (read-only)
+  inspect-tid-620:
+    name: Compare two read-only TID 620 and legacy lock samples
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Collect read-only thread and lock evidence
+      - name: Collect two targeted read-only samples
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -u
-          : > legacy-thread-diagnosis.txt
-          remote_command="/bin/sh -lc 'echo === SNAPSHOT_TIME_UTC ===; date -u; echo === PID_614_CMDLINE ===; cat /proc/614/cmdline; echo; echo === PID_614_STATUS ===; cat /proc/614/status; echo === PID_614_WCHAN ===; cat /proc/614/wchan; echo; echo === LEGACY_LOCKS ===; cat /proc/locks; echo === LEGACY_DB_INODES ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1; echo === PID_614_DB_FDS ===; for fd in /proc/614/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*) echo \"\$fd -> \$target\";; esac; done; echo === THREAD_DETAILS_BEGIN ===; for task in /proc/614/task/[0-9]*; do [ -d \"\$task\" ] || continue; tid=\${task##*/}; echo --- TID_\$tid ---; echo COMM; cat \"\$task/comm\" 2>&1; echo STAT; cat \"\$task/stat\" 2>&1; echo WCHAN; cat \"\$task/wchan\" 2>&1; echo STATUS_SUMMARY; grep -E \"^(State|voluntary_ctxt_switches|nonvoluntary_ctxt_switches):\" \"\$task/status\" 2>&1; echo KERNEL_STACK_READ_ONLY; cat \"\$task/stack\" 2>&1; done; echo === THREAD_DETAILS_END ==='"
-          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee legacy-thread-diagnosis.txt
+          : > tid-620-lock-diagnosis.txt
+          remote_command="/bin/sh -lc 'sample() {
+            label=\$1
+            echo === \$label ===
+            echo SNAPSHOT_TIME_UTC
+            date -u
+            echo TID_620_STACK
+            cat /proc/614/task/620/stack 2>&1
+            echo TID_620_WCHAN
+            cat /proc/614/task/620/wchan 2>&1
+            echo TID_620_STATUS
+            cat /proc/614/task/620/status 2>&1
+            echo TID_620_FD_LIST
+            ls -l /proc/614/task/620/fd 2>&1
+            echo TID_620_SQLITE_FD_TARGETS_AND_FDINFO
+            for fd in /proc/614/task/620/fd/*; do
+              target=\$(readlink "\$fd" 2>/dev/null) || continue
+              case "\$target" in
+                /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
+                  echo --- \$fd -\> \$target ---
+                  info_fd=\${fd##*/}
+                  cat "/proc/614/task/620/fdinfo/\$info_fd" 2>&1
+                  ;;
+              esac
+            done
+            echo PROCESS_614_CMDLINE
+            cat /proc/614/cmdline 2>&1
+            echo PROCESS_614_STATUS
+            grep -E "^(Name|State|Threads|voluntary_ctxt_switches|nonvoluntary_ctxt_switches):" /proc/614/status 2>&1
+            echo PROCESS_614_LEGACY_FD_TARGETS
+            for fd in /proc/614/fd/*; do
+              target=\$(readlink "\$fd" 2>/dev/null) || continue
+              case "\$target" in
+                /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
+                  echo \$fd -\> \$target
+                  ;;
+              esac
+            done
+            echo LEGACY_DB_INODES_AND_TIMESTAMPS
+            ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
+            echo PROCESS_614_LOCKS
+            cat /proc/locks 2>&1
+          }
+          sample SAMPLE_1
+          echo WAITING_45_SECONDS_WITHOUT_TOUCHING_DATABASES
+          sleep 45
+          sample SAMPLE_2
+          '"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee tid-620-lock-diagnosis.txt
           ssh_status=${PIPESTATUS[0]}
-          echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a legacy-thread-diagnosis.txt
+          echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a tid-620-lock-diagnosis.txt
           exit "$ssh_status"
 
-      - name: Upload thread diagnosis evidence
+      - name: Upload TID 620 diagnosis evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: legacy-thread-diagnosis
-          path: legacy-thread-diagnosis.txt
+          name: tid-620-lock-diagnosis-two-samples
+          path: tid-620-lock-diagnosis.txt
           if-no-files-found: warn
           retention-days: 30
