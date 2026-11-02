@@ -117,6 +117,46 @@ def test_post_commit_fixture_sha256_matches_meta_and_capture():
     print(f"FIXTURE_SIZE_BYTES={len(payload)}")
 
 
+
+def test_production_parser_exposes_structured_sku_and_gtin():
+    import sys
+    sys.path.insert(0, str(ROOT / "backend"))
+    from scrapers.bplatz.scraper import parse_product_html
+
+    html = FIXTURE.read_text(encoding="utf-8")
+    meta = json.loads(META.read_text(encoding="utf-8"))
+    parsed = parse_product_html(
+        html,
+        meta["url_final"],
+        "French Avenue Liquid Brun",
+    )
+    assert parsed is not None
+    structured_product = parsed["raw_data"]["jsonld"]
+    expected_sku = structured_product.get("sku")
+    expected_gtin = structured_product.get("gtin13") or structured_product.get("gtin")
+    assert parsed["sku"] == expected_sku == "6290360375694"
+    assert parsed["gtin"] == expected_gtin == "6290360375694"
+    assert parsed["identity"]["sku"] == parsed["sku"]
+    assert parsed["identity"]["gtin"] == parsed["gtin"]
+
+    # The real normalizer receives the production parser's emitted identifiers.
+    normalized = normalize({
+        "raw_name": parsed["name"],
+        "brand_raw": parsed["brand"],
+        "size_ml": parsed["size_ml"],
+        "price": parsed["price_num"],
+        "currency": parsed["offer"]["currency"],
+        "product_url": parsed["url"],
+        "availability": parsed["availability"],
+        "sku": parsed["sku"],
+        "gtin": parsed["gtin"],
+    })
+    assert normalized.retailer_product_id == parsed["sku"]
+    assert normalized.raw_payload["gtin"] == parsed["gtin"]
+    print(f"PRODUCTION_PARSER_SKU={parsed['sku']}")
+    print(f"PRODUCTION_PARSER_GTIN={parsed['gtin']}")
+
+
 def test_positive_controlled_association_promotes_offer_from_fixture():
     record = parse_liquid_brun_fixture()
     assert record["brand_raw"] == "French Avenue"
