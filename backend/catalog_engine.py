@@ -852,7 +852,6 @@ class _TelemetrySQLiteConnection(sqlite3.Connection):
                 "function": frame.name,
             }
             for frame in frames[-6:]
-            if os.path.basename(frame.filename) != os.path.basename(__file__)
         ]
 
     def _sh_begin_transition(self, was_in_transaction, operation):
