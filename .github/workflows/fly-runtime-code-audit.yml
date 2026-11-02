@@ -1,0 +1,50 @@
+name: Fly read-only runtime code identity audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_read_only:
+        description: "Confirm read-only inspection of the production process and code"
+        required: true
+        type: choice
+        options:
+          - no
+          - yes
+        default: no
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-audit:
+    if: ${{ inputs.confirm_read_only == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Inspect production runtime without changing it
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import os,glob,hashlib; ps=[]; 
+          for p in glob.glob("/proc/[0-9]*"):
+           try:
+            cmd=open(p+"/cmdline","rb").read().replace(bytes([0]),b" ").decode(errors="replace")
+            if "uvicorn" in cmd:
+             pid=p.rsplit("/",1)[1]; cwd=os.readlink(p+"/cwd"); print("UVICORN_PID="+pid); print("PROCESS_CWD="+cwd)
+             candidates=[cwd+"/backend/catalog_engine.py", "/app/backend/catalog_engine.py", cwd+"/catalog_engine.py"]
+             seen=set()
+             for f in candidates:
+              if f in seen or not os.path.isfile(f): continue
+              seen.add(f); data=open(f,"rb").read(); lines=data.decode(errors="replace").splitlines()
+              print("SOURCE_PATH="+f); print("SOURCE_SHA256="+hashlib.sha256(data).hexdigest())
+              for i,line in enumerate(lines,1):
+               if "class _TelemetrySQLiteConnection" in line or "factory=_TelemetrySQLiteConnection" in line or "def _save_discovery" in line: print("SOURCE_MARKER="+str(i)+":"+line.strip())
+           except (OSError,PermissionError): pass
+          if not any("uvicorn" in open(p+"/cmdline","rb").read().replace(bytes([0]),b" ").decode(errors="replace") for p in glob.glob("/proc/[0-9]*") if os.path.exists(p+"/cmdline")): print("UVICORN_PROCESS_NOT_FOUND")
+          print("RUNTIME_AUDIT=READ_ONLY")'"
