@@ -504,6 +504,11 @@ def test_full_positive_bplatz_pipeline_persists_promotes_and_reads_offer():
             assert staged == ("SH-0030", VARIANT_ID, "matched")
 
             assert _promote_staged_offer(connection, raw_id) is True
+            # Close and reopen the temporary database to verify durable persistence,
+            # not merely visibility inside the connection that performed the insert.
+            connection.close()
+            connection = sqlite3.connect(Path(tmp) / "isolated.sqlite3")
+            connection.execute("PRAGMA foreign_keys=ON")
             reread = connection.execute(
                 "SELECT id,store,canonical_product_id,product_variant_id,price,currency,url,availability "
                 "FROM offers WHERE ingestion_raw_id=?",
