@@ -1,0 +1,1 @@
+Temporary push trigger for the read-only legacy SQLite lock diagnosis. No application code or database is changed.
