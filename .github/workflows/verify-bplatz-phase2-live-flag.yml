@@ -51,6 +51,19 @@ jobs:
                   raise SystemExit("Production catalog invariant failed")
           finally:
               con.close()
+          # Read-only snapshot of the normal hydration queue in the legacy catalog.
+          legacy = sqlite3.connect("file:/data/store_catalog.sqlite3?mode=ro", uri=True, timeout=30)
+          try:
+              exists = legacy.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='hydration_queue'").fetchone()
+              if exists:
+                  cols = {x[1] for x in legacy.execute("PRAGMA table_info(hydration_queue)")}
+                  wanted = [x for x in ("store","url","state","attempts","last_started_at","last_finished_at","last_error") if x in cols]
+                  query = "SELECT " + ",".join(wanted) + " FROM hydration_queue WHERE store='bplatz' ORDER BY " + ("last_finished_at DESC" if "last_finished_at" in cols else "rowid DESC") + " LIMIT 8"
+                  print("BPLATZ_NORMAL_HYDRATION_QUEUE=" + json.dumps([dict(zip(wanted,row)) for row in legacy.execute(query).fetchall()], default=str), flush=True)
+              else:
+                  print("BPLATZ_NORMAL_HYDRATION_QUEUE=table_missing", flush=True)
+          finally:
+              legacy.close()
           PY
           SCRIPT_B64="$(base64 -w0 /tmp/verify_live.py)"
           remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/verify_live.py && BPLATZ_PHASE2_PERSISTENCE=\$BPLATZ_PHASE2_PERSISTENCE /app/.venv/bin/python /tmp/verify_live.py'"
@@ -63,6 +76,8 @@ jobs:
           fi
           remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/verify_live.py && /app/.venv/bin/python /tmp/verify_live.py'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+          echo "=== Recent Bplatz Phase 2 hydration log markers ==="
+          flyctl logs --app scenthunter --no-tail --since 20m 2>&1 | grep -E 'BPLATZ_PHASE2_(PERSISTENCE|ERROR|SKIPPED)' || true
           python - <<'PY'
           import json, urllib.request
           with urllib.request.urlopen("https://scenthunter.fly.dev/health", timeout=20) as response:
