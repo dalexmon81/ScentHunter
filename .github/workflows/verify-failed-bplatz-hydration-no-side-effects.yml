@@ -1,0 +1,67 @@
+name: Verify failed Bplatz hydration left no unintended writes
+
+on:
+  push:
+    branches:
+      - ops/verify-failed-hydration-no-side-effects-20261102
+
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Compare production databases with pre-run backups (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/compare_bplatz.py <<'PY'
+          import json, sqlite3
+          phase="/data/catalog/catalog.sqlite3"
+          legacy="/data/store_catalog.sqlite3"
+          backups={
+            "phase2":"/data/backups/phase2-pre-normal-hydration-41461512488.sqlite3",
+            "legacy":"/data/backups/legacy-pre-normal-hydration-41461512488.sqlite3"
+          }
+          def open_ro(path):
+              return sqlite3.connect("file:"+path+"?mode=ro",uri=True,timeout=30)
+          report={}
+          for name,current in (("phase2",phase),("legacy",legacy)):
+              live=open_ro(current); snap=open_ro(backups[name])
+              try:
+                  integrity=live.execute("PRAGMA integrity_check").fetchone()[0]
+                  fk=live.execute("PRAGMA foreign_key_check").fetchall()
+                  tables=[x[0] for x in snap.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+                  diffs=[]
+                  for table in tables:
+                      # Compare full table contents in a stable order; no writes are issued.
+                      cols=[x[1] for x in snap.execute('PRAGMA table_info("'+table+'")')]
+                      if not cols: continue
+                      select="SELECT "+",".join('"'+c.replace('"','""')+'"' for c in cols)+' FROM "'+table.replace('"','""')+'"'
+                      before=snap.execute(select).fetchall()
+                      after=live.execute(select).fetchall()
+                      if sorted(map(repr,before)) != sorted(map(repr,after)):
+                          diffs.append({"table":table,"before_rows":len(before),"after_rows":len(after)})
+                  report[name]={"integrity_check":integrity,"foreign_key_errors":len(fk),"table_differences":diffs}
+              finally:
+                  live.close(); snap.close()
+          print("FAILED_HYDRATION_READONLY_COMPARISON="+json.dumps(report),flush=True)
+          for name,data in report.items():
+              if data["integrity_check"]!="ok" or data["foreign_key_errors"] or data["table_differences"]:
+                  raise SystemExit("Unexpected database changes or integrity failure in "+name)
+          print("NO_DATABASE_SIDE_EFFECTS=PASS",flush=True)
+          PY
+          SCRIPT_B64="$(base64 -w0 /tmp/compare_bplatz.py)"
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/compare_bplatz.py && /app/.venv/bin/python /tmp/compare_bplatz.py'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+      - name: Verify health
+        run: |
+          python - <<'PY'
+          import json,urllib.request
+          with urllib.request.urlopen("https://scenthunter.fly.dev/health",timeout=20) as r:
+              payload=json.loads(r.read().decode())
+              assert r.status==200 and payload.get("status")=="healthy",payload
+          print("FLY_PRODUCTION_HEALTH=PASS")
+          PY
