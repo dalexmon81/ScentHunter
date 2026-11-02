@@ -452,3 +452,61 @@ def test_phase2_schema_preflight_skips_without_writing_when_tables_missing(monke
         assert tables == {"alembic_version"}
     finally:
         connection.close()
+
+
+def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
+    monkeypatch, tmp_path,
+):
+    import catalog_engine
+
+    parsed, record, _normalized, _group = _real_bplatz_components()
+    phase2_engine, phase2_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(phase2_url)
+        item = {
+            "name": record["raw_name"],
+            "brand": record["brand_raw"],
+            "size_ml": record["size_ml"],
+            "price_num": record["price"],
+            "currency": record["currency"],
+            "url": record["product_url"],
+            "availability": record["availability"],
+            "sku": record["sku"],
+            "gtin": record["gtin"],
+            "mpn": None,
+            "concentration": None,
+            "fetched_at": 1800000000.0,
+        }
+        legacy_db = tmp_path / "legacy-hydration.sqlite3"
+        monkeypatch.setattr(catalog_engine, "DB_PATH", legacy_db)
+        monkeypatch.setattr(catalog_engine, "_SCHEMA_READY", False)
+        monkeypatch.setattr(catalog_engine, "_BPLATZ_PHASE2_MATCHER", None)
+        monkeypatch.setattr(
+            catalog_engine, "http_get",
+            lambda *args, **kwargs: (200, record["product_url"], b"<html><h1>Liquid Brun</h1></html>"),
+        )
+        monkeypatch.setattr(catalog_engine, "parse_product", lambda *args, **kwargs: dict(item))
+        monkeypatch.setenv("BPLATZ_PHASE2_PERSISTENCE", "true")
+        monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", phase2_url)
+
+        hydrated = catalog_engine.refresh_url("bplatz", record["product_url"])
+        assert hydrated is not None
+        assert hydrated["name"] == record["raw_name"]
+
+        with Session(phase2_engine) as session:
+            offers = session.scalars(select(Offer)).all()
+            assert len(offers) == 1
+            offer = offers[0]
+            assert offer.price == Decimal(str(record["price"]))
+            assert offer.url == record["product_url"]
+            assert offer.availability == "in_stock"
+            raw = session.get(IngestionRaw, offer.ingestion_raw_id)
+            assert raw is not None and raw.status == "promoted"
+            assert session.scalar(select(PriceHistory).where(
+                PriceHistory.offer_id == offer.id
+            )) is not None
+            assert session.scalar(select(MatchAudit).where(
+                MatchAudit.offer_id == offer.id
+            )) is not None
+    finally:
+        phase2_engine.dispose()
