@@ -1,1 +1,3 @@
-Temporary push trigger for the read-only legacy SQLite lock diagnosis. No application code or database is changed.
+Temporary push trigger for the read-only legacy SQLite lock diagnosis.
+No application code, deployment configuration, running process, or database is changed.
+Purpose: collect two read-only process/stack samples from Fly.io, 45 seconds apart.
