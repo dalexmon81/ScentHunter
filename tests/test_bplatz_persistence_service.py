@@ -454,6 +454,34 @@ def test_phase2_schema_preflight_skips_without_writing_when_tables_missing(monke
         connection.close()
 
 
+def test_missing_bplatz_store_skips_phase2_without_creating_configuration(monkeypatch, tmp_path):
+    import catalog_engine
+
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        monkeypatch.setenv("BPLATZ_PHASE2_PERSISTENCE", "true")
+        monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", db_url)
+        catalog_engine._maybe_persist_bplatz_phase2(
+            {
+                "name": "Liquid Brun",
+                "brand": "French Avenue",
+                "size_ml": 100,
+                "price_num": 29.90,
+                "currency": "EUR",
+                "availability": "in_stock",
+                "sku": "BPLATZ-STORE-MISSING-TEST",
+            },
+            "https://en.bplatz.de/products/liquid-brun",
+        )
+        with Session(engine) as session:
+            assert session.scalars(select(Store)).all() == []
+            assert session.scalars(select(IngestionRaw)).all() == []
+            assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
+
+
 def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
     monkeypatch, tmp_path,
 ):
@@ -463,6 +491,8 @@ def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
     phase2_engine, phase2_url, _ = _migrated_database(tmp_path)
     try:
         _seed_real_catalog(phase2_url)
+        with Session(phase2_engine) as session, session.begin():
+            _create_bplatz_store(session)
         item = {
             "name": record["raw_name"],
             "brand": record["brand_raw"],
