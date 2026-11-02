@@ -5946,7 +5946,7 @@ def _hydrate_one_task(task):
                 or (item or {}).get("mpn")
                 or "unknown"
             ).strip()
-            sku = re.sub(r"\\s+", "_", sku)
+            sku = re.sub(r"\s+", "_", sku)
             timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             print(
                 "hydration_worker bplatz "
@@ -6006,7 +6006,7 @@ def _hydrate_one_task(task):
             finally:
                 conn.close()
 
-        match = re.search(r'(?:HTTP\\s+|http_status=)(\\d+)', detail)
+        match = re.search(r'(?:HTTP\s+|http_status=)(\d+)', detail)
         http_status = int(match.group(1)) if match else None
         _queue_mark_error(task, detail, http_status=http_status)
         return False
