@@ -1,0 +1,54 @@
+name: Collect legacy SQLite diagnostic logs
+
+on:
+  workflow_dispatch:
+    inputs:
+      machine_id:
+        description: "Optional Fly Machine ID (leave empty for all machines)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-diagnostic-log-collection
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Collect read-only Fly.io diagnostics
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Capture app status and buffered logs
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          MACHINE_ID: ${{ inputs.machine_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          mkdir -p diagnostic-artifacts
+          flyctl status --app scenthunter > diagnostic-artifacts/fly-status.txt
+          flyctl machine list --app scenthunter > diagnostic-artifacts/fly-machines.txt
+          if [ -n "$MACHINE_ID" ]; then
+            flyctl logs --no-tail --json --app scenthunter --machine "$MACHINE_ID" > diagnostic-artifacts/fly-logs.jsonl
+          else
+            flyctl logs --no-tail --json --app scenthunter > diagnostic-artifacts/fly-logs.jsonl
+          fi
+          grep -F "SQLITE_TXN_TELEMETRY " diagnostic-artifacts/fly-logs.jsonl > diagnostic-artifacts/sqlite-telemetry.jsonl || true
+          printf 'Captured at UTC: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > diagnostic-artifacts/collection.txt
+          printf 'Telemetry records: ' >> diagnostic-artifacts/collection.txt
+          wc -l < diagnostic-artifacts/sqlite-telemetry.jsonl >> diagnostic-artifacts/collection.txt
+
+      - name: Upload diagnostic artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scentHunter-legacy-sqlite-diagnostics
+          path: diagnostic-artifacts/
+          if-no-files-found: error
+          retention-days: 3
