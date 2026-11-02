@@ -4062,10 +4062,12 @@ def _maybe_persist_bplatz_phase2(item, url):
         }
         with Session(engine) as session, session.begin():
             store = session.scalar(select(Store).where(Store.slug == "bplatz"))
-            if store is None:
-                store = Store(name="Bplatz", slug="bplatz", country="DE", currency="EUR", status="active")
-                session.add(store)
-                session.flush()
+            if store is None or store.status != "active":
+                print(
+                    "BPLATZ_PHASE2_SKIPPED reason=bplatz_store_not_provisioned_or_inactive",
+                    flush=True,
+                )
+                return
             result = persist_bplatz_record(
                 session, store_id=store.id, raw_record=raw_record,
                 matcher=_BPLATZ_PHASE2_MATCHER,
