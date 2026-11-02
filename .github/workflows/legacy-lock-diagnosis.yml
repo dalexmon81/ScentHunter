@@ -51,7 +51,7 @@ jobs:
             echo PROCESS_614_CMDLINE
             cat /proc/614/cmdline 2>&1
             echo PROCESS_614_STATUS
-            grep -E ^(Name|State|Threads|voluntary_ctxt_switches|nonvoluntary_ctxt_switches): /proc/614/status 2>&1
+            cat /proc/614/status 2>&1
             echo PROCESS_614_LEGACY_FD_TARGETS
             for fd in /proc/614/fd/*; do
               target=\$(readlink \$fd 2>/dev/null) || continue
