@@ -1,0 +1,68 @@
+name: Verify Bplatz Phase 2 persisted offer (read only)
+
+on:
+  push:
+    branches:
+      - ops/bplatz-phase2-direct-persistence-20261102
+    paths:
+      - .github/workflows/verify-bplatz-phase2-readonly.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Verify persisted Liquid Brun offer without writes
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_command="/bin/sh -lc 'SCENTHUNTER_CATALOG_DATABASE_URL=sqlite:////data/catalog/catalog.sqlite3 /app/.venv/bin/python - <<\\\x27PY\\\x27
+          import json, os, sqlite3
+          db=os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"].replace("sqlite:////", "/")
+          con=sqlite3.connect("file:"+db+"?mode=ro", uri=True, timeout=30)
+          con.row_factory=sqlite3.Row
+          try:
+              integrity=con.execute("PRAGMA integrity_check").fetchone()[0]
+              fk=con.execute("PRAGMA foreign_key_check").fetchall()
+              rows=con.execute("""SELECT o.id,o.price,o.currency,o.availability,o.status,o.url,
+                  s.name AS store,b.name AS brand,f.name AS fragrance,pv.size_ml,
+                  ir.status AS raw_status,
+                  (SELECT COUNT(*) FROM price_history ph WHERE ph.offer_id=o.id) AS history_count,
+                  (SELECT COUNT(*) FROM match_audit ma WHERE ma.offer_id=o.id) AS audit_count
+                  FROM offers o JOIN stores s ON s.id=o.store_id
+                  JOIN product_variants pv ON pv.id=o.product_variant_id
+                  JOIN fragrances f ON f.id=pv.fragrance_id
+                  JOIN brands b ON b.id=f.brand_id
+                  JOIN ingestion_raw ir ON ir.id=o.ingestion_raw_id
+                  WHERE s.slug=\\\x27bplatz\\\x27 AND lower(f.name) LIKE \\\x27%liquid brun%\\\x27
+                  ORDER BY o.captured_at DESC""").fetchall()
+              result=[dict(r) for r in rows]
+              good=any(r["status"]=="active" and r["raw_status"]=="promoted"
+                  and r["brand"].lower()=="french avenue" and r["size_ml"]==100
+                  and float(r["price"])>0 and r["currency"]=="EUR"
+                  and r["availability"] in ("in_stock","out_of_stock")
+                  and r["history_count"]>0 and r["audit_count"]>0 for r in result)
+              print("BPLATZ_PHASE2_READONLY="+json.dumps({
+                  "status":"success" if good and integrity=="ok" and not fk else "failed",
+                  "integrity_check":integrity,"foreign_key_errors":len(fk),
+                  "liquid_brun_offers":result},default=str),flush=True)
+              if not good or integrity!="ok" or fk: raise SystemExit(1)
+          finally: con.close()
+          PY' "
+          timeout 300s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+      - name: Verify production health
+        run: |
+          python - <<'PY'
+          import json,urllib.request
+          with urllib.request.urlopen("https://scenthunter.fly.dev/health",timeout=20) as r:
+              data=json.loads(r.read().decode())
+          if data.get("status")!="healthy": raise SystemExit(json.dumps(data))
+          print("FLY_PRODUCTION_HEALTH=PASS")
+          PY
