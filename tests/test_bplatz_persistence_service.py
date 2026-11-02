@@ -338,15 +338,29 @@ def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_
             )
             assert second.status == "promoted"
             assert second.offer_id == first.offer_id
+
+        # An unchanged observation is still a new successful hydration. It
+        # must append history/audit rows without increasing the Offer count.
+        with Session(engine) as session, session.begin():
+            third = persist_bplatz_record(
+                session, store_id=store_id, raw_record=dict(updated_record), matcher=matcher,
+            )
+            assert third.status == "promoted"
+            assert third.offer_id == first.offer_id
+
         with Session(engine) as session:
             offers = session.scalars(select(Offer)).all()
             history = session.scalars(
                 select(PriceHistory).where(PriceHistory.offer_id == first.offer_id)
             ).all()
+            audits = session.scalars(
+                select(MatchAudit).where(MatchAudit.offer_id == first.offer_id)
+            ).all()
             assert len(offers) == 1
-            assert len(history) == 2
+            assert len(history) == 3
+            assert len(audits) == 3
             assert offers[0].price == Decimal(str(updated_record["price"]))
-            assert offers[0].ingestion_raw_id == second.ingestion_raw_id
+            assert offers[0].ingestion_raw_id == third.ingestion_raw_id
     finally:
         engine.dispose()
 
@@ -498,7 +512,7 @@ def test_missing_bplatz_store_skips_phase2_without_creating_configuration(monkey
 
 
 def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
-    monkeypatch, tmp_path,
+    monkeypatch, tmp_path, capsys,
 ):
     import catalog_engine
 
@@ -537,6 +551,8 @@ def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
         hydrated = catalog_engine.refresh_url("bplatz", record["product_url"])
         assert hydrated is not None
         assert hydrated["name"] == record["raw_name"]
+        # A direct refresh_url call is not evidence of normal queue-worker work.
+        assert "hydration_worker bplatz" not in capsys.readouterr().out
         # The opt-in Bplatz path must not initialize or touch the legacy DB.
         assert not legacy_db.exists()
 
@@ -557,3 +573,44 @@ def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
             )) is not None
     finally:
         phase2_engine.dispose()
+
+
+
+def test_normal_bplatz_hydration_worker_logs_only_after_phase2_persistence(
+    monkeypatch, capsys,
+):
+    import catalog_engine
+
+    monkeypatch.setattr(catalog_engine, "_foreground_search_running", lambda: False)
+    monkeypatch.setattr(catalog_engine, "_queue_mark_done", lambda task: None)
+    monkeypatch.setattr(
+        catalog_engine,
+        "refresh_url",
+        lambda store, url: (
+            setattr(
+                catalog_engine._thread_local.hydration_worker_context,
+                "phase2_persisted",
+                True,
+            )
+            or {
+                "name": "Liquid Brun",
+                "sku": "BPLATZ-LIQUID-BRUN-100",
+                "price_num": 29.90,
+                "availability": "in_stock",
+            }
+        ),
+    )
+
+    result = catalog_engine._hydrate_one_task({
+        "store": "bplatz",
+        "url": "https://en.bplatz.de/products/liquid-brun",
+        "attempts": 2,
+    })
+
+    output = capsys.readouterr().out
+    assert result is True
+    assert "hydration_worker bplatz product=BPLATZ-LIQUID-BRUN-100 phase2_persisted=true" in output
+    assert "worker=" in output
+    assert "timestamp=" in output
+    assert "offer_id=" in output
+    assert "ingestion_raw_id=" in output
