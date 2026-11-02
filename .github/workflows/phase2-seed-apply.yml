@@ -1,0 +1,236 @@
+name: Phase 2 controlled catalog seed apply
+
+on:
+  push:
+    branches:
+      - ops/phase2-seed-apply-20261102
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    name: Preflight, apply seed, and verify Phase 2
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run guarded seed on the existing Fly machine
+        id: seed
+        continue-on-error: true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p phase2-seed-apply
+          python - <<'PY'
+          import base64
+          import json
+          import shlex
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          remote_script = r"""
+          import hashlib
+          import json
+          import os
+          import sqlite3
+          import subprocess
+          import sys
+
+          DB = "/data/catalog/catalog.sqlite3"
+          BACKUP = "/data/backups/phase2-catalog-20261102T092613Z.sqlite3"
+          BACKUP_SHA256 = "73261f0b11618cdb06aa9b2263454fce04c36c9fb395422c3bf898b5fcbb9252"
+          PY = "/app/.venv/bin/python"
+          SEED = "/app/backend/scripts/seed_catalog.py"
+          VERIFY = "/app/backend/scripts/verify_catalog.py"
+
+          result = {"database_path_expected": DB, "backup_path": BACKUP}
+          try:
+              if not os.path.isfile(BACKUP):
+                  raise RuntimeError("Verified pre-seed backup is missing")
+              digest = hashlib.sha256()
+              with open(BACKUP, "rb") as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              result["backup_sha256"] = digest.hexdigest()
+              if digest.hexdigest() != BACKUP_SHA256:
+                  raise RuntimeError("Backup SHA-256 does not match the verified artifact")
+
+              if not os.path.isfile(DB):
+                  raise RuntimeError("Expected Phase 2 database is missing")
+              conn = sqlite3.connect("file:" + DB + "?mode=ro", uri=True, timeout=15)
+              conn.row_factory = sqlite3.Row
+              conn.execute("PRAGMA query_only=ON")
+              db_rows = [dict(r) for r in conn.execute("PRAGMA database_list")]
+              actual = next((r["file"] for r in db_rows if r["name"] == "main"), None)
+              result["database_path_actual"] = actual
+              if os.path.realpath(actual or "") != os.path.realpath(DB):
+                  raise RuntimeError("Connected to a database other than Phase 2")
+              tables = {r[0] for r in conn.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+              )}
+              if "alembic_version" not in tables:
+                  raise RuntimeError("Alembic version table is missing")
+              revision = [r[0] for r in conn.execute("SELECT version_num FROM alembic_version")]
+              result["alembic_version_before"] = revision
+              if revision != ["0002_ingestion_raw"]:
+                  raise RuntimeError("Unexpected Alembic revision: " + repr(revision))
+              before = {}
+              for table in ("brands", "fragrances", "product_variants", "offers",
+                            "price_history", "match_audit", "legacy_product_id_map",
+                            "legacy_variant_id_map"):
+                  if table not in tables:
+                      raise RuntimeError("Required table missing: " + table)
+                  before[table] = conn.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+              result["counts_before"] = before
+              expected_before = {
+                  "brands": 60, "fragrances": 1375, "product_variants": 511,
+                  "offers": 0, "price_history": 0, "match_audit": 0,
+                  "legacy_product_id_map": 0, "legacy_variant_id_map": 0
+              }
+              if before != expected_before:
+                  raise RuntimeError("Preflight counts differ from approved baseline")
+              integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+              result["integrity_before"] = integrity
+              if integrity != "ok":
+                  raise RuntimeError("Preflight integrity_check failed")
+              conn.close()
+
+              dry = subprocess.run([PY, SEED], cwd="/app/backend",
+                                   text=True, capture_output=True, timeout=180)
+              result["dry_run_stdout"] = dry.stdout
+              result["dry_run_stderr"] = dry.stderr
+              if dry.returncode != 0:
+                  raise RuntimeError("Seed dry-run failed")
+              dry_report = json.loads(dry.stdout)
+              result["dry_run"] = dry_report
+              if (dry_report.get("status") != "validated"
+                  or dry_report.get("brands") != 60
+                  or dry_report.get("fragrances") != 1389
+                  or dry_report.get("variants") != 511
+                  or dry_report.get("products_without_variants") != 1063
+                  or dry_report.get("offers_imported") != 0
+                  or dry_report.get("database_written") is not False):
+                  raise RuntimeError("Dry-run report differs from reviewed catalog baseline")
+
+              applied = subprocess.run([PY, SEED, "--apply"], cwd="/app/backend",
+                                       text=True, capture_output=True, timeout=300)
+              result["apply_stdout"] = applied.stdout
+              result["apply_stderr"] = applied.stderr
+              if applied.returncode != 0:
+                  raise RuntimeError("Seed --apply failed")
+              apply_report = json.loads(applied.stdout)
+              result["apply_report"] = apply_report
+              if apply_report.get("status") != "seeded" or apply_report.get("database_written") is not True:
+                  raise RuntimeError("Seed did not report a completed database write")
+
+              verify = subprocess.run([PY, VERIFY], cwd="/app/backend",
+                                      text=True, capture_output=True, timeout=180)
+              result["verify_catalog_stdout"] = verify.stdout
+              result["verify_catalog_stderr"] = verify.stderr
+              if verify.returncode != 0:
+                  raise RuntimeError("verify_catalog.py failed after seed")
+
+              check = sqlite3.connect("file:" + DB + "?mode=ro", uri=True, timeout=15)
+              check.row_factory = sqlite3.Row
+              check.execute("PRAGMA query_only=ON")
+              after_tables = {r[0] for r in check.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+              )}
+              after = {}
+              for table in ("brands", "fragrances", "product_variants", "offers",
+                            "price_history", "match_audit", "legacy_product_id_map",
+                            "legacy_variant_id_map"):
+                  after[table] = check.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+              revision_after = [r[0] for r in check.execute("SELECT version_num FROM alembic_version")]
+              integrity_after = check.execute("PRAGMA integrity_check").fetchone()[0]
+              fk_violations = [dict(r) for r in check.execute("PRAGMA foreign_key_check")]
+              result["counts_after"] = after
+              result["alembic_version_after"] = revision_after
+              result["integrity_after"] = integrity_after
+              result["foreign_key_violations"] = fk_violations
+              check.close()
+
+              expected_after = {
+                  "brands": 60, "fragrances": 1375, "product_variants": 511,
+                  "offers": 0, "price_history": 0, "match_audit": 0,
+                  "legacy_product_id_map": 1389, "legacy_variant_id_map": 511
+              }
+              if after != expected_after:
+                  raise RuntimeError("Post-seed database counts differ from expected")
+              if revision_after != ["0002_ingestion_raw"]:
+                  raise RuntimeError("Alembic revision unexpectedly changed")
+              if integrity_after != "ok" or fk_violations:
+                  raise RuntimeError("Post-seed SQLite integrity/foreign-key verification failed")
+              result["ok"] = True
+          except Exception as exc:
+              result["ok"] = False
+              result["error"] = type(exc).__name__ + ": " + str(exc)
+
+          print("PHASE2_SEED_APPLY_RESULT=" + json.dumps(result, sort_keys=True), flush=True)
+          if not result.get("ok"):
+              sys.exit(1)
+          """
+
+          encoded = base64.b64encode(remote_script.encode()).decode()
+          remote_command = "/app/.venv/bin/python -c " + shlex.quote(
+              "exec(__import__('base64').b64decode('" + encoded + "'))"
+          )
+          try:
+              proc = subprocess.run(
+                  ["flyctl", "ssh", "console", "--app", "scenthunter",
+                   "--select=false", "-C", remote_command],
+                  text=True, capture_output=True, timeout=720,
+              )
+              raw = "STDOUT:\n" + proc.stdout + "\nSTDERR:\n" + proc.stderr
+              Path("phase2-seed-apply/console-output.txt").write_text(raw)
+              marker = "PHASE2_SEED_APPLY_RESULT="
+              line = next((line for line in proc.stdout.splitlines() if marker in line), None)
+              payload = json.loads(line.split(marker, 1)[1]) if line else {
+                  "ok": False, "error": "No structured seed result returned",
+                  "fly_exit_code": proc.returncode
+              }
+              Path("phase2-seed-apply/report.json").write_text(
+                  json.dumps(payload, indent=2, sort_keys=True) + "\n"
+              )
+              print(json.dumps(payload, indent=2, sort_keys=True))
+              if proc.returncode != 0 or not payload.get("ok"):
+                  sys.exit(1)
+          except Exception as exc:
+              payload = {"ok": False, "error": type(exc).__name__ + ": " + str(exc)}
+              Path("phase2-seed-apply/report.json").write_text(
+                  json.dumps(payload, indent=2) + "\n"
+              )
+              print(json.dumps(payload, indent=2))
+              sys.exit(1)
+          PY
+
+      - name: Verify public health endpoint
+        if: steps.seed.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o phase2-seed-apply/health.json -w '%{http_code}' https://scenthunter.fly.dev/health)"
+          echo "HTTP status: ${code}"
+          cat phase2-seed-apply/health.json
+          test "${code}" = "200"
+
+      - name: Upload seed and verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-seed-apply
+          path: phase2-seed-apply/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail if seed or health verification failed
+        if: steps.seed.outcome != 'success'
+        run: |
+          echo "Phase 2 seed/apply or database verification failed. Inspect the artifact."
+          exit 1
