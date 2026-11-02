@@ -24,51 +24,54 @@ jobs:
         run: |
           set -u
           : > pyspy-lock-diagnosis.txt
-          remote_command="/bin/sh -lc '
-            echo === PY_SPY_AVAILABILITY ===
-            if command -v py-spy >/dev/null 2>&1; then
-              command -v py-spy
-              py-spy --version 2>&1
-              PYSPY_AVAILABLE=1
+          remote_script=$(cat <<'REMOTE'
+          echo === PY_SPY_AVAILABILITY ===
+          if command -v py-spy >/dev/null 2>&1; then
+            command -v py-spy
+            py-spy --version 2>&1
+            PYSPY_AVAILABLE=1
+          else
+            echo py-spy-not-installed
+            PYSPY_AVAILABLE=0
+          fi
+          sample() {
+            label=$1
+            echo === $label ===
+            date -u
+            echo PROCESS_CMDLINE
+            cat /proc/614/cmdline 2>&1
+            echo PROCESS_STATUS
+            grep -E '^(Name|State|Threads):' /proc/614/status 2>&1
+            echo LEGACY_INODES
+            ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
+            echo PROCESS_LEGACY_FDS
+            for fd in /proc/614/fd/*; do
+              target=$(readlink "$fd" 2>/dev/null) || continue
+              case "$target" in
+                /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
+                  echo "$fd -> $target"
+                  ;;
+              esac
+            done
+            echo PROCESS_LOCKS
+            cat /proc/locks 2>&1
+            if [ "$PYSPY_AVAILABLE" = 1 ]; then
+              echo PY_SPY_DUMP_BEGIN
+              py-spy dump --pid 614 2>&1
+              echo PY_SPY_DUMP_EXIT=$?
+              echo PY_SPY_DUMP_END
             else
-              echo py-spy-not-installed
-              PYSPY_AVAILABLE=0
+              echo PY_SPY_DUMP_SKIPPED_NOT_INSTALLED
             fi
-            sample() {
-              label=\$1
-              echo === \$label ===
-              date -u
-              echo PROCESS_CMDLINE
-              cat /proc/614/cmdline 2>&1
-              echo PROCESS_STATUS
-              grep -E "^(Name|State|Threads):" /proc/614/status 2>&1
-              echo LEGACY_INODES
-              ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1
-              echo PROCESS_LEGACY_FDS
-              for fd in /proc/614/fd/*; do
-                target=\$(readlink \$fd 2>/dev/null) || continue
-                case \$target in
-                  /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*)
-                    echo \$fd -\> \$target
-                    ;;
-                esac
-              done
-              echo PROCESS_LOCKS
-              cat /proc/locks 2>&1
-              if [ "\$PYSPY_AVAILABLE" = 1 ]; then
-                echo PY_SPY_DUMP_BEGIN
-                py-spy dump --pid 614 2>&1
-                echo PY_SPY_DUMP_EXIT=\$?
-                echo PY_SPY_DUMP_END
-              else
-                echo PY_SPY_DUMP_SKIPPED_NOT_INSTALLED
-              fi
-            }
-            sample SAMPLE_1
-            echo WAITING_45_SECONDS_NO_DATABASE_OR_PROCESS_MODIFICATION
-            sleep 45
-            sample SAMPLE_2
-          '"
+          }
+          sample SAMPLE_1
+          echo WAITING_45_SECONDS_NO_DATABASE_OR_PROCESS_MODIFICATION
+          sleep 45
+          sample SAMPLE_2
+          REM
+          )
+          encoded_script=$(printf '%s' "$remote_script" | base64 -w0)
+          remote_command="/bin/sh -lc 'echo $encoded_script | base64 -d | /bin/sh'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee pyspy-lock-diagnosis.txt
           ssh_status=${PIPESTATUS[0]}
           echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a pyspy-lock-diagnosis.txt
