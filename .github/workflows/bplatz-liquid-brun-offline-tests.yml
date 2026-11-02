@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/phase2-bplatz-staging-pipeline
+      - test/bplatz-real-canonical-matcher
     paths:
       - tests/test_bplatz_liquid_brun_fixture.py
       - backend/scrapers/bplatz/scraper.py
