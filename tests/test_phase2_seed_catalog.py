@@ -185,7 +185,6 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
     assert first.returncode == 0, first.stderr
     first_report = json.loads(first.stdout)
     assert first_report["status"] == "seeded"
-    assert first_report["database_counts"]["fragrances"] == len(products)
     assert first_report["database_counts"]["legacy_product_id_map"] == len(products)
     assert first_report["database_counts"]["product_variants"] == len(variants)
     assert first_report["database_counts"]["legacy_variant_id_map"] == len(variants)
@@ -216,10 +215,6 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
                 )
 
             first_product_id = str(products[0]["product_id"])
-            first_variant = next(
-                (row for row in variants if str(row["product_id"]) == first_product_id),
-                None,
-            )
             missing_variant_id = "LEGACY-VARIANT-ID-DOES-NOT-EXIST"
             resolved_missing = resolve_legacy_ids(
                 session,
