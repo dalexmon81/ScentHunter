@@ -27,8 +27,9 @@ jobs:
           remote_script=$(cat <<'REMOTE'
           set -u
           TMP_PYSPY=/tmp/scenthunter-py-spy
+          TMP_WHEEL=/tmp/scenthunter-py-spy.whl
           cleanup() {
-            rm -f "$TMP_PYSPY"
+            rm -f "$TMP_PYSPY" "$TMP_WHEEL"
             echo TEMPORARY_PY_SPY_REMOVED
           }
           trap cleanup EXIT
@@ -42,12 +43,13 @@ jobs:
           echo === INSTALL_TEMPORARY_PY_SPY ===
           ARCH=$(uname -m)
           case "$ARCH" in
-            x86_64|amd64) ASSET=py-spy-linux-x86_64 ;;
-            aarch64|arm64) ASSET=py-spy-linux-aarch64 ;;
+            x86_64|amd64) WHEEL=py_spy-0.4.3-py2.py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.whl ;;
+            aarch64|arm64) WHEEL=py_spy-0.4.3-py2.py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl ;;
             *) echo "UNSUPPORTED_ARCH=$ARCH"; exit 2 ;;
           esac
           python3 -c 'import sys,urllib.request; urllib.request.urlretrieve(sys.argv[1],sys.argv[2])' \
-            "https://github.com/benfred/py-spy/releases/latest/download/$ASSET" "$TMP_PYSPY"
+            "https://github.com/benfred/py-spy/releases/download/v0.4.3/$WHEEL" "$TMP_WHEEL"
+          python3 -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); names=[n for n in z.namelist() if n.endswith(".data/scripts/py-spy")]; print("WHEEL_EXECUTABLES",names); assert names, "py-spy executable missing from wheel"; open(sys.argv[2],"wb").write(z.read(names[0]))' "$TMP_WHEEL" "$TMP_PYSPY"
           chmod 700 "$TMP_PYSPY"
           "$TMP_PYSPY" --version
 
@@ -56,9 +58,9 @@ jobs:
             [ -e "$shm" ] || return 1
             inode=$(stat -c '%i' "$shm" 2>/dev/null) || return 1
             awk -v inode="$inode" '
-              $1=="POSIX" && $3=="WRITE" {
-                n=split($5, devino, ":")
-                if (n >= 3 && devino[3] == inode) print $4
+              $1=="POSIX" && $4=="WRITE" {
+                n=split($6, devino, ":")
+                if (n >= 3 && devino[3] == inode) print $5
               }
             ' /proc/locks | sort -u
           }
