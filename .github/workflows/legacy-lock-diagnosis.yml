@@ -1,0 +1,41 @@
+name: Read-only legacy SQLite lock diagnosis
+
+on:
+  push:
+    branches:
+      - chore/diagnose-legacy-lock
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-fly-processes:
+    name: Inspect Fly processes and SQLite lock files (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Collect read-only process and file-lock evidence
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -u
+          : > legacy-lock-diagnosis.txt
+          remote_command="/bin/sh -lc 'echo === ps -eo pid,ppid,lstart,etime,stat,cmd ===; ps -eo pid,ppid,lstart,etime,stat,cmd; echo === lsof legacy ===; lsof /data/store_catalog.sqlite3 || true; echo === lsof phase2 ===; lsof /data/catalog/catalog.sqlite3 || true; echo === database WAL and SHM files ===; ls -l --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1 || true; echo === proc locks ===; cat /proc/locks'"
+
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee legacy-lock-diagnosis.txt
+          ssh_status=${PIPESTATUS[0]}
+          echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a legacy-lock-diagnosis.txt
+          exit "$ssh_status"
+
+      - name: Upload diagnosis evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-lock-diagnosis
+          path: legacy-lock-diagnosis.txt
+          if-no-files-found: warn
+          retention-days: 30
