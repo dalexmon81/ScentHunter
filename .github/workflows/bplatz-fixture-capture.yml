@@ -21,7 +21,7 @@ jobs:
           ref: feat/phase2-bplatz-staging-pipeline
       - name: Capture original Bplatz response
         env:
-          PRODUCT_URL: https://en.bplatz.de/Products/riiffs-freeze-extrait-de-parfum-100-ml
+          PRODUCT_URL: https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916
         run: |
           python - <<'PY'
           import datetime, hashlib, json, os, pathlib, urllib.request
@@ -45,16 +45,18 @@ jobs:
               status = exc.code
               final_url = exc.geturl()
               content_type = exc.headers.get("Content-Type", "")
-          (out / "6295151504031.raw.html").write_bytes(payload)
+          (out / "liquid-brun-54015243419916.raw.html").write_bytes(payload)
           meta = {
+              "url_requested": url,
               "url_final": final_url,
+              "shopify_variant_id": "54015243419916",
               "acquired_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
               "http_status": status,
               "content_type": content_type,
               "sha256": hashlib.sha256(payload).hexdigest(),
-              "note": "Prezzo atteso 25,90 EUR solo come riferimento indicizzato; non e' un dato imposto o inventato nel payload."
+              "note": "Authentic response bytes; price, availability and identifiers must be parsed from this payload, never hardcoded."
           }
-          (out / "6295151504031.meta.json").write_text(
+          (out / "liquid-brun-54015243419916.meta.json").write_text(
               json.dumps(meta, ensure_ascii=False, indent=2) + chr(10), encoding="utf-8"
           )
           print(json.dumps(meta, ensure_ascii=False, indent=2))
@@ -66,18 +68,18 @@ jobs:
       - name: Commit exact captured bytes to dedicated branch
         run: |
           mkdir -p tests/fixtures/bplatz
-          cp capture/6295151504031.raw.html tests/fixtures/bplatz/6295151504031.raw.html
-          cp capture/6295151504031.meta.json tests/fixtures/bplatz/6295151504031.meta.json
+          cp capture/liquid-brun-54015243419916.raw.html tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html
+          cp capture/liquid-brun-54015243419916.meta.json tests/fixtures/bplatz/liquid-brun-54015243419916.meta.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/fixtures/bplatz/6295151504031.raw.html tests/fixtures/bplatz/6295151504031.meta.json
-          git commit -m "Add authentic Bplatz product response fixture"
+          git add tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html tests/fixtures/bplatz/liquid-brun-54015243419916.meta.json
+          git commit -m "Add authentic Bplatz Liquid Brun response fixture"
           git pull --rebase origin feat/phase2-bplatz-staging-pipeline
           git push origin HEAD:feat/phase2-bplatz-staging-pipeline
       - name: Upload captured response
         uses: actions/upload-artifact@v4
         with:
-          name: bplatz-raw-fixture-capture
+          name: bplatz-liquid-brun-raw-fixture
           path: capture/
           if-no-files-found: error
           retention-days: 7
