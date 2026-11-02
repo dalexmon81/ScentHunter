@@ -71,10 +71,11 @@ def test_real_parser_normalizer_matcher_and_sqlalchemy_promotion():
                 price=normalized.price, currency=normalized.currency,
                 url=normalized.product_url, availability=normalized.availability,
                 source="bplatz_jsonld", confidence=Decimal("0.990"))
+            variant_id = variant.id
         with Session(engine) as session:
             offer = session.get(Offer, offer_id)
             raw = session.get(IngestionRaw, raw_id)
-            assert offer is not None and offer.product_variant_id == variant.id
+            assert offer is not None and offer.product_variant_id == variant_id
             assert offer.ingestion_raw_id == raw_id
             assert raw is not None and raw.status == "promoted"
             assert session.scalar(select(PriceHistory).where(PriceHistory.offer_id == offer_id))
