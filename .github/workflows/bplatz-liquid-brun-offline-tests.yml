@@ -30,3 +30,4 @@ jobs:
         run: python -m pip install beautifulsoup4 pytest requests
       - name: Verify committed fixture and run isolated SQLite tests
         run: python -m pytest -q -s tests/test_bplatz_liquid_brun_fixture.py
+# Dedicated isolated matcher verification branch trigger.
