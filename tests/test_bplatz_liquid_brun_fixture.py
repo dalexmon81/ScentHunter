@@ -296,3 +296,5 @@ def test_real_canonical_matcher_resolves_bplatz_against_actual_catalog():
     assert insufficient_result.matched_offer_count == 0
     assert not insufficient_result.groups
     assert len(insufficient_result.unresolved) == 1
+
+# Keep this file covered by the dedicated branch-specific offline workflow.
