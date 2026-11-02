@@ -6,6 +6,7 @@ on:
       - feat/phase2-bplatz-staging-pipeline
     paths:
       - tests/test_bplatz_liquid_brun_fixture.py
+      - backend/scrapers/bplatz/scraper.py
       - tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html
       - tests/fixtures/bplatz/liquid-brun-54015243419916.meta.json
       - .github/workflows/bplatz-liquid-brun-offline-tests.yml
@@ -25,6 +26,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install parser test dependency
-        run: python -m pip install beautifulsoup4 pytest
+        run: python -m pip install beautifulsoup4 pytest requests
       - name: Verify committed fixture and run isolated SQLite tests
         run: python -m pytest -q -s tests/test_bplatz_liquid_brun_fixture.py
