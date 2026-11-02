@@ -1,0 +1,10 @@
+{
+  "url_requested": "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916",
+  "url_final": "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916",
+  "shopify_variant_id": "54015243419916",
+  "acquired_at_utc": "2026-11-02T05:40:23.362122+00:00",
+  "http_status": 200,
+  "content_type": "text/html; charset=utf-8",
+  "sha256": "9f76b00bc7472ccd389116302f06e2e02f258dc17fee7f43371993f79284c017",
+  "note": "Authentic response bytes; price, availability and identifiers must be parsed from this payload, never hardcoded."
+}
