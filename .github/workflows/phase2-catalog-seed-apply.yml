@@ -99,7 +99,7 @@ jobs:
 
           expected_counts = {
               "brands": 60,
-              "fragrances": 1389,
+              "fragrances": 1375,
               "product_variants": 511,
               "offers": 0,
               "invalid_active_offers": 0,
