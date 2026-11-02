@@ -67,13 +67,13 @@ class Store(Base):
 class LegacyProductIdMap(Base):
     __tablename__ = "legacy_product_id_map"
     legacy_product_id: Mapped[str] = mapped_column(String(80), primary_key=True)
-    fragrance_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False, unique=True)
+    fragrance_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False)
 
 
 class LegacyVariantIdMap(Base):
     __tablename__ = "legacy_variant_id_map"
     legacy_variant_id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    product_variant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False, unique=True)
+    product_variant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False)
 
 
 class IngestionRaw(Base):
