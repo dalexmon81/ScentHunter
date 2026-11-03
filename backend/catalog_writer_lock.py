@@ -72,7 +72,7 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
                 if time.monotonic() >= deadline:
                     os.close(fd)
                     raise sqlite3.OperationalError(
-                        "catalog writer coordination lock timed out"
+                        "database is locked (catalog writer coordination lock timed out)"
                     )
                 time.sleep(min(0.025, max(0.001, deadline - time.monotonic())))
             except Exception:
