@@ -135,7 +135,7 @@ def _offer_state_fresh(row: dict | None, max_age_seconds: float = 300) -> bool:
 
 
 def _requeue(db_path: str) -> dict:
-    conn = sqlite3.connect(db_path, timeout=5)
+    conn = _connect_writer(db_path, timeout=5)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("BEGIN IMMEDIATE")
