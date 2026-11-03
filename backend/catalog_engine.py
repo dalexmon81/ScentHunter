@@ -1299,7 +1299,11 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
         return state, 0, detail
 
     items = list(product_urls.items())
-    batch_size = 250
+    # Keep each discovery write transaction short. Each URL updates both
+    # store_urls and hydration_queue; the latter performs several indexed
+    # store_products existence checks. A large batch can monopolize SQLite's
+    # single WAL writer and starve hydration/coverage workers.
+    batch_size = 25
     persisted = 0
     queued = 0
 
