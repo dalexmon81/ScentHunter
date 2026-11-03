@@ -22,6 +22,15 @@ SKU = "1385920"
 SIZE_ML = 150
 
 
+def _connect_writer(db_path: str, timeout: float = 5) -> sqlite3.Connection:
+    import sys
+    backend_dir = str(Path(__file__).resolve().parents[1])
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+    from catalog_writer_lock import connect as connect_catalog_db
+    return connect_catalog_db(db_path, timeout=timeout)
+
+
 def _read_row(db_path: str) -> dict | None:
     path = Path(db_path).resolve()
     conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)
@@ -81,7 +90,7 @@ def _offer_state_valid(row: dict | None) -> bool:
 def _mark_queue_done(db_path: str) -> bool:
     """Close the exact target's queue row after its persisted offer is verified."""
     now = time.time()
-    conn = sqlite3.connect(db_path, timeout=5)
+    conn = _connect_writer(db_path, timeout=5)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=5000")
     try:
