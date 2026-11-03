@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from sqlalchemy import create_engine, inspect, select, text
+from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.engine import URL, make_url
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,17 +22,9 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app.models import Base  # noqa: E402
 
 TABLE_ORDER = (
-    "brands",
-    "fragrances",
-    "product_variants",
-    "stores",
-    "legacy_product_id_map",
-    "legacy_variant_id_map",
-    "ingestion_raw",
-    "offers",
-    "price_history",
-    "match_audit",
-    "ingestion_runs",
+    "brands", "fragrances", "product_variants", "stores",
+    "legacy_product_id_map", "legacy_variant_id_map", "ingestion_raw",
+    "offers", "price_history", "match_audit", "ingestion_runs",
 )
 EXPECTED_REVISION = "0003_store_domain"
 
@@ -42,8 +34,7 @@ def open_source_read_only(source_path: Path):
     if not source_path.is_file():
         raise ValueError("Source must be an existing SQLite database file.")
     url = URL.create(
-        "sqlite+pysqlite",
-        database=f"file:{source_path}",
+        "sqlite+pysqlite", database=f"file:{source_path}",
         query={"mode": "ro", "uri": "true"},
     )
     return create_engine(url, pool_pre_ping=True)
@@ -60,12 +51,10 @@ def open_migration_target(environ=None):
         url = make_url(raw_url)
     except Exception:
         raise ValueError("Migration target URL is invalid.") from None
-    if url.get_backend_name() != "postgresql" or url.drivername not in {
-        "postgresql+psycopg", "postgresql",
-    }:
-        raise ValueError("Migration target must use PostgreSQL with psycopg 3.")
     if url.drivername == "postgresql":
         url = url.set(drivername="postgresql+psycopg")
+    if url.drivername != "postgresql+psycopg":
+        raise ValueError("Migration target must use PostgreSQL with psycopg 3.")
     return create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=0)
 
 
@@ -111,14 +100,10 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
 
     source_engine = open_source_read_only(source_path)
     report = {
-        "status": "dry_run",
-        "source": source_path.name,
-        "target_database": database_name,
-        "target_dialect": "postgresql",
-        "alembic_revision": revision,
-        "tables": {},
-        "source_modified": False,
-        "destination_written": False,
+        "status": "dry_run", "source": source_path.name,
+        "target_database": database_name, "target_dialect": "postgresql",
+        "alembic_revision": revision, "tables": {},
+        "source_modified": False, "destination_written": False,
     }
     try:
         with source_engine.connect() as source_connection:
@@ -142,10 +127,10 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                     pk = primary_key[0]
                     columns = [column.name for column in table.columns]
                     source_count = source_connection.execute(
-                        select(table).with_only_columns(pk.count())
+                        select(func.count()).select_from(table)
                     ).scalar_one()
                     target_before = target_connection.execute(
-                        select(pk.count()).select_from(table)
+                        select(func.count()).select_from(table)
                     ).scalar_one()
                     would_insert = 0
                     already_present = 0
