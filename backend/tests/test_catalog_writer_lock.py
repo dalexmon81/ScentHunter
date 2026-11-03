@@ -82,6 +82,7 @@ class CatalogWriterLockTests(unittest.TestCase):
                     second.cursor().execute("INSERT INTO writes(value) VALUES (2)")
                 first.commit()
                 second.cursor().execute("INSERT INTO writes(value) VALUES (3)")
+                second.commit()
             finally:
                 first.close()
                 second.close()
