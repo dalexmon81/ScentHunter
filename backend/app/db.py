@@ -13,7 +13,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import sessionmaker
 
-# Production continues on the isolated SQLite catalog until cutover approval.\nDEFAULT_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
+# Production continues on the isolated SQLite catalog until cutover approval.
+DEFAULT_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
 _ENV_KEYS = ("SCENTHUNTER_CATALOG_DATABASE_URL", "SCENTHUNTER_DATABASE_URL")
 
 
@@ -33,8 +34,6 @@ def database_url(environ=None) -> str:
         return url.render_as_string(hide_password=False)
 
     if backend == "postgresql":
-        # psycopg 3 is installed by backend/requirements.txt. Normalize common
-        # libpq URL spellings to avoid accidentally selecting psycopg2.
         if url.drivername in {"postgres", "postgresql"}:
             url = url.set(drivername="postgresql+psycopg")
         elif url.drivername != "postgresql+psycopg":
@@ -69,8 +68,7 @@ def make_engine() -> Engine:
 
         return engine
 
-    # Keep the pool bounded: Fly currently runs a single app machine and
-    # background workers share it. Never apply SQLite PRAGMAs to PostgreSQL.
+    # Keep PostgreSQL connections bounded for the current single-machine setup.
     return create_engine(
         url,
         pool_pre_ping=True,
