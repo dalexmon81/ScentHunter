@@ -48,7 +48,7 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
 
     def __init__(self, database, *args, **kwargs):
         super().__init__(database, *args, **kwargs)
-        uri = bool(kwargs.get("uri", False))
+        uri = bool(kwargs.get("uri", args[6] if len(args) > 6 else False))
         path = _database_path(database, uri)
         self._writer_lock_path = (
             Path(str(path) + ".writer.lock") if path is not None else None
