@@ -29,20 +29,21 @@ _WRITE_SQL = re.compile(
 
 
 def _needs_writer_lock(sql):
-    """Conservatively identify statements that may mutate SQLite state.
+    """Lock every statement except an explicit, conservative read-only allowlist.
 
-    WITH statements are locked too: SQLite permits data-changing CTE bodies,
-    and distinguishing them with a regular expression is unsafe. Leading SQL
-    comments are ignored before checking the statement verb.
+    SQLite has mutating statements beyond the common DML/DDL verbs (for
+    example ATTACH, VACUUM INTO and some PRAGMAs). Treat unknown statements
+    as writes rather than trying to enumerate every possible mutation.
+    WITH is always locked because it can contain data-changing statements.
     """
     if not isinstance(sql, str):
         return False
     statement = sql.lstrip()
     while True:
         if statement.startswith("--"):
-            newline = statement.find("\n")
+            newline = statement.find("\\n")
             if newline < 0:
-                return False
+                return True
             statement = statement[newline + 1 :].lstrip()
             continue
         if statement.startswith("/*"):
@@ -52,8 +53,22 @@ def _needs_writer_lock(sql):
             statement = statement[end + 2 :].lstrip()
             continue
         break
-    return bool(_WRITE_SQL.match(statement) or re.match(r"^WITH\b", statement, re.I))
 
+    if re.match(r"^WITH\\b", statement, re.IGNORECASE):
+        return True
+    if re.match(r"^SELECT\\b", statement, re.IGNORECASE):
+        return False
+    if re.match(r"^EXPLAIN\\s+(?:QUERY\\s+PLAN\\s+)?SELECT\\b", statement, re.IGNORECASE):
+        return False
+    if re.match(
+        r"^PRAGMA\\s+(?:table_info|table_xinfo|index_list|index_info|"
+        r"foreign_key_list|foreign_key_check|database_list|compile_options|"
+        r"integrity_check|quick_check)\\b",
+        statement,
+        re.IGNORECASE,
+    ):
+        return False
+    return True
 
 def _database_path(database, uri):
     value = os.fspath(database)
