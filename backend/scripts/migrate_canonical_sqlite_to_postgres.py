@@ -16,7 +16,7 @@ from pathlib import Path
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import create_engine, func, inspect, select, text
+from sqlalchemy import Uuid, create_engine, func, inspect, select, text
 from sqlalchemy.engine import URL, make_url
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -96,7 +96,9 @@ def _same_row(existing, incoming, columns):
     )
 
 
-def _canonical_value(value):
+def _canonical_value(value, column_type=None):
+    if isinstance(column_type, Uuid) and value is not None:
+        return str(value if isinstance(value, UUID) else UUID(str(value)))
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
@@ -115,7 +117,10 @@ def _canonical_value(value):
 
 
 def _update_checksum(digest, row, columns):
-    canonical = {column: _canonical_value(row[column]) for column in columns}
+    canonical = {
+        column: _canonical_value(row[column], columns[column].type)
+        for column in columns
+    }
     digest.update(json.dumps(
         canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     ).encode("utf-8"))
@@ -123,7 +128,7 @@ def _update_checksum(digest, row, columns):
 
 
 def _table_checksum(connection, table):
-    columns = [column.name for column in table.columns]
+    columns = {column.name: column for column in table.columns}
     pk = list(table.primary_key.columns)[0]
     digest = hashlib.sha256()
     for row in connection.execute(select(table).order_by(pk)).mappings():
@@ -188,7 +193,8 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                             f"Importer requires a single-column primary key: {table_name}"
                         )
                     pk = primary_key[0]
-                    columns = [column.name for column in table.columns]
+                    columns = {column.name: column for column in table.columns}
+                    column_names = list(columns)
                     source_count = source_connection.execute(
                         select(func.count()).select_from(table)
                     ).scalar_one()
