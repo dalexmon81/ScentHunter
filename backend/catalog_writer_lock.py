@@ -40,7 +40,7 @@ def _needs_writer_lock(sql):
     statement = sql.lstrip()
     while True:
         if statement.startswith("--"):
-            newline = statement.find("\\n")
+            newline = statement.find("\n")
             if newline < 0:
                 return False
             statement = statement[newline + 1 :].lstrip()
@@ -52,7 +52,7 @@ def _needs_writer_lock(sql):
             statement = statement[end + 2 :].lstrip()
             continue
         break
-    return bool(_WRITE_SQL.match(statement) or re.match(r"^WITH\\b", statement, re.I))
+    return bool(_WRITE_SQL.match(statement) or re.match(r"^WITH\b", statement, re.I))
 
 
 def _database_path(database, uri):
