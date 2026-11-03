@@ -5,7 +5,7 @@ import uuid
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from app.models import Base
@@ -112,8 +112,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
 
         with self.target.connect() as connection:
             before = connection.execute(
-                text("SELECT count(*) FROM offers WHERE id=:id"),
-                {"id": self.offer_id},
+                select(func.count()).select_from(Offer).where(Offer.id == self.offer_id)
             ).scalar_one()
         self.assertEqual(before, 0)
 
@@ -134,8 +133,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
 
         with self.source.connect() as connection:
             source_offer_count = connection.execute(
-                text("SELECT count(*) FROM offers WHERE id=:id"),
-                {"id": self.offer_id},
+                select(func.count()).select_from(Offer).where(Offer.id == self.offer_id)
             ).scalar_one()
         self.assertEqual(source_offer_count, 1)
 
