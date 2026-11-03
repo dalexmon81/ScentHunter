@@ -26,10 +26,11 @@ jobs:
           : > pyspy-lock-diagnosis.txt
           remote_script=$(cat <<'REMOTE'
           set -u
-          TMP_PYSPY=/tmp/scenthunter-py-spy
+          TMP_PYSPY_1=/tmp/scenthunter-py-spy-sample-1
+          TMP_PYSPY_2=/tmp/scenthunter-py-spy-sample-2
           TMP_WHEEL=/tmp/scenthunter-py-spy.whl
           cleanup() {
-            rm -f "$TMP_PYSPY" "$TMP_WHEEL"
+            rm -f "$TMP_PYSPY_1" "$TMP_PYSPY_2" "$TMP_WHEEL"
             echo TEMPORARY_PY_SPY_REMOVED
           }
           trap cleanup EXIT
@@ -49,9 +50,11 @@ jobs:
           esac
           python3 -c 'import sys,urllib.request; urllib.request.urlretrieve(sys.argv[1],sys.argv[2])' \
             "https://github.com/benfred/py-spy/releases/download/v0.4.3/$WHEEL" "$TMP_WHEEL"
-          python3 -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); names=[n for n in z.namelist() if n.endswith(".data/scripts/py-spy")]; print("WHEEL_EXECUTABLES",names); assert names, "py-spy executable missing from wheel"; open(sys.argv[2],"wb").write(z.read(names[0]))' "$TMP_WHEEL" "$TMP_PYSPY"
-          chmod 700 "$TMP_PYSPY"
-          "$TMP_PYSPY" --version
+          python3 -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); names=[n for n in z.namelist() if n.endswith(".data/scripts/py-spy")]; print("WHEEL_EXECUTABLES",names); assert names, "py-spy executable missing from wheel"; open(sys.argv[2],"wb").write(z.read(names[0]))' "$TMP_WHEEL" "$TMP_PYSPY_1"
+          cp "$TMP_PYSPY_1" "$TMP_PYSPY_2"
+          chmod 700 "$TMP_PYSPY_1" "$TMP_PYSPY_2"
+          "$TMP_PYSPY_1" --version
+          "$TMP_PYSPY_2" --version
 
           find_lock_owner() {
             shm=/data/store_catalog.sqlite3-shm
@@ -67,6 +70,7 @@ jobs:
 
           sample() {
             label=$1
+            PYSPY=$2
             echo === "$label" ===
             date -u
             echo LEGACY_FILES
@@ -95,16 +99,16 @@ jobs:
                 esac
               done
               echo PY_SPY_DUMP_BEGIN
-              "$TMP_PYSPY" dump --pid "$PID" 2>&1
+              "$PYSPY" dump --pid "$PID" 2>&1
               echo PY_SPY_DUMP_EXIT=$?
               echo PY_SPY_DUMP_END
             done
           }
 
-          sample SAMPLE_1
+          sample SAMPLE_1 "$TMP_PYSPY_1"
           echo WAITING_45_SECONDS_NO_DATABASE_OR_PROCESS_MODIFICATION
           sleep 45
-          sample SAMPLE_2
+          sample SAMPLE_2 "$TMP_PYSPY_2"
           REMOTE
           )
           encoded_script=$(printf '%s' "$remote_script" | base64 -w0)
