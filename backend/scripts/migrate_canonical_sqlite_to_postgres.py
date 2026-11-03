@@ -162,6 +162,15 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
     try:
         with source_engine.connect() as source_connection:
             _validate_schema(source_connection, "SQLite source")
+            source_revision = source_connection.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar_one()
+            if source_revision != EXPECTED_REVISION:
+                raise RuntimeError(
+                    f"Source Alembic revision must be {EXPECTED_REVISION}; "
+                    f"found {source_revision}."
+                )
+            report["source_alembic_revision"] = source_revision
             violations = source_connection.exec_driver_sql(
                 "PRAGMA foreign_key_check"
             ).fetchall()
@@ -209,9 +218,9 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                                 )
                             already_present += 1
 
-                    target_checksum_after = _table_checksum(target_connection, table)
+                    target_checksum_before = _table_checksum(target_connection, table)
                     source_checksum = source_digest.hexdigest()
-                    checksums_match = source_checksum == target_checksum_after
+                    checksums_match = source_checksum == target_checksum_before
                     if apply and not checksums_match:
                         raise RuntimeError(
                             f"Post-import checksum mismatch for {table_name}; "
@@ -223,7 +232,8 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                         "would_insert": would_insert,
                         "already_present_identical": already_present,
                         "source_sha256": source_checksum,
-                        "target_sha256_after": target_checksum_after,
+                        "target_sha256_before": target_checksum_before,
+                        "target_sha256_after": target_checksum_before if apply else None,
                         "checksums_match_after_import": checksums_match if apply else None,
                     }
 
