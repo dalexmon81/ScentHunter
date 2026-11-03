@@ -102,6 +102,22 @@ class CatalogWriterLockTests(unittest.TestCase):
         self.assertTrue(_needs_writer_lock("WITH changed AS (SELECT 1) UPDATE writes SET value=2"))
         self.assertFalse(_needs_writer_lock("SELECT * FROM writes"))
 
+    def test_unknown_and_mutating_sql_are_locked_by_default(self):
+        for statement in (
+            "PRAGMA optimize",
+            "VACUUM INTO 'backup.sqlite3'",
+            "ATTACH DATABASE 'other.sqlite3' AS other",
+            "SAVEPOINT nested_write",
+            "/* leading comment */ PRAGMA journal_size_limit",
+        ):
+            with self.subTest(statement=statement):
+                self.assertTrue(_needs_writer_lock(statement))
+
+        self.assertFalse(_needs_writer_lock("SELECT * FROM writes"))
+        self.assertFalse(_needs_writer_lock("EXPLAIN QUERY PLAN SELECT * FROM writes"))
+        self.assertFalse(_needs_writer_lock("PRAGMA table_info(writes)"))
+        self.assertTrue(_needs_writer_lock("WITH rows AS (SELECT 1) SELECT * FROM rows"))
+
     def test_connection_executemany_uses_conservative_lock_detection(self):
         with tempfile.TemporaryDirectory() as directory:
             database = str(Path(directory) / "catalog.sqlite3")
