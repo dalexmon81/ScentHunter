@@ -7,11 +7,14 @@ discovery/hydration database is supported by this importer.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
+from decimal import Decimal
+from uuid import UUID
 
 from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.engine import URL, make_url
@@ -93,6 +96,41 @@ def _same_row(existing, incoming, columns):
     )
 
 
+def _canonical_value(value):
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat(timespec="microseconds")
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return format(value.normalize(), "f")
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): _canonical_value(item) for key, item in sorted(value.items())}
+    if isinstance(value, (list, tuple)):
+        return [_canonical_value(item) for item in value]
+    return value
+
+
+def _update_checksum(digest, row, columns):
+    canonical = {column: _canonical_value(row[column]) for column in columns}
+    digest.update(json.dumps(
+        canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8"))
+    digest.update(b"\\n")
+
+
+def _table_checksum(connection, table):
+    columns = [column.name for column in table.columns]
+    pk = list(table.primary_key.columns)[0]
+    digest = hashlib.sha256()
+    for row in connection.execute(select(table).order_by(pk)).mappings():
+        _update_checksum(digest, row, columns)
+    return digest.hexdigest()
+
+
 def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm_target=None):
     """Compare source and destination; apply only inside one destination transaction."""
     if target_engine.dialect.name != "postgresql":
@@ -150,9 +188,11 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                     ).scalar_one()
                     would_insert = 0
                     already_present = 0
+                    source_digest = hashlib.sha256()
                     for row in source_connection.execute(
                         select(table).order_by(pk)
                     ).mappings():
+                        _update_checksum(source_digest, row, columns)
                         incoming = dict(row)
                         existing = target_connection.execute(
                             select(table).where(pk == incoming[pk.name])
@@ -169,11 +209,22 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                                 )
                             already_present += 1
 
+                    target_checksum_after = _table_checksum(target_connection, table)
+                    source_checksum = source_digest.hexdigest()
+                    checksums_match = source_checksum == target_checksum_after
+                    if apply and not checksums_match:
+                        raise RuntimeError(
+                            f"Post-import checksum mismatch for {table_name}; "
+                            "the destination transaction will be rolled back."
+                        )
                     report["tables"][table_name] = {
                         "source_rows": source_count,
                         "target_rows_before": target_before,
                         "would_insert": would_insert,
                         "already_present_identical": already_present,
+                        "source_sha256": source_checksum,
+                        "target_sha256_after": target_checksum_after,
+                        "checksums_match_after_import": checksums_match if apply else None,
                     }
 
         report["status"] = "applied" if apply else "dry_run"
