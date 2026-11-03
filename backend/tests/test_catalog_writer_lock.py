@@ -115,12 +115,12 @@ class CatalogWriterLockTests(unittest.TestCase):
             try:
                 first.execute("BEGIN IMMEDIATE")
                 first.executemany(
-                    "-- guarded batch\\nINSERT INTO writes(value) VALUES (?)",
+                    "INSERT INTO writes(value) VALUES (?)",
                     [(1,), (2,)],
                 )
                 with self.assertRaises(sqlite3.OperationalError):
                     second.executemany(
-                        "/* guarded batch */ INSERT INTO writes(value) VALUES (?)",
+                        "INSERT INTO writes(value) VALUES (?)",
                         [(3,)],
                     )
                 first.commit()
