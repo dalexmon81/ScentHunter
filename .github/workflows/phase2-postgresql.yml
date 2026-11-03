@@ -58,6 +58,41 @@ jobs:
       - name: Confirm a second upgrade is a no-op
         working-directory: backend
         run: alembic upgrade head
+      - name: Import the complete checked-in canonical catalog into disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
+          export SCENTHUNTER_CATALOG_DATABASE_URL="sqlite:///$temp_dir/canonical-source.sqlite3"
+          (cd backend && alembic upgrade head)
+          python backend/scripts/seed_catalog.py --apply > "$temp_dir/seed-report.json"
+          python backend/scripts/migrate_canonical_sqlite_to_postgres.py \
+            --source "$temp_dir/canonical-source.sqlite3" > "$temp_dir/dry-run.json"
+          python backend/scripts/migrate_canonical_sqlite_to_postgres.py \
+            --source "$temp_dir/canonical-source.sqlite3" --apply \
+            --confirm-target phase2_test > "$temp_dir/applied.json"
+          python backend/scripts/migrate_canonical_sqlite_to_postgres.py \
+            --source "$temp_dir/canonical-source.sqlite3" --apply \
+            --confirm-target phase2_test > "$temp_dir/repeated.json"
+          python - "$temp_dir" <<'PY'
+          import json
+          import pathlib
+          import sys
+          root = pathlib.Path(sys.argv[1])
+          seed = json.loads((root / "seed-report.json").read_text())
+          dry = json.loads((root / "dry-run.json").read_text())
+          applied = json.loads((root / "applied.json").read_text())
+          repeated = json.loads((root / "repeated.json").read_text())
+          assert seed["status"] == "seeded" and seed["database_written"] is True
+          assert dry["status"] == "dry_run" and dry["destination_written"] is False
+          assert applied["status"] == "applied" and applied["destination_written"] is True
+          assert applied["source_alembic_revision"] == "0003_store_domain"
+          assert all(row["checksums_match_after_import"] for row in applied["tables"].values())
+          assert all(row["would_insert"] == 0 for row in repeated["tables"].values())
+          print("Full checked-in catalog import, checksums and idempotent repeat: PASS")
+          print("Source counts:", {name: row["source_rows"] for name, row in applied["tables"].items()})
+          PY
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
         run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
