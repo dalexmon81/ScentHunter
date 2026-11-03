@@ -26,7 +26,12 @@ import inspect
 import json
 import re
 import sqlite3
-from catalog_writer_lock import connect as connect_catalog_db
+try:
+    from catalog_writer_lock import connect as connect_catalog_db
+except ModuleNotFoundError as exc:
+    if exc.name != "catalog_writer_lock":
+        raise
+    from backend.catalog_writer_lock import connect as connect_catalog_db
 import traceback
 import threading
 import time
