@@ -1,0 +1,76 @@
+name: Controlled legacy SQLite telemetry deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Deploy the pinned diagnostic build or restore current main"
+        required: true
+        type: choice
+        options:
+          - deploy_diagnostic
+          - restore_main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-production-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Controlled Fly.io production operation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout the explicitly approved source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.action == 'deploy_diagnostic' && 'c59abdca66c9f8fbaddd8bd9c58a24560706027f' || 'main' }}
+
+      - name: Verify selected source
+        shell: bash
+        env:
+          REQUESTED_ACTION: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          if [ "$REQUESTED_ACTION" = "deploy_diagnostic" ]; then
+            expected="c59abdca66c9f8fbaddd8bd9c58a24560706027f"
+            test "$actual" = "$expected"
+            echo "Verified diagnostic commit: $actual"
+          elif [ "$REQUESTED_ACTION" = "restore_main" ]; then
+            git fetch origin main
+            expected="$(git rev-parse origin/main)"
+            test "$actual" = "$expected"
+            echo "Verified current main commit: $actual"
+          else
+            echo "Unsupported action" >&2
+            exit 1
+          fi
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Enable telemetry and deploy pinned diagnostic build
+        if: inputs.action == 'deploy_diagnostic'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl secrets set SCENTHUNTER_SQLITE_TXN_TELEMETRY=1 --app scenthunter
+          flyctl deploy --remote-only --config fly.toml --app scenthunter
+
+      - name: Disable telemetry and restore verified main build
+        if: inputs.action == 'restore_main'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl secrets unset SCENTHUNTER_SQLITE_TXN_TELEMETRY --app scenthunter
+          flyctl deploy --remote-only --config fly.toml --app scenthunter
