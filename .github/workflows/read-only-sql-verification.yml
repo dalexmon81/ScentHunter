@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Install Fly CLI (pinned)
-        uses: superfly/flyctl-actions/setup-flyctl@v1.5
+        uses: superfly/flyctl-actions/setup-flyctl@1.5
 
       - name: Execute A-D queries in SQLite read-only mode
         env:
