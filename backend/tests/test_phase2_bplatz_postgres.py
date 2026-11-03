@@ -5,10 +5,10 @@ import json
 import os
 import subprocess
 import sys
+import unittest
 from decimal import Decimal
 from pathlib import Path
 
-import pytest
 from sqlalchemy import create_engine, delete, func, select
 from sqlalchemy.orm import Session
 
@@ -27,8 +27,8 @@ from app.services.ingestion_persistence import PromotionRejected  # noqa: E402
 DATABASE_URL = os.environ.get("SCENTHUNTER_TEST_POSTGRES_URL", "")
 
 
-@pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL service")
-def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres(tmp_path):
+@unittest.skipUnless(DATABASE_URL, "requires disposable PostgreSQL service")
+def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
     from scrapers.bplatz.scraper import parse_product_html
     from scenthunter_next_engine.next_engine_service import NextEngineService
     from scenthunter_next_engine.offer_normalizer import normalize_offer
@@ -151,7 +151,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres(tmp_pa
             assert session.scalar(select(func.count()).select_from(Offer)) == 1
 
         # Caller-owned transaction rollback must undo staging and promotion.
-        with pytest.raises(RuntimeError, match="forced rollback"):
+        with unittest.TestCase().assertRaisesRegex(RuntimeError, "forced rollback"):
             with Session(engine) as session, session.begin():
                 rollback_result = persist_bplatz_record(
                     session, store_id=store.id, raw_record=dict(record), matcher=matcher,
