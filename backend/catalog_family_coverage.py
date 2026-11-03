@@ -123,6 +123,10 @@ def _active_catalog_writer():
                         comm.startswith("scenthunter-search-")
                         or comm.startswith("scenthunter-sea")
                         or comm.startswith("sh-catalog-disc")
+                        # Linux truncates "scenthunter-catalog-hydration" to
+                        # "scenthunter-cat" (15 chars). This thread writes the
+                        # same SQLite catalog, so Family Coverage must wait for it.
+                        or comm == "scenthunter-cat"
                     ):
                         return True
             except OSError:
