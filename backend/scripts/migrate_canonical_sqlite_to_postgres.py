@@ -16,7 +16,7 @@ from pathlib import Path
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import String, Uuid, create_engine, func, inspect, select, text
+from sqlalchemy import String, Uuid, cast, create_engine, func, inspect, select, text
 from sqlalchemy.engine import URL, make_url
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -131,9 +131,11 @@ def _update_checksum(digest, row, columns):
 def _ordered_rows(connection, table, primary_key):
     # SQLite BINARY and PostgreSQL's default locale collation can order string
     # identifiers differently. Force bytewise ordering on both backends.
+    collation = "C" if connection.dialect.name == "postgresql" else "BINARY"
     if isinstance(primary_key.type, String):
-        collation = "C" if connection.dialect.name == "postgresql" else "BINARY"
         order_key = primary_key.collate(collation)
+    elif isinstance(primary_key.type, Uuid):
+        order_key = cast(primary_key, String).collate(collation)
     else:
         order_key = primary_key
     return connection.execute(select(table).order_by(order_key)).mappings()
