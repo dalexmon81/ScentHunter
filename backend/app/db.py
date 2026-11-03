@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import sessionmaker
 
-DEFAULT_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
+# Production continues on the isolated SQLite catalog until cutover approval.\nDEFAULT_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
 _ENV_KEYS = ("SCENTHUNTER_CATALOG_DATABASE_URL", "SCENTHUNTER_DATABASE_URL")
 
 
