@@ -14,6 +14,7 @@ on:
       - "backend/tests/test_phase2_runtime_db_identity.py"
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
       - "backend/tests/test_phase2_sqlite_postgres_import.py"
+      - "backend/tests/test_phase2_bplatz_postgres.py"
       - ".github/workflows/phase2-postgresql.yml"
 
 permissions:
@@ -58,4 +59,4 @@ jobs:
         run: alembic upgrade head
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
-        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py
+        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
