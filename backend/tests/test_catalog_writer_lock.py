@@ -102,6 +102,75 @@ class CatalogWriterLockTests(unittest.TestCase):
         self.assertTrue(_needs_writer_lock("WITH changed AS (SELECT 1) UPDATE writes SET value=2"))
         self.assertFalse(_needs_writer_lock("SELECT * FROM writes"))
 
+    def test_connection_executemany_uses_conservative_lock_detection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = str(Path(directory) / "catalog.sqlite3")
+            setup = sqlite3.connect(database)
+            setup.execute("CREATE TABLE writes(value INTEGER NOT NULL)")
+            setup.commit()
+            setup.close()
+
+            first = connect(database, timeout=0.2)
+            second = connect(database, timeout=0.05)
+            try:
+                first.execute("BEGIN IMMEDIATE")
+                first.executemany(
+                    "-- guarded batch\\nINSERT INTO writes(value) VALUES (?)",
+                    [(1,), (2,)],
+                )
+                with self.assertRaises(sqlite3.OperationalError):
+                    second.executemany(
+                        "/* guarded batch */ INSERT INTO writes(value) VALUES (?)",
+                        [(3,)],
+                    )
+                first.commit()
+            finally:
+                first.close()
+                second.close()
+
+    def test_executescript_keeps_lock_for_open_transaction(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = str(Path(directory) / "catalog.sqlite3")
+            setup = sqlite3.connect(database)
+            setup.execute("CREATE TABLE writes(value INTEGER NOT NULL)")
+            setup.commit()
+            setup.close()
+
+            first = connect(database, timeout=0.2)
+            second = connect(database, timeout=0.05)
+            try:
+                first.executescript(
+                    "BEGIN IMMEDIATE; INSERT INTO writes(value) VALUES (1);"
+                )
+                with self.assertRaises(sqlite3.OperationalError):
+                    second.execute("INSERT INTO writes(value) VALUES (2)")
+                first.commit()
+            finally:
+                first.close()
+                second.close()
+
+    def test_path_aliases_share_the_same_lock_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = root / "catalog.sqlite3"
+            setup = sqlite3.connect(database)
+            setup.execute("CREATE TABLE writes(value INTEGER NOT NULL)")
+            setup.commit()
+            setup.close()
+
+            alias = root / "unused" / ".." / "catalog.sqlite3"
+            first = connect(str(database), timeout=0.2)
+            second = connect(str(alias), timeout=0.05)
+            try:
+                first.execute("BEGIN IMMEDIATE")
+                first.execute("INSERT INTO writes(value) VALUES (1)")
+                with self.assertRaises(sqlite3.OperationalError):
+                    second.execute("INSERT INTO writes(value) VALUES (2)")
+                first.commit()
+            finally:
+                first.close()
+                second.close()
+
     def test_rollback_releases_lock_for_next_transaction(self):
         with tempfile.TemporaryDirectory() as directory:
             database = str(Path(directory) / "catalog.sqlite3")
