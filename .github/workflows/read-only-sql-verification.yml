@@ -8,22 +8,25 @@ permissions:
 
 jobs:
   read-only-sql-verification:
-    name: Run four read-only SQLite checks on Fly
+    name: Inspect legacy and Phase 2 databases read-only
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Install Fly CLI (pinned)
         uses: superfly/flyctl-actions/setup-flyctl@1.5
 
-      - name: Execute A-D queries in SQLite read-only mode
+      - name: Confirm Phase 2 secret is configured (names only)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+          flyctl secrets list --app scenthunter | grep -E 'NAME|SCENTHUNTER_CATALOG_DATABASE_URL' || true
 
-          DB='file:/data/store_catalog.sqlite3?mode=ro'
-
-          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import sqlite3; q=chr(39); conn=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\", uri=True); queries=[(\"A: ingestion_raw row\", \"SELECT id, status, created_at FROM ingestion_raw WHERE id = \"+q+\"b9a5a0e9-2130-4dfa-b016-e717071235a1\"+q+\";\"),(\"B: linked offer row\", \"SELECT id, ingestion_raw_id, sku, status FROM offers WHERE id = \"+q+\"f723da10-5f85-4c8e-93bf-c0072163e88e\"+q+\";\"),(\"C: raw ingestion status\", \"SELECT status FROM ingestion_raw WHERE id = \"+q+\"b9a5a0e9-2130-4dfa-b016-e717071235a1\"+q+\";\"),(\"D: raw payload contains target SKU\", \"SELECT id FROM ingestion_raw WHERE id = \"+q+\"b9a5a0e9-2130-4dfa-b016-e717071235a1\"+q+\" AND raw_payload LIKE \"+q+\"%614514178065%\"+q+\";\")]; [(print(\"===== \"+label+\" =====\"), print(conn.execute(query).fetchall())) for label, query in queries]; conn.close()'"
-
-          echo 'READ_ONLY_SQL_VERIFICATION=COMPLETE'
+      - name: Inspect legacy and Phase 2 databases in read-only mode
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import base64; exec(base64.b64decode(\"aW1wb3J0IG9zLCBzcWxpdGUzLCB1cmxsaWIucGFyc2UKbGVnYWN5ID0gc3FsaXRlMy5jb25uZWN0KCJmaWxlOi9kYXRhL3N0b3JlX2NhdGFsb2cuc3FsaXRlMz9tb2RlPXJvIiwgdXJpPVRydWUpCnByaW50KCI9PT09PSBMRUdBQ1kgU1FMSVRFIFRBQkxFUyA9PT09PSIpCnByaW50KFtyWzBdIGZvciByIGluIGxlZ2FjeS5leGVjdXRlKCJTRUxFQ1QgbmFtZSBGUk9NIHNxbGl0ZV9tYXN0ZXIgV0hFUkUgdHlwZT0ndGFibGUnIE9SREVSIEJZIG5hbWUiKS5mZXRjaGFsbCgpXSkKbGVnYWN5LmNsb3NlKCkKcmF3ID0gb3MuZW52aXJvbi5nZXQoIlNDRU5USFVOVEVSX0NBVEFMT0dfREFUQUJBU0VfVVJMIikKaWYgbm90IHJhdzoKICAgIHJhaXNlIFN5c3RlbUV4aXQoIlBIQVNFMl9EQVRBQkFTRV9VUkw9Tk9UX1NFVCIpCnUgPSB1cmxsaWIucGFyc2UudXJsc3BsaXQocmF3KQpzY2hlbWUgPSB1LnNjaGVtZS5sb3dlcigpCmRiX25hbWUgPSB1cmxsaWIucGFyc2UudW5xdW90ZSh1LnBhdGgucnNwbGl0KCIvIiwgMSlbLTFdLnNwbGl0KCI/IiwgMSlbMF0pIG9yICIoZGVmYXVsdCkiCmlmIHNjaGVtZS5zdGFydHN3aXRoKCJwb3N0Z3JlcyIpOgogICAgZGJfdHlwZSA9ICJwb3N0Z3JlcyIKZWxpZiBzY2hlbWUuc3RhcnRzd2l0aCgic3FsaXRlIik6CiAgICBkYl90eXBlID0gInNxbGl0ZSIKZWxzZToKICAgIHJhaXNlIFN5c3RlbUV4aXQoIlBIQVNFMl9EQVRBQkFTRV9UWVBFPVVOU1VQUE9SVEVEIikKcHJpbnQoIj09PT09IFBIQVNFIDIgREFUQUJBU0UgSURFTlRJRklDQVRJT04gPT09PT0iKQpwcmludCgidHlwZT0iICsgZGJfdHlwZSkKcHJpbnQoIm5hbWU9IiArIGRiX25hbWUpCnF1ZXJpZXMgPSBbCiAgICAoIkEiLCAiU0VMRUNUIGlkLCBzdGF0dXMsIGNyZWF0ZWRfYXQgRlJPTSBpbmdlc3Rpb25fcmF3IFdIRVJFIGlkID0gJXMiLCAoImI5YTVhMGU5LTIxMzAtNGRmYS1iMDE2LWU3MTcwNzEyMzVhMSIsKSksCiAgICAoIkIiLCAiU0VMRUNUIGlkLCBpbmdlc3Rpb25fcmF3X2lkLCBza3UsIHN0YXR1cyBGUk9NIG9mZmVycyBXSEVSRSBpZCA9ICVzIiwgKCJmNzIzZGExMC01Zjg1LTRjOGUtOTNiZi1jMDA3MjE2M2U4OGUiLCkpLAogICAgKCJDIiwgIlNFTEVDVCBzdGF0dXMgRlJPTSBpbmdlc3Rpb25fcmF3IFdIRVJFIGlkID0gJXMiLCAoImI5YTVhMGU5LTIxMzAtNGRmYS1iMDE2LWU3MTcwNzEyMzVhMSIsKSksCiAgICAoIkQiLCAiU0VMRUNUIGlkIEZST00gaW5nZXN0aW9uX3JhdyBXSEVSRSBpZCA9ICVzIEFORCByYXdfcGF5bG9hZCBMSUtFICVzIiwgKCJiOWE1YTBlOS0yMTMwLTRkZmEtYjAxNi1lNzE3MDcxMjM1YTEiLCAiJTYxNDUxNDE3ODA2NSUiKSksCl0KaWYgZGJfdHlwZSA9PSAicG9zdGdyZXMiOgogICAgZHJpdmVyX3VybCA9IHJhdy5yZXBsYWNlKCJwb3N0Z3Jlc3FsK3BzeWNvcGcyOi8vIiwgInBvc3RncmVzcWw6Ly8iLCAxKS5yZXBsYWNlKCJwb3N0Z3Jlcytwc3ljb3BnMjovLyIsICJwb3N0Z3Jlc3FsOi8vIiwgMSkKICAgIHRyeToKICAgICAgICBpbXBvcnQgcHN5Y29wZwogICAgICAgIGNvbm4gPSBwc3ljb3BnLmNvbm5lY3QoZHJpdmVyX3VybCwgb3B0aW9ucz0iLWMgZGVmYXVsdF90cmFuc2FjdGlvbl9yZWFkX29ubHk9b24iKQogICAgZXhjZXB0IEltcG9ydEVycm9yOgogICAgICAgIGltcG9ydCBwc3ljb3BnMgogICAgICAgIGNvbm4gPSBwc3ljb3BnMi5jb25uZWN0KGRyaXZlcl91cmwsIG9wdGlvbnM9Ii1jIGRlZmF1bHRfdHJhbnNhY3Rpb25fcmVhZF9vbmx5PW9uIikKICAgIGN1ciA9IGNvbm4uY3Vyc29yKCkKICAgIGN1ci5leGVjdXRlKCJTRVQgVFJBTlNBQ1RJT04gUkVBRCBPTkxZIikKICAgIGZvciBsYWJlbCwgc3FsLCBwYXJhbXMgaW4gcXVlcmllczoKICAgICAgICBwcmludCgiPT09PT0gIiArIGxhYmVsICsgIiA9PT09PSIpCiAgICAgICAgY3VyLmV4ZWN1dGUoc3FsLCBwYXJhbXMpCiAgICAgICAgcHJpbnQoY3VyLmZldGNoYWxsKCkpCiAgICBjb25uLnJvbGxiYWNrKCkKICAgIGNvbm4uY2xvc2UoKQplbHNlOgogICAgcGF0aCA9IHVybGxpYi5wYXJzZS51bnF1b3RlKHUucGF0aCkKICAgIGlmIHBhdGguc3RhcnRzd2l0aCgiLy8iKToKICAgICAgICBwYXRoID0gcGF0aFsxOl0KICAgIGlmIG5vdCBwYXRoOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoIlBIQVNFMl9TUUxJVEVfUEFUSD1OT1RfUkVTT0xWRUQiKQogICAgY29ubiA9IHNxbGl0ZTMuY29ubmVjdCgiZmlsZToiICsgcGF0aCArICI/bW9kZT1ybyIsIHVyaT1UcnVlKQogICAgZm9yIGxhYmVsLCBzcWwsIHBhcmFtcyBpbiBxdWVyaWVzOgogICAgICAgIHByaW50KCI9PT09PSAiICsgbGFiZWwgKyAiID09PT09IikKICAgICAgICBwcmludChjb25uLmV4ZWN1dGUoc3FsLnJlcGxhY2UoIiVzIiwgIj8iKSwgcGFyYW1zKS5mZXRjaGFsbCgpKQogICAgY29ubi5jbG9zZSgpCnByaW50KCJQSEFTRTJfUkVBRF9PTkxZX0NIRUNLUz1DT01QTEVURSIp\"))'"
