@@ -91,7 +91,8 @@ def _equivalent_value(left, right):
 
 def _same_row(existing, incoming, columns):
     return all(
-        _equivalent_value(existing[column], incoming[column])
+        _canonical_value(existing[column], columns[column].type)
+        == _canonical_value(incoming[column], columns[column].type)
         for column in columns
     )
 
@@ -194,7 +195,6 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                         )
                     pk = primary_key[0]
                     columns = {column.name: column for column in table.columns}
-                    column_names = list(columns)
                     source_count = source_connection.execute(
                         select(func.count()).select_from(table)
                     ).scalar_one()
