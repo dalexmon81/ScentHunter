@@ -21,8 +21,6 @@ jobs:
   postgres-schema-and-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      PYTHONPATH: ${{ github.workspace }}/backend
     services:
       postgres:
         image: postgres:16
@@ -38,6 +36,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      PYTHONPATH: ${{ github.workspace }}/backend
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://phase2:phase2_ci_only@127.0.0.1:5432/phase2_test
     steps:
       - uses: actions/checkout@v4
