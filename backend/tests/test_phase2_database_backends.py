@@ -1,5 +1,7 @@
 import os
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from unittest.mock import patch
 
 from sqlalchemy import create_engine
@@ -45,7 +47,20 @@ class Phase2DatabaseConfigurationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "database name"):
             database_url({"SCENTHUNTER_DATABASE_URL": "postgresql://db.example"})
 
-    def test_postgres_engine_uses_psycopg_without_opening_connection(self):\n        with patch.dict(os.environ, {\n            "SCENTHUNTER_CATALOG_DATABASE_URL": "postgresql://phase2:secret@db.example/catalog",\n        }, clear=True):\n            engine = make_engine()\n        try:\n            self.assertEqual(engine.dialect.name, "postgresql")\n            self.assertEqual(engine.dialect.driver, "psycopg")\n            self.assertEqual(engine.pool.size(), 5)\n            self.assertEqual(engine.pool._max_overflow, 2)\n        finally:\n            engine.dispose()\n\n    def test_sqlite_engine_still_applies_foreign_keys(self):
+    def test_postgres_engine_uses_psycopg_without_opening_connection(self):
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_CATALOG_DATABASE_URL": "postgresql://phase2:secret@db.example/catalog",
+        }, clear=True):
+            engine = make_engine()
+        try:
+            self.assertEqual(engine.dialect.name, "postgresql")
+            self.assertEqual(engine.dialect.driver, "psycopg")
+            self.assertEqual(engine.pool.size(), 5)
+            self.assertEqual(engine.pool._max_overflow, 2)
+        finally:
+            engine.dispose()
+
+    def test_sqlite_engine_still_applies_foreign_keys(self):
         with patch.dict(os.environ, {"SCENTHUNTER_CATALOG_DATABASE_URL": "sqlite:///:memory:"}, clear=True):
             engine = make_engine()
         try:
@@ -56,37 +71,51 @@ class Phase2DatabaseConfigurationTests(unittest.TestCase):
             engine.dispose()
 
     def test_runtime_identity_uses_live_sqlite_connection_and_masks_path(self):
-        engine = create_engine("sqlite:///:memory:")
+        database = os.path.join(os.getcwd(), "private-catalog-test.sqlite3")
+        engine = create_engine("sqlite:///" + database)
         try:
-            with engine.connect() as connection:
-                class Capture:
-                    pass
+            output = StringIO()
+            with engine.connect() as connection, redirect_stdout(output):
                 log_runtime_database_identity(
                     connection, event_name="test", service_name="phase2-test",
                     config_source="test", opened_at="2026-11-03T12:00:00+00:00",
                 )
+            self.assertIn("dialect=sqlite", output.getvalue())
+            self.assertIn("database_path=.../private-catalog-test.sqlite3", output.getvalue())
+            self.assertNotIn(os.getcwd(), output.getvalue())
         finally:
             engine.dispose()
+            if os.path.exists(database):
+                os.unlink(database)
 
     def test_postgres_runtime_identity_uses_supplied_connection(self):
         class Dialect:
             name = "postgresql"
+
         class Result:
             def one(self):
                 return ("phase2_test_db", "public")
+
         class FakeConnection:
             dialect = Dialect()
+
             def __init__(self):
                 self.statements = []
+
             def exec_driver_sql(self, statement):
                 self.statements.append(statement)
                 return Result()
+
         connection = FakeConnection()
-        log_runtime_database_identity(
-            connection, event_name="test", service_name="phase2-test",
-            config_source="test", opened_at="2026-11-03T12:00:00+00:00",
-        )
+        output = StringIO()
+        with redirect_stdout(output):
+            log_runtime_database_identity(
+                connection, event_name="test", service_name="phase2-test",
+                config_source="test", opened_at="2026-11-03T12:00:00+00:00",
+            )
         self.assertEqual(connection.statements, ["SELECT current_database(), current_schema()"])
+        self.assertIn("database_name=phase2_test_db", output.getvalue())
+        self.assertNotIn("secret", output.getvalue())
 
     def test_configuration_source_never_returns_url(self):
         self.assertEqual(configuration_source({
