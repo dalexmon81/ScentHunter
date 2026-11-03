@@ -28,6 +28,33 @@ _WRITE_SQL = re.compile(
 )
 
 
+def _needs_writer_lock(sql):
+    """Conservatively identify statements that may mutate SQLite state.
+
+    WITH statements are locked too: SQLite permits data-changing CTE bodies,
+    and distinguishing them with a regular expression is unsafe. Leading SQL
+    comments are ignored before checking the statement verb.
+    """
+    if not isinstance(sql, str):
+        return False
+    statement = sql.lstrip()
+    while True:
+        if statement.startswith("--"):
+            newline = statement.find("\\n")
+            if newline < 0:
+                return False
+            statement = statement[newline + 1 :].lstrip()
+            continue
+        if statement.startswith("/*"):
+            end = statement.find("*/", 2)
+            if end < 0:
+                return True
+            statement = statement[end + 2 :].lstrip()
+            continue
+        break
+    return bool(_WRITE_SQL.match(statement) or re.match(r"^WITH\\b", statement, re.I))
+
+
 def _database_path(database, uri):
     value = os.fspath(database)
     if uri or value.startswith("file:"):
@@ -43,6 +70,38 @@ def _database_path(database, uri):
     return Path(value).expanduser()
 
 
+class CoordinatedSQLiteCursor(sqlite3.Cursor):
+    """Cursor that applies the same cross-process lock as connection methods."""
+
+    def execute(self, sql, parameters=(), /):
+        connection = self.connection
+        if _needs_writer_lock(sql):
+            connection._acquire_writer_lock()
+        try:
+            result = super().execute(sql, parameters)
+            if connection._writer_lock_fd is not None and not connection.in_transaction:
+                connection._release_writer_lock()
+            return result
+        except Exception:
+            if connection._writer_lock_fd is not None and not connection.in_transaction:
+                connection._release_writer_lock()
+            raise
+
+    def executemany(self, sql, seq_of_parameters, /):
+        connection = self.connection
+        if _needs_writer_lock(sql):
+            connection._acquire_writer_lock()
+        try:
+            result = super().executemany(sql, seq_of_parameters)
+            if connection._writer_lock_fd is not None and not connection.in_transaction:
+                connection._release_writer_lock()
+            return result
+        except Exception:
+            if connection._writer_lock_fd is not None and not connection.in_transaction:
+                connection._release_writer_lock()
+            raise
+
+
 class CoordinatedSQLiteConnection(sqlite3.Connection):
     """SQLite connection that holds a per-database process lock per transaction."""
 
@@ -56,6 +115,9 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
         timeout = kwargs.get("timeout", args[0] if args else 5.0)
         self._writer_lock_timeout = max(0.0, float(timeout))
         self._writer_lock_fd = None
+
+    def cursor(self, factory=None):
+        return super().cursor(factory or CoordinatedSQLiteCursor)
 
     def _acquire_writer_lock(self):
         if self._writer_lock_path is None or self._writer_lock_fd is not None:
@@ -88,7 +150,7 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
                 os.close(fd)
 
     def execute(self, sql, parameters=(), /):
-        if isinstance(sql, str) and _WRITE_SQL.match(sql):
+        if _needs_writer_lock(sql):
             self._acquire_writer_lock()
         try:
             cursor = super().execute(sql, parameters)
