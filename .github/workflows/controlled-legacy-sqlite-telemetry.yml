@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "Deploy diagnostic build or restore the current main build"
+        description: "Deploy the pinned diagnostic build or restore current main"
         required: true
         type: choice
         options:
@@ -27,7 +27,7 @@ jobs:
       - name: Checkout the explicitly approved source
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.action == 'deploy_diagnostic' && 'a9c6dd18d2001c3181f88f6a4c8d1647f7e31206' || 'main' }}
+          ref: ${{ inputs.action == 'deploy_diagnostic' && 'c59abdca66c9f8fbaddd8bd9c58a24560706027f' || 'main' }}
 
       - name: Verify selected source
         shell: bash
@@ -37,11 +37,14 @@ jobs:
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
           if [ "$REQUESTED_ACTION" = "deploy_diagnostic" ]; then
-            expected="a9c6dd18d2001c3181f88f6a4c8d1647f7e31206"
+            expected="c59abdca66c9f8fbaddd8bd9c58a24560706027f"
             test "$actual" = "$expected"
             echo "Verified diagnostic commit: $actual"
           elif [ "$REQUESTED_ACTION" = "restore_main" ]; then
-            echo "Restoring main source at: $actual"
+            git fetch origin main
+            expected="$(git rev-parse origin/main)"
+            test "$actual" = "$expected"
+            echo "Verified current main commit: $actual"
           else
             echo "Unsupported action" >&2
             exit 1
@@ -50,7 +53,7 @@ jobs:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Enable telemetry and deploy approved diagnostic build
+      - name: Enable telemetry and deploy pinned diagnostic build
         if: inputs.action == 'deploy_diagnostic'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -61,7 +64,7 @@ jobs:
           flyctl secrets set SCENTHUNTER_SQLITE_TXN_TELEMETRY=1 --app scenthunter
           flyctl deploy --remote-only --config fly.toml --app scenthunter
 
-      - name: Disable telemetry and restore main build
+      - name: Disable telemetry and restore verified main build
         if: inputs.action == 'restore_main'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
