@@ -85,8 +85,9 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
         with Session(engine) as session, session.begin():
             store = session.scalar(select(Store).where(Store.slug == "bplatz"))
             assert store is not None
+            store_id = store.id
             first = persist_bplatz_record(
-                session, store_id=store.id, raw_record=dict(record), matcher=matcher,
+                session, store_id=store_id, raw_record=dict(record), matcher=matcher,
             )
             assert first.status == "promoted"
             assert first.offer_id is not None
@@ -117,7 +118,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
         updated["price"] = float(normalized.price + Decimal("1.00"))
         with Session(engine) as session, session.begin():
             second = persist_bplatz_record(
-                session, store_id=store.id, raw_record=updated, matcher=matcher,
+                session, store_id=store_id, raw_record=updated, matcher=matcher,
             )
             assert second.status == "promoted"
             assert second.offer_id == first.offer_id
@@ -140,7 +141,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
         }
         with Session(engine) as session, session.begin():
             unmatched = persist_bplatz_record(
-                session, store_id=store.id, raw_record=unknown, matcher=matcher,
+                session, store_id=store_id, raw_record=unknown, matcher=matcher,
             )
             assert unmatched.status == "pending"
             assert unmatched.offer_id is None
@@ -154,7 +155,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
         with unittest.TestCase().assertRaisesRegex(RuntimeError, "forced rollback"):
             with Session(engine) as session, session.begin():
                 rollback_result = persist_bplatz_record(
-                    session, store_id=store.id, raw_record=dict(record), matcher=matcher,
+                    session, store_id=store_id, raw_record=dict(record), matcher=matcher,
                 )
                 assert rollback_result.status == "promoted"
                 raise RuntimeError("forced rollback")
