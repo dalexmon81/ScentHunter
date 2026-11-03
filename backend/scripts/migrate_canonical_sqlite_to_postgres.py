@@ -16,7 +16,7 @@ from pathlib import Path
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Uuid, create_engine, func, inspect, select, text
+from sqlalchemy import String, Uuid, create_engine, func, inspect, select, text
 from sqlalchemy.engine import URL, make_url
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -128,11 +128,22 @@ def _update_checksum(digest, row, columns):
     digest.update(b"\\n")
 
 
+def _ordered_rows(connection, table, primary_key):
+    # SQLite BINARY and PostgreSQL's default locale collation can order string
+    # identifiers differently. Force bytewise ordering on both backends.
+    if isinstance(primary_key.type, String):
+        collation = "C" if connection.dialect.name == "postgresql" else "BINARY"
+        order_key = primary_key.collate(collation)
+    else:
+        order_key = primary_key
+    return connection.execute(select(table).order_by(order_key)).mappings()
+
+
 def _table_checksum(connection, table):
     columns = {column.name: column for column in table.columns}
     pk = list(table.primary_key.columns)[0]
     digest = hashlib.sha256()
-    for row in connection.execute(select(table).order_by(pk)).mappings():
+    for row in _ordered_rows(connection, table, pk):
         _update_checksum(digest, row, columns)
     return digest.hexdigest()
 
@@ -204,9 +215,7 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                     would_insert = 0
                     already_present = 0
                     source_digest = hashlib.sha256()
-                    for row in source_connection.execute(
-                        select(table).order_by(pk)
-                    ).mappings():
+                    for row in _ordered_rows(source_connection, table, pk):
                         _update_checksum(source_digest, row, columns)
                         incoming = dict(row)
                         existing = target_connection.execute(
@@ -229,9 +238,7 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                     checksums_match = source_checksum == target_checksum_checked
                     if apply and not checksums_match:
                         mismatch_columns = set()
-                        for source_row in source_connection.execute(
-                            select(table).order_by(pk)
-                        ).mappings():
+                        for source_row in _ordered_rows(source_connection, table, pk):
                             target_row = target_connection.execute(
                                 select(table).where(pk == source_row[pk.name])
                             ).mappings().one_or_none()
