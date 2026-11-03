@@ -45,7 +45,7 @@ class Phase2DatabaseConfigurationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "database name"):
             database_url({"SCENTHUNTER_DATABASE_URL": "postgresql://db.example"})
 
-    def test_sqlite_engine_still_applies_foreign_keys(self):
+    def test_postgres_engine_uses_psycopg_without_opening_connection(self):\n        with patch.dict(os.environ, {\n            "SCENTHUNTER_CATALOG_DATABASE_URL": "postgresql://phase2:secret@db.example/catalog",\n        }, clear=True):\n            engine = make_engine()\n        try:\n            self.assertEqual(engine.dialect.name, "postgresql")\n            self.assertEqual(engine.dialect.driver, "psycopg")\n            self.assertEqual(engine.pool.size(), 5)\n            self.assertEqual(engine.pool._max_overflow, 2)\n        finally:\n            engine.dispose()\n\n    def test_sqlite_engine_still_applies_foreign_keys(self):
         with patch.dict(os.environ, {"SCENTHUNTER_CATALOG_DATABASE_URL": "sqlite:///:memory:"}, clear=True):
             engine = make_engine()
         try:
