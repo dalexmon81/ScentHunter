@@ -218,9 +218,9 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                                 )
                             already_present += 1
 
-                    target_checksum_before = _table_checksum(target_connection, table)
+                    target_checksum_checked = _table_checksum(target_connection, table)
                     source_checksum = source_digest.hexdigest()
-                    checksums_match = source_checksum == target_checksum_before
+                    checksums_match = source_checksum == target_checksum_checked
                     if apply and not checksums_match:
                         raise RuntimeError(
                             f"Post-import checksum mismatch for {table_name}; "
@@ -232,8 +232,8 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                         "would_insert": would_insert,
                         "already_present_identical": already_present,
                         "source_sha256": source_checksum,
-                        "target_sha256_before": target_checksum_before,
-                        "target_sha256_after": target_checksum_before if apply else None,
+                        "target_sha256_checked": target_checksum_checked,
+                        "target_sha256_after_import": target_checksum_checked if apply else None,
                         "checksums_match_after_import": checksums_match if apply else None,
                     }
 
