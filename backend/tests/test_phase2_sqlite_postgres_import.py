@@ -124,6 +124,11 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         self.assertEqual(applied["status"], "applied")
         self.assertTrue(applied["destination_written"])
         self.assertEqual(applied["tables"]["offers"]["would_insert"], 1)
+        for table_report in applied["tables"].values():
+            self.assertTrue(table_report["checksums_match_after_import"])
+            self.assertEqual(
+                table_report["source_sha256"], table_report["target_sha256_after"]
+            )
 
         repeated = inspect_and_import(
             self.source_path, self.target, apply=True, confirm_target=database_name
