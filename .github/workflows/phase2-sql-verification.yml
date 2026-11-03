@@ -59,17 +59,10 @@ jobs:
               print(json.dumps({
                   "database_path": "<masked>",
                   "database_file_exists": False,
-                  "configuration_source": config_source
+                  "configuration_source": config_source,
+                  "configuration_valid": False
               }, indent=2))
               raise SystemExit(2)
-
-          # Worker Phase 2 persistence (_maybe_persist_bplatz_phase2) and the
-          # verifier (app.db.database_url) intentionally use the same precedence.
-          # Compare their effective source/path without printing the URL or secrets.
-          worker_url, worker_source = configured_url()
-          verifier_url, verifier_source = configured_url()
-          worker_path = sqlite_path(worker_url)
-          verifier_path = sqlite_path(verifier_url)
 
           conn = sqlite3.connect(
               "file:" + quote(str(path), safe="/") + "?mode=ro",
@@ -91,20 +84,20 @@ jobs:
               out = {
                   "database_path": ".../" + path.name,
                   "database_file_exists": True,
+                  "configuration": {
+                      "source": config_source,
+                      "effective_database_type": "SQLite",
+                      "effective_database_path": ".../" + path.name,
+                      "configuration_valid": True,
+                      "resolution_precedence": [
+                          "SCENTHUNTER_CATALOG_DATABASE_URL",
+                          "SCENTHUNTER_DATABASE_URL",
+                          "application default"
+                      ],
+                      "active_worker_database_match": "NOT_VERIFIED: this diagnostic does not inspect a running worker process"
+                  },
                   "connection_mode": "SQLite URI mode=ro; PRAGMA query_only=ON",
                   "query_only_verified": bool(query_only),
-                  "configuration": {
-                      "effective_source": config_source,
-                      "worker_source": worker_source,
-                      "verifier_source": verifier_source,
-                      "worker_verifier_same_effective_database": (
-                          worker_path == verifier_path == path
-                      ),
-                      "worker_and_verifier_precedence": (
-                          "SCENTHUNTER_CATALOG_DATABASE_URL, then "
-                          "SCENTHUNTER_DATABASE_URL, then application default"
-                      )
-                  },
                   "A_raw_by_id": [],
                   "B_offer_by_id": [],
                   "C_raw_status_by_id": [],
@@ -163,7 +156,7 @@ jobs:
                   out["offer_id_exact_match_count"] = conn.execute(
                       "SELECT COUNT(*) FROM offers WHERE id = ?", (OFFER_ID,)
                   ).fetchone()[0]
-                  # Schema-correct equivalent of B: offers has no sku column.
+                  # Schema-correct B: offers has no sku column.
                   out["B_offer_by_id"] = [
                       dict(row) for row in conn.execute(
                           "SELECT id, ingestion_raw_id, status, product_variant_id, captured_at "
@@ -183,7 +176,11 @@ jobs:
 
           encoded_script="$(base64 -w 0 phase2_readonly_diag.py)"
           remote_command="/bin/sh -lc 'echo ${encoded_script} | base64 -d | /app/.venv/bin/python -'"
-          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1
+          if ! flyctl ssh console --app scenthunter --select=false -C "$remote_command" > phase2-output.txt 2> fly-ssh-error.txt; then
+            echo "READ_ONLY_DATABASE_DIAGNOSTIC_FAILED; details suppressed to avoid exposing environment data."
+            exit 1
+          fi
+          cat phase2-output.txt
 
       - name: Find the 07:43:12 Bplatz worker log entry
         env:
