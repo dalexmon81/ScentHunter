@@ -6,7 +6,7 @@ import time
 import unittest
 from pathlib import Path
 
-from catalog_writer_lock import connect
+from catalog_writer_lock import connect, _needs_writer_lock
 
 
 def _write_transaction(database, started, finished):
@@ -64,6 +64,42 @@ class CatalogWriterLockTests(unittest.TestCase):
                 )
             finally:
                 check.close()
+
+    def test_cursor_writes_hold_lock_until_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = str(Path(directory) / "catalog.sqlite3")
+            setup = sqlite3.connect(database)
+            setup.execute("CREATE TABLE writes(value INTEGER NOT NULL)")
+            setup.commit()
+            setup.close()
+
+            first = connect(database, timeout=0.2)
+            second = connect(database, timeout=0.05)
+            try:
+                first.execute("BEGIN IMMEDIATE")
+                first.cursor().execute("INSERT INTO writes(value) VALUES (1)")
+                with self.assertRaises(sqlite3.OperationalError):
+                    second.cursor().execute("INSERT INTO writes(value) VALUES (2)")
+                first.commit()
+                second.cursor().execute("INSERT INTO writes(value) VALUES (3)")
+            finally:
+                first.close()
+                second.close()
+
+            check = sqlite3.connect(database)
+            try:
+                self.assertEqual(
+                    check.execute("SELECT value FROM writes ORDER BY value").fetchall(),
+                    [(1,), (3,)],
+                )
+            finally:
+                check.close()
+
+    def test_lock_detection_covers_comments_and_with_statements(self):
+        self.assertTrue(_needs_writer_lock("  -- comment\\nUPDATE writes SET value=2"))
+        self.assertTrue(_needs_writer_lock("/* comment */ DELETE FROM writes"))
+        self.assertTrue(_needs_writer_lock("WITH changed AS (SELECT 1) UPDATE writes SET value=2"))
+        self.assertFalse(_needs_writer_lock("SELECT * FROM writes"))
 
     def test_rollback_releases_lock_for_next_transaction(self):
         with tempfile.TemporaryDirectory() as directory:
