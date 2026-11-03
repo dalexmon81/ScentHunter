@@ -228,9 +228,25 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                     source_checksum = source_digest.hexdigest()
                     checksums_match = source_checksum == target_checksum_checked
                     if apply and not checksums_match:
+                        mismatch_columns = set()
+                        for source_row in source_connection.execute(
+                            select(table).order_by(pk)
+                        ).mappings():
+                            target_row = target_connection.execute(
+                                select(table).where(pk == source_row[pk.name])
+                            ).mappings().one_or_none()
+                            if target_row is None:
+                                mismatch_columns.add("<missing-row>")
+                                continue
+                            mismatch_columns.update(
+                                column for column in columns
+                                if _canonical_value(source_row[column], columns[column].type)
+                                != _canonical_value(target_row[column], columns[column].type)
+                            )
                         raise RuntimeError(
                             f"Post-import checksum mismatch for {table_name}; "
-                            "the destination transaction will be rolled back."
+                            f"differing_columns={sorted(mismatch_columns)}. "
+                            "The destination transaction will be rolled back."
                         )
                     report["tables"][table_name] = {
                         "source_rows": source_count,
