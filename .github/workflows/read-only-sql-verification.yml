@@ -24,16 +24,6 @@ jobs:
 
           DB='file:/data/store_catalog.sqlite3?mode=ro'
 
-          echo '===== A: ingestion_raw row ====='
-          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT id, status, created_at FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1';\""
-
-          echo '===== B: linked offer row ====='
-          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT id, ingestion_raw_id, sku, status FROM offers WHERE id = 'f723da10-5f85-4c8e-93bf-c0072163e88e';\""
-
-          echo '===== C: raw ingestion status ====='
-          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT status FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1';\""
-
-          echo '===== D: raw payload contains target SKU ====='
-          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT id FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1' AND raw_payload LIKE '%614514178065%';\""
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import sqlite3; q=chr(39); conn=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\", uri=True); queries=[(\"A: ingestion_raw row\", \"SELECT id, status, created_at FROM ingestion_raw WHERE id = \"+q+\"b9a5a0e9-2130-4dfa-b016-e717071235a1\"+q+\";\"),(\"B: linked offer row\", \"SELECT id, ingestion_raw_id, sku, status FROM offers WHERE id = \"+q+\"f723da10-5f85-4c8e-93bf-c0072163e88e\"+q+\";\"),(\"C: raw ingestion status\", \"SELECT status FROM ingestion_raw WHERE id = \"+q+\"b9a5a0e9-2130-4dfa-b016-e717071235a1\"+q+\";\"),(\"D: raw payload contains target SKU\", \"SELECT id FROM ingestion_raw WHERE id = \"+q+\"b9a5a0e9-2130-4dfa-b016-e717071235a1\"+q+\" AND raw_payload LIKE \"+q+\"%614514178065%\"+q+\";\")]; [(print(\"===== \"+label+\" =====\"), print(conn.execute(query).fetchall())) for label, query in queries]; conn.close()'"
 
           echo 'READ_ONLY_SQL_VERIFICATION=COMPLETE'
