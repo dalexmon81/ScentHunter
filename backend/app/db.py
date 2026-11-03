@@ -13,7 +13,6 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import sessionmaker
 
-# Production continues on the isolated SQLite catalog until cutover approval.
 DEFAULT_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
 _ENV_KEYS = ("SCENTHUNTER_CATALOG_DATABASE_URL", "SCENTHUNTER_DATABASE_URL")
 
@@ -27,16 +26,17 @@ def database_url(environ=None) -> str:
     except Exception:
         raise RuntimeError("Invalid Phase 2 database URL configuration.") from None
 
+    # SQLAlchemy reports the legacy postgres:// scheme as backend "postgres";
+    # normalize it before backend validation and force the installed psycopg 3.
+    if url.drivername in {"postgres", "postgresql"}:
+        url = url.set(drivername="postgresql+psycopg")
+
     backend = url.get_backend_name()
     if backend == "sqlite":
-        if url.database and url.database != ":memory:":
-            Path(url.database).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
         return url.render_as_string(hide_password=False)
 
     if backend == "postgresql":
-        if url.drivername in {"postgres", "postgresql"}:
-            url = url.set(drivername="postgresql+psycopg")
-        elif url.drivername != "postgresql+psycopg":
+        if url.drivername != "postgresql+psycopg":
             raise RuntimeError("Unsupported PostgreSQL driver for Phase 2; use psycopg 3.")
         if not url.database:
             raise RuntimeError("PostgreSQL Phase 2 database name is missing.")
@@ -51,6 +51,8 @@ def make_engine() -> Engine:
     backend = parsed.get_backend_name()
 
     if backend == "sqlite":
+        if parsed.database and parsed.database != ":memory:":
+            Path(parsed.database).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
         connect_args = {"timeout": 30}
         if parsed.database == ":memory:":
             connect_args = {"check_same_thread": False}
