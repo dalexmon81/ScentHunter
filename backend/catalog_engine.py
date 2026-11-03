@@ -26,6 +26,12 @@ import inspect
 import json
 import re
 import sqlite3
+try:
+    from catalog_writer_lock import connect as connect_catalog_db
+except ModuleNotFoundError as exc:
+    if exc.name != "catalog_writer_lock":
+        raise
+    from backend.catalog_writer_lock import connect as connect_catalog_db
 import traceback
 import threading
 import time
@@ -810,7 +816,7 @@ def _ensure_schema(conn):
 
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=45)
+    conn = connect_catalog_db(DB_PATH, timeout=45)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=45000')
     _ensure_schema(conn)
@@ -4006,7 +4012,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         # Read-only preflight: no create_all, no Alembic, no implicit schema changes.
         readonly_uri = "file:" + urllib.parse.quote(str(phase2_path), safe="/") + "?mode=ro"
         try:
-            check = sqlite3.connect(readonly_uri, uri=True, timeout=2)
+            check = connect_catalog_db(readonly_uri, uri=True, timeout=2)
             try:
                 check.execute("PRAGMA query_only=ON")
                 revision_row = check.execute(
@@ -4601,7 +4607,7 @@ def _search_db():
     application; a read-only WAL connection is sufficient for search.
     """
     uri = f"file:{DB_PATH.as_posix()}?mode=ro"
-    conn = sqlite3.connect(uri, uri=True, timeout=2)
+    conn = connect_catalog_db(uri, uri=True, timeout=2)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=2000')
     conn.execute('PRAGMA query_only=ON')
@@ -5512,7 +5518,7 @@ def prioritize_hydration_candidates(rows, priority=0):
         return 0
 
     now = time.time()
-    conn = sqlite3.connect(str(DB_PATH), timeout=0.15)
+    conn = connect_catalog_db(str(DB_PATH), timeout=0.15)
     conn.execute('PRAGMA busy_timeout=150')
     requeue_stale_done_sql = """UPDATE hydration_queue
                                    SET state='PENDING',
@@ -5751,7 +5757,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     token = uuid.uuid4().hex
     # Claiming is a hot-path operation shared with discovery and coverage.
     # Do not let this worker sit behind SQLite's global 45s busy timeout.
-    conn = sqlite3.connect(str(DB_PATH), timeout=2.0)
+    conn = connect_catalog_db(str(DB_PATH), timeout=2.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=2000')
     try:
@@ -7026,7 +7032,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
     current_time = time.time() if now is None else float(now)
     priced_cutoff = current_time - 24 * 60 * 60
     missing_cutoff = current_time - _MISSING_PRICE_RETRY_SECONDS
-    conn = sqlite3.connect(str(DB_PATH), timeout=0.2)
+    conn = connect_catalog_db(str(DB_PATH), timeout=0.2)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=200')
     requeued = 0
@@ -7232,7 +7238,7 @@ def hydration_status():
     # Do not call db(): it runs schema initialization and waits up to 45 seconds
     # on SQLite locks. Diagnostics must never queue behind catalog writers.
     uri = f"file:{DB_PATH.as_posix()}?mode=ro"
-    conn = sqlite3.connect(uri, uri=True, timeout=2.0)
+    conn = connect_catalog_db(uri, uri=True, timeout=2.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=2000')
     conn.execute('PRAGMA query_only=ON')
@@ -7327,7 +7333,7 @@ def store_status():
     # Read-only connection avoids waiting for writer/schema initialization;
     # diagnostics should degrade quickly rather than stall production probes.
     uri = f"file:{DB_PATH.as_posix()}?mode=ro"
-    conn = sqlite3.connect(uri, uri=True, timeout=2.0)
+    conn = connect_catalog_db(uri, uri=True, timeout=2.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=2000')
     conn.execute('PRAGMA query_only=ON')

@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import sqlite3
+import sys
 import time
 from pathlib import Path
 
@@ -20,6 +21,15 @@ URL = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-d
 GTIN = "6298042001831"
 SKU = "1385920"
 SIZE_ML = 150
+
+
+def _connect_writer(db_path: str, timeout: float = 5) -> sqlite3.Connection:
+    import sys
+    backend_dir = str(Path(__file__).resolve().parents[1])
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+    from catalog_writer_lock import connect as connect_catalog_db
+    return connect_catalog_db(db_path, timeout=timeout)
 
 
 def _read_row(db_path: str) -> dict | None:
@@ -81,7 +91,7 @@ def _offer_state_valid(row: dict | None) -> bool:
 def _mark_queue_done(db_path: str) -> bool:
     """Close the exact target's queue row after its persisted offer is verified."""
     now = time.time()
-    conn = sqlite3.connect(db_path, timeout=5)
+    conn = _connect_writer(db_path, timeout=5)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=5000")
     try:
@@ -126,7 +136,7 @@ def _offer_state_fresh(row: dict | None, max_age_seconds: float = 300) -> bool:
 
 
 def _requeue(db_path: str) -> dict:
-    conn = sqlite3.connect(db_path, timeout=5)
+    conn = _connect_writer(db_path, timeout=5)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("BEGIN IMMEDIATE")

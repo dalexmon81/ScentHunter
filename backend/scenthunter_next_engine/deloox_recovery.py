@@ -18,6 +18,7 @@ import hashlib
 import json
 import re
 import sqlite3
+import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -73,7 +74,12 @@ def _connect(db_path: str, readonly: bool) -> sqlite3.Connection:
         conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)
         conn.execute("PRAGMA query_only=ON")
     else:
-        conn = sqlite3.connect(str(path), timeout=5)
+        import sys
+        backend_dir = str(Path(__file__).resolve().parents[1])
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from catalog_writer_lock import connect as connect_catalog_db
+        conn = connect_catalog_db(str(path), timeout=5)
     conn.row_factory = sqlite3.Row
     return conn
 
