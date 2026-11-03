@@ -1,0 +1,115 @@
+name: Phase 2 SQL Verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Read-only Phase 2 production verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Read-only production database inspection
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${FLY_API_TOKEN:-}" ]]; then
+            echo "Required Fly.io access secret is unavailable."
+            exit 1
+          fi
+
+          cat > phase2_readonly_diag.py <<'PY'
+          import json, os, sqlite3
+          from pathlib import Path
+          from urllib.parse import quote
+
+          RAW_ID = "b9a5a0e9-2130-4dfa-b016-e717071235a1"
+          OFFER_ID = "f723da10-5f85-4c8e-93bf-c0072163e88e"
+          SKU = "614514178065"
+
+          raw_url = (os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL")
+                     or os.environ.get("SCENTHUNTER_DATABASE_URL")
+                     or "sqlite:////data/catalog/catalog.sqlite3").strip()
+          if not raw_url.startswith("sqlite:"):
+              raise SystemExit("Configured Phase 2 database is not SQLite; refusing to continue.")
+          db = raw_url.removeprefix("sqlite:///")
+          if not db or db == ":memory:":
+              raise SystemExit("Configured database is not a persistent SQLite file.")
+          path = (Path("/" + db.lstrip("/")) if raw_url.startswith("sqlite:////") else Path(db)).expanduser().resolve()
+          if not path.is_file():
+              print(json.dumps({"database_path": "<masked>", "database_file_exists": False}))
+              raise SystemExit(2)
+
+          con = sqlite3.connect("file:" + quote(str(path), safe="/") + "?mode=ro", uri=True, timeout=10)
+          con.row_factory = sqlite3.Row
+          try:
+              con.execute("PRAGMA query_only=ON")
+              con.execute("PRAGMA busy_timeout=10000")
+              tables = {r["name"] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+              out = {
+                  "database_path": ".../" + path.name,
+                  "database_file_exists": True,
+                  "connection": "SQLite mode=ro; PRAGMA query_only=ON",
+                  "database_config_source": (
+                      "SCENTHUNTER_CATALOG_DATABASE_URL" if os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL")
+                      else "SCENTHUNTER_DATABASE_URL" if os.environ.get("SCENTHUNTER_DATABASE_URL")
+                      else "application default"
+                  ),
+                  "worker_and_verifier_config": "same environment-variable precedence as application Phase 2 config",
+                  "offers_columns": [],
+                  "ingestion_raw_columns": [],
+                  "ingestion_raw_total": None,
+                  "target_raw_rows": [],
+                  "target_offer_rows": [],
+                  "sku_payload_match_count": None,
+                  "offers_linked_to_target_raw": []
+              }
+              for table, key in (("offers", "offers_columns"), ("ingestion_raw", "ingestion_raw_columns")):
+                  if table in tables:
+                      out[key] = [{"name": x["name"], "type": x["type"]} for x in con.execute(f"PRAGMA table_info({table})")]
+              if "ingestion_raw" in tables:
+                  out["ingestion_raw_total"] = con.execute("SELECT COUNT(*) FROM ingestion_raw").fetchone()[0]
+                  out["target_raw_rows"] = [dict(x) for x in con.execute(
+                      "SELECT id,status,created_at FROM ingestion_raw WHERE id=?", (RAW_ID,))]
+                  out["sku_payload_match_count"] = con.execute(
+                      "SELECT COUNT(*) FROM ingestion_raw WHERE raw_payload LIKE ?", (f"%{SKU}%",)).fetchone()[0]
+              if "offers" in tables:
+                  out["target_offer_rows"] = [dict(x) for x in con.execute(
+                      "SELECT id,ingestion_raw_id,status,product_variant_id,captured_at FROM offers WHERE id=?", (OFFER_ID,))]
+                  out["offers_linked_to_target_raw"] = [dict(x) for x in con.execute(
+                      "SELECT id,ingestion_raw_id,status,product_variant_id,captured_at FROM offers WHERE ingestion_raw_id=?", (RAW_ID,))]
+              print(json.dumps(out, indent=2, sort_keys=True, default=str))
+          finally:
+              con.close()
+          PY
+
+          encoded_script="$(base64 -w 0 phase2_readonly_diag.py)"
+          remote_command="/bin/sh -lc 'echo ${encoded_script} | base64 -d | /app/.venv/bin/python -'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee phase2-db-readonly-output.txt
+
+      - name: Find the 07:43:12 normal-worker log entry
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl logs --app scenthunter --no-tail > production-logs.txt 2>&1 || true
+          matches="$(grep -E '07:43:12' production-logs.txt | grep 'hydration_worker bplatz' || true)"
+          if [[ -z "$matches" ]]; then
+            echo "WORKER_LOG_07_43_12=NOT_FOUND_IN_RETAINED_LOGS"
+            exit 0
+          fi
+          while IFS= read -r line; do
+            product="$(sed -nE 's/.*product=([^ ]+).*/\1/p' <<< "$line")"
+            offer_id="$(sed -nE 's/.*offer_id=([^ ]+).*/\1/p' <<< "$line")"
+            raw_id="$(sed -nE 's/.*ingestion_raw_id=([^ ]+).*/\1/p' <<< "$line")"
+            printf 'WORKER_LOG time=07:43:12 product=%s offer_id=%s ingestion_raw_id=%s\n' "${product:-NOT_FOUND}" "${offer_id:-NOT_FOUND}" "${raw_id:-NOT_FOUND}"
+          done <<< "$matches"
