@@ -1,35 +1,56 @@
-name: Phase 2 SQLite schema checks
+name: Phase 2 PostgreSQL compatibility
 
 on:
   pull_request:
+    branches: [main]
     paths:
-      - "backend/app/models/**"
       - "backend/app/db.py"
+      - "backend/app/db_runtime_identity.py"
+      - "backend/app/models/**"
       - "backend/alembic/**"
       - "backend/alembic.ini"
-      - "backend/scripts/seed_catalog.py"
-      - "requirements.txt"
-      - "tests/test_phase2_schema_contract.py"
-      - "tests/test_phase2_seed_catalog.py"
+      - "backend/tests/test_phase2_database_backends.py"
+      - "backend/tests/test_phase2_postgres_schema.py"
       - ".github/workflows/phase2-postgresql.yml"
-  push:
-    branches:
-      - "feature/phase-2-postgresql-data-model"
 
 permissions:
   contents: read
 
 jobs:
-  schema-contract:
+  postgres-schema-and-engine:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: phase2
+          POSTGRES_PASSWORD: phase2_ci_only
+          POSTGRES_DB: phase2_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U phase2 -d phase2_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://phase2:phase2_ci_only@127.0.0.1:5432/phase2_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install SQLite migration tooling
-        run: python -m pip install "SQLAlchemy==2.0.44" "alembic==1.17.1" pytest
-      - name: Run schema and seed integration tests
-        run: pytest -q tests/test_phase2_schema_contract.py tests/test_phase2_seed_catalog.py
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend database dependencies
+        run: python -m pip install -r backend/requirements.txt pytest
+      - name: Upgrade disposable PostgreSQL schema to Alembic head
+        working-directory: backend
+        run: alembic upgrade head
+      - name: Confirm a second upgrade is a no-op
+        working-directory: backend
+        run: alembic upgrade head
+      - name: Verify PostgreSQL schema, constraints and rollback behavior
+        working-directory: backend
+        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py
