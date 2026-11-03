@@ -1,0 +1,48 @@
+name: Controlled legacy SQLite telemetry rollback
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-production-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Restore current main build on Fly.io
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Verify current main source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          actual="$(git rev-parse HEAD)"
+          expected="$(git rev-parse origin/main)"
+          test "$actual" = "$expected"
+          echo "Verified current main commit: $actual"
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@v1.5
+
+      # SAFETY: Run this workflow only after the 30-minute observation window has ended.
+      # NEVER run rollback during the observation window.
+      # secrets unset followed by deploy can restart or replace the running application.
+      - name: Disable telemetry and restore verified main build
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl secrets unset SCENTHUNTER_SQLITE_TXN_TELEMETRY --app scenthunter
+          flyctl deploy --remote-only --config fly.toml --app scenthunter
