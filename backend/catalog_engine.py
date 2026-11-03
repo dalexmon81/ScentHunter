@@ -3276,16 +3276,19 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
 
 def _set_sync_state(store, status, started_at=None, finished_at=None, discovered_count=0, fetched_count=0, error=None):
     conn = db()
-    now = time.time()
-    conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-       VALUES(?,?,?,?,?,?,?)
-       ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-       started_at=excluded.started_at,finished_at=excluded.finished_at,
-       discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
-       error=excluded.error""",
-       (store, status, started_at if started_at is not None else now, finished_at,
-        discovered_count, fetched_count, error))
-    conn.commit(); conn.close()
+    try:
+        now = time.time()
+        conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+           VALUES(?,?,?,?,?,?,?)
+           ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+           started_at=excluded.started_at,finished_at=excluded.finished_at,
+           discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
+           error=excluded.error""",
+           (store, status, started_at if started_at is not None else now, finished_at,
+            discovered_count, fetched_count, error))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def discover_store(store):
@@ -3382,6 +3385,13 @@ def discover_store(store):
                 f'sitemap_batch_deadline_reached; pending={sum(1 for f in futures if not f.done())}'
             )
         finally:
+            # Release worker resources before persisting progress: even if the
+            # SQLite status write fails, outstanding fetch threads are cancelled
+            # and the executor is shut down.
+            for future in futures:
+                if not future.done():
+                    future.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
             _set_sync_state(
                 store, 'DISCOVERY_RUNNING', started_at=started_at,
                 discovered_count=len(product_urls), fetched_count=sitemap_successes,
@@ -3392,10 +3402,6 @@ def discover_store(store):
                     f'xml_entries={sitemap_url_entries};errors={len(sitemap_errors)}'
                 ),
             )
-            for future in futures:
-                if not future.done():
-                    future.cancel()
-            pool.shutdown(wait=False, cancel_futures=True)
 
     fallback=None
     # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
@@ -3478,15 +3484,18 @@ def discover_store(store):
         now = time.time()
         detail = 'catalog_access_failed; ' + ' | '.join(fallback['errors'][:8])
         conn = db()
-        conn.execute(
-            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-               VALUES(?,?,?,?,?,?,?)
-               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-               started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error''',
-            (store, 'DISCOVERY_ERROR', started_at, now, 0, 0, detail),
-        )
-        conn.commit(); conn.close()
+        try:
+            conn.execute(
+                '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+                   VALUES(?,?,?,?,?,?,?)
+                   ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+                   started_at=excluded.started_at,finished_at=excluded.finished_at,
+                   discovered_count=excluded.discovered_count,error=excluded.error''',
+                (store, 'DISCOVERY_ERROR', started_at, now, 0, 0, detail),
+            )
+            conn.commit()
+        finally:
+            conn.close()
         status,count,error='DISCOVERY_ERROR',0,detail
     else:
         status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
@@ -3521,9 +3530,12 @@ def discover_store(store):
         )
         if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
     final_error=' | '.join(details) if details else error
-    conn=db()
-    conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
-    conn.commit(); conn.close()
+    conn = db()
+    try:
+        conn.execute('UPDATE sync_state SET error=? WHERE store=?', (final_error, store))
+        conn.commit()
+    finally:
+        conn.close()
 
     return {
         'count':count,'status':status,'visited_sitemaps':len(visited),
