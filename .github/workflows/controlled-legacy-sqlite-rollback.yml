@@ -32,7 +32,7 @@ jobs:
           echo "Verified current main commit: $actual"
 
       - name: Install Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@v1.5
+        uses: superfly/flyctl-actions/setup-flyctl@1.5
 
       # SAFETY: Run this workflow only after the 30-minute observation window has ended.
       # NEVER run rollback during the observation window.
