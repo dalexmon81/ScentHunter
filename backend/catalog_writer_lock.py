@@ -41,7 +41,7 @@ def _needs_writer_lock(sql):
     statement = sql.lstrip()
     while True:
         if statement.startswith("--"):
-            newline = statement.find("\\n")
+            newline = statement.find("\n")
             if newline < 0:
                 return True
             statement = statement[newline + 1 :].lstrip()
@@ -54,16 +54,16 @@ def _needs_writer_lock(sql):
             continue
         break
 
-    if re.match(r"^WITH\\b", statement, re.IGNORECASE):
+    if re.match(r"^WITH\b", statement, re.IGNORECASE):
         return True
-    if re.match(r"^SELECT\\b", statement, re.IGNORECASE):
+    if re.match(r"^SELECT\b", statement, re.IGNORECASE):
         return False
-    if re.match(r"^EXPLAIN\\s+(?:QUERY\\s+PLAN\\s+)?SELECT\\b", statement, re.IGNORECASE):
+    if re.match(r"^EXPLAIN\s+(?:QUERY\s+PLAN\s+)?SELECT\b", statement, re.IGNORECASE):
         return False
     if re.match(
         r"^PRAGMA\\s+(?:table_info|table_xinfo|index_list|index_info|"
         r"foreign_key_list|foreign_key_check|database_list|compile_options|"
-        r"integrity_check|quick_check)\\b",
+        r"integrity_check|quick_check)\b",
         statement,
         re.IGNORECASE,
     ):
