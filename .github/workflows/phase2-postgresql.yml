@@ -11,6 +11,7 @@ on:
       - "backend/alembic.ini"
       - "backend/tests/test_phase2_database_backends.py"
       - "backend/tests/test_phase2_postgres_schema.py"
+      - "backend/tests/test_phase2_runtime_db_identity.py"
       - ".github/workflows/phase2-postgresql.yml"
 
 permissions:
@@ -20,6 +21,8 @@ jobs:
   postgres-schema-and-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend
     services:
       postgres:
         image: postgres:16
@@ -53,4 +56,4 @@ jobs:
         run: alembic upgrade head
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
-        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py
+        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py
