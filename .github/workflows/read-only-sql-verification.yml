@@ -1,0 +1,39 @@
+name: Read-only production SQL verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-sql-verification:
+    name: Run four read-only SQLite checks on Fly
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Fly CLI (pinned)
+        uses: superfly/flyctl-actions/setup-flyctl@v1.5
+
+      - name: Execute A-D queries in SQLite read-only mode
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DB='file:/data/store_catalog.sqlite3?mode=ro'
+
+          echo '===== A: ingestion_raw row ====='
+          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT id, status, created_at FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1';\""
+
+          echo '===== B: linked offer row ====='
+          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT id, ingestion_raw_id, sku, status FROM offers WHERE id = 'f723da10-5f85-4c8e-93bf-c0072163e88e';\""
+
+          echo '===== C: raw ingestion status ====='
+          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT status FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1';\""
+
+          echo '===== D: raw payload contains target SKU ====='
+          flyctl ssh console --app scenthunter --select=false -C "sqlite3 -readonly -uri '$DB' \"SELECT id FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1' AND raw_payload LIKE '%614514178065%';\""
+
+          echo 'READ_ONLY_SQL_VERIFICATION=COMPLETE'
