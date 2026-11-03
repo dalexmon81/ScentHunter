@@ -18,6 +18,7 @@ import hashlib
 import json
 import re
 import sqlite3
+import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
