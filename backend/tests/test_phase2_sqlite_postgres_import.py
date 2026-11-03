@@ -32,6 +32,13 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         cls.source_path = Path(cls.tempdir.name) / "canonical-source.sqlite3"
         cls.source = create_engine(f"sqlite:///{cls.source_path}")
         Base.metadata.create_all(cls.source)
+        with cls.source.begin() as connection:
+            connection.execute(text(
+                "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
+            ))
+            connection.execute(text(
+                "INSERT INTO alembic_version (version_num) VALUES ('0003_store_domain')"
+            ))
 
         cls.brand_id = uuid.uuid4()
         cls.fragrance_id = uuid.uuid4()
