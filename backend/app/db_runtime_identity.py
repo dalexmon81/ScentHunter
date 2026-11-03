@@ -49,7 +49,7 @@ def log_runtime_database_identity(
             "PHASE2_RUNTIME_DATABASE "
             f"event={event_name} pid={os.getpid()} service={service_name} "
             f"config_source={config_source} dialect={backend} "
-            f"database_name={database_name} database_location={safe_location} "
+            f"database_name={database_name} database_path={safe_location} "
             f"database_id=sha256:{fingerprint} "
             f"connection_opened_at={opened_at or opened_at_utc()}",
             flush=True,
