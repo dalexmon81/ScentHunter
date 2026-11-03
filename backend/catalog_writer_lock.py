@@ -18,12 +18,12 @@ from urllib.parse import unquote, urlsplit
 
 
 _WRITE_SQL = re.compile(
-    r"^\\s*(?:"
+    r"^\s*(?:"
     r"INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER|REINDEX|VACUUM|"
-    r"BEGIN\\s+(?:IMMEDIATE|EXCLUSIVE)|"
-    r"PRAGMA\\s+(?:journal_mode|synchronous|wal_checkpoint|"
+    r"BEGIN\s+(?:IMMEDIATE|EXCLUSIVE)|"
+    r"PRAGMA\s+(?:journal_mode|synchronous|wal_checkpoint|"
     r"locking_mode|foreign_keys|user_version|application_id)"
-    r")\\b",
+    r")\b",
     re.IGNORECASE,
 )
 
