@@ -6,6 +6,7 @@ on:
       - main
     paths-ignore:
       - .github/workflows/phase-0-live-baseline.yml
+      - .github/workflows/phase2-sql-verification.yml
       - backend/scenthunter_next_engine/baseline_report.py
 
 jobs:
