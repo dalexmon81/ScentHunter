@@ -117,7 +117,8 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             ).scalar_one()
         self.assertEqual(before, 0)
 
-        database_name = self.target.execute(text("SELECT current_database()")).scalar_one()
+        with self.target.connect() as connection:
+            database_name = connection.execute(text("SELECT current_database()")).scalar_one()
         applied = inspect_and_import(
             self.source_path, self.target, apply=True, confirm_target=database_name
         )
