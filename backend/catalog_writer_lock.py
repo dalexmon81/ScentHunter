@@ -67,7 +67,7 @@ def _database_path(database, uri):
         value = unquote(parsed.path)
     if value == ":memory:" or value.startswith("file::memory:"):
         return None
-    return Path(value).expanduser()
+    return Path(value).expanduser().resolve(strict=False)
 
 
 class CoordinatedSQLiteCursor(sqlite3.Cursor):
@@ -163,7 +163,7 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
             raise
 
     def executemany(self, sql, seq_of_parameters, /):
-        if isinstance(sql, str) and _WRITE_SQL.match(sql):
+        if _needs_writer_lock(sql):
             self._acquire_writer_lock()
         try:
             cursor = super().executemany(sql, seq_of_parameters)
@@ -179,7 +179,8 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
         self._acquire_writer_lock()
         try:
             cursor = super().executescript(sql_script)
-            self._release_writer_lock()
+            if not self.in_transaction:
+                self._release_writer_lock()
             return cursor
         except Exception:
             if not self.in_transaction:
