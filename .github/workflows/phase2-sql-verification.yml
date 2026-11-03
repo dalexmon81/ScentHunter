@@ -40,9 +40,25 @@ jobs:
               exit 1
             }
 
-          if [[ "$http_code" != "200" ]] || ! jq -e 'type == "object" and all(["A","B","C","D"][]; has(.))' phase2-response.json >/dev/null 2>&1; then
-            printf '%s\\n' '{"error":"Endpoint returned an unsuccessful or invalid response."}'
+          if [[ "$http_code" != "200" ]]; then
+            printf 'HTTP_STATUS=%s\\n' "$http_code"
             exit 1
           fi
 
-          jq . phase2-response.json
+          if ! jq -e '
+            type == "object"
+            and has("A")
+            and has("B")
+            and has("C")
+            and has("D")
+          ' phase2-response.json >/dev/null 2>&1; then
+            echo "INVALID_JSON_STRUCTURE"
+            exit 1
+          fi
+
+          jq '{
+            A: .A,
+            B: .B,
+            C: .C,
+            D: .D
+          }' phase2-response.json
