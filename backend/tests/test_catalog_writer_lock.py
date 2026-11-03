@@ -158,6 +158,7 @@ class CatalogWriterLockTests(unittest.TestCase):
             setup.commit()
             setup.close()
 
+            (root / "unused").mkdir()
             alias = root / "unused" / ".." / "catalog.sqlite3"
             first = connect(str(database), timeout=0.2)
             second = connect(str(alias), timeout=0.05)
