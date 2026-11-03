@@ -96,7 +96,7 @@ class CatalogWriterLockTests(unittest.TestCase):
                 check.close()
 
     def test_lock_detection_covers_comments_and_with_statements(self):
-        self.assertTrue(_needs_writer_lock("  -- comment\\nUPDATE writes SET value=2"))
+        self.assertTrue(_needs_writer_lock("  -- comment\nUPDATE writes SET value=2"))
         self.assertTrue(_needs_writer_lock("/* comment */ DELETE FROM writes"))
         self.assertTrue(_needs_writer_lock("WITH changed AS (SELECT 1) UPDATE writes SET value=2"))
         self.assertFalse(_needs_writer_lock("SELECT * FROM writes"))
