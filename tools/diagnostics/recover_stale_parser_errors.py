@@ -186,7 +186,13 @@ def build_recovery_plan(conn, *, now: float | None = None, limit_per_store: int 
 def recover(*, apply: bool = False, limit_per_store: int = MAX_LIMIT_PER_STORE):
     db_path = Path(engine.DB_PATH).resolve()
     if apply:
-        conn = sqlite3.connect(str(db_path), timeout=10)
+        try:
+            from catalog_writer_lock import connect as connect_catalog_db
+        except ModuleNotFoundError as exc:
+            if exc.name != "catalog_writer_lock":
+                raise
+            from backend.catalog_writer_lock import connect as connect_catalog_db
+        conn = connect_catalog_db(str(db_path), timeout=10)
     else:
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2)
     try:
