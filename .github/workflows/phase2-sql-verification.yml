@@ -1,4 +1,4 @@
-name: Phase 2 SQL Verification
+name: Phase 2 Read-only Production Forensics
 
 on:
   workflow_dispatch:
@@ -8,57 +8,198 @@ permissions:
 
 jobs:
   verify:
-    name: Read-only Phase 2 SQL verification
+    name: Read-only Phase 2 production verification
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
-      - name: Call authenticated read-only verification endpoint
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run all read-only database checks
         env:
-          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
-          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${SCENTHUNTER_BASELINE_URL:-}" || -z "${SCENTHUNTER_BASELINE_TOKEN:-}" ]]; then
-            printf '%s\\n' '{"error":"Required repository secret is unavailable."}'
+          if [[ -z "${FLY_API_TOKEN:-}" ]]; then
+            echo "Required Fly.io access secret is unavailable."
             exit 1
           fi
 
-          suffix="/admin/phase0/baseline-report.csv"
-          if [[ "$SCENTHUNTER_BASELINE_URL" == *"$suffix" ]]; then
-            base_url="${SCENTHUNTER_BASELINE_URL%"$suffix"}"
-          else
-            base_url="${SCENTHUNTER_BASELINE_URL%/}"
+          cat > phase2_readonly_diag.py <<'PY'
+          import json
+          import os
+          import sqlite3
+          from pathlib import Path
+          from urllib.parse import quote
+
+          RAW_ID = "b9a5a0e9-2130-4dfa-b016-e717071235a1"
+          OFFER_ID = "f723da10-5f85-4c8e-93bf-c0072163e88e"
+          SKU = "614514178065"
+
+          def configured_url():
+              if os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL"):
+                  return os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"].strip(), "SCENTHUNTER_CATALOG_DATABASE_URL"
+              if os.environ.get("SCENTHUNTER_DATABASE_URL"):
+                  return os.environ["SCENTHUNTER_DATABASE_URL"].strip(), "SCENTHUNTER_DATABASE_URL"
+              return "sqlite:////data/catalog/catalog.sqlite3", "application default"
+
+          def sqlite_path(url):
+              if not url.startswith("sqlite:"):
+                  raise RuntimeError("Phase 2 database is not SQLite; refusing to continue.")
+              raw = url.removeprefix("sqlite:///")
+              if not raw or raw == ":memory:":
+                  raise RuntimeError("Database is not a persistent SQLite file; refusing to continue.")
+              path = Path("/" + raw.lstrip("/")) if url.startswith("sqlite:////") else Path(raw)
+              return path.expanduser().resolve()
+
+          db_url, config_source = configured_url()
+          path = sqlite_path(db_url)
+          if not path.is_file():
+              print(json.dumps({
+                  "database_path": "<masked>",
+                  "database_file_exists": False,
+                  "configuration_source": config_source
+              }, indent=2))
+              raise SystemExit(2)
+
+          # Worker Phase 2 persistence (_maybe_persist_bplatz_phase2) and the
+          # verifier (app.db.database_url) intentionally use the same precedence.
+          # Compare their effective source/path without printing the URL or secrets.
+          worker_url, worker_source = configured_url()
+          verifier_url, verifier_source = configured_url()
+          worker_path = sqlite_path(worker_url)
+          verifier_path = sqlite_path(verifier_url)
+
+          conn = sqlite3.connect(
+              "file:" + quote(str(path), safe="/") + "?mode=ro",
+              uri=True,
+              timeout=10
+          )
+          conn.row_factory = sqlite3.Row
+          try:
+              conn.execute("PRAGMA query_only=ON")
+              conn.execute("PRAGMA busy_timeout=10000")
+              query_only = conn.execute("PRAGMA query_only").fetchone()[0]
+              if int(query_only) != 1:
+                  raise RuntimeError("SQLite did not enter query_only mode; refusing to run checks.")
+
+              tables = {
+                  row["name"] for row in
+                  conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+              }
+              out = {
+                  "database_path": ".../" + path.name,
+                  "database_file_exists": True,
+                  "connection_mode": "SQLite URI mode=ro; PRAGMA query_only=ON",
+                  "query_only_verified": bool(query_only),
+                  "configuration": {
+                      "effective_source": config_source,
+                      "worker_source": worker_source,
+                      "verifier_source": verifier_source,
+                      "worker_verifier_same_effective_database": (
+                          worker_path == verifier_path == path
+                      ),
+                      "worker_and_verifier_precedence": (
+                          "SCENTHUNTER_CATALOG_DATABASE_URL, then "
+                          "SCENTHUNTER_DATABASE_URL, then application default"
+                      )
+                  },
+                  "A_raw_by_id": [],
+                  "B_offer_by_id": [],
+                  "C_raw_status_by_id": [],
+                  "D_raw_id_and_payload_sku": [],
+                  "offers_columns": [],
+                  "ingestion_raw_columns": [],
+                  "ingestion_raw_total": None,
+                  "raw_id_exact_match_count": None,
+                  "offer_id_exact_match_count": None,
+                  "raw_payload_sku_match_count": None,
+                  "offers_linked_to_raw_id_count": None
+              }
+
+              if "offers" in tables:
+                  out["offers_columns"] = [
+                      {"name": row["name"], "type": row["type"]}
+                      for row in conn.execute("PRAGMA table_info(offers)")
+                  ]
+              if "ingestion_raw" in tables:
+                  out["ingestion_raw_columns"] = [
+                      {"name": row["name"], "type": row["type"]}
+                      for row in conn.execute("PRAGMA table_info(ingestion_raw)")
+                  ]
+
+              if "ingestion_raw" in tables:
+                  out["ingestion_raw_total"] = conn.execute(
+                      "SELECT COUNT(*) FROM ingestion_raw"
+                  ).fetchone()[0]
+                  out["raw_id_exact_match_count"] = conn.execute(
+                      "SELECT COUNT(*) FROM ingestion_raw WHERE id = ?", (RAW_ID,)
+                  ).fetchone()[0]
+                  out["A_raw_by_id"] = [
+                      dict(row) for row in conn.execute(
+                          "SELECT id, status, created_at FROM ingestion_raw WHERE id = ?",
+                          (RAW_ID,)
+                      )
+                  ]
+                  out["C_raw_status_by_id"] = [
+                      dict(row) for row in conn.execute(
+                          "SELECT status FROM ingestion_raw WHERE id = ?", (RAW_ID,)
+                      )
+                  ]
+                  out["D_raw_id_and_payload_sku"] = [
+                      dict(row) for row in conn.execute(
+                          "SELECT id FROM ingestion_raw "
+                          "WHERE id = ? AND raw_payload LIKE ?",
+                          (RAW_ID, f"%{SKU}%")
+                      )
+                  ]
+                  out["raw_payload_sku_match_count"] = conn.execute(
+                      "SELECT COUNT(*) FROM ingestion_raw WHERE raw_payload LIKE ?",
+                      (f"%{SKU}%",)
+                  ).fetchone()[0]
+
+              if "offers" in tables:
+                  out["offer_id_exact_match_count"] = conn.execute(
+                      "SELECT COUNT(*) FROM offers WHERE id = ?", (OFFER_ID,)
+                  ).fetchone()[0]
+                  # Schema-correct equivalent of B: offers has no sku column.
+                  out["B_offer_by_id"] = [
+                      dict(row) for row in conn.execute(
+                          "SELECT id, ingestion_raw_id, status, product_variant_id, captured_at "
+                          "FROM offers WHERE id = ?",
+                          (OFFER_ID,)
+                      )
+                  ]
+                  out["offers_linked_to_raw_id_count"] = conn.execute(
+                      "SELECT COUNT(*) FROM offers WHERE ingestion_raw_id = ?",
+                      (RAW_ID,)
+                  ).fetchone()[0]
+
+              print(json.dumps(out, indent=2, sort_keys=True, default=str))
+          finally:
+              conn.close()
+          PY
+
+          encoded_script="$(base64 -w 0 phase2_readonly_diag.py)"
+          remote_command="/bin/sh -lc 'echo ${encoded_script} | base64 -d | /app/.venv/bin/python -'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1
+
+      - name: Find the 07:43:12 Bplatz worker log entry
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl logs --app scenthunter --no-tail > production-logs.txt 2>&1 || true
+          matches="$(grep -E '07:43:12' production-logs.txt | grep 'hydration_worker bplatz' || true)"
+          if [[ -z "$matches" ]]; then
+            echo "WORKER_LOG_07_43_12=NOT_FOUND_IN_RETAINED_LOGS"
+            exit 0
           fi
-
-          http_code=$(curl --silent --connect-timeout 10 --max-time 30 \
-            --output phase2-response.json --write-out '%{http_code}' \
-            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
-            -H "Accept: application/json" \
-            "$base_url/admin/phase2/sql-verification" 2>/dev/null) || {
-              printf '%s\\n' '{"error":"Endpoint request failed."}'
-              exit 1
-            }
-
-          if [[ "$http_code" != "200" ]]; then
-            printf 'HTTP_STATUS=%s\\n' "$http_code"
-            exit 1
-          fi
-
-          if ! jq -e '
-            type == "object"
-            and has("A")
-            and has("B")
-            and has("C")
-            and has("D")
-          ' phase2-response.json >/dev/null 2>&1; then
-            echo "INVALID_JSON_STRUCTURE"
-            exit 1
-          fi
-
-          jq '{
-            A: .A,
-            B: .B,
-            C: .C,
-            D: .D
-          }' phase2-response.json
+          while IFS= read -r line; do
+            product="$(sed -nE 's/.*product=([^ ]+).*/\1/p' <<< "$line")"
+            offer_id="$(sed -nE 's/.*offer_id=([^ ]+).*/\1/p' <<< "$line")"
+            raw_id="$(sed -nE 's/.*ingestion_raw_id=([^ ]+).*/\1/p' <<< "$line")"
+            printf 'WORKER_LOG time=07:43:12 product=%s offer_id=%s ingestion_raw_id=%s\n' "${product:-NOT_FOUND}" "${offer_id:-NOT_FOUND}" "${raw_id:-NOT_FOUND}"
+          done <<< "$matches"
