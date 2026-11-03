@@ -2,14 +2,6 @@ name: Controlled legacy SQLite telemetry deploy
 
 on:
   workflow_dispatch:
-    inputs:
-      action:
-        description: "Deploy diagnostic build or restore the current main build"
-        required: true
-        type: choice
-        options:
-          - deploy_diagnostic
-          - restore_main
 
 permissions:
   contents: read
@@ -20,38 +12,28 @@ concurrency:
 
 jobs:
   deploy:
-    name: Controlled Fly.io production operation
+    name: Deploy pinned diagnostic build to Fly.io
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout the explicitly approved source
+      - name: Checkout the explicitly approved diagnostic source
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.action == 'deploy_diagnostic' && 'a9c6dd18d2001c3181f88f6a4c8d1647f7e31206' || 'main' }}
+          ref: c59abdca66c9f8fbaddd8bd9c58a24560706027f
 
-      - name: Verify selected source
+      - name: Verify exact diagnostic source
         shell: bash
-        env:
-          REQUESTED_ACTION: ${{ inputs.action }}
         run: |
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
-          if [ "$REQUESTED_ACTION" = "deploy_diagnostic" ]; then
-            expected="a9c6dd18d2001c3181f88f6a4c8d1647f7e31206"
-            test "$actual" = "$expected"
-            echo "Verified diagnostic commit: $actual"
-          elif [ "$REQUESTED_ACTION" = "restore_main" ]; then
-            echo "Restoring main source at: $actual"
-          else
-            echo "Unsupported action" >&2
-            exit 1
-          fi
+          expected="c59abdca66c9f8fbaddd8bd9c58a24560706027f"
+          test "$actual" = "$expected"
+          echo "Verified diagnostic commit: $actual"
 
       - name: Install Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@v1.5
 
-      - name: Enable telemetry and deploy approved diagnostic build
-        if: inputs.action == 'deploy_diagnostic'
+      - name: Enable telemetry and deploy pinned diagnostic build
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
@@ -59,15 +41,4 @@ jobs:
           set -euo pipefail
           test -n "$FLY_API_TOKEN"
           flyctl secrets set SCENTHUNTER_SQLITE_TXN_TELEMETRY=1 --app scenthunter
-          flyctl deploy --remote-only --config fly.toml --app scenthunter
-
-      - name: Disable telemetry and restore main build
-        if: inputs.action == 'restore_main'
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$FLY_API_TOKEN"
-          flyctl secrets unset SCENTHUNTER_SQLITE_TXN_TELEMETRY --app scenthunter
           flyctl deploy --remote-only --config fly.toml --app scenthunter
