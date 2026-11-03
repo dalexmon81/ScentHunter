@@ -117,15 +117,32 @@ def _canonical_value(value, column_type=None):
     return value
 
 
-def _update_checksum(digest, row, columns):
+def _new_checksum():
+    return {"count": 0, "sum": 0}
+
+
+def _update_checksum(checksum, row, columns):
     canonical = {
         column: _canonical_value(row[column], columns[column].type)
         for column in columns
     }
-    digest.update(json.dumps(
+    payload = json.dumps(
         canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
-    ).encode("utf-8"))
-    digest.update(b"\\n")
+    ).encode("utf-8")
+    # Order-independent multiset checksum: avoids SQLite/PostgreSQL collation
+    # and UUID sort differences while preserving duplicate-row contributions.
+    checksum["sum"] = (
+        checksum["sum"] + int.from_bytes(hashlib.sha256(payload).digest(), "big")
+    ) % (1 << 256)
+    checksum["count"] += 1
+
+
+def _checksum_hex(checksum):
+    final = hashlib.sha256(
+        checksum["count"].to_bytes(8, "big")
+        + checksum["sum"].to_bytes(32, "big")
+    )
+    return final.hexdigest()
 
 
 def _ordered_rows(connection, table, primary_key):
@@ -144,10 +161,10 @@ def _ordered_rows(connection, table, primary_key):
 def _table_checksum(connection, table):
     columns = {column.name: column for column in table.columns}
     pk = list(table.primary_key.columns)[0]
-    digest = hashlib.sha256()
+    checksum = _new_checksum()
     for row in _ordered_rows(connection, table, pk):
-        _update_checksum(digest, row, columns)
-    return digest.hexdigest()
+        _update_checksum(checksum, row, columns)
+    return _checksum_hex(checksum)
 
 
 def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm_target=None):
@@ -216,7 +233,7 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                     ).scalar_one()
                     would_insert = 0
                     already_present = 0
-                    source_digest = hashlib.sha256()
+                    source_digest = _new_checksum()
                     for row in _ordered_rows(source_connection, table, pk):
                         _update_checksum(source_digest, row, columns)
                         incoming = dict(row)
@@ -236,7 +253,7 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                             already_present += 1
 
                     target_checksum_checked = _table_checksum(target_connection, table)
-                    source_checksum = source_digest.hexdigest()
+                    source_checksum = _checksum_hex(source_digest)
                     checksums_match = source_checksum == target_checksum_checked
                     if apply and not checksums_match:
                         mismatch_columns = set()
