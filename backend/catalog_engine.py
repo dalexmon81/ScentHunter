@@ -3982,6 +3982,9 @@ def _maybe_persist_bplatz_phase2(item, url):
         from sqlalchemy.engine import make_url
         from sqlalchemy.orm import Session
         from app.models import Store
+        from app.db_runtime_identity import (
+            configuration_source, log_runtime_database_identity, opened_at_utc,
+        )
         from app.services.bplatz_phase2_adapter import persist_bplatz_record
         from scenthunter_next_engine.next_engine_service import NextEngineService
 
@@ -4037,11 +4040,40 @@ def _maybe_persist_bplatz_phase2(item, url):
             )
             return False
 
+        phase2_config_source = configuration_source()
+        phase2_service_name = "catalog-hydration/bplatz-phase2"
         engine = create_engine(database_url, connect_args={"timeout": 5})
+
         @event.listens_for(engine, "connect")
-        def _phase2_sqlite_pragmas(dbapi_connection, _connection_record):
+        def _phase2_sqlite_pragmas(dbapi_connection, connection_record):
             dbapi_connection.execute("PRAGMA foreign_keys=ON")
             dbapi_connection.execute("PRAGMA busy_timeout=5000")
+            # Emit startup/open evidence from this exact DBAPI connection.
+            # No URL or full filesystem path is included in the log.
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute("PRAGMA database_list")
+                database_rows = cursor.fetchall()
+            finally:
+                cursor.close()
+            connection_record.info["phase2_connection_opened_at"] = opened_at_utc()
+            for database_row in database_rows:
+                database_name = str(database_row[1] or "main")
+                database_path = str(database_row[2] or "")
+                masked_path = ".../" + Path(database_path).name if database_path else "<memory-or-empty>"
+                identity_material = database_name + "\\0" + (database_path or "<memory-or-empty>")
+                database_id = __import__("hashlib").sha256(
+                    identity_material.encode("utf-8")
+                ).hexdigest()[:16]
+                print(
+                    "PHASE2_RUNTIME_DATABASE "
+                    f"event=connection_open pid={os.getpid()} "
+                    f"service={phase2_service_name} config_source={phase2_config_source} "
+                    f"database_name={database_name} database_path={masked_path} "
+                    f"database_id=sha256:{database_id} "
+                    f"connection_opened_at={connection_record.info['phase2_connection_opened_at']}",
+                    flush=True,
+                )
 
         global _BPLATZ_PHASE2_MATCHER
         if _BPLATZ_PHASE2_MATCHER is None:
@@ -4065,6 +4097,16 @@ def _maybe_persist_bplatz_phase2(item, url):
             "concentration": item.get("concentration"),
         }
         with Session(engine) as session, session.begin():
+            # Re-check identity on the same SQLAlchemy connection used by the
+            # persistence transaction; this is the decisive runtime evidence.
+            active_connection = session.connection()
+            log_runtime_database_identity(
+                active_connection,
+                event_name="persistence",
+                service_name=phase2_service_name,
+                config_source=phase2_config_source,
+                opened_at=active_connection.info.get("phase2_connection_opened_at"),
+            )
             store = session.scalar(select(Store).where(Store.slug == "bplatz"))
             if store is None or store.status != "active":
                 print(
