@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import create_engine, func, inspect, select, text
@@ -73,8 +74,23 @@ def _validate_schema(connection, label):
             )
 
 
+def _equivalent_value(left, right):
+    # SQLite commonly returns timezone-naive values for DateTime(timezone=True),
+    # while PostgreSQL returns aware UTC values. Compare the same instant.
+    if isinstance(left, datetime) and isinstance(right, datetime):
+        if left.tzinfo is None:
+            left = left.replace(tzinfo=timezone.utc)
+        if right.tzinfo is None:
+            right = right.replace(tzinfo=timezone.utc)
+        return left.astimezone(timezone.utc) == right.astimezone(timezone.utc)
+    return left == right
+
+
 def _same_row(existing, incoming, columns):
-    return all(existing[column] == incoming[column] for column in columns)
+    return all(
+        _equivalent_value(existing[column], incoming[column])
+        for column in columns
+    )
 
 
 def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm_target=None):
