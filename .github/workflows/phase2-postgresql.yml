@@ -12,6 +12,8 @@ on:
       - "backend/tests/test_phase2_database_backends.py"
       - "backend/tests/test_phase2_postgres_schema.py"
       - "backend/tests/test_phase2_runtime_db_identity.py"
+      - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
+      - "backend/tests/test_phase2_sqlite_postgres_import.py"
       - ".github/workflows/phase2-postgresql.yml"
 
 permissions:
@@ -38,6 +40,7 @@ jobs:
     env:
       PYTHONPATH: ${{ github.workspace }}/backend
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://phase2:phase2_ci_only@127.0.0.1:5432/phase2_test
+      SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL: postgresql+psycopg://phase2:phase2_ci_only@127.0.0.1:5432/phase2_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,4 +58,4 @@ jobs:
         run: alembic upgrade head
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
-        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py
+        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py
