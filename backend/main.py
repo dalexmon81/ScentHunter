@@ -5553,3 +5553,50 @@ def phase0_admin_check_store(
     finally:
         if conn is not None:
             conn.close()
+
+# Temporary Phase 2 SQL verification endpoint. Remove after the diagnostic run.
+@app.get('/admin/phase2/sql-verification')
+def phase2_sql_verification(authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.engine import make_url
+
+    query_specs = [
+        ('A', "SELECT id, status, created_at FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1'"),
+        ('B', "SELECT id, ingestion_raw_id, sku, status FROM offers WHERE id = 'f723da10-5f85-4c8e-93bf-c0072163e88e'"),
+        ('C', "SELECT status FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1'"),
+        ('D', "SELECT id FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1' AND raw_payload LIKE '%614514178065%'"),
+    ]
+    results = {}
+    engine = None
+    try:
+        from app.db import database_url
+        configured = make_url(database_url())
+        if configured.get_backend_name() != 'sqlite' or not configured.database:
+            raise RuntimeError('unsupported database')
+        readonly_url = configured.set(
+            database='file:' + configured.database,
+            query={**dict(configured.query), 'mode': 'ro', 'uri': 'true'},
+        )
+        engine = create_engine(
+            readonly_url,
+            connect_args={'uri': True, 'timeout': 5},
+            pool_pre_ping=True,
+        )
+        with engine.connect() as connection:
+            connection.exec_driver_sql('PRAGMA query_only = ON')
+            for label, sql in query_specs:
+                try:
+                    rows = connection.execute(text(sql)).mappings().all()
+                    results[label] = [dict(row) for row in rows]
+                except Exception:
+                    results[label] = 'QUERY_' + label + '_FAILED'
+    except Exception:
+        for label, _sql in query_specs:
+            results.setdefault(label, 'QUERY_' + label + '_FAILED')
+    finally:
+        if engine is not None:
+            engine.dispose()
+    return results
+
