@@ -7,6 +7,7 @@ on:
     paths:
       - "backend/app/workers/**"
       - "backend/app/api/**"
+      - "backend/tests/test_legacy_catalog_offer_bridge.py"
       - "backend/main.py"
       - "frontend/index.html"
       - "backend/app/connectors/**"
@@ -29,6 +30,7 @@ on:
     paths:
       - "backend/app/workers/**"
       - "backend/app/api/**"
+      - "backend/tests/test_legacy_catalog_offer_bridge.py"
       - "backend/main.py"
       - "frontend/index.html"
       - "backend/app/connectors/**"
