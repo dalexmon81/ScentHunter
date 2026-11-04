@@ -1,0 +1,37 @@
+name: Phase 4 Universal Connector Contract
+
+on:
+  pull_request:
+    branches:
+      - phase3/product-normalization
+    paths:
+      - "backend/app/connectors/**"
+      - "backend/tests/test_store_connector_contract.py"
+      - "backend/tests/test_notino_connector_fixture.py"
+      - "backend/scrapers/notino/affiliate_feed.py"
+      - "tests/fixtures/connectors/**"
+      - ".github/workflows/phase4-universal-connectors.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  connector-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused test dependencies
+        run: python -m pip install pytest requests
+      - name: Compile connector contract
+        run: python -m compileall -q backend/app/connectors backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py
+      - name: Run connector contract and Notino fixture tests
+        run: python -m pytest -q backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py
