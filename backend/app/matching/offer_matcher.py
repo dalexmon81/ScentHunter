@@ -111,7 +111,8 @@ def match_staged_offer(session: Session, ingestion_raw_id) -> MatchDecision:
         identity = normalize_product(
             str(payload.get("brand") or ""), str(payload.get("title") or ""),
             concentration=payload.get("concentration"),
-            size_ml=payload.get("sizeMl"),
+            size_ml=payload.get("sizeMl", payload.get("size_ml")),
+            packaging=payload.get("packaging"),
         )
         enqueue_identity_review(
             session, identity, reason=decision.method,
