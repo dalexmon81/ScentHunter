@@ -50,6 +50,8 @@ from app.api.offer_refresh import router as phase5_offer_refresh_router
 app.include_router(phase5_offer_refresh_router)
 from app.api.legacy_catalog import router as phase5_legacy_catalog_router
 app.include_router(phase5_legacy_catalog_router)
+from app.api.catalog_search import router as catalog_search_router
+app.include_router(catalog_search_router)
 
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
