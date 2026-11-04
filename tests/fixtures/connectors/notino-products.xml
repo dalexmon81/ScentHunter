@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Authorized Notino fixture</title>
+<item><g:id xmlns:g="http://base.google.com/ns/1.0">nt-123</g:id><title>Dior Sauvage Eau de Parfum 100 ml</title><brand>Dior</brand><price>89.90 EUR</price><availability>in stock</availability><link>https://www.notino.fr/dior/sauvage/p-123/</link><gtin>4006381333931</gtin><size>100 ml</size></item>
+<item><id>nt-124</id><title>Dior Sauvage Eau de Parfum 60 ml</title><brand>Dior</brand><price>69.90 EUR</price><availability>out of stock</availability><link>https://www.notino.fr/dior/sauvage/p-124/</link><size>60 ml</size></item>
+</channel></rss>
