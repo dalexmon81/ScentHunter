@@ -1,4 +1,4 @@
-name: Phase 4 Universal Connector Contract # Recheck retailer fixtures
+name: Phase 4 Universal Connector Contract # Verify Sabina deduplication
 
 on:
   pull_request:
