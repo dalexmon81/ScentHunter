@@ -170,6 +170,7 @@ def search_catalog(
                     "family": fragrance_row.family,
                     "gender": fragrance_row.gender,
                     "olfactory_notes": fragrance_row.olfactory_notes or [],
+                    "image_url": fragrance_row.image_url,
                     "variants": [],
                     "_variant_map": {},
                 })
