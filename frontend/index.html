@@ -748,6 +748,7 @@ function backend(){
   }
   return origin;
 }
+let catalogStoreDiagnostics={};
 let currentProductGroups=[];
 let currentOpenProductKey="";
 let currentOpenSizeKey=null;
@@ -1138,8 +1139,8 @@ function renderStoreDiagnostics(data){
   problematic.forEach(([store,v])=>{
     byStore.set(store,{
       store,
-      status:String(v?.status||"unavailable").toUpperCase(),
-      error:diagnosticText(errors[store])||"Store non verificato"
+      status:"TEMPORANEAMENTE NON DISPONIBILE",
+      error:diagnosticText(errors[store])||"Il negozio non sta pubblicando offerte verificate"
     });
   });
   errorEntries.forEach(([store,error])=>{
