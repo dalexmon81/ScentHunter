@@ -133,3 +133,58 @@ def test_blocked_old_row_does_not_starve_later_promotion_batch():
         assert later.status == "promoted"
         assert len(offers) == 1
         assert offers[0].external_product_id == "sku-101"
+
+
+def test_distinct_retailer_listings_for_same_variant_create_distinct_offers():
+    factory, first_raw_id = setup_db()
+    with factory() as session:
+        first = session.get(IngestionRaw, first_raw_id)
+        second = IngestionRaw(
+            store_id=first.store_id,
+            external_product_id="sku-duplicate-listing",
+            raw_payload={
+                **first.raw_payload,
+                "externalProductId": "sku-duplicate-listing",
+                "url": "https://shop.example/item/sku-duplicate-listing",
+                "price": 87.25,
+            },
+            status="matched",
+            product_variant_id=first.product_variant_id,
+            match_method=first.match_method,
+            match_confidence=first.match_confidence,
+        )
+        session.add(second)
+        session.commit()
+        second_id = second.id
+
+    assert promote_matched_offers(factory) == {
+        "processed": 2, "published": 2, "blocked": 0,
+    }
+    with factory() as session:
+        offers = session.scalars(select(Offer).order_by(Offer.external_product_id)).all()
+        assert len(offers) == 2
+        assert {offer.external_product_id for offer in offers} == {
+            "sku-100", "sku-duplicate-listing",
+        }
+        assert {offer.price for offer in offers} == {
+            Decimal("90.50"), Decimal("87.25"),
+        }
+
+
+def test_http_offer_url_is_blocked_by_publication_gate():
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "url": "http://shop.example/item/sku-100",
+        }
+        session.commit()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert raw.rejection_reason.startswith("promotion_blocked:")
