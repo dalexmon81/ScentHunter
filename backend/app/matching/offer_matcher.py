@@ -40,7 +40,11 @@ def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
         return MatchDecision("unmatched", "normalization_review", None, None,
                              str(exc)[:240])
 
-    supplied_gtin = normalize_gtin(payload.get("gtin"))
+    raw_gtin = payload.get("gtin")
+    supplied_gtin = normalize_gtin(raw_gtin)
+    if raw_gtin is not None and str(raw_gtin).strip() and supplied_gtin is None:
+        return MatchDecision("unmatched", "invalid_gtin_review", None, None,
+                             "supplied_gtin_failed_length_or_checksum_validation")
     if supplied_gtin:
         gtin_candidates = session.scalars(
             select(ProductVariant).where(ProductVariant.gtin == supplied_gtin)
