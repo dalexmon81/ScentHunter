@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
    const [m,a,c,i,r]=await Promise.all([api('/api/admin/metrics'),api('/api/admin/alerts'),api('/api/admin/connectors'),api('/api/admin/ingestion?limit=30'),api('/api/admin/matching?limit=50')]);
    const grid=$('metrics');grid.replaceChildren();
    const values=[
-    ['Offerte totali',m.offers.total],['Pubblicate',m.offers.published],['Rifiutate (raw)',m.offers.rejected_raw_records],
+    ['Offerte totali',m.offers.total],['Pubblicate',m.offers.published],['Offerte rifiutate',m.offers.rejected],['Record raw rifiutati',m.offers.rejected_raw_records],
     ['Match automatici',m.matching.automatic_rate==null?'n/d':(m.matching.automatic_rate*100).toFixed(1)+'%'],
     ['Match ambigui',m.matching.ambiguous_rate==null?'n/d':(m.matching.ambiguous_rate*100).toFixed(1)+'%'],
     ['Latenza ricerca p50',m.search_latency.available?m.search_latency.p50_ms+' ms':'n/d'],
