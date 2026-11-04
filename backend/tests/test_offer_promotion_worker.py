@@ -188,3 +188,37 @@ def test_http_offer_url_is_blocked_by_publication_gate():
         raw = session.get(IngestionRaw, raw_id)
         assert raw.status == "matched"
         assert raw.rejection_reason.startswith("promotion_blocked:")
+
+
+def test_stale_evidence_is_blocked():
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {**raw.raw_payload, "capturedAt": "2020-01-01T00:00:00+00:00"}
+        session.commit()
+    assert promote_matched_offers(factory) == {"processed": 1, "published": 0, "blocked": 1}
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+
+
+def test_low_confidence_match_is_blocked():
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.match_confidence = Decimal("0.800")
+        session.commit()
+    assert promote_matched_offers(factory) == {"processed": 1, "published": 0, "blocked": 1}
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+
+
+def test_non_purchasable_or_incoherent_page_evidence_is_blocked():
+    for evidence in ({"purchasable": False}, {"page_price_mismatch": True}):
+        factory, raw_id = setup_db()
+        with factory() as session:
+            raw = session.get(IngestionRaw, raw_id)
+            raw.raw_payload = {**raw.raw_payload, **evidence}
+            session.commit()
+        assert promote_matched_offers(factory) == {"processed": 1, "published": 0, "blocked": 1}
+        with factory() as session:
+            assert session.scalar(select(Offer)) is None
