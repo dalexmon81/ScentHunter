@@ -180,9 +180,9 @@ def normalize_gtin(value: object) -> str | None:
     # Permit only harmless formatting separators. Stripping arbitrary letters
     # can turn malformed text into a false valid identifier.
     raw = str(value).strip()
-    if not re.fullmatch(r"[0-9\\s-]+", raw):
+    if not re.fullmatch(r"[0-9\s-]+", raw):
         return None
-    digits = re.sub(r"[\\s-]", "", raw)
+    digits = re.sub(r"[\s-]", "", raw)
     if len(digits) not in (8, 12, 13, 14):
         return None
     total = sum(int(d) * (3 if i % 2 == 0 else 1)
