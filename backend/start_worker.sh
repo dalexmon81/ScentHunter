@@ -15,7 +15,6 @@ case "$SCENTHUNTER_REDIS_URL" in
      exit 1 ;;
 esac
 
-# Verify the exact configured catalog database before accepting work.
 python - <<'PY'
 from sqlalchemy import text
 from app.db import make_engine
@@ -33,13 +32,18 @@ PY
 process_type="${1:-worker}"
 case "$process_type" in
   beat)
+    # Keep scheduled discovery/refresh disabled until staging data isolation is reviewed.
+    if [ "${SCENTHUNTER_ENABLE_CELERY_BEAT:-false}" != "true" ]; then
+      echo "Celery Beat is safely disabled; explicit opt-in required after staging schedule review."
+      exec sleep infinity
+    fi
     echo "Starting the single staging Celery Beat scheduler."
     exec celery -A app.workers.celery_app:celery_app beat --loglevel=INFO
     ;;
   worker)
-    exec celery -A app.workers.celery_app:celery_app worker \\
-      --loglevel=INFO \\
-      --queues=discovery,offers,validation,matching,refresh,dead_letter \\
+    exec celery -A app.workers.celery_app:celery_app worker \
+      --loglevel=INFO \
+      --queues=discovery,offers,validation,matching,refresh,dead_letter \
       --concurrency=2
     ;;
   *) echo "ERROR: unknown process type '$process_type'"; exit 2 ;;
