@@ -51,7 +51,6 @@ class SearchProduct(BaseModel):
     brand_slug: str
     fragrance: str
     fragrance_slug: str
-    image_url: str | None = None
     family: str | None = None
     gender: str | None = None
     olfactory_notes: list[Any] = Field(default_factory=list)
@@ -64,11 +63,11 @@ class SearchProduct(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     count: int
-    offer_count: int
+    offer_count: int = 0
     message: str | None = None
     suggestions: list[dict[str, Any]] = Field(default_factory=list)
     limit: int
-    offset: int
+    offset: int = 0
     results: list[SearchProduct] = Field(default_factory=list)
 
 
