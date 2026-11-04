@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.matching.offer_matcher import match_staged_offer
-from app.models import Base, Brand, Fragrance, IngestionRaw, ProductVariant, Store
+from app.models import Base, Brand, CanonicalIdentityReview, Fragrance, IngestionRaw, ProductVariant, Store
 from app.services.product_normalization import normalize_product
 from app.workers.matching_worker import match_pending_offers
 
@@ -77,7 +77,7 @@ def test_batch_worker_leaves_unknown_identity_unmatched():
     assert result == {"processed": 1, "matched": 0, "unmatched": 1}
     assert raw.status == "unmatched"
     assert raw.product_variant_id is None
-    assert raw.rejection_reason == "no_exact_canonical_variant"
+    assert raw.rejection_reason == "no_exact_canonical_variant"\n    assert len(reviews) == 1\n    assert reviews[0].status == "pending"\n    assert reviews[0].reason == "no_exact_match"
 
 
 def test_match_worker_does_not_reprocess_promoted_or_rejected_rows():
