@@ -151,7 +151,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected("canonical product variant UUID does not exist")
     if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
         raise PromotionRejected("price must be a positive finite Decimal")
-    if not isinstance(currency, str) or not _CURRENCY.fullmatch(currency) or pycountry.currencies.get(alpha_3=currency) is None:
+    if not isinstance(currency, str) or not _CURRENCY.fullmatch(currency) or (pycountry.currencies.get(alpha_3=currency) is None or currency in {"XXX", "XTS"}):
         raise PromotionRejected("currency must be a valid ISO 4217 code")
     if availability != "in_stock":
         raise PromotionRejected("only explicitly in-stock offers are publishable")
