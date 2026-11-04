@@ -78,7 +78,7 @@ def persist_canonical_identity(
 
             fragrance_slug = _slug(normalized.fragrance_name)
             fragrance = session.scalar(
-                __import__("sqlalchemy").select(Fragrance).where(
+                select(Fragrance).where(
                     Fragrance.brand_id == brand.id,
                     Fragrance.slug == fragrance_slug,
                 )
