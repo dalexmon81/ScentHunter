@@ -47,16 +47,16 @@ def test_legacy_bridge_returns_real_phase2_offer_uuid_and_variant(tmp_path):
     factory, offer_id = _catalog_factory(tmp_path)
     result = legacy_product_offers("legacy-123", session_factory=factory)
     assert result["legacy_product_id"] == "legacy-123"
-    assert result["offers"] == [{
-        "phase2_offer_id": str(offer_id),
-        "store": "notino",
-        "url": "https://notino.example/sauvage",
-        "price": 99.9,
-        "currency": "EUR",
-        "availability": "in_stock",
-        "captured_at": result["offers"][0]["captured_at"],
-        "size_ml": 100,
-    }]
+    assert len(result["offers"]) == 1
+    row = result["offers"][0]
+    assert row["phase2_offer_id"] == str(offer_id)
+    assert row["store"] == "notino"
+    assert row["url"] == "https://notino.example/sauvage"
+    assert row["price"] == 99.9
+    assert row["currency"] == "EUR"
+    assert row["availability"] == "in_stock"
+    assert isinstance(row["captured_at"], str)
+    assert row["size_ml"] == 100
 
 
 def test_legacy_bridge_returns_no_offers_without_explicit_mapping(tmp_path):
@@ -79,3 +79,13 @@ def test_legacy_bridge_rejects_invalid_legacy_id():
     with pytest.raises(HTTPException) as exc:
         legacy_product_offers("")
     assert exc.value.status_code == 400
+
+
+def test_legacy_bridge_excludes_inactive_store(tmp_path):
+    factory, _ = _catalog_factory(tmp_path)
+    with factory() as session:
+        from app.models import Store
+        store = session.query(Store).filter_by(slug="notino").one()
+        store.status = "quarantined"
+        session.commit()
+    assert legacy_product_offers("legacy-123", session_factory=factory)["offers"] == []
