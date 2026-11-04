@@ -277,7 +277,8 @@ def normalize_offer(self, raw_id: str):
                 str(payload.get("brand") or ""),
                 str(payload.get("title") or ""),
                 concentration=payload.get("concentration"),
-                size_ml=payload.get("sizeMl"),
+                size_ml=payload.get("sizeMl", payload.get("size_ml")),
+                packaging=payload.get("packaging"),
             )
             payload["fragrance"] = normalized.fragrance_name
             payload["concentration"] = normalized.concentration
