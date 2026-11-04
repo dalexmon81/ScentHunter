@@ -1,0 +1,96 @@
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
+
+from app.models import (
+    Base, Brand, Fragrance, IngestionRaw, MatchAudit, Offer,
+    PriceHistory, ProductVariant, Store,
+)
+from app.services.product_normalization import normalize_product
+from app.workers.offer_promotion import promote_matched_offers
+
+
+def setup_db(availability="in_stock"):
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        brand = Brand(name="Christian Dior", slug="christian-dior",
+                      normalized_name="christian dior")
+        session.add(brand)
+        session.flush()
+        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage")
+        session.add(fragrance)
+        session.flush()
+        identity = normalize_product("Dior", "Dior Sauvage Eau de Parfum 100 ml")
+        variant = ProductVariant(
+            fragrance_id=fragrance.id, concentration="edp", size_ml=100,
+            canonical_key=identity.canonical_key,
+        )
+        store = Store(name="Test Shop", slug="test-shop", currency="EUR", status="active")
+        session.add_all([variant, store])
+        session.flush()
+        raw = IngestionRaw(
+            store_id=store.id, external_product_id="sku-100",
+            raw_payload={
+                "store": "test-shop", "externalProductId": "sku-100",
+                "brand": "Dior", "fragrance": "Sauvage",
+                "title": "Dior Sauvage Eau de Parfum 100 ml",
+                "concentration": "edp", "sizeMl": 100, "gtin": None,
+                "url": "https://shop.example/item/sku-100",
+                "price": 90.50, "currency": "EUR", "availability": availability,
+                "capturedAt": datetime.now(timezone.utc).isoformat(),
+                "source": "fixture",
+            },
+            status="matched", product_variant_id=variant.id,
+            match_method="canonical_key_exact", match_confidence=Decimal("0.990"),
+        )
+        session.add(raw)
+        session.commit()
+        return factory, raw.id
+
+
+def test_promotion_creates_offer_history_and_audit():
+    factory, raw_id = setup_db()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+    with factory() as session:
+        offers = session.scalars(select(Offer)).all()
+        history = session.scalars(select(PriceHistory)).all()
+        audits = session.scalars(select(MatchAudit)).all()
+        raw = session.get(IngestionRaw, raw_id)
+        assert len(offers) == len(history) == len(audits) == 1
+        assert offers[0].price == Decimal("90.50")
+        assert offers[0].status == "active"
+        assert history[0].price == Decimal("90.50")
+        assert audits[0].method == "canonical_key_exact"
+        assert raw.status == "promoted"
+
+
+def test_unsupported_availability_is_blocked_without_publication():
+    factory, raw_id = setup_db("preorder")
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        assert session.scalar(select(PriceHistory)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+
+
+def test_worker_ignores_unmatched_rows():
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.status = "unmatched"
+        raw.product_variant_id = None
+        session.commit()
+    assert promote_matched_offers(factory) == {
+        "processed": 0, "published": 0, "blocked": 0,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
