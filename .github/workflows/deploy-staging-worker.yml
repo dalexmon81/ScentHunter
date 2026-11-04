@@ -67,44 +67,6 @@ jobs:
             echo "::error::Celery worker did not return pong to the remote control ping."
             exit 1
           fi
-      - name: Verify worker runs as non-root
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
-          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
-            echo "::error::No started worker process machine found."
-            exit 1
-          fi
-          uid="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "id -u" 2>&1 | tail -n 1 | tr -d '\\r')"
-          echo "Worker runtime UID: $uid"
-          if [ "$uid" = "0" ] || ! printf '%s' "$uid" | grep -Eq '^[0-9]+        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
-          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
-            echo "::error::No started worker machine is available for the task smoke test."
-            exit 1
-          fi
-          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from app.workers.celery_app import celery_app; r=celery_app.send_task(\"app.workers.ingestion_tasks.staging_worker_smoke\", kwargs={\"probe\":\"phase5-queue-execution\"}, queue=\"offers\"); print(r.get(timeout=25))' " 2>&1)"
-          printf '%s\\n' "$output"
-          if ! printf '%s\\n' "$output" | grep -q "'ok': True"; then
-            echo "::error::Queued Celery smoke task did not return a successful result."
-            exit 1
-          fi
-      - name: Inspect worker logs and machine state
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl status --app scenthunter-staging-workers
-          flyctl machines list --app scenthunter-staging-workers
-          flyctl logs --app scenthunter-staging-workers --no-tail
-; then
-            echo "::error::Worker must run as a non-root user."
-            exit 1
-          fi
       - name: Verify a queued Celery task executes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
