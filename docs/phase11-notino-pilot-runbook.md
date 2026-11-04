@@ -45,9 +45,9 @@ Before running it:
 
 ## Verified CI evidence (not a live retailer result)
 
-- Phase 5 PR #343 pull-request run #149 passed: 48 tests, PostgreSQL catalog seed, exact Dior variant UUID readback, Redis/Celery worker smoke.
-- Phase 4 connector contract run #165 passed.
-- The Notino XML test uses an injected fixture loader and makes no network call. No real Notino feed, price or stock was retrieved.
+- Phase 5 PR #343 pull-request run #152 passed: 49 tests, PostgreSQL catalog seed, exact Dior variant UUID readback, Redis/Celery worker smoke.
+- Phase 4 connector contract run #167 passed.
+- The Notino XML test uses an injected fixture loader and makes no network call. A manual-only live-feed preflight workflow now exists, but has not been dispatched. No real Notino feed, price or stock was retrieved.
 
 ## Controlled pilot procedure
 
