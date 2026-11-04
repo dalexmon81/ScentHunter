@@ -77,12 +77,25 @@ class IdentityConflict:
     requires_review: bool = True
 
 def _extract_concentration(name: str, explicit: str | None) -> str | None:
-    found = {code for phrases, code in _CONCENTRATIONS
-             if any(_contains_phrase(name, phrase) for phrase in phrases)}
+    # Prefer the most specific phrase: "eau de parfum" must not also
+    # match the shorter generic token "parfum".
+    matches = [
+        (len(phrase), code)
+        for phrases, code in _CONCENTRATIONS
+        for phrase in phrases
+        if _contains_phrase(name, phrase)
+    ]
+    found = set()
+    if matches:
+        longest = max(length for length, _code in matches)
+        found.update(code for length, code in matches if length == longest)
+
     explicit_norm = normalize_text(explicit)
     if explicit_norm:
-        explicit_codes = {code for phrases, code in _CONCENTRATIONS
-                          if explicit_norm == code or explicit_norm in phrases}
+        explicit_codes = {
+            code for phrases, code in _CONCENTRATIONS
+            if explicit_norm == code or explicit_norm in phrases
+        }
         if not explicit_codes:
             raise ValueError("unsupported_concentration_requires_review")
         found.update(explicit_codes)
@@ -129,7 +142,7 @@ def normalize_product(brand: str, title: str, *, concentration: str | None = Non
         raise ValueError("conflicting_sizes_require_review")
     if size_ml is None:
         if len(sizes) > 1 and any(abs(v - sizes[0]) > 0.01 for v in sizes[1:]):
-            raise ValueError("multiple_size_values_require_review")
+            raise ValueError("conflicting_sizes_require_review")
         size_ml = sizes[0] if sizes else None
 
     for phrases, _ in _CONCENTRATIONS:
