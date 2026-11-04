@@ -1,14 +1,14 @@
-# Isolated background worker app. Separate from production fly.toml.
+# Isolated background worker app. No web process or production service.
 app = "scenthunter-staging-workers"
 primary_region = "ams"
 
 [build]
   dockerfile = "backend/Dockerfile.worker"
 
-[processes]
-  worker = "celery -A app.workers.celery_app:celery_app worker --loglevel=INFO --queues=discovery,offers,validation,matching,refresh,dead_letter --concurrency=2"
-
 [[vm]]
   memory = "1gb"
   cpu_kind = "shared"
   cpus = 1
+
+# The Dockerfile CMD starts Celery. Omitting [processes] uses Fly's
+# default "app" process group, which matches the launch wizard's default.
