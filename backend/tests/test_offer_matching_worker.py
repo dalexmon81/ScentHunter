@@ -67,7 +67,9 @@ def test_batch_worker_leaves_unknown_identity_unmatched():
     factory, _variant_id, raw_id = setup_db()
     with factory() as session:
         raw = session.get(IngestionRaw, raw_id)
-        raw.raw_payload["title"] = "Dior Unknown Fragrance Eau de Parfum 100 ml"
+        payload = dict(raw.raw_payload)
+        payload["title"] = "Dior Unknown Fragrance Eau de Parfum 100 ml"
+        raw.raw_payload = payload
         session.commit()
     result = match_pending_offers(factory)
     with factory() as session:
@@ -95,8 +97,10 @@ def test_gtin_conflict_is_not_auto_matched():
         variant = session.get(ProductVariant, variant_id)
         variant.gtin = "4006381333931"
         raw = session.get(IngestionRaw, raw_id)
-        raw.raw_payload["gtin"] = "4006381333931"
-        raw.raw_payload["title"] = "Dior Homme Eau de Toilette 100 ml"
+        payload = dict(raw.raw_payload)
+        payload["gtin"] = "4006381333931"
+        payload["title"] = "Dior Homme Eau de Toilette 100 ml"
+        raw.raw_payload = payload
         session.commit()
     with factory() as session:
         decision = match_staged_offer(session, raw_id)
