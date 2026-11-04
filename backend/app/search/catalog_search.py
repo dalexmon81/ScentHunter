@@ -61,7 +61,7 @@ def search_catalog(
     limit = max(1, min(int(limit), 100))
     offset = max(0, int(offset))
     freshness_hours = max(1, min(int(freshness_hours), 24 * 30))
-    requested_availability = availability.strip().casefold() if availability else "in_stock"
+    requested_availability = availability.strip().casefold() if availability and availability.strip().casefold() != "all" else None
     factory = session_factory or make_session_factory()
     try:
         with factory() as session:
@@ -90,7 +90,6 @@ def search_catalog(
                     Offer.product_variant_id == ProductVariant.id,
                     Offer.status == "active",
                     Offer.publication_status == "published",
-                    Offer.availability == requested_availability,
                     Offer.captured_at >= datetime.now(timezone.utc) - timedelta(hours=freshness_hours),
                 ))
                 .outerjoin(Store, and_(
@@ -131,6 +130,8 @@ def search_catalog(
                     Fragrance.name.ilike(pattern),
                  )).order_by(Offer.price.asc().nullslast(), Store.slug.asc())
 
+            if requested_availability:
+                stmt = stmt.where(Offer.availability == requested_availability)
             if brand:
                 stmt = stmt.where(Brand.normalized_name == brand.strip().casefold())
             if family:
@@ -143,7 +144,7 @@ def search_catalog(
                 stmt = stmt.where(_FORMAT_FIELDS[product_format] == True)  # noqa: E712
             if store:
                 stmt = stmt.where(Store.slug == store.strip().casefold())
-            if availability:
+            if availability and availability.strip().casefold() != "all":
                 stmt = stmt.where(Offer.availability == availability.strip().casefold())
             if country:
                 stmt = stmt.where(Store.country == country.strip().upper())
