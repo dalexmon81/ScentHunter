@@ -50,6 +50,15 @@ def persist_canonical_identity(
         )
 
     try:
+        # Python sqlite3 legacy transaction mode does not BEGIN on SELECT.
+        # Ensure a real outer transaction exists before opening a savepoint;
+        # otherwise releasing the first SAVEPOINT can commit unexpectedly.
+        connection = session.connection()
+        if connection.dialect.name == "sqlite":
+            raw_connection = connection.connection.driver_connection
+            if not raw_connection.in_transaction:
+                connection.exec_driver_sql("BEGIN")
+
         # A savepoint keeps uniqueness races from poisoning the caller's
         # transaction. The outer transaction remains owned by the caller.
         with session.begin_nested():
