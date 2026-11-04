@@ -930,7 +930,7 @@ async function requestOfferRefresh(offerId,button){
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(offerId||'')))return;
   button.disabled=true;button.textContent='Controllo…';
   try{
-    const response=await fetch(backend()+'/catalog/offers/'+encodeURIComponent(offerId)+'/refresh',{method:'POST',headers:{'Accept':'application/json'}});
+    const response=await fetch(backend()+'/api/offers/'+encodeURIComponent(offerId)+'/refresh',{method:'POST',headers:{'Accept':'application/json'}});
     const payload=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(payload.detail||('HTTP '+response.status));
     button.textContent=payload.status==='already_queued'?'Già in coda':'Controllo avviato';
@@ -984,7 +984,7 @@ function renderOffersHtml(g,img,offers,saved){
     const on=saved.some(x=>sameWishOffer(x,item));
     const refreshId=String(o.phase2_offer_id||"");
     const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
-    const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':"";
+    const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Verifica prezzo</button>':"";
     return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
   }).join("");
 }
@@ -1006,6 +1006,10 @@ function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=null;
+  if(!(g.offers||[]).length){
+    resultsBox.innerHTML='<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">🧴</div><div class="result-main"><div class="store">'+esc(g.brand||"")+'</div><div class="name">'+esc(displayPerfumeName(g.name,g.brand))+'</div></div></div><div class="empty-offers">Nessuna offerta verificata al momento. Il prodotto è presente nel catalogo, ma non ci sono prezzi pubblicabili.</div></article>';
+    return;
+  }
   void hydratePhase2OfferIds(g);
 
   const groups=getSizeGroups(g);
@@ -1160,7 +1164,7 @@ async async function searchStoresProgressive(term,onPartial){
         canonical_brand:product.brand,brand:product.brand,
         canonical_name:product.fragrance,name:product.fragrance,
         family:product.family||"",image:"",offers,variants:product.variants||[],
-        offer_count:product.offer_count||0
+        offer_count:product.offer_count||0,_phase2OfferIdsLoaded:true
       };
     });
     const data={...empty,query,count:response.count||0,offer_count:response.offer_count||0,
