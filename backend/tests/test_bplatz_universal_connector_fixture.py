@@ -84,3 +84,5 @@ def test_bplatz_stock_signals_are_conservative(page_text, expected):
 def test_bplatz_parser_rejects_wrong_product_query():
     html = FIXTURE.read_text(encoding="utf-8")
     assert scraper.parse_product_html(html, URL, "Chanel No 5") is None
+
+# CI coverage: this fixture-only suite is included in the Phase 4 connector contract workflow.
