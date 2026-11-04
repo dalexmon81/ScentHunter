@@ -165,3 +165,69 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
 
     finally:
         engine.dispose()
+
+
+def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
+    """Exercise the durable hydration worker context against disposable PostgreSQL."""
+    from unittest.mock import patch
+    import catalog_engine
+    from scrapers.bplatz.scraper import parse_product_html
+
+    assert DATABASE_URL, "requires disposable PostgreSQL service"
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    try:
+        with engine.begin() as connection:
+            for table in reversed(Base.metadata.sorted_tables):
+                connection.execute(delete(table))
+
+        seed_env = os.environ.copy()
+        seed_env["SCENTHUNTER_CATALOG_DATABASE_URL"] = DATABASE_URL
+        seed_env["PYTHONPATH"] = str(BACKEND) + os.pathsep + seed_env.get("PYTHONPATH", "")
+        seeded = subprocess.run(
+            [sys.executable, str(BACKEND / "scripts/seed_catalog.py"),
+             "--catalog", str(BACKEND / "product_catalog.json"), "--apply"],
+            cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
+        )
+        assert seeded.returncode == 0, seeded.stdout + "\\n" + seeded.stderr
+
+        fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
+        meta = json.loads(
+            (ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.meta.json").read_text()
+        )
+        parsed = parse_product_html(
+            fixture.read_text(encoding="utf-8"), meta["url_final"],
+            "French Avenue Liquid Brun",
+        )
+        assert parsed is not None
+        item = {
+            "name": parsed["name"], "brand": parsed["brand"],
+            "size_ml": parsed["size_ml"], "price_num": parsed["price_num"],
+            "currency": parsed["offer"]["currency"], "url": parsed["url"],
+            "availability": parsed["availability"], "sku": parsed["sku"],
+            "gtin": parsed.get("gtin"), "mpn": parsed.get("mpn"),
+            "concentration": parsed.get("concentration"),
+        }
+        completed = []
+        task = {"store": "bplatz", "url": item["url"], "attempts": 1}
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_CATALOG_DATABASE_URL": DATABASE_URL,
+            "BPLATZ_PHASE2_PERSISTENCE": "1",
+        }), patch.object(catalog_engine, "_foreground_search_running", return_value=False), \\
+             patch.object(catalog_engine, "_queue_mark_done", side_effect=lambda row: completed.append(row)), \\
+             patch.object(catalog_engine, "refresh_url", side_effect=lambda store, url: (
+                 item if catalog_engine._maybe_persist_bplatz_phase2(item, url) else item
+             )):
+            assert catalog_engine._hydrate_one_task(task) is True
+
+        assert completed == [task]
+        with Session(engine) as session:
+            offer = session.scalar(select(Offer))
+            assert offer is not None
+            assert offer.price > 0
+            assert offer.currency == "EUR"
+            assert offer.url == item["url"]
+            assert session.scalar(select(func.count()).select_from(IngestionRaw)) == 1
+            assert session.scalar(select(func.count()).select_from(PriceHistory)) == 1
+            assert session.scalar(select(func.count()).select_from(MatchAudit)) == 1
+    finally:
+        engine.dispose()
