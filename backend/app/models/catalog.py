@@ -43,6 +43,7 @@ class ProductVariant(Base):
     is_tester: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_refill: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_gift_set: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    is_mini: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     gtin: Mapped[str | None] = mapped_column(String(14))
     canonical_key: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     fragrance: Mapped[Fragrance] = relationship(back_populates="variants")
@@ -163,3 +164,27 @@ class IngestionRun(Base):
     offers_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     offers_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     errors: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default=text("'[]'"))
+
+
+class CanonicalIdentityReview(Base):
+    """Durable, append-once review record for uncertain canonical identities."""
+    __tablename__ = "canonical_identity_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected', 'duplicate')",
+            name="canonical_identity_review_status",
+        ),
+        Index("ix_canonical_identity_reviews_status_created", "status", "created_at"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    canonical_key: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    normalized_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    supplied_gtin: Mapped[str | None] = mapped_column(String(14))
+    reason: Mapped[str] = mapped_column(String(160), nullable=False)
+    source_reference: Mapped[str | None] = mapped_column(String(240))
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[str | None] = mapped_column(String(160))
+    resolution_notes: Mapped[str | None] = mapped_column(Text)

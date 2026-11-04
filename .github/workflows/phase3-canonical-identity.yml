@@ -1,0 +1,55 @@
+name: Phase 3 Canonical Identity Checks
+# Includes gated writer rollback and explicit opt-in coverage.
+
+on:
+  pull_request:
+    branches:
+      - phase2/postgresql-migration-preparation
+    paths:
+      - "backend/app/models/**"
+      - "backend/app/services/canonical_identity_persistence.py"
+      - "backend/app/services/canonical_identity_writer.py"
+      - "backend/app/services/canonical_identity_review_queue.py"
+      - "backend/app/services/canonical_identity_backfill.py"
+      - "backend/tests/test_canonical_identity_backfill.py"
+      - "backend/tests/test_canonical_identity_review_queue.py"
+      - "backend/tests/test_canonical_identity_writer.py"
+      - "backend/app/services/product_normalization.py"
+      - "backend/tests/test_canonical_identity_persistence.py"
+      - "backend/tests/test_product_normalization.py"
+      - "backend/alembic/**"
+      - "tests/test_next_engine_service.py"
+      - "tests/test_phase2_schema_contract.py"
+      - ".github/workflows/phase3-canonical-identity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-identity-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused test dependencies
+        run: python -m pip install pytest "SQLAlchemy==2.0.44" "alembic==1.17.1"
+      - name: Compile canonical identity modules
+        run: python -m compileall -q backend/app/services/canonical_identity_persistence.py backend/app/services/canonical_identity_writer.py backend/app/services/canonical_identity_review_queue.py backend/app/services/canonical_identity_backfill.py backend/app/services/product_normalization.py backend/app/models
+      - name: Run canonical identity and normalization tests
+        run: >-
+          python -m pytest -q
+          backend/tests/test_canonical_identity_persistence.py
+          backend/tests/test_canonical_identity_writer.py
+          backend/tests/test_canonical_identity_review_queue.py
+          backend/tests/test_canonical_identity_backfill.py
+          backend/tests/test_product_normalization.py
+          tests/test_next_engine_service.py
+          tests/test_phase2_schema_contract.py

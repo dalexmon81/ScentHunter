@@ -16,6 +16,7 @@ def test_phase2_declares_all_core_tables():
         "brands", "fragrances", "product_variants", "stores",
         "offers", "price_history", "match_audit", "ingestion_runs",
         "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
+        "canonical_identity_reviews",
     }
 
 def test_canonical_identity_is_separate_from_retailer_offers():
@@ -25,7 +26,7 @@ def test_canonical_identity_is_separate_from_retailer_offers():
     assert "external_product_id" not in ProductVariant.__table__.columns
 
 def test_variant_attributes_and_fixed_precision_prices():
-    for field in ("concentration", "size_ml", "is_tester", "is_refill", "is_gift_set", "gtin"):
+    for field in ("concentration", "size_ml", "is_tester", "is_refill", "is_gift_set", "is_mini", "gtin"):
         assert field in ProductVariant.__table__.columns
     assert str(Offer.__table__.c.price.type) == "NUMERIC(12, 2)"
     assert str(PriceHistory.__table__.c.price.type) == "NUMERIC(12, 2)"
@@ -54,6 +55,8 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.exec_driver_sql("PRAGMA integrity_check").scalar_one() == "ok"
         tables = set(inspect(engine).get_table_names())
+        variant_columns = {column["name"] for column in inspect(engine).get_columns("product_variants")}
+        assert "is_mini" in variant_columns
         assert {
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
@@ -78,8 +81,7 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
     finally:
         engine.dispose()
 
-def test_database_url_rejects_postgresql_for_current_phase(monkeypatch):
+def test_database_url_normalizes_postgresql_to_psycopg3(monkeypatch):
     monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "postgresql://example.invalid/catalog")
     from app.db import database_url
-    with pytest.raises(RuntimeError, match="SQLite only"):
-        database_url()
+    assert database_url() == "postgresql+psycopg://example.invalid/catalog"
