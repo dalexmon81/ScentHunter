@@ -32,6 +32,7 @@ celery_app.conf.update(
         "app.workers.ingestion_tasks.normalize_offer": {"queue": "validation"},
         "app.workers.ingestion_tasks.validate_offer": {"queue": "validation"},
         "app.workers.ingestion_tasks.match_offer_to_variant": {"queue": "matching"},
+        "app.workers.ingestion_tasks.promote_matched_offers_task": {"queue": "offers"},
         "app.workers.ingestion_tasks.refresh_price_and_stock": {"queue": "refresh"},
         "app.workers.ingestion_tasks.quarantine_failed_connector": {"queue": "dead_letter"},
         "app.workers.ingestion_tasks.reprocess_failed_offers": {"queue": "offers"},
