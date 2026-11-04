@@ -1166,6 +1166,15 @@ async function searchStoresProgressive(term,onPartial){
   if(availabilityFilter)params.set("availability",availabilityFilter);
   const response=await fetchJSONWithTimeout(backend()+"/api/search?"+params.toString(),20000);
   const products=Array.isArray(response?.results)?response.results:[];
+  const storeHealthErrors={};
+  try{
+    const health=await fetchJSONWithTimeout(backend()+"/api/stores?active_only=false",10000);
+    for(const store of (health?.stores||[])){
+      if(String(store.status||"").toLowerCase()!=="active"){
+        storeHealthErrors[store.slug||store.name]={message:"Negozio temporaneamente non disponibile"};
+      }
+    }
+  }catch(_healthError){}
   const results=products.map(product=>{
     const variants=Array.isArray(product.variants)?product.variants:[];
     const offers=variants.flatMap(variant=>(variant.offers||[]).map(offer=>({
@@ -1204,7 +1213,7 @@ async function searchStoresProgressive(term,onPartial){
     message:response?.message||null,
     suggestions:response?.suggestions||[],
     stores:{},
-    errors:{},
+    errors:storeHealthErrors,
     status:"completed",
     completed:true
   };
