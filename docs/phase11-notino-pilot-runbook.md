@@ -2,7 +2,7 @@
 
 **Selected pilot:** Notino.fr, using the existing authorized CJ/VIV XML affiliate-feed connector in the Phase 5 branch.
 
-**Execution status: NOT RUN.** The exact catalog variant is now defined in the Phase 5 branch, but CI verification and staging seeding remain pending. This is not proof that feed credentials are available or that an offer exists. No live feed request, cloud resource, migration, deployment, or production write is performed by preparing this document.
+**Execution status: NOT RUN.** The exact catalog variant is now defined in the Phase 5 branch, and the Phase 5 CI seed and PostgreSQL UUID readback now pass. A persistent staging database has not yet been configured or seeded. This is not proof that feed credentials are available or that an offer exists. No live feed request, cloud resource, migration, deployment, or production write is performed by preparing this document.
 
 ## Why Notino
 
@@ -26,8 +26,14 @@ Never print, log, commit, paste into a PR, or include these values in diagnostic
 2. Configure the three variables above in the dedicated staging worker app only. Do not copy production secrets or use a production feed URL unless the account owner has explicitly approved it for staging.
 3. Confirm separate staging PostgreSQL and Redis endpoints. Do not use production connection strings.
 4. Provision a staging stores row for slug=notino, name=Notino, domain=notino.fr, country=FR, currency=EUR, status=active. The existing canonical seed script deliberately provisions Bplatz only; do not change it to silently activate Notino.
-5. The Phase 5 branch now defines the verified catalog identity `SH-AUTO-0178` (Dior / Sauvage / Eau de Parfum) and explicit 100 ml variant `VAR-9e1f0d0b8a3c6e42`, with canonical key `christian-dior|sauvage|edp|100|standard`. The 100 ml format is confirmed on Dior's official product page: https://www.dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum-Y0785220.html. This catalog change is not yet merged or seeded into staging. After the Phase 5 CI seed passes, verify the generated UUIDs with read-only staging queries. If the exact variant is absent, stop: do not infer or create a variant during offer ingestion.
+5. The Phase 5 branch now defines the verified catalog identity `SH-AUTO-0178` (Dior / Sauvage / Eau de Parfum) and explicit 100 ml variant `VAR-9e1f0d0b8a3c6e42`, with canonical key `christian-dior|sauvage|edp|100|standard`. The 100 ml format is confirmed on Dior's official product page: https://www.dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum-Y0785220.html. Phase 5 PR #343 CI now seeds and reads this mapping successfully in disposable PostgreSQL: fragrance UUID 590a4d54-d195-5bbd-8e7a-fa2d3255d604 and variant UUID 1cb2c345-8fbd-56b6-9275-87eff09ec3b6. These deterministic CI UUIDs are not evidence of a persistent staging database; verify the mapping again after staging is provisioned. If the exact variant is absent, stop: do not infer or create a variant during offer ingestion.
 6. Approve the cost of a persistent Fly staging worker before deploying it. If not approved, run only in disposable GitHub Actions infrastructure.
+
+## Verified CI evidence (not a live retailer result)
+
+- Phase 5 PR #343 pull-request run #149 passed: 48 tests, PostgreSQL catalog seed, exact Dior variant UUID readback, Redis/Celery worker smoke.
+- Phase 4 connector contract run #165 passed.
+- The Notino XML test uses an injected fixture loader and makes no network call. No real Notino feed, price or stock was retrieved.
 
 ## Controlled pilot procedure
 
