@@ -234,6 +234,7 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                     would_insert = 0
                     already_present = 0
                     source_digest = _new_checksum()
+                    target_digest = _new_checksum()
                     for row in _ordered_rows(source_connection, table, pk):
                         _update_checksum(source_digest, row, columns)
                         incoming = dict(row)
@@ -252,7 +253,18 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
                                 )
                             already_present += 1
 
-                    target_checksum_checked = _table_checksum(target_connection, table)
+                        if apply:
+                            # Verify exactly the source rows imported or matched.
+                            # The target may legitimately contain additional catalog rows.
+                            verified_row = target_connection.execute(
+                                select(table).where(pk == incoming[pk.name])
+                            ).mappings().one()
+                            _update_checksum(target_digest, verified_row, columns)
+
+                    target_checksum_checked = (
+                        _checksum_hex(target_digest) if apply
+                        else _table_checksum(target_connection, table)
+                    )
                     source_checksum = _checksum_hex(source_digest)
                     checksums_match = source_checksum == target_checksum_checked
                     if apply and not checksums_match:
