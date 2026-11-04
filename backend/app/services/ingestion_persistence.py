@@ -155,23 +155,28 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     if availability not in _ALLOWED_AVAILABILITY:
         raise PromotionRejected("availability must be explicit")
     parsed = urlparse(url or "")
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise PromotionRejected("offer URL must be absolute HTTP(S)")
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise PromotionRejected("offer URL must be absolute HTTPS")
     if not source or not source.strip():
         raise PromotionRejected("source is required")
     if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
         raise PromotionRejected("confidence must be between 0 and 1")
 
+    # Retailer identity is the idempotency key. Never reuse an unrelated
+    # listing merely because it maps to the same canonical variant: a shop may
+    # legitimately expose multiple listings, bundles, or seller offers.
     existing = None
     if row.external_product_id:
         existing = session.scalar(select(Offer).where(
             Offer.store_id == row.store_id,
             Offer.external_product_id == row.external_product_id,
         ).order_by(Offer.captured_at.desc()).limit(1))
-    if existing is None:
+    else:
+        # Legacy rows without an external ID can only be refreshed by their
+        # exact URL, not by canonical variant alone.
         existing = session.scalar(select(Offer).where(
             Offer.store_id == row.store_id,
-            Offer.product_variant_id == row.product_variant_id,
+            Offer.url == url,
         ).order_by(Offer.captured_at.desc()).limit(1))
     if existing is not None and existing.product_variant_id != row.product_variant_id:
         raise PromotionRejected(
