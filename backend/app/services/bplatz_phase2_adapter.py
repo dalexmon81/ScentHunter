@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from urllib.parse import urlparse
 from uuid import UUID
 
 from sqlalchemy.orm import Session
+
+from app.models import IngestionRaw, Store
 
 from app.services.ingestion_persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
@@ -57,8 +60,13 @@ def persist_bplatz_record(
         return BplatzPhase2Result(raw_id, "pending", reason=reason)
 
     stable_id = raw_record.get("sku") or raw_record.get("gtin") or raw_record.get("product_url") or raw_record.get("url")
+    # The adapter is invoked immediately after a successful live hydration. Record
+    # that observation time when the retailer payload does not provide one.
+    captured_record = dict(raw_record)
+    if not captured_record.get("capturedAt") and not captured_record.get("captured_at"):
+        captured_record["capturedAt"] = datetime.now(timezone.utc).isoformat()
     raw_id = stage_raw_offer(
-        session, store_id=store_id, raw_payload=raw_record,
+        session, store_id=store_id, raw_payload=captured_record,
         external_product_id=str(stable_id) if stable_id else None,
     )
 
@@ -82,6 +90,7 @@ def persist_bplatz_record(
         legacy_product_id=group.canonical_product_id,
         legacy_variant_id=group.canonical_variant_id,
         method="bplatz_next_engine_matcher",
+        confidence=Decimal("0.990"),
         unresolved_status="pending",
     )
     if resolved is None:
@@ -96,17 +105,47 @@ def persist_bplatz_record(
             product_variant_id=resolved.product_variant_id, reason="missing_or_invalid_price",
         )
     parsed_url = urlparse(normalized.product_url or "")
-    if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+    if parsed_url.scheme != "https" or not parsed_url.netloc:
         return BplatzPhase2Result(
             raw_id, "matched", fragrance_id=resolved.fragrance_id,
             product_variant_id=resolved.product_variant_id, reason="missing_or_invalid_url",
         )
-    if normalized.availability not in {"in_stock", "out_of_stock"}:
+    if normalized.availability != "in_stock":
         return BplatzPhase2Result(
             raw_id, "matched", fragrance_id=resolved.fragrance_id,
-            product_variant_id=resolved.product_variant_id, reason="availability_not_explicit",
+            product_variant_id=resolved.product_variant_id,
+            reason="availability_not_explicitly_in_stock",
         )
 
+    store = session.get(Store, store_id)
+    if store is None or store.status != "active":
+        return BplatzPhase2Result(
+            raw_id, "matched", fragrance_id=resolved.fragrance_id,
+            product_variant_id=resolved.product_variant_id, reason="store_not_active",
+        )
+    staged = session.get(IngestionRaw, raw_id)
+    captured_value = (staged.raw_payload or {}).get("capturedAt") or (staged.raw_payload or {}).get("captured_at")
+    try:
+        captured_at = datetime.fromisoformat(str(captured_value).replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if captured_at.tzinfo is None or captured_at > now + timedelta(minutes=5) or captured_at < now - timedelta(hours=48):
+            raise ValueError("capture timestamp is outside the accepted freshness window")
+    except (TypeError, ValueError) as exc:
+        return BplatzPhase2Result(
+            raw_id, "matched", fragrance_id=resolved.fragrance_id,
+            product_variant_id=resolved.product_variant_id,
+            reason=f"invalid_or_stale_capture_timestamp:{exc}",
+        )
+    if (staged.raw_payload or {}).get("purchasable") is False or (staged.raw_payload or {}).get("isPurchasable") is False:
+        return BplatzPhase2Result(
+            raw_id, "matched", fragrance_id=resolved.fragrance_id,
+            product_variant_id=resolved.product_variant_id, reason="product_not_purchasable",
+        )
+
+    # Validation is a separate persisted gate. Only complete, fresh, HTTPS,
+    # explicitly in-stock evidence with a resolved high-confidence identity passes.
+    staged.validation_status = "validated"
+    session.flush()
     offer_id = promote_offer(
         session, ingestion_raw_id=raw_id, price=normalized.price,
         currency=normalized.currency, url=normalized.product_url,
