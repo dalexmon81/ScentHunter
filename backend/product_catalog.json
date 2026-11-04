@@ -21058,7 +21058,7 @@
       "product_id": "SH-AUTO-0178",
       "brand_id": "BR-2878ed613830",
       "brand_name": "Dior",
-      "family_name": "Sauvage Eau de Parfum",
+      "family_name": "Sauvage",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -21072,7 +21072,7 @@
         "https://www.fragrantica.com/designers/Dior.html",
         "https://www.dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum-Y0785220.html"
       ],
-      "canonical_name": "Sauvage Eau de Parfum",
+      "canonical_name": "Sauvage",
       "canonical_image": "https://fragrancelounge.com/cdn/shop/files/9NUXSlMwzP-1_Product_192338-Dior-Sauvage-Eau-De-Parfum-100ml_56d49c3ef22ac8b698e7b490a7e6e19f805ffdf.jpg?v=1747814974&width=1445"
     },
     {
@@ -33735,7 +33735,8 @@
         "Sauvage Eau de Parfum",
         "Christian Dior - Sauvage Eau de Parfum"
       ],
-      "store_mappings": []
+      "store_mappings": [],
+      "canonical_key": "christian-dior|sauvage|edp|100|standard"
     }
   ],
   "offers": [],

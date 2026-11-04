@@ -165,7 +165,7 @@ def test_dior_sauvage_edp_has_verified_100ml_variant():
     catalog = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
     product = next(row for row in catalog["products"] if row["product_id"] == "SH-AUTO-0178")
     assert product["brand_name"] == "Dior"
-    assert product["canonical_name"] == "Sauvage Eau de Parfum"
+    assert product["canonical_name"] == "Sauvage"
     assert product["concentration"] == "Eau de Parfum"
     assert any("dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum" in url
                for url in product["verification_sources"])
@@ -175,6 +175,7 @@ def test_dior_sauvage_edp_has_verified_100ml_variant():
     assert variants[0]["variant_id"] == "VAR-9e1f0d0b8a3c6e42"
     assert variants[0]["gtins"] == []
     assert variants[0]["mpns"] == []
+    assert variants[0]["canonical_key"] == "christian-dior|sauvage|edp|100|standard"
 
 
 def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path):
@@ -184,7 +185,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
     from sqlalchemy.orm import Session
 
     sys.path.insert(0, str(BACKEND))
-    from app.models import LegacyProductIdMap, LegacyVariantIdMap
+    from app.models import LegacyProductIdMap, LegacyVariantIdMap, ProductVariant
     from app.services.ingestion_persistence import resolve_legacy_ids
 
     catalog_path = BACKEND / "product_catalog.json"
@@ -235,6 +236,16 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
                 assert resolved is not None, (
                     f"unresolved legacy IDs: {variant['product_id']} / {variant['variant_id']}"
                 )
+
+            sauvage_mapping = resolve_legacy_ids(
+                session,
+                legacy_product_id="SH-AUTO-0178",
+                legacy_variant_id="VAR-9e1f0d0b8a3c6e42",
+            )
+            assert sauvage_mapping is not None
+            sauvage_variant = session.get(ProductVariant, sauvage_mapping.product_variant_id)
+            assert sauvage_variant is not None
+            assert sauvage_variant.canonical_key == "christian-dior|sauvage|edp|100|standard"
 
             first_product_id = str(products[0]["product_id"])
             missing_variant_id = "LEGACY-VARIANT-ID-DOES-NOT-EXIST"

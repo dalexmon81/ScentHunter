@@ -235,7 +235,7 @@ def main() -> int:
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
                             gtin=variant.get("gtin"),
-                            canonical_key=key[:320],
+                            canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
                         session.add(variant_row)
                         session.flush()
