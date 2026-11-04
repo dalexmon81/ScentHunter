@@ -89,15 +89,10 @@ jobs:
             echo "::error::Both worker and beat process groups must have a started machine."
             exit 1
           fi
-          process_info="$(flyctl ssh console --app scenthunter-staging-workers --machine "$worker_id" --command "ps -eo uid=,args= | grep '[c]elery -A app.workers.celery_app:celery_app worker'")"
+          process_info="$(flyctl ssh console --app scenthunter-staging-workers --machine "$worker_id" --command "python -c 'import glob,os,sys; found=[]; self=str(os.getpid()); exec(\"for p in glob.glob(\\\"/proc/[0-9]*/cmdline\\\"):\\n pid=p.split(\\\"/\\\")[2];\\n if pid==self: continue\\n try: cmd=open(p,\\\"rb\\\").read().replace(bytes([0]),b\\\" \\\").decode(errors=\\\"ignore\\\"); status=open(\\\"/proc/\\\"+pid+\\\"/status\\\").read(); uid=next(x.split()[1] for x in status.splitlines() if x.startswith(\\\"Uid:\\"));\\n except (OSError,StopIteration): continue\\n if \\\"app.workers.celery_app:celery_app worker\\\" in cmd: found.append((pid,uid,cmd))\\n\"); print(found); sys.exit(0 if found and all(x[1]==\"10001\" for x in found) else 1)'")"
           printf '%s\\n' "$process_info"
-          uid="$(printf '%s\\n' "$process_info" | awk 'NR==1 {print $1}')"
-          echo "Celery worker process UID: $uid"
-          if [ "$uid" != "10001" ]; then
-            echo "::error::Celery worker process must run as non-root UID 10001."
-            exit 1
-          fi
-          flyctl ssh console --app scenthunter-staging-workers --machine "$beat_id" --command "sh -c '! ps -eo args | grep -E \"[c]elery .* beat\"'"
+          echo "Celery worker process verified as non-root UID 10001."
+          flyctl ssh console --app scenthunter-staging-workers --machine "$beat_id" --command "python -c 'import glob,os,sys; found=[]; self=str(os.getpid()); exec(\"for p in glob.glob(\\\"/proc/[0-9]*/cmdline\\\"):\\n pid=p.split(\\\"/\\\")[2];\\n if pid==self: continue\\n try: cmd=open(p,\\\"rb\\\").read().replace(bytes([0]),b\\\" \\\").decode(errors=\\\"ignore\\\")\\n except OSError: continue\\n if \\\"celery\\\" in cmd and \\\" beat\\\" in cmd: found.append((pid,cmd))\\n\"); print(found); sys.exit(1 if found else 0)'"
           echo "Beat process is not running; scheduled ingestion remains disabled."
       - name: Verify Celery worker responds to broker ping
         env:
