@@ -113,8 +113,10 @@ def test_catalog_search_can_filter_variant_format(tmp_path):
         result = search_catalog(
             "Sauvage", session_factory=factory, product_format="tester",
         )
-        assert result["count"] == 0
+        assert result["count"] == 1
         assert result["offer_count"] == 0
+        assert result["results"][0]["offers"] == []
+        assert "non ci sono offerte" in result["message"]
     finally:
         engine.dispose()
 
@@ -187,4 +189,15 @@ def test_postgres_full_text_catalog_search_reads_published_variant():
             session.execute(delete(Fragrance).where(Fragrance.id == fragrance_id))
             session.execute(delete(Store).where(Store.id == store_id))
             session.execute(delete(Brand).where(Brand.id == brand_id))
+        engine.dispose()
+
+
+def test_catalog_search_returns_similar_suggestions_when_not_found(tmp_path):
+    factory, engine = _factory(tmp_path)
+    try:
+        result = search_catalog("Sauvag", session_factory=factory)
+        assert result["count"] == 0
+        assert result["suggestions"]
+        assert result["suggestions"][0]["fragrance"] == "Sauvage"
+    finally:
         engine.dispose()
