@@ -56,6 +56,15 @@ from app.api.catalog_resources import router as catalog_resources_router
 app.include_router(catalog_resources_router)
 from app.api.admin import router as catalog_admin_router
 app.include_router(catalog_admin_router)
+@app.get("/admin", include_in_schema=False)
+def catalog_admin_dashboard():
+    """Serve the token-gated operational dashboard; data APIs remain bearer-protected."""
+    admin_page = Path(__file__).resolve().parent.parent / "frontend" / "admin.html"
+    if not admin_page.is_file():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="admin_dashboard_not_installed")
+    return FileResponse(admin_page, media_type="text/html")
+
 
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
