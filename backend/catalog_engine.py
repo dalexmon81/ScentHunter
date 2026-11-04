@@ -4067,6 +4067,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         if revision not in {
             "0002_ingestion_raw", "0003_store_domain",
             "0008_offer_lifecycle_states", "0009_catalog_search_fts",
+            "0010_olfactory_notes", "0011_olfactory_notes_fts",
         } or missing:
             print(
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
