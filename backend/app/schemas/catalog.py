@@ -55,6 +55,7 @@ class SearchProduct(BaseModel):
     family: str | None = None
     gender: str | None = None
     olfactory_notes: list[Any] = Field(default_factory=list)
+    image_url: str | None = None
     variants: list[SearchVariant] = Field(default_factory=list)
     variant_selection_required: bool = False
     offer_count: int = 0
