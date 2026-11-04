@@ -202,7 +202,7 @@ def test_postgres_full_text_catalog_search_reads_published_variant():
 def test_catalog_search_returns_similar_suggestions_when_not_found(tmp_path):
     factory, engine = _factory(tmp_path)
     try:
-        result = search_catalog("Dior SauvagX", session_factory=factory)
+        result = search_catalog("Sauvaje", session_factory=factory)
         assert result["count"] == 0
         assert result["suggestions"]
         assert result["suggestions"][0]["fragrance"] == "Sauvage"
