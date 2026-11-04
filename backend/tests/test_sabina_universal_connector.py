@@ -1,4 +1,5 @@
 from pathlib import Path
+from decimal import Decimal
 import asyncio
 
 import pytest
@@ -23,7 +24,7 @@ def test_sabina_saved_jsonld_fixture_maps_to_universal_offer():
     assert offer.fragrance == "sauvage"
     assert offer.concentration == "edp"
     assert offer.size_ml == 100
-    assert str(offer.price) == "96.50"
+    assert offer.price == Decimal("96.50")
     assert offer.currency == "EUR"
     assert offer.availability == "in_stock"
     assert connector.validate_offer(offer)[0]
