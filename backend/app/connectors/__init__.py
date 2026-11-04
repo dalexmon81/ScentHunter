@@ -8,18 +8,26 @@ from .base import (
     StoreConnector,
     validate_offer,
 )
-from .bplatz import BplatzConnector\nfrom .deloox import DelooxConnector
+from .bplatz import BplatzConnector
+from .deloox import DelooxConnector
 from .easycosmetic import EasycosmeticConnector
 from .notino import NotinoAffiliateFeedConnector
-from .orioudh import OrioudhConnector\nfrom .parfumcity import ParfumCityConnector\nfrom .parfumemarket import PerfumeMarketConnector\nfrom .parfumzentrum import ParfumzentrumConnector
+from .orioudh import OrioudhConnector
+from .parfumcity import ParfumCityConnector
+from .perfumemarket import PerfumeMarketConnector
+from .parfumzentrum import ParfumzentrumConnector
 from .sabina import SabinaConnector
 
 __all__ = [
-    "BplatzConnector",\n    "ConnectorError",
+    "BplatzConnector",
+    "ConnectorError",
     "ConnectorQuarantined",
     "DelooxConnector",
     "EasycosmeticConnector",
-    "NotinoAffiliateFeedConnector",\n    "OrioudhConnector",\n    "ParfumCityConnector",\n    "PerfumeMarketConnector",
+    "NotinoAffiliateFeedConnector",
+    "OrioudhConnector",
+    "ParfumCityConnector",
+    "PerfumeMarketConnector",
     "OfferRecord",
     "RateLimiter",
     "RetryPolicy",
