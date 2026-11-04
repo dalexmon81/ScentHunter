@@ -100,6 +100,7 @@ def test_gtin_conflict_is_not_auto_matched():
         payload = dict(raw.raw_payload)
         payload["gtin"] = "4006381333931"
         payload["title"] = "Dior Homme Eau de Toilette 100 ml"
+        payload["concentration"] = "edt"
         raw.raw_payload = payload
         session.commit()
     with factory() as session:
