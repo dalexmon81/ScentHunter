@@ -150,3 +150,15 @@ def test_known_store_sku_reuses_confirmed_variant_mapping():
         assert decision.status == "matched"
         assert decision.method == "store_sku_exact"
         assert decision.confidence == Decimal("0.995")
+
+
+def test_explicit_tester_packaging_never_matches_standard_variant():
+    factory, _variant_id, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {**raw.raw_payload, "packaging": "tester"}
+        session.commit()
+    with factory() as session:
+        decision = match_staged_offer(session, raw_id)
+        assert decision.status == "unmatched"
+        assert decision.method == "no_exact_match"
