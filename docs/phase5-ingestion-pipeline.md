@@ -144,3 +144,19 @@ Latest cadence regression verification (4 November 2026): commit
 with 40 tests and passed the Phase 4 connector contract workflow. The
 eight-hour schedule regression test verifies that only active persisted offers
 from active stores are queued, and that the task targets the refresh queue.
+
+
+## Isolated runtime integration gate
+
+The Phase 5 workflow now has a second, disposable integration job using GitHub
+Actions service containers (PostgreSQL 16 and Redis 7.4). It applies the full
+Alembic chain twice, seeds the canonical catalog into the isolated PostgreSQL
+database, starts a real Celery worker, verifies worker registration through
+Redis, and executes the eight-hour offer-collection scheduler against the
+seeded database. The seed contains no retailer offers, so this check must
+complete with zero refresh jobs and makes no retailer HTTP requests.
+
+This is an ephemeral CI staging environment, not a persistent Render/Fly
+deployment. It validates the real database/broker/worker runtime without
+creating paid cloud resources or touching production. A separate live-store
+acceptance run is still required before enabling scheduled retailer ingestion.
