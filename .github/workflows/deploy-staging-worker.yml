@@ -51,6 +51,17 @@ jobs:
           fi
       - name: Allow worker startup and broker connection
         run: sleep 10
+      - name: Read-only staging store safety audit
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started machine for read-only store audit."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import select; from app.db import make_session_factory; from app.models import Store; f=make_session_factory(); s=f(); rows=s.scalars(select(Store).order_by(Store.slug)).all(); print({\"store_count\":len(rows),\"stores\":[{\"slug\":x.slug,\"status\":x.status} for x in rows]}); s.close(); f.kw[\"bind\"].dispose()'"
       - name: Verify Celery worker responds to broker ping
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
