@@ -567,3 +567,16 @@ def enqueue_refresh_for_active_stores():
         return {"refresh_jobs_queued": queued}
     finally:
         factory.kw["bind"].dispose()
+
+
+@celery_app.task(name="app.workers.ingestion_tasks.staging_worker_smoke")
+def staging_worker_smoke(probe: str = "phase5"):
+    """Side-effect-free staging probe proving a queued task executed on a worker."""
+    from celery import current_task
+    return {
+        "ok": True,
+        "probe": str(probe)[:80],
+        "task_id": current_task.request.id,
+        "worker": current_task.request.hostname,
+        "executed_at": datetime.now(timezone.utc).isoformat(),
+    }
