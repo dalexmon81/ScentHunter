@@ -6,6 +6,7 @@ unit tests and local development; neither path contacts retailer websites.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from difflib import SequenceMatcher
 from decimal import Decimal
 from typing import Any
 
@@ -235,6 +236,26 @@ def search_catalog(
                         "brand": row[0], "brand_slug": row[1],
                         "fragrance": row[2], "fragrance_slug": row[3],
                     } for row in session.execute(suggestion_stmt).all()]
+                if not suggestions:
+                    # Lightweight typo suggestions when Meilisearch is not
+                    # configured or has no index results.
+                    candidates = session.execute(
+                        select(Brand.name, Brand.slug, Fragrance.name, Fragrance.slug)
+                        .join(Fragrance, Fragrance.brand_id == Brand.id)
+                        .limit(5000)
+                    ).all()
+                    ranked = []
+                    needle = q.casefold()
+                    for row in candidates:
+                        label = f"{row[0]} {row[2]}"
+                        score = SequenceMatcher(None, needle, label.casefold()).ratio()
+                        if score >= 0.45:
+                            ranked.append((score, row))
+                    ranked.sort(key=lambda item: item[0], reverse=True)
+                    suggestions = [{
+                        "brand": row[0], "brand_slug": row[1],
+                        "fragrance": row[2], "fragrance_slug": row[3],
+                    } for _, row in ranked[:5]]
             page = products[offset:offset + limit]
             return {
                 "query": q,
