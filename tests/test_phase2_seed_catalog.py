@@ -155,10 +155,26 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["source_brand_records"] == 61
     assert report["brands"] == 60
     assert report["fragrances"] == 1389
-    assert report["variants"] == 511
-    assert report["products_without_variants"] == 1063
+    assert report["variants"] == 512
+    assert report["products_without_variants"] == 1062
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
+
+
+def test_dior_sauvage_edp_has_verified_100ml_variant():
+    catalog = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    product = next(row for row in catalog["products"] if row["product_id"] == "SH-AUTO-0178")
+    assert product["brand_name"] == "Dior"
+    assert product["canonical_name"] == "Sauvage Eau de Parfum"
+    assert product["concentration"] == "Eau de Parfum"
+    assert any("dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum" in url
+               for url in product["verification_sources"])
+    variants = [row for row in catalog["variants"]
+                if row["product_id"] == "SH-AUTO-0178" and row["size_ml"] == 100]
+    assert len(variants) == 1
+    assert variants[0]["variant_id"] == "VAR-9e1f0d0b8a3c6e42"
+    assert variants[0]["gtins"] == []
+    assert variants[0]["mpns"] == []
 
 
 def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path):

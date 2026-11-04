@@ -21066,10 +21066,11 @@
         "Sauvage Eau de Parfum",
         "Christian Dior"
       ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
+      "source_status": "verificato",
+      "source_notes": "Identità della referenza verificata nel catalogo fragrance; formato 100 ml verificato sul sito ufficiale Dior.",
       "verification_sources": [
-        "https://www.fragrantica.com/designers/Dior.html"
+        "https://www.fragrantica.com/designers/Dior.html",
+        "https://www.dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum-Y0785220.html"
       ],
       "canonical_name": "Sauvage Eau de Parfum",
       "canonical_image": "https://fragrancelounge.com/cdn/shop/files/9NUXSlMwzP-1_Product_192338-Dior-Sauvage-Eau-De-Parfum-100ml_56d49c3ef22ac8b698e7b490a7e6e19f805ffdf.jpg?v=1747814974&width=1445"
@@ -33720,6 +33721,19 @@
       "aliases": [
         "Vol de Nuit",
         "Guerlain Vol de Nuit"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9e1f0d0b8a3c6e42",
+      "product_id": "SH-AUTO-0178",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Eau de Parfum",
+        "Sauvage Eau de Parfum",
+        "Christian Dior - Sauvage Eau de Parfum"
       ],
       "store_mappings": []
     }
