@@ -98,6 +98,9 @@ def operational_metrics(_auth: None = Depends(_authorize)):
             published = session.scalar(select(func.count()).select_from(Offer).where(
                 Offer.publication_status == "published"
             )) or 0
+            rejected_offers = session.scalar(select(func.count()).select_from(Offer).where(
+                Offer.publication_status == "rejected"
+            )) or 0
             rejected = session.scalar(select(func.count()).select_from(IngestionRaw).where(
                 IngestionRaw.status == "rejected"
             )) or 0
@@ -145,6 +148,7 @@ def operational_metrics(_auth: None = Depends(_authorize)):
                 "offers": {
                     "total": int(total_offers),
                     "published": int(published),
+                    "rejected": int(rejected_offers),
                     "rejected_raw_records": int(rejected),
                     "by_store": [
                         {"store": slug, "name": name, "offers": int(count)}
