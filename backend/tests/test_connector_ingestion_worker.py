@@ -193,3 +193,45 @@ def test_notino_fixture_matches_and_promotes_exact_dior_sauvage_edp_100ml():
             MatchAudit.offer_id == offer_id
         )))) == 1
     engine.dispose()
+
+
+def test_notino_live_preflight_requires_exact_and_explicitly_available_candidate():
+    import importlib.util
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / "notino_pilot_preflight.py"
+    spec = importlib.util.spec_from_file_location("notino_pilot_preflight", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    record = OfferRecord(
+        store="notino",
+        external_product_id="fixture-notino-sauvage-edp-100",
+        brand="Dior",
+        fragrance="sauvage",
+        concentration="edp",
+        size_ml=100,
+        gtin=None,
+        title="Dior Sauvage Eau de Parfum 100 ml",
+        url="https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+        price=Decimal("99.90"),
+        currency="EUR",
+        availability="in_stock",
+        captured_at=datetime.now(timezone.utc).isoformat(),
+        source="authorized_affiliate_xml",
+    )
+    report = module.summarize_candidates([record])
+    assert report["status"] == "ready_for_staging_review"
+    assert report["ready_for_staging_review"] is True
+    assert report["database_written"] is False
+    assert report["offer_published"] is False
+
+    unknown = OfferRecord(**{**record.__dict__, "availability": "unknown"})
+    blocked = module.summarize_candidates([unknown])
+    assert blocked["status"] == "candidate_requires_availability_review"
+    assert blocked["ready_for_staging_review"] is False
+
+    wrong_concentration = OfferRecord(**{**record.__dict__, "concentration": "edt"})
+    unmatched = module.summarize_candidates([wrong_concentration])
+    assert unmatched["status"] == "no_exact_product"
+    assert unmatched["exact_candidate_count"] == 0
