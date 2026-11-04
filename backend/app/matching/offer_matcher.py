@@ -79,6 +79,20 @@ def match_staged_offer(session: Session, ingestion_raw_id) -> MatchDecision:
     if raw.status not in {"pending", "unmatched"}:
         raise ValueError("ingestion_raw_not_eligible_for_matching")
     decision = decide_offer_match(session, raw)
+    if decision.status == "unmatched" and decision.method not in {
+        "insufficient_identity", "normalization_review"
+    }:
+        payload = raw.raw_payload or {}
+        identity = normalize_product(
+            str(payload.get("brand") or ""), str(payload.get("title") or ""),
+            concentration=payload.get("concentration"),
+            size_ml=payload.get("sizeMl"),
+        )
+        enqueue_identity_review(
+            session, identity, reason=decision.method,
+            gtin=payload.get("gtin"),
+            source_reference=str(raw.external_product_id or raw.id),
+        )
     record_match(
         session,
         ingestion_raw_id=raw.id,
