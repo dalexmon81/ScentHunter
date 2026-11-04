@@ -54,6 +54,8 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.exec_driver_sql("PRAGMA integrity_check").scalar_one() == "ok"
         tables = set(inspect(engine).get_table_names())
+        variant_columns = {column["name"] for column in inspect(engine).get_columns("product_variants")}
+        assert "is_mini" in variant_columns
         assert {
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
