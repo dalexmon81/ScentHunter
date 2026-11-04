@@ -1,0 +1,160 @@
+name: Deploy staging worker # verify refreshed Fly secrets
+on:
+  push:
+    branches:
+      - phase5/fly-staging-workers-config
+  workflow_dispatch:
+concurrency:
+  group: scenthunter-staging-worker-deploy
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase5/fly-staging-workers-config
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Install backend dependencies and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest
+      - name: Run isolated ingestion and connector tests
+        env:
+          PYTHONPATH: backend
+        run: |
+          pytest -q \
+            backend/tests/test_celery_ingestion_pipeline.py \
+            backend/tests/test_connector_ingestion_worker.py \
+            backend/tests/test_offer_matching_worker.py \
+            backend/tests/test_offer_promotion_worker.py \
+            backend/tests/test_product_normalization.py \
+            backend/tests/test_store_connector_contract.py \
+            backend/tests/test_seed_catalog_store_safety.py
+      - name: Check Fly token
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::Missing repository secret FLY_API_TOKEN"
+            exit 1
+          fi
+      - name: Apply staged Fly secrets
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl secrets list --app scenthunter-staging-workers
+          flyctl secrets deploy --app scenthunter-staging-workers
+      - name: Deploy isolated worker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --config fly.staging-workers.toml --remote-only --yes
+      - name: Keep staging footprint to one worker and zero Beat machines
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl scale count app=1 beat=0 --app scenthunter-staging-workers --yes
+      - name: Allow worker startup and broker connection
+        run: sleep 10
+      - name: Read-only staging catalog schema and store safety audit
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started machine for read-only catalog audit."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); i=inspect(e); tables=set(i.get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\"}; present=sorted(required & tables); missing=sorted(required - tables); result={\"database_dialect\":e.dialect.name,\"catalog_schema\":\"ready\" if not missing else \"not_migrated_or_incomplete\",\"required_tables_present\":present,\"required_tables_missing\":missing,\"store_count\":None,\"stores\":[]}; result.update({\"store_count\":0,\"stores\":[]} if \"stores\" not in tables else {}); result.update({\"store_count\":e.connect().execute(text(\"SELECT count(*) FROM stores\")).scalar_one()} if \"stores\" in tables else {}); print(result); e.dispose()'"
+          echo "::notice::Schema audit is read-only. An uninitialized schema is intentionally not migrated by this workflow."
+      - name: Apply Alembic migrations to the verified isolated staging database
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started staging worker machine for the guarded migration."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import hashlib; from sqlalchemy import text; from app.db import make_engine; from app.db_runtime_identity import configuration_source; e=make_engine(); c=e.connect(); row=c.execute(text(\"SELECT current_database(), current_schema()\")).one(); fp=hashlib.sha256((e.dialect.name+chr(92)+chr(48)+str(row[0])+chr(92)+chr(48)+str(row[1])).encode()).hexdigest()[:16]; print({\"database\":row[0],\"schema\":row[1],\"fingerprint\":fp,\"config_source\":configuration_source()}); assert e.dialect.name==\"postgresql\" and row[0]==\"neondb\" and row[1]==\"public\" and fp==\"8b2f015a4746cccc\" and configuration_source()==\"SCENTHUNTER_CATALOG_DATABASE_URL\", \"Refusing migration: staging database identity does not match the reviewed Neon project\"; c.close(); e.dispose()'"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -m alembic -c /app/backend/alembic.ini upgrade head"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); c=e.connect(); tables=set(inspect(e).get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"price_history\",\"match_audit\",\"ingestion_runs\",\"ingestion_raw\",\"ingestion_artifacts\",\"ingestion_dead_letters\",\"legacy_product_id_map\",\"legacy_variant_id_map\"}; missing=sorted(required-tables); revisions=c.execute(text(\"SELECT version_num FROM alembic_version\")).scalars().all() if \"alembic_version\" in tables else []; result={\"database_dialect\":e.dialect.name,\"required_tables_missing\":missing,\"alembic_revisions\":revisions}; print(result); assert not missing and revisions==[\"0007_ingestion_dead_letters\"], \"Staging schema or Alembic head verification failed\"; c.close(); e.dispose()'"
+      - name: Normalize known brand aliases in the isolated staging seed
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); tx=c.begin(); aliases=((\"dior\",\"christian dior\"),(\"nishane\",\"nishane istanbul\")); rows=[(old,new,c.execute(text(\"SELECT COUNT(*) FROM brands WHERE normalized_name=:v\"),{\"v\":old}).scalar_one(),c.execute(text(\"SELECT COUNT(*) FROM brands WHERE normalized_name=:v\"),{\"v\":new}).scalar_one()) for old,new in aliases]; assert not any(old_count and new_count for _,_,old_count,new_count in rows), \"brand_alias_conflict_requires_manual_review\"; [c.execute(text(\"UPDATE brands SET normalized_name=:new WHERE normalized_name=:old\"),{\"new\":new,\"old\":old}) for old,new,old_count,new_count in rows if old_count]; tx.commit(); print({\"brand_alias_rows_updated\":sum(old_count for _,_,old_count,_ in rows)}); c.close(); e.dispose()'"
+c.commit(); e.dispose(); print({\"brand_alias_rows_updated\":updated})'"
+      - name: Seed canonical catalog without activating a retailer
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/seed_catalog.py --apply"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; q=\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand AND f.slug=:slug AND pv.canonical_key=:key\"; dior=c.execute(text(q),{\"brand\":\"christian dior\",\"slug\":\"sauvage\",\"key\":\"christian-dior|sauvage|edp|100|standard\"}).scalar_one(); print({\"counts\":counts,\"dior_sauvage_edp_100ml_matches\":dior}); assert counts[\"brands\"]==60 and counts[\"fragrances\"]>0 and counts[\"product_variants\"]==512 and counts[\"legacy_product_id_map\"]==1389 and counts[\"legacy_variant_id_map\"]==512 and counts[\"stores\"]==0 and counts[\"offers\"]==0 and dior==1; c.close(); e.dispose()'"
+      - name: Report Notino credential presence without exposing values or calling the feed
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import os; keys=(\"NOTINO_CJ_FEED_URL\",\"NOTINO_CJ_FEED_USERNAME\",\"NOTINO_CJ_FEED_PASSWORD\"); print({key:bool(os.environ.get(key)) for key in keys})'"
+      - name: Verify one non-root worker and zero Beat machines
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machines="$(flyctl machines list --app scenthunter-staging-workers --json)"
+          app_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")] | length')"
+          beat_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "beat")] | length')"
+          if [ "$app_count" -ne 1 ] || [ "$beat_count" -ne 0 ]; then
+            echo "::error::Expected exactly one started worker and no started Beat machine."
+            exit 1
+          fi
+          worker_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          process_info="$(flyctl ssh console --app scenthunter-staging-workers --machine "$worker_id" --command "python -c 'import glob,os,sys; entries=[(p,open(p,\"rb\").read().replace(bytes([0]),b\" \").decode(errors=\"ignore\"),open(\"/proc/\"+p.split(\"/\")[2]+\"/status\").read()) for p in glob.glob(\"/proc/[0-9]*/cmdline\") if p.split(\"/\")[2]!=str(os.getpid())]; found=[(p.split(\"/\")[2],next(x.split()[1] for x in st.splitlines() if x.startswith(\"Uid:\")),cmd) for p,cmd,st in entries if \"app.workers.celery_app:celery_app worker\" in cmd]; print(found); sys.exit(0 if found and all(uid==\"10001\" for _,uid,_ in found) else 1)'")"
+          printf '%s\\n' "$process_info"
+      - name: Verify Celery worker responds to broker ping
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started worker machine is available for the Celery ping."
+            exit 1
+          fi
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "celery -A app.workers.celery_app:celery_app inspect ping --timeout=10" 2>&1)"
+          printf '%s\\n' "$output"
+          if ! printf '%s\\n' "$output" | grep -qi "pong"; then
+            echo "::error::Celery worker did not return pong to the remote control ping."
+            exit 1
+          fi
+      - name: Verify a queued Celery task executes
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started worker machine is available for the task smoke test."
+            exit 1
+          fi
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from app.workers.celery_app import celery_app; r=celery_app.send_task(\"app.workers.ingestion_tasks.staging_worker_smoke\", kwargs={\"probe\":\"phase5-queue-execution\"}, queue=\"offers\"); print(r.get(timeout=25))' " 2>&1)"
+          printf '%s\\n' "$output"
+          if ! printf '%s\\n' "$output" | grep -q "'ok': True"; then
+            echo "::error::Queued Celery smoke task did not return a successful result."
+            exit 1
+          fi
+      - name: Inspect worker logs and machine state
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl status --app scenthunter-staging-workers
+          flyctl scale show --app scenthunter-staging-workers
+          flyctl machines list --app scenthunter-staging-workers
+          flyctl logs --app scenthunter-staging-workers --no-tail

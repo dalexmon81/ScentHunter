@@ -1,0 +1,27 @@
+# Isolated Fly.io staging configuration for the Phase 5 ingestion workers.
+# Deploy only with this config file. Do not use the production fly.toml.
+app = "scenthunter-staging-workers"
+primary_region = "ams"
+
+[build]
+  dockerfile = "backend/Dockerfile.worker"
+
+# Keep process-group names aligned with the staging deployment verifier.
+# The wrapper keeps Beat disabled until explicitly reviewed and enabled.
+[processes]
+  app = "sh /app/backend/start_worker.sh worker"
+  beat = "sh /app/backend/start_worker.sh beat"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "1gb"
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"
+  processes = ["beat"]
+
+# No HTTP service, public port, or production volume.
