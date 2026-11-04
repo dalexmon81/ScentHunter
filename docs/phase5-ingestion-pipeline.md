@@ -137,3 +137,10 @@ evidence. Every eight hours, the collection task selects only already-known
 offers whose offer and store statuses are both `active`, then enqueues a
 price/stock refresh. It does not repeat discovery. The optional 30-minute
 refresh remains restricted to the explicitly configured main-store list.
+
+
+Latest cadence regression verification (4 November 2026): commit
+`a5e3c436262eb9547eec6f05f62b1c6a225caea9` passed the Phase 5 workflow
+with 40 tests and passed the Phase 4 connector contract workflow. The
+eight-hour schedule regression test verifies that only active persisted offers
+from active stores are queued, and that the task targets the refresh queue.
