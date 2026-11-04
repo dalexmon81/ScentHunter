@@ -127,3 +127,13 @@ La pianificazione periodica ora seleziona soltanto i negozi con una riga Phase 2
 La seed Phase 2 importa identità canoniche e mappe legacy, ma non importa offerte (`offers_imported = 0`). Bplatz è il solo negozio attivato dalla seed pilota; gli altri restano configurabili e gestiti esplicitamente dall'operatore.
 
 Ultima CI verificata sul commit `296ce33d982e0764add98e8f9b3faf2236435af7`: workflow Phase 5 e workflow contratti connector Phase 4 entrambi superati; Phase 5: 38 test passati. I test fixture non sostituiscono una prova live con database, Redis, worker e negozi reali.
+
+
+### Cadence clarification
+
+Daily discovery and the eight-hour collection cadence are now separate. The
+daily task discovers new retailer products and stages their first offer
+evidence. Every eight hours, the collection task selects only already-known
+offers whose offer and store statuses are both `active`, then enqueues a
+price/stock refresh. It does not repeat discovery. The optional 30-minute
+refresh remains restricted to the explicitly configured main-store list.
