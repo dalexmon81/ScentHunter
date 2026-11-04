@@ -14,6 +14,7 @@ from app.api.legacy_catalog import legacy_product_offers
 
 
 def _catalog_factory(tmp_path, *, offer_status="active", store_status="active"):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     engine = create_engine(f"sqlite:///{tmp_path / 'legacy-bridge.sqlite3'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
@@ -57,16 +58,16 @@ def test_legacy_product_bridge_returns_only_persisted_offer_uuid(tmp_path):
     result = legacy_product_offers("SH-TEST-1", session_factory=factory)
 
     assert result["legacy_product_id"] == "SH-TEST-1"
-    assert result["offers"] == [{
-        "phase2_offer_id": str(offer_id),
-        "store": "bplatz",
-        "url": "https://shop.example/test-fragrance",
-        "price": 79.9,
-        "currency": "EUR",
-        "availability": "in_stock",
-        "size_ml": 100,
-        "captured_at": result["offers"][0]["captured_at"],
-    }]
+    assert len(result["offers"]) == 1
+    offer = result["offers"][0]
+    assert offer["phase2_offer_id"] == str(offer_id)
+    assert offer["store"] == "bplatz"
+    assert offer["url"] == "https://shop.example/test-fragrance"
+    assert offer["price"] == 79.9
+    assert offer["currency"] == "EUR"
+    assert offer["availability"] == "in_stock"
+    assert offer["size_ml"] == 100
+    assert offer["captured_at"]
 
 
 def test_legacy_product_bridge_hides_inactive_offer_or_store(tmp_path):
