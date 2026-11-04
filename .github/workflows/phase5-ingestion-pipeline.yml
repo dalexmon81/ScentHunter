@@ -7,6 +7,8 @@ on:
     paths:
       - "backend/app/workers/**"
       - "backend/app/connectors/**"
+      - "backend/app/models/**"
+      - "backend/alembic/versions/**"
       - "backend/tests/test_celery_ingestion_pipeline.py"
       - "backend/tests/test_connector_ingestion_worker.py"
       - "backend/tests/test_connector_ingestion_session_defaults.py"
@@ -50,6 +52,6 @@ jobs:
       - name: Install focused dependencies
         run: python -m pip install pytest requests beautifulsoup4 lxml sqlalchemy pyyaml celery[redis]==5.5.3
       - name: Compile pipeline and workers
-        run: python -m compileall -q backend/app/workers backend/app/connectors backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py
+        run: python -m compileall -q backend/app/workers backend/app/connectors backend/app/models backend/alembic/versions backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py
       - name: Run ingestion, matching, promotion and queue tests
         run: python -m pytest -q backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py
