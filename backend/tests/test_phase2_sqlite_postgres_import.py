@@ -134,7 +134,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         for table_report in applied["tables"].values():
             self.assertTrue(table_report["checksums_match_after_import"])
             self.assertEqual(
-                table_report["source_sha256"], table_report["target_sha256_after"]
+                table_report["source_sha256"], table_report["target_sha256_after_import"]
             )
 
         repeated = inspect_and_import(
