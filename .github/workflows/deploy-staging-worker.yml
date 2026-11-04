@@ -25,3 +25,9 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl deploy --config fly.workers.toml --remote-only --yes
+      - name: Verify staging app and machines
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl status --app scenthunter-staging-workers
+          flyctl machines list --app scenthunter-staging-workers
