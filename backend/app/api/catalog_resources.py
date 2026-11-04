@@ -202,7 +202,9 @@ def list_offers(
     try:
         with factory() as session:
             stmt = select(Offer, Store).join(Store, Store.id == Offer.store_id).where(
+                Offer.status == "active",
                 Offer.publication_status.in_(("published", "stale")),
+                Store.status == "active",
             )
             if storeId:
                 stmt = stmt.where(Store.id == storeId)
@@ -217,12 +219,7 @@ def list_offers(
             payload = [
                 _offer_payload(offer, store, now=now)
                 for offer, store in rows
-                if include_expired or not (
-                    offer.publication_status == "stale"
-                    or store.status != "active"
-                    or (offer.valid_until is not None and offer.valid_until <= now)
-                    or (offer.captured_at is not None and offer.captured_at < now - timedelta(hours=48))
-                )
+                if include_expired or not _offer_is_expired(offer, store, now)
             ]
             return {"count": len(payload), "offers": payload}
     finally:
