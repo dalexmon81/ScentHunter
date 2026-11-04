@@ -92,6 +92,9 @@ def test_catalog_search_returns_only_fresh_published_offers(tmp_path):
         assert offered_variant["size_ml"] == 100
         assert offered_variant["offers"][0]["store"] == "notino"
         assert offered_variant["offers"][0]["price"] == "89.90"
+        assert offered_variant["min_price"] == "89.90"
+        assert offered_variant["store_count"] == 1
+        assert offered_variant["availability"] == "in_stock"
     finally:
         engine.dispose()
 
