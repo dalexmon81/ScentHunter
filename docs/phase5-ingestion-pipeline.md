@@ -48,6 +48,33 @@ detail page. This dispatches the retailer refresh onto the `refresh` queue and
 returns its Celery job ID. The existing public product-detail HTTP handler and
 frontend have not yet been connected to this dispatch helper.
 
+### Detail-refresh integration gate (intentional blocker)
+
+The current `frontend/index.html` detail view is populated from the legacy
+`/search` response. Its offer objects expose display fields such as `store`,
+`url` and price, but they do not carry the UUID of a row in the Phase 2
+SQLAlchemy `offers` table. The current API also still serves the legacy
+catalog/search pipeline; it does not yet read those SQLAlchemy offer rows.
+
+Do not add a browser-facing endpoint that accepts an arbitrary `store_key` and
+retailer product ID and forwards it to Celery. That would let unauthenticated
+clients enqueue refresh work for arbitrary retailer identifiers and would
+bypass validation against the canonical offer table. Do not try to use the
+legacy URL as a substitute for the persisted offer ID: the connector refresh
+contract expects the retailer's stable external product ID.
+
+Safe completion requires the product-detail API to read a persisted active
+`Offer`, return its opaque offer UUID (or a server-side refresh token), and
+expose a rate-limited refresh action that resolves that UUID back to the
+persisted `Offer` and its `Store` before enqueueing. The handler must verify
+that the store is active, the offer is active, and `external_product_id` is
+present; it must apply a per-offer cooldown/deduplication policy. The browser
+must never supply the store slug or external retailer ID as authority.
+
+This integration is therefore blocked on wiring the Phase 2 SQLAlchemy catalog
+into the product-detail API and its response contract. It is not safe to mark
+the detail-refresh UI item complete by adding only a JavaScript `fetch()`.
+
 ## Configuration
 
 Required:
