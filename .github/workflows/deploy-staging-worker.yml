@@ -1,4 +1,4 @@
-name: Deploy staging worker
+name: Deploy staging worker # verify refreshed Fly secrets
 on:
   push:
     branches:
