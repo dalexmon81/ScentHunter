@@ -206,13 +206,6 @@ def search_catalog(
                         "brand": row[0], "brand_slug": row[1],
                         "fragrance": row[2], "fragrance_slug": row[3],
                     } for row in session.execute(suggestion_stmt).all()]
-            for product in products:
-                product["offers"].sort(key=lambda item: (Decimal(item["price"]), item["store"]))
-            products.sort(key=lambda item: (
-                Decimal(item["offers"][0]["price"]) if item["offers"] else Decimal("Infinity"),
-                item["brand"].casefold(),
-                item["fragrance"].casefold(),
-            ))
             page = products[offset:offset + limit]
             return {
                 "query": q,
