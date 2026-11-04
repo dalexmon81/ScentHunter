@@ -76,6 +76,9 @@ def test_product_offers_marks_old_prices_for_verification(catalog_db):
     assert result["offers"][0]["is_expired"] is False
     assert result["offers"][1]["is_expired"] is True
     assert result["offers"][1]["label"] == "dato_da_verificare"
+    assert result["offers"][0]["score"] >= result["offers"][1]["score"]
+    assert result["offers"][1]["verify_price"] is True
+    assert result["offers"][1]["warning"] == "verifica prezzo"
 
 
 def test_brand_and_store_catalog_lists(catalog_db):
@@ -88,3 +91,13 @@ def test_unknown_product_returns_404(catalog_db):
     with pytest.raises(HTTPException) as exc:
         api.get_product("not-a-real-fragrance")
     assert exc.value.status_code == 404
+
+
+
+def test_price_history_endpoint_handles_empty_history(catalog_db):
+    with catalog_db() as session:
+        variant_id = session.query(ProductVariant).filter_by(concentration="EDP").one().id
+    result = api.get_product_price_history("sauvage-resources", variant_id=variant_id)
+    assert result["variant_id"] == str(variant_id)
+    assert result["history"] == {}
+    assert result["message"] == "Storico prezzi non ancora disponibile."
