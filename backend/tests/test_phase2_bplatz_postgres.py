@@ -218,7 +218,7 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
                     with patch.object(catalog_engine, "refresh_url", side_effect=lambda store, url: (
                         item if catalog_engine._maybe_persist_bplatz_phase2(item, url) else item
                     )):
-            assert catalog_engine._hydrate_one_task(task) is True
+                        assert catalog_engine._hydrate_one_task(task) is True
 
         assert completed == [task]
         with Session(engine) as session:
