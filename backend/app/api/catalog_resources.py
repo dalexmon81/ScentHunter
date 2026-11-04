@@ -9,7 +9,7 @@ from sqlalchemy import or_, select
 
 from app.db import make_session_factory
 from app.models import Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
-from app.services.offer_ranking import rank_offers, summarize_price_history
+from app.services.offer_ranking import rank_offers, store_mismatch_rates, summarize_price_history
 
 router = APIRouter(tags=["catalog-resources"])
 
@@ -148,6 +148,7 @@ def get_product_offers(
             offers = [
                 {
                     **_offer_payload(offer, store, now=now),
+                    "_store_id": store.id,
                     "store_reliability": str(store.reliability_score) if store.reliability_score is not None else "0.5",
                     "store_status": store.status,
                     "confidence": str(offer.confidence) if offer.confidence is not None else "0",
@@ -158,6 +159,10 @@ def get_product_offers(
                 for offer, store in rows
                 if include_expired or not _offer_is_expired(offer, store, now)
             ]
+            mismatch_rates = store_mismatch_rates(session, {offer["_store_id"] for offer in offers})
+            for offer in offers:
+                offer["mismatch_rate"] = mismatch_rates.get(str(offer["_store_id"]), 0.0)
+                offer.pop("_store_id", None)
             offers = rank_offers(offers, now=now)
             for offer in offers:
                 if isinstance(offer.get("captured_at"), datetime):
@@ -248,6 +253,10 @@ def list_offers(
                 for offer, store in rows
                 if include_expired or not _offer_is_expired(offer, store, now)
             ]
+            mismatch_rates = store_mismatch_rates(session, {offer["_store_id"] for offer in payload})
+            for offer in payload:
+                offer["mismatch_rate"] = mismatch_rates.get(str(offer["_store_id"]), 0.0)
+                offer.pop("_store_id", None)
             payload = rank_offers(payload, now=now)
             for offer in payload:
                 if isinstance(offer.get("captured_at"), datetime):
