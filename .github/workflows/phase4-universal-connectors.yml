@@ -1,4 +1,4 @@
-name: Phase 4 Universal Connector Contract # Verify Sabina deduplication
+name: Phase 4 Universal Connector Contract # Final Sabina parser-boundary check
 
 on:
   pull_request:
