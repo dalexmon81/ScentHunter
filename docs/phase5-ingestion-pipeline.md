@@ -114,3 +114,16 @@ The Phase 5 GitHub Actions workflow compiles the worker/connector modules and
 runs the ingestion, matching, promotion and queue configuration tests. Passing
 fixture tests do not prove live retailer credentials, live store reachability,
 or production worker activation.
+
+
+## Stato aggiornato — 4 novembre 2026
+
+La vista dettaglio frontend usa già l'endpoint legacy-ID bridge e associa l'UUID Phase 2 soltanto quando URL e formato individuano una singola offerta persistita. Il comando di aggiornamento è disponibile solo dopo questa verifica.
+
+La cattura del body HTML è stata estesa anche ai page-loader indipendenti di Deloox, Easycosmetic, Sabina e Parfumzentrum. I byte originali vengono salvati con URL sorgente e store. La cattura avviene quando il page-loader restituisce il body; non significa che ogni ricerca abbia necessariamente scaricato la pagina prodotto.
+
+La pianificazione periodica ora seleziona soltanto i negozi con una riga Phase 2 in stato `active`. Il worker di discovery, il salvataggio degli artefatti e il refresh verificano nuovamente lo stato prima di procedere.
+
+La seed Phase 2 importa identità canoniche e mappe legacy, ma non importa offerte (`offers_imported = 0`). Bplatz è il solo negozio attivato dalla seed pilota; gli altri restano configurabili e gestiti esplicitamente dall'operatore.
+
+Ultima CI verificata sul commit `296ce33d982e0764add98e8f9b3faf2236435af7`: workflow Phase 5 e workflow contratti connector Phase 4 entrambi superati; Phase 5: 38 test passati. I test fixture non sostituiscono una prova live con database, Redis, worker e negozi reali.
