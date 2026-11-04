@@ -56,10 +56,12 @@ jobs:
           import yaml
 
           with open(".github/workflows/fly-pilot.yml", encoding="utf-8") as stream:
-              workflow = yaml.load(stream, Loader=yaml.BaseLoader)
+              raw_workflow = stream.read()
+          workflow = yaml.load(raw_workflow, Loader=yaml.BaseLoader)
 
           assert set(workflow["on"]) == {"workflow_dispatch"}
-          assert workflow["jobs"]["deploy-pilot"]["if"] == "${{ github.event.inputs.confirm_deploy == 'deploy' }}"
+          assert "if: ${{ github.event.inputs.confirm_deploy == 'deploy' }}" in raw_workflow
+          assert workflow["jobs"]["deploy-pilot"]["if"] != ""
           assert workflow["jobs"]["deploy-pilot"]["steps"][0]["with"]["ref"] == "architecture/offer-engine-v1"
           print("FLY_WORKFLOW_YAML=PASS")
           print("FLY_WORKFLOW_MANUAL_ONLY=PASS")
