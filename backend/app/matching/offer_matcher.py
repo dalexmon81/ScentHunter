@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import IngestionRaw, ProductVariant
 from app.services.ingestion_persistence import record_match
-from app.services.product_normalization import normalize_gtin, normalize_product
+from app.services.product_normalization import normalize_gtin, normalize_product\nfrom app.services.canonical_identity_review_queue import enqueue_identity_review
 
 
 @dataclass(frozen=True)
