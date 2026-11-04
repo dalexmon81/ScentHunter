@@ -79,8 +79,8 @@ def test_product_offers_marks_old_prices_for_verification(catalog_db):
 
 
 def test_brand_and_store_catalog_lists(catalog_db):
-    assert api.list_brands()["brands"][0]["name"] == "Dior"
-    stores = api.list_stores()["stores"]
+    assert api.list_brands(limit=100)["brands"][0]["name"] == "Dior"
+    stores = api.list_stores(limit=100)["stores"]
     assert stores[0]["name"] == "Notino"
 
 
