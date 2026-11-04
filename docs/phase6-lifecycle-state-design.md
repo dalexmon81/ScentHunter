@@ -1,93 +1,61 @@
-# Phase 6 — validation and publication lifecycle state design
+# Phase 6 — validation and publication lifecycle
 
-## Scope and safety
+## Implemented on `phase6/matching-validation`
 
-This document records the proposed lifecycle model for review. It does not alter
-SQLAlchemy models, create an Alembic migration, or change any database. Apply a
-schema migration only after the state transitions and backfill have been tested
-against an isolated staging database identity.
+The lifecycle is now represented by separate fields. Existing queue and legacy
+publication columns remain unchanged for compatibility.
 
-## Existing constraints that must be preserved
+- `IngestionRaw.status`: legacy queue state
+  (`pending | unmatched | matched | promoted | rejected`).
+- `IngestionRaw.validation_status`: `pending | validated | rejected`.
+- `Offer.status`: legacy field; successful offers still use `active`.
+- `Offer.publication_status`: `draft | published | stale | rejected | quarantined`.
 
-- `ingestion_raw.status` is constrained to
-  `pending | unmatched | matched | promoted | rejected`.
-- Matching and promotion workers query those existing values.
-- `offer.status` is a legacy publication field currently using `active`.
-- `canonical_identity_reviews.status` is a separate review workflow:
-  `pending | approved | rejected | duplicate`.
-- Connector quarantine and dead-letter handling are store/task operational
-  states, not canonical product-match states.
+The SQLAlchemy model includes check constraints for both new lifecycle fields.
+Alembic revision `0008_offer_lifecycle_states` adds the columns, constraints,
+and publication-status index. The migration has **not** been applied to any
+database.
 
-Do not overload any of these existing columns with new lifecycle values.
+## Enforced publication gate
 
-## Proposed separation
+The validation worker records its result independently of the queue state.
+The promotion service refuses to publish unless validation is `validated`.
+It also requires a resolved canonical variant, active store, positive price,
+valid ISO 4217 currency, absolute HTTPS URL, explicit `in_stock`, fresh
+timezone-aware capture, and match confidence of at least 0.950. Successful
+creation or refresh sets legacy `Offer.status=active` and
+`publication_status=published`.
 
-### Ingestion evidence
+Semantic matching is opt-in through an injected embedding provider. Without a
+configured provider it does not make semantic matches. Ambiguous or structurally
+inconsistent identity remains unresolved for review.
 
-Keep `IngestionRaw.status` as the compatibility/work-queue state used by the
-current workers. Add a separate `validation_status` only if the application
-needs a durable queryable validation result independent of worker queue state.
+## Compatibility and data migration risks
 
-Suggested values:
-- `pending`
-- `validated`
-- `rejected`
+Existing offers receive the new default `publication_status=draft` when
+revision 0008 is applied. Their legacy `status=active` is preserved, but any
+new reader filtering on `publication_status=published` will exclude them
+until their evidence is revalidated. Do not mass-backfill them to published
+without checking their evidence.
 
-Store machine-readable validation reasons separately (JSON array or related
-validation event rows); do not replace `rejection_reason` until all consumers
-are migrated.
+Existing matched raw rows receive `validation_status=pending` and will be
+blocked at promotion until the validation worker is rerun successfully.
+This is deliberate fail-closed behavior.
 
-### Published offer
+## Required verification before rollout
 
-Add a separate `publication_status` to Offer, rather than changing legacy
-`Offer.status`.
+1. Run the complete backend unit/regression suite on this branch.
+2. Test migration upgrade and downgrade against an explicitly verified,
+   isolated staging database.
+3. Verify existing-row counts and legacy readers before enabling any new
+   publication-status filter.
+4. Revalidate eligible historical offers; keep uncertain rows in draft or
+   review.
+5. Verify promotion retry behavior and ensure no duplicate Offer or
+   PriceHistory records.
+6. Keep Beat, live scraping, and production deployment disabled until reviewed.
 
-Suggested values:
-- `draft` — offer row exists but is not visible to search
-- `published` — passed all publication gates
-- `stale` — evidence exceeded the freshness policy
-- `rejected` — failed a permanent publication rule
-- `quarantined` — held for operator review; not searchable
+## Safety
 
-The search API must filter explicitly on `publication_status = published`
-after a compatibility rollout. Until then, preserve current `status=active`
-semantics for existing production consumers.
-
-### Connector operations
-
-Keep connector health/quarantine in store/connector operational metadata and
-dead-letter records. Do not label every raw product record as quarantined merely
-because its connector is temporarily unhealthy.
-
-## Required transition rules
-
-1. Raw evidence is immutable/auditable; refresh observations append evidence.
-2. Validation is idempotent and records all rejection reasons.
-3. Matching can only assign a canonical variant on deterministic evidence or a
-   future explicitly configured semantic provider above a conservative threshold.
-4. Ambiguous identity always enters human review; it never reaches promotion.
-5. Promotion requires validated evidence, active store, exact resolved variant,
-   valid ISO 4217 currency, positive price, HTTPS URL, explicit in-stock state,
-   fresh timezone-aware capture, and confidence >= 0.950.
-6. Search exposes only published offers; stale/rejected/quarantined offers are
-   excluded regardless of legacy active status.
-
-## Migration plan (not yet authorized or implemented)
-
-1. Add nullable publication/validation columns with safe defaults.
-2. Backfill existing active offers to published only after checking their
-   evidence; otherwise mark them draft for revalidation.
-3. Deploy readers that understand both legacy and new fields.
-4. Switch search filtering to publication status after backfill verification.
-5. Make the new fields non-null only after all writers populate them.
-6. Retain legacy status until all consumers have been migrated and measured.
-
-## Acceptance tests before migration
-
-- Legacy ingestion status constraint remains unchanged.
-- Old worker queries still select pending/unmatched/matched rows correctly.
-- Existing active offers remain visible during compatibility rollout.
-- Draft, stale, rejected, and quarantined offers never appear in search.
-- Failed validation cannot be promoted by a direct task invocation.
-- Repeated validation/promotion is idempotent and does not duplicate offers.
-- Migration upgrade and downgrade are tested on an isolated staging database.
+No migration is run by this branch's code changes. Never point the migration
+at production. Deploy and schema rollout require separate review after tests.
