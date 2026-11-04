@@ -144,4 +144,3 @@ def run_connector_once(
             "error": type(exc).__name__,
             "published": 0,
         }
-}
