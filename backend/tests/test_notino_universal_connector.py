@@ -1,5 +1,6 @@
 from pathlib import Path
 import asyncio
+from decimal import Decimal
 
 from app.connectors.notino import NotinoAffiliateFeedConnector
 
@@ -18,7 +19,7 @@ def test_notino_adapter_maps_xml_to_universal_offer_contract():
     assert first.fragrance == "sauvage"
     assert first.concentration == "edp"
     assert first.size_ml == 100
-    assert first.price == 89.90
+    assert first.price == Decimal("89.90")
     assert first.availability == "in_stock"
     assert first.source == "authorized_affiliate_xml"
     assert connector.validate_offer(first)[0]
@@ -38,7 +39,7 @@ def test_notino_discovery_and_refresh_use_injected_feed_without_db_writes():
         offers = await connector.fetch_offers("nt-124")
         assert len(offers) == 1 and offers[0].availability == "out_of_stock"
         refreshed = await connector.fetch_price_and_stock("nt-123")
-        assert refreshed is not None and refreshed.price == 89.90
+        assert refreshed is not None and refreshed.price == Decimal("89.90")
 
     asyncio.run(exercise())
 
