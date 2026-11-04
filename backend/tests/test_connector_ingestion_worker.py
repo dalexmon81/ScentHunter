@@ -104,3 +104,92 @@ def test_worker_quarantines_only_after_repeated_store_failures():
     assert first["status"] == "failed"
     assert second["status"] == "quarantined"
     assert store.status == "quarantined"
+
+
+def test_notino_fixture_matches_and_promotes_exact_dior_sauvage_edp_100ml():
+    from app.connectors.notino import NotinoAffiliateFeedConnector
+    from app.matching.offer_matcher import match_staged_offer
+    from app.models import Brand, Fragrance, ProductVariant, Offer, PriceHistory, MatchAudit
+    from app.services.ingestion_persistence import promote_offer
+
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <rss xmlns:g="http://base.google.com/ns/1.0"><channel><item>
+      <g:id>notino-dior-sauvage-edp-100</g:id>
+      <g:title>Dior Sauvage Eau de Parfum 100 ml</g:title>
+      <g:brand>Dior</g:brand>
+      <g:price>99.90 EUR</g:price>
+      <g:availability>in stock</g:availability>
+      <g:link>https://www.notino.fr/dior/sauvage-eau-de-parfum/</g:link>
+      <g:size>100 ml</g:size>
+    </item></channel></rss>"""
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        brand = Brand(name="Dior", slug="dior", normalized_name="christian dior")
+        session.add(brand)
+        session.flush()
+        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage")
+        session.add(fragrance)
+        session.flush()
+        variant = ProductVariant(
+            fragrance_id=fragrance.id,
+            concentration="Eau de Parfum",
+            size_ml=100,
+            canonical_key="christian-dior|sauvage|edp|100|standard",
+        )
+        session.add(variant)
+        session.add(Store(
+            name="Notino", slug="notino", domain="notino.fr",
+            country="FR", currency="EUR", status="active",
+        ))
+        session.commit()
+
+    connector = NotinoAffiliateFeedConnector(feed_loader=lambda: xml)
+    result = run_connector_once(connector, factory)
+    assert result == {
+        "store": "notino", "status": "completed", "discovered": 1,
+        "staged": 1, "rejected": 0, "published": 0,
+    }
+    assert connector.raw_evidence_for() == xml
+    record = connector._offers[0]
+    assert record.brand == "Dior"
+    assert record.fragrance == "sauvage"
+    assert record.concentration == "Eau de Parfum"
+    assert record.size_ml == 100
+    assert record.price == Decimal("99.90")
+    assert record.currency == "EUR"
+    assert record.availability == "in_stock"
+
+    with factory() as session:
+        raw = session.scalar(select(IngestionRaw))
+        decision = match_staged_offer(session, raw.id)
+        assert decision.status == "matched"
+        assert decision.method == "canonical_key_exact"
+        offer_id = promote_offer(
+            session,
+            ingestion_raw_id=raw.id,
+            price=record.price,
+            currency=record.currency,
+            url=record.url,
+            availability=record.availability,
+            source=record.source,
+            confidence=decision.confidence,
+        )
+        session.commit()
+        offer = session.get(Offer, offer_id)
+        assert offer is not None
+        assert offer.status == "active"
+        assert offer.product_variant_id == decision.product_variant_id
+        assert offer.price == Decimal("99.90")
+        assert offer.currency == "EUR"
+        assert offer.availability == "in_stock"
+        assert raw.status == "promoted"
+        assert len(list(session.scalars(select(PriceHistory).where(
+            PriceHistory.offer_id == offer_id
+        )))) == 1
+        assert len(list(session.scalars(select(MatchAudit).where(
+            MatchAudit.offer_id == offer_id
+        )))) == 1
+    engine.dispose()
