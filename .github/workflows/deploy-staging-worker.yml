@@ -51,17 +51,17 @@ jobs:
           fi
       - name: Allow worker startup and broker connection
         run: sleep 10
-      - name: Read-only staging store safety audit
+      - name: Read-only staging catalog schema and store safety audit
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
           if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
-            echo "::error::No started machine for read-only store audit."
+            echo "::error::No started machine for read-only catalog audit."
             exit 1
           fi
-          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import select; from app.db import make_session_factory; from app.models import Store; f=make_session_factory(); s=f(); rows=s.scalars(select(Store).order_by(Store.slug)).all(); print({\"store_count\":len(rows),\"stores\":[{\"slug\":x.slug,\"status\":x.status} for x in rows]}); s.close(); f.kw[\"bind\"].dispose()'"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); i=inspect(e); tables=set(i.get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\"}; present=sorted(required & tables); missing=sorted(required - tables); result={\"database_dialect\":e.dialect.name,\"catalog_schema\":\"ready\" if not missing else \"not_migrated_or_incomplete\",\"required_tables_present\":present,\"required_tables_missing\":missing,\"store_count\":None,\"stores\":[]}; result.update({\"store_count\":0,\"stores\":[]} if \"stores\" not in tables else {}); result.update({\"store_count\":e.connect().execute(text(\"SELECT count(*) FROM stores\")).scalar_one()} if \"stores\" in tables else {}); print(result); e.dispose()'"
       - name: Verify Celery worker responds to broker ping
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
