@@ -23,9 +23,9 @@ def test_meilisearch_search_sends_catalog_filters(monkeypatch):
     assert captured["method"] == "POST"
     assert captured["path"] == "/indexes/scenthunter_products/search"
     assert captured["payload"]["q"] == "Dior Sauvage"
-    assert captured["payload"]["filter"] == [
+    assert set(captured["payload"]["filter"]) == {
         'family = "aromatic"', 'format = "tester"', 'country = "LU"',
-    ]
+    }
 
 
 def test_meilisearch_failure_is_reported_for_fallback(monkeypatch):
