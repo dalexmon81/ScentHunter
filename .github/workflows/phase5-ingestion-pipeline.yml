@@ -36,6 +36,10 @@ on:
       - "backend/main.py"
       - "frontend/index.html"
       - "backend/app/connectors/**"
+      - "backend/app/models/**"
+      - "backend/alembic/versions/**"
+      - "backend/scripts/seed_catalog.py"
+      - "tests/test_phase2_seed_catalog.py"
       - "backend/tests/test_celery_ingestion_pipeline.py"
       - "backend/tests/test_connector_ingestion_worker.py"
       - "backend/tests/test_connector_ingestion_session_defaults.py"
@@ -53,6 +57,117 @@ permissions:
   contents: read
 
 jobs:
+  runtime-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: phase5
+          POSTGRES_PASSWORD: phase5_ci_only
+          POSTGRES_DB: phase5_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U phase5 -d phase5_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://phase5:phase5_ci_only@127.0.0.1:5432/phase5_test
+      SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
+      SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
+      SCENTHUNTER_DISCOVERY_TERMS_JSON: "{}"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend and worker dependencies
+        run: python -m pip install -r backend/requirements.txt "celery[redis]==5.5.3" pytest
+      - name: Apply all catalog and ingestion migrations to disposable PostgreSQL
+        working-directory: backend
+        run: |
+          alembic upgrade head
+          alembic upgrade head
+      - name: Seed isolated canonical catalog and verify schema
+        run: python backend/scripts/seed_catalog.py --apply
+      - name: Start a real Celery worker and verify Redis queue plus PostgreSQL task execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import subprocess
+          import sys
+          import time
+          from pathlib import Path
+
+          from app.workers.celery_app import celery_app
+
+          log_path = Path("/tmp/phase5-celery-worker.log")
+          with log_path.open("w") as log:
+              worker = subprocess.Popen(
+                  [
+                      sys.executable, "-m", "celery",
+                      "-A", "app.workers.celery_app:celery_app",
+                      "worker", "--pool=solo", "--loglevel=INFO",
+                      "--queues=discovery,offers,validation,matching,refresh,dead_letter",
+                      "--hostname=phase5-runtime-smoke@%h",
+                  ],
+                  cwd="backend",
+                  env=os.environ.copy(),
+                  stdout=log,
+                  stderr=subprocess.STDOUT,
+                  start_new_session=True,
+              )
+              try:
+                  inspector = celery_app.control.inspect(timeout=1)
+                  deadline = time.monotonic() + 45
+                  while time.monotonic() < deadline:
+                      if worker.poll() is not None:
+                          raise RuntimeError(f"Celery worker exited early with {worker.returncode}")
+                      if inspector.ping():
+                          break
+                      time.sleep(2)
+                  else:
+                      raise RuntimeError("Celery worker did not register with Redis in 45 seconds")
+
+                  # This scheduled task reads the seeded PostgreSQL offers table.
+                  # The fixture catalog intentionally contains no live retailer offers,
+                  # so it must complete without contacting any retailer.
+                  result = celery_app.send_task(
+                      "app.workers.ingestion_tasks.enqueue_offer_collection_for_configured_stores",
+                      queue="offers",
+                  )
+                  payload = result.get(timeout=45, propagate=True)
+                  assert payload["refresh_jobs_queued"] == 0, payload
+                  assert payload["stores"] == [], payload
+                  print("REDIS_BROKER=PASS")
+                  print("CELERY_WORKER_CONSUME=PASS")
+                  print("POSTGRES_TASK_QUERY=PASS")
+                  print("PHASE2_CATALOG_SEED=PASS")
+                  print("SAFE_NO_RETAILER_NETWORK_CALLS=PASS")
+              finally:
+                  if worker.poll() is None:
+                      worker.terminate()
+                      try:
+                          worker.wait(timeout=10)
+                      except subprocess.TimeoutExpired:
+                          worker.kill()
+                          worker.wait(timeout=5)
+                  print(log_path.read_text(errors="replace")[-12000:])
   ingestion-pipeline:
     runs-on: ubuntu-latest
     timeout-minutes: 12
