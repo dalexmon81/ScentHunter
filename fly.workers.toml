@@ -6,7 +6,8 @@ primary_region = "ams"
   dockerfile = "backend/Dockerfile.worker"
 
 [processes]
-  app = "sh /app/backend/start_worker.sh"
+  app = "sh /app/backend/start_worker.sh worker"
+  beat = "sh /app/backend/start_worker.sh beat"
 
 [[vm]]
   memory = "1gb"
