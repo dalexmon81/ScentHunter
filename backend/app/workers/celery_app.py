@@ -5,8 +5,20 @@ import os
 from celery import Celery
 from kombu import Queue
 
-BROKER_URL = os.environ.get("SCENTHUNTER_REDIS_URL", "redis://localhost:6379/0")
-RESULT_BACKEND = os.environ.get("SCENTHUNTER_CELERY_RESULT_BACKEND", BROKER_URL)
+_broker_url = os.environ.get("SCENTHUNTER_REDIS_URL", "").strip()
+if not _broker_url:
+    if os.environ.get("FLY_APP_NAME"):
+        raise RuntimeError(
+            "SCENTHUNTER_REDIS_URL is missing or empty in the Fly runtime; "
+            "check the staging app secret and redeploy."
+        )
+    _broker_url = "redis://localhost:6379/0"
+
+BROKER_URL = _broker_url
+RESULT_BACKEND = (
+    os.environ.get("SCENTHUNTER_CELERY_RESULT_BACKEND", "").strip()
+    or BROKER_URL
+)
 
 QUEUES = (
     Queue("discovery"),
