@@ -48,7 +48,21 @@ class IngestionTask(celery_app.Task):
                 queue="dead_letter",
             )
             store_key = kwargs.get("store_key") or (args[0] if args else None)
-            if store_key:
+            if store_key and self.name != "app.workers.ingestion_tasks.quarantine_failed_connector":
+                factory = make_session_factory()
+                try:
+                    with factory() as session:
+                        store = session.scalar(select(Store).where(Store.slug == store_key))
+                        if store is not None:
+                            session.add(IngestionRun(
+                                store_id=store.id,
+                                status="failed",
+                                errors=[{"task": self.name, "task_id": task_id,
+                                         "error": f"{type(exc).__name__}: {exc}"[:500]}],
+                            ))
+                            session.commit()
+                finally:
+                    factory.kw["bind"].dispose()
                 quarantine_failed_connector.apply_async(args=[store_key], queue="dead_letter")
         except Exception:
             logger.exception("Unable to enqueue dead-letter record for %s", task_id)
@@ -103,6 +117,11 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
                     if key != "_raw_evidence":
                         evidence[key] = value
                 existing.raw_payload = evidence
+                existing.status = "pending"
+                existing.product_variant_id = None
+                existing.match_method = None
+                existing.match_confidence = None
+                existing.rejection_reason = None
                 raw_id = existing.id
             else:
                 raw = IngestionRaw(
@@ -122,6 +141,19 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.discover_store_products")
 def discover_store_products(self, store_key: str):
     connector = get_connector(store_key)
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_key))
+            if store is None:
+                raise ValueError(f"connector_store_not_configured:{store_key}")
+            if store.status == "quarantined":
+                return {"store": store_key, "status": "quarantined", "queued": 0}
+            run = IngestionRun(store_id=store.id, status="running", errors=[])
+            session.add(run)
+            session.commit()
+    finally:
+        factory.kw["bind"].dispose()
     products = _run(connector.discover_products())
     staged = []
     for product in products:
@@ -132,6 +164,21 @@ def discover_store_products(self, store_key: str):
                 queue="offers",
             )
             staged.append(product_key)
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            run = session.scalar(select(IngestionRun).join(Store).where(
+                Store.slug == store_key, IngestionRun.status == "running"
+            ).order_by(IngestionRun.started_at.desc()).limit(1))
+            if run is not None:
+                run.status = "completed"
+                run.products_discovered = len(products)
+                run.finished_at = datetime.now(timezone.utc)
+                store = session.get(Store, run.store_id)
+                store.last_successful_sync_at = run.finished_at
+                session.commit()
+    finally:
+        factory.kw["bind"].dispose()
     return {"store": store_key, "discovered": len(products), "queued": len(staged)}
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.fetch_store_offers")
@@ -192,8 +239,14 @@ def validate_offer(self, raw_id: str):
                     errors.append("invalid_price")
             except (InvalidOperation, TypeError, ValueError):
                 errors.append("invalid_price")
-            if not isinstance(payload.get("currency"), str) or len(payload["currency"]) != 3:
+            if not isinstance(payload.get("currency"), str) or len(payload["currency"]) != 3 or payload["currency"] != payload["currency"].upper():
                 errors.append("invalid_currency")
+            try:
+                captured = datetime.fromisoformat(str(payload.get("capturedAt", "")).replace("Z", "+00:00"))
+                if captured.tzinfo is None:
+                    errors.append("captured_at_timezone_required")
+            except (TypeError, ValueError):
+                errors.append("invalid_captured_at")
             if payload.get("availability") not in {"in_stock", "out_of_stock", "preorder", "unknown"}:
                 errors.append("invalid_availability")
             if errors:
@@ -307,11 +360,18 @@ def enqueue_refresh_for_active_stores():
     factory = make_session_factory()
     try:
         with factory() as session:
+            import os
+            main_stores = {
+                item.strip() for item in os.environ.get("SCENTHUNTER_MAIN_REFRESH_STORES", "").split(",")
+                if item.strip()
+            }
+            if not main_stores:
+                return {"refresh_jobs_queued": 0, "note": "Set SCENTHUNTER_MAIN_REFRESH_STORES to opt stores into the 30-minute refresh cadence"}
             rows = session.execute(
                 select(Offer.external_product_id, Store.slug)
                 .join(Store, Offer.store_id == Store.id)
                 .where(Store.status == "active", Offer.status == "active",
-                       Offer.external_product_id.is_not(None))
+                       Offer.external_product_id.is_not(None), Store.slug.in_(main_stores))
             ).all()
             queued = 0
             for external_product_id, store_key in rows:
