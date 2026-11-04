@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Awaitable, Callable, Sequence
+from typing import Any, Awaitable, Callable, Sequence
 
 from app.connectors.base import OfferRecord, validate_offer
 from app.services.product_normalization import normalize_product
