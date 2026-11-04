@@ -15,6 +15,28 @@ case "$SCENTHUNTER_REDIS_URL" in
      exit 1 ;;
 esac
 
+# Verify the exact configured catalog database before accepting queue work.
+# This is read-only: SELECT 1 and a masked database identity query only.
+python - <<'PY'
+from sqlalchemy import text
+from app.db import make_engine
+from app.db_runtime_identity import configuration_source, log_runtime_database_identity
+
+engine = make_engine()
+try:
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+        log_runtime_database_identity(
+            connection,
+            event_name="worker_startup_preflight",
+            service_name="celery-staging-worker",
+            config_source=configuration_source(),
+        )
+    print("Phase 2 catalog database connectivity: OK", flush=True)
+finally:
+    engine.dispose()
+PY
+
 exec celery -A app.workers.celery_app:celery_app worker \
   --loglevel=INFO \
   --queues=discovery,offers,validation,matching,refresh,dead_letter \
