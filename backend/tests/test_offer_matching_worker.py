@@ -162,3 +162,54 @@ def test_explicit_tester_packaging_never_matches_standard_variant():
         decision = match_staged_offer(session, raw_id)
         assert decision.status == "unmatched"
         assert decision.method == "no_exact_match"
+
+
+def test_verified_gtin_match_has_priority_and_full_confidence():
+    factory, variant_id, raw_id = setup_db()
+    with factory() as session:
+        variant = session.get(ProductVariant, variant_id)
+        variant.gtin = "4006381333931"
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {**raw.raw_payload, "gtin": "4006381333931"}
+        session.commit()
+    with factory() as session:
+        from app.matching.offer_matcher import decide_offer_match
+        raw = session.get(IngestionRaw, raw_id)
+        decision = decide_offer_match(session, raw)
+        assert decision.status == "matched"
+        assert decision.method == "gtin_exact"
+        assert decision.confidence == Decimal("1.000")
+        assert decision.product_variant_id == variant_id
+
+
+def test_unknown_gtin_does_not_override_exact_canonical_match():
+    factory, _variant_id, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {**raw.raw_payload, "gtin": "4006381333931"}
+        session.commit()
+    with factory() as session:
+        from app.matching.offer_matcher import decide_offer_match
+        raw = session.get(IngestionRaw, raw_id)
+        decision = decide_offer_match(session, raw)
+        assert decision.status == "matched"
+        assert decision.method == "canonical_key_exact"
+
+
+def test_identity_review_preserves_snake_case_size_and_packaging():
+    factory, _variant_id, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "title": "Dior Unknown Fragrance Eau de Parfum 50 ml",
+            "size_ml": 50,
+            "packaging": "tester",
+        }
+        session.commit()
+    with factory() as session:
+        decision = match_staged_offer(session, raw_id)
+        review = session.scalar(select(CanonicalIdentityReview))
+        assert decision.status == "unmatched"
+        assert review is not None
+        assert review.canonical_key.endswith("|50|tester")
