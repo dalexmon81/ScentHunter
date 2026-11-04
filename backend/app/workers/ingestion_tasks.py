@@ -317,8 +317,12 @@ def validate_offer(self, raw_id: str):
                     errors.append("captured_at_timezone_required")
             except (TypeError, ValueError):
                 errors.append("invalid_captured_at")
-            if payload.get("availability") not in {"in_stock", "out_of_stock", "preorder", "unknown"}:
+            if payload.get("availability") not in {"in_stock", "out_of_stock"}:
                 errors.append("invalid_availability")
+            if payload.get("purchasable") is False or payload.get("isPurchasable") is False:
+                errors.append("product_not_purchasable")
+            if payload.get("price_incoherent") is True or payload.get("page_price_mismatch") is True:
+                errors.append("price_page_inconsistency")
             if errors:
                 raw.status = "rejected"
                 raw.rejection_reason = ",".join(errors)
