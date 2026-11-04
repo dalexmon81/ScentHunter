@@ -49,7 +49,7 @@ Bplatz has a captured product-page fixture and a proven legacy persistence path,
 | Alembic repeatability in disposable CI | PASS | Workflow runs `alembic upgrade head` twice |
 | Canonical catalog seed | PASS | Seed script validates and imports identities/declared variants |
 | Real Phase 5 offers in PostgreSQL | BLOCKED | Seed reports `offers_imported: 0`; no live ingestion evidence |
-| Dior Sauvage EDP 100 ml variant resolved | NOT VERIFIED | Confirm exact seeded variant/legacy map before ingestion |
+| Dior Sauvage EDP 100 ml catalog variant | PARTIAL | Explicit 100 ml variant and matcher-aligned canonical key added on Phase 5 branch from Dior's official product page; CI seed and staging UUID readback still pending |
 | Authorized pilot source for Dior | NOT VERIFIED | Confirm a specific connector has an authorized, stable source record for this SKU |
 | Real ingestion → staging → matching → promotion | NOT VERIFIED | CI intentionally avoids retailer HTTP calls |
 | Offer readback from PostgreSQL | NOT VERIFIED | Must assert one published offer linked to the exact variant UUID |
@@ -75,9 +75,8 @@ For Dior Sauvage EDP 100 ml and one explicitly approved store:
 
 Do not invent a retailer offer, seed a synthetic published offer, scrape an unapproved source, or reuse the Bplatz Liquid Brun proof as a Dior result.
 
-The next implementation step is a **staging-only, manually gated pilot run** once the owner confirms:
-- which already-authorized connector/store should be used for Dior Sauvage EDP 100 ml;
-- that its source/feed access is configured in staging;
+The next implementation step is a **staging-only, manually gated Notino pilot run** once the owner confirms:
+- that the CJ/VIV Notino.fr feed entitlement is active and its feed access is configured in staging;
 - that dedicated staging PostgreSQL and Redis endpoints exist;
 - whether a persistent Fly worker's cost is approved, or the test must run only in disposable CI.
 
