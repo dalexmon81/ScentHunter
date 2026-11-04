@@ -16,7 +16,6 @@ case "$SCENTHUNTER_REDIS_URL" in
 esac
 
 exec celery -A app.workers.celery_app:celery_app worker \
-  --broker="$SCENTHUNTER_REDIS_URL" \
   --loglevel=INFO \
   --queues=discovery,offers,validation,matching,refresh,dead_letter \
   --concurrency=2
