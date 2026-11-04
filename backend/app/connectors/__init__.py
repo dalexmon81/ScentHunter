@@ -9,12 +9,14 @@ from .base import (
     validate_offer,
 )
 from .deloox import DelooxConnector
+from .easycosmetic import EasycosmeticConnector
 from .notino import NotinoAffiliateFeedConnector
 
 __all__ = [
     "ConnectorError",
     "ConnectorQuarantined",
     "DelooxConnector",
+    "EasycosmeticConnector",
     "NotinoAffiliateFeedConnector",
     "OfferRecord",
     "RateLimiter",
