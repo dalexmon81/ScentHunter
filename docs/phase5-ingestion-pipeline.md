@@ -61,8 +61,9 @@ Required:
 - `SCENTHUNTER_CONNECTOR_QUARANTINE_AFTER`: consecutive failures before
   quarantine (default 3).
 
-No schema migration or production service is run automatically. The deployment
-must supply the existing catalog DB URL and explicit store configuration.
+No schema migration or production service is run automatically. Before starting workers, apply the new additive migrations with
+`cd backend && alembic upgrade head`. The deployment must supply the existing
+catalog DB URL and explicit store configuration.
 
 ## Local opt-in
 
@@ -74,6 +75,10 @@ This starts only the optional ingestion services. It does not deploy the API or
 enable user-search-time scraping.
 
 ## Verification
+
+New additive schema revisions: `0006_ingestion_artifacts` and
+`0007_ingestion_dead_letters`. They add immutable raw artifact storage and a
+durable dead-letter record table.
 
 The Phase 5 GitHub Actions workflow compiles the worker/connector modules and
 runs the ingestion, matching, promotion and queue configuration tests. Passing
