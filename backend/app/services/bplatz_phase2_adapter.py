@@ -85,12 +85,24 @@ def persist_bplatz_record(
         return BplatzPhase2Result(raw_id, "pending", reason=reason)
 
     group = aggregation.groups[0]
+    match_decision = matcher.match_offer(normalized)
+    if (
+        match_decision.status.value != "matched"
+        or match_decision.canonical_product_id != group.canonical_product_id
+        or match_decision.canonical_variant_id != group.canonical_variant_id
+        or match_decision.confidence is None
+        or match_decision.confidence < Decimal("0.950")
+    ):
+        return BplatzPhase2Result(
+            raw_id, "pending",
+            reason="canonical_match_confidence_missing_or_below_threshold",
+        )
     resolved = record_legacy_match(
         session, ingestion_raw_id=raw_id,
         legacy_product_id=group.canonical_product_id,
         legacy_variant_id=group.canonical_variant_id,
         method="bplatz_next_engine_matcher",
-        confidence=Decimal("0.990"),
+        confidence=match_decision.confidence,
         unresolved_status="pending",
     )
     if resolved is None:
