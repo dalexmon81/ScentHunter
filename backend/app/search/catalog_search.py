@@ -162,6 +162,24 @@ def search_catalog(
                     })
 
             products = list(grouped.values())
+            suggestions = []
+            if not products:
+                suggestion_stmt = (
+                    select(Brand.name, Brand.slug, Fragrance.name, Fragrance.slug)
+                    .join(Fragrance, Fragrance.brand_id == Brand.id)
+                )
+                tokens = [token for token in q.split() if len(token) >= 3]
+                if tokens:
+                    suggestion_stmt = suggestion_stmt.where(or_(*[
+                        or_(
+                            Brand.name.ilike(f"%{token}%"),
+                            Fragrance.name.ilike(f"%{token}%"),
+                        ) for token in tokens
+                    ])).limit(5)
+                    suggestions = [{
+                        "brand": row[0], "brand_slug": row[1],
+                        "fragrance": row[2], "fragrance_slug": row[3],
+                    } for row in session.execute(suggestion_stmt).all()]
             for product in products:
                 product["offers"].sort(key=lambda item: (Decimal(item["price"]), item["store"]))
             products.sort(key=lambda item: (
@@ -178,7 +196,7 @@ def search_catalog(
                     "Prodotto trovato, ma al momento non ci sono offerte aggiornate."
                     if products and not any(item["offers"] for item in products) else None
                 ),
-                "suggestions": [],
+                "suggestions": suggestions,
                 "limit": limit,
                 "offset": offset,
                 "results": page,
