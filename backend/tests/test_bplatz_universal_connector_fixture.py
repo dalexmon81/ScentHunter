@@ -26,7 +26,7 @@ def test_saved_bplatz_jsonld_fixture_extracts_exact_offer_evidence():
     assert row["brand"] == "Dior"
     assert row["name"] == "Dior Sauvage Eau de Parfum 100 ml"
     assert row["sku"] == "BPL-DIOR-SAU-EDP-100"
-    assert row["gtin"] == "3348901250146"
+    assert row["gtin"] is None  # No verified GTIN in this saved fixture.
     assert row["size_ml"] == 100
     assert row["concentration"] == "Eau de Parfum"
     assert row["price_num"] == 89.90
@@ -43,7 +43,7 @@ def test_bplatz_connector_maps_saved_fixture_to_universal_offer():
     offer = offers[0]
     assert offer.store == "bplatz"
     assert offer.external_product_id == "BPL-DIOR-SAU-EDP-100"
-    assert offer.gtin == "3348901250146"
+    assert offer.gtin is None
     assert offer.brand == "Dior"
     assert offer.fragrance == "sauvage"
     assert offer.concentration == "edp"
