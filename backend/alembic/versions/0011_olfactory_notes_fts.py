@@ -16,7 +16,7 @@ def upgrade():
         return
     op.execute(
         "CREATE INDEX ix_fragrances_olfactory_notes_fts ON fragrances "
-        "USING GIN (to_tsvector('simple', coalesce(olfactory_notes::text, '')))"
+        "USING GIN (to_tsvector('simple', coalesce(CAST(olfactory_notes AS VARCHAR), '')))"
     )
 
 
