@@ -12,8 +12,13 @@ URL = "https://www.sabina.com/it/profumi-uomo/12345-dior-sauvage.html"
 def test_sabina_saved_jsonld_fixture_maps_to_universal_offer():
     connector = SabinaConnector()
     records = connector.parse_raw((URL, FIXTURE.read_text(encoding="utf-8")))
-    assert len(records) == 1
-    offer = records[0]
+    assert records
+    # Sabina may expose the selected product-level offer plus separately
+    # represented size combinations. Assert the requested variant by its
+    # actual size/price evidence rather than assuming one row per page.
+    offer = next(record for record in records if record.size_ml == 100)
+    signatures = {(record.size_ml, record.price) for record in records}
+    assert len(signatures) == len(records)
     assert offer.store == "sabina"
     assert offer.external_product_id == "sab-12345"
     assert offer.brand == "Dior"
