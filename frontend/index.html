@@ -750,7 +750,13 @@ function shPrice(o){
    * marker while preserving the existing Italian decimal presentation. */
   const raw=(o&&o.price!==undefined&&o.price!==null)?String(o.price).trim():"";
   const parsed=raw?parsePrice(raw):Number(o&&o.price_num);
-  if(Number.isFinite(parsed)&&parsed>0)return formatEuro(parsed);
+  if(Number.isFinite(parsed)&&parsed>0){
+    const currency=String(o?.currency||"EUR").toUpperCase();
+    if(currency!=="EUR" && /^[A-Z]{3}$/.test(currency)){
+      try{return new Intl.NumberFormat("it-IT",{style:"currency",currency}).format(parsed);}catch(_error){}
+    }
+    return formatEuro(parsed);
+  }
   return "Prezzo non disponibile";
 }
 function shNum(o){
@@ -1007,7 +1013,9 @@ function openProduct(i){
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=null;
   if(!(g.offers||[]).length){
-    resultsBox.innerHTML='<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">🧴</div><div class="result-main"><div class="store">'+esc(g.brand||"")+'</div><div class="name">'+esc(displayPerfumeName(g.name,g.brand))+'</div></div></div><div class="empty-offers">Nessuna offerta verificata al momento. Il prodotto è presente nel catalogo, ma non ci sono prezzi pubblicabili.</div></article>';
+    const formats=(g.variants||[]).map(v=>[v.concentration,v.size_ml?v.size_ml+" ml":""].filter(Boolean).join(" · ")).filter(Boolean);
+    const formatText=formats.length?'<div class="offer-meta">Formati a catalogo: '+esc(formats.join(", "))+'</div>':"";
+    resultsBox.innerHTML='<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">🧴</div><div class="result-main"><div class="store">'+esc(g.brand||"")+'</div><div class="name">'+esc(displayPerfumeName(g.name,g.brand))+'</div></div></div>'+formatText+'<div class="empty-offers">Nessuna offerta verificata al momento. Il prodotto è presente nel catalogo, ma non ci sono prezzi pubblicabili.</div></article>';
     return;
   }
   void hydratePhase2OfferIds(g);
