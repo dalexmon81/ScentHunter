@@ -121,3 +121,17 @@ def test_refresh_endpoint_releases_cooldown_if_enqueue_fails(tmp_path):
         )
     assert exc.value.status_code == 503
     assert len(redis.deleted) == 1
+
+
+
+def test_refresh_endpoint_fails_closed_when_redis_client_cannot_be_created(tmp_path):
+    factory, offer_id = _refresh_factory(tmp_path)
+    with pytest.raises(HTTPException) as exc:
+        queue_offer_refresh(
+            offer_id,
+            session_factory=factory,
+            redis_factory=lambda: (_ for _ in ()).throw(RuntimeError("redis unavailable")),
+            enqueue=lambda *_: pytest.fail("must not enqueue without Redis cooldown"),
+        )
+    assert exc.value.status_code == 503
+    assert exc.value.detail == "refresh_queue_unavailable"
