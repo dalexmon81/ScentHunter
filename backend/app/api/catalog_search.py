@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from time import perf_counter
 
 from fastapi import APIRouter, HTTPException, Query
 
 from app.search.catalog_search import search_catalog
 from app.schemas.catalog import SearchResponse
+from app.services.observability import record_search_latency
 
 router = APIRouter(prefix="/api", tags=["catalog-search"])
 
@@ -31,6 +33,7 @@ def search_products(
     """Search persisted canonical variants and currently published offers."""
     if min_price is not None and max_price is not None and min_price > max_price:
         raise HTTPException(status_code=400, detail="min_price_exceeds_max_price")
+    started_at = perf_counter()
     try:
         return search_catalog(
             q,
@@ -51,3 +54,5 @@ def search_products(
     except ValueError as exc:
         code = str(exc) if str(exc) else "invalid_search_request"
         raise HTTPException(status_code=400, detail=code) from exc
+    finally:
+        record_search_latency(started_at)
