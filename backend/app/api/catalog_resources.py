@@ -121,7 +121,8 @@ def get_product_offers(
                 select(Offer, Store).join(Store, Store.id == Offer.store_id)
                 .where(
                     Offer.product_variant_id == selected_variant.id,
-                    Offer.publication_status.in_(("published", "stale")),
+                    Offer.status == "active",
+                Offer.publication_status.in_(("published", "stale")),
                 Store.status == "active",
                     Store.status == "active",
                 )
