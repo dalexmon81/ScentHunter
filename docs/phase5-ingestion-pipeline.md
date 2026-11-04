@@ -71,9 +71,24 @@ that the store is active, the offer is active, and `external_product_id` is
 present; it must apply a per-offer cooldown/deduplication policy. The browser
 must never supply the store slug or external retailer ID as authority.
 
-This integration is therefore blocked on wiring the Phase 2 SQLAlchemy catalog
-into the product-detail API and its response contract. It is not safe to mark
-the detail-refresh UI item complete by adding only a JavaScript `fetch()`.
+The backend now exposes `POST /catalog/offers/{offer_id}/refresh`. It accepts
+only the persisted Offer UUID; store slug and retailer product ID are resolved
+from the database. It rejects missing/inactive offers and offers without a
+stable retailer ID, uses Redis `SET NX EX` for a five-minute per-offer
+cooldown, and releases the cooldown if Celery enqueueing fails. Redis failure
+fails closed with HTTP 503. No arbitrary store/SKU can be supplied by a browser.
+
+The frontend now contains a guarded “Aggiorna prezzo” control, rendered only
+when an offer object includes a valid `phase2_offer_id` UUID. The current
+legacy `/search` response still does not include that field, so the control is
+not yet shown to users. The remaining integration is to make the new catalog
+search/detail response return persisted Phase 2 offer UUIDs and then verify
+the control end-to-end. Do not fabricate this field from the legacy URL or
+retailer SKU.
+
+The endpoint and cooldown behavior have dedicated tests. The remaining UI
+data-contract integration is not yet complete; the phase must not be closed
+until the frontend receives real persisted IDs and the full path is verified.
 
 ## Configuration
 
