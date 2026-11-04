@@ -149,7 +149,17 @@ class SabinaConnector:
             rows = [parsed] if parsed else []
         else:
             raise ValueError("sabina_parse_raw_requires_mapping_or_(url,html[,query])")
-        return tuple(record for row in rows for record in self._map_product(row))
+        # The selected product offer may be repeated in the page's variant
+        # matrix. Deduplicate identical size/price/concentration evidence.
+        unique: dict[tuple[str, str, str], OfferRecord] = {}
+        for row in rows:
+            for record in self._map_product(row):
+                signature = (
+                    str(record.size_ml), str(record.price),
+                    str(record.concentration or ""),
+                )
+                unique.setdefault(signature, record)
+        return tuple(unique.values())
 
     def validate_offer(self, offer: OfferRecord) -> tuple[bool, tuple[str, ...]]:
         return validate_offer(offer)
