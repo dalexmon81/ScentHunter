@@ -150,20 +150,3 @@ def test_known_store_sku_reuses_confirmed_variant_mapping():
         assert decision.status == "matched"
         assert decision.method == "store_sku_exact"
         assert decision.confidence == Decimal("0.995")
-
-
-def test_known_store_sku_reuses_confirmed_variant_mapping():
-    from app.models import Offer
-    factory, variant_id, raw_id = setup_db()
-    with factory() as session:
-        raw = session.get(IngestionRaw, raw_id)
-        session.add(Offer(store_id=raw.store_id, product_variant_id=variant_id,
-            external_product_id="sku-100", url="https://shop.example/item/sku-100",
-            price=Decimal("90.00"), currency="EUR", availability="in_stock",
-            source="fixture", status="active"))
-        session.commit()
-    with factory() as session:
-        decision = match_staged_offer(session, raw_id)
-        assert decision.status == "matched"
-        assert decision.method == "store_sku_exact"
-        assert decision.confidence == Decimal("0.995")
