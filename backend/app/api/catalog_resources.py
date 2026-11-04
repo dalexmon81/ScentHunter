@@ -135,8 +135,7 @@ def get_product_offers(
                 .where(
                     Offer.product_variant_id == selected_variant.id,
                     Offer.status == "active",
-                Offer.publication_status.in_(("published", "stale")),
-                Store.status == "active",
+                    Offer.publication_status.in_(("published", "stale")),
                     Store.status == "active",
                 )
                 .order_by(Offer.captured_at.desc(), Offer.price.asc())
