@@ -75,9 +75,6 @@ For Dior Sauvage EDP 100 ml and one explicitly approved store:
 
 Do not invent a retailer offer, seed a synthetic published offer, scrape an unapproved source, or reuse the Bplatz Liquid Brun proof as a Dior result.
 
-The next implementation step is a **staging-only, manually gated Notino pilot run** once the owner confirms:
-- that the CJ/VIV Notino.fr feed entitlement is active and its feed access is configured in staging;
-- that dedicated staging PostgreSQL and Redis endpoints exist;
-- whether a persistent Fly worker's cost is approved, or the test must run only in disposable CI.
+The next action is for the repository owner to configure the three CJ/VIV credentials as GitHub Environment secrets in `notino-pilot-staging` and manually run **Notino live feed preflight (manual only)** on the Phase 5 branch. This workflow makes one bounded feed request and does not write to a database or publish offers. Continue only if exactly one valid Dior Sauvage EDP 100 ml candidate with explicit availability is found. After that, configure separate staging PostgreSQL/Redis and decide whether a persistent Fly worker cost is approved or the pilot must remain in disposable CI.
 
 Until these conditions are met, Gate 0 remains blocked and the new API must serve 0% user traffic.
