@@ -28,7 +28,7 @@ def test_unknown_shipping_is_not_assumed_free_and_stale_is_flagged():
          "confidence": "1", "store_reliability": "1"},
     ], now=now)
     assert ranked[0]["verify_price"] is True
-    assert ranked[0]["label"] == "verifica prezzo"
+    assert ranked[0]["warning"] == "verifica prezzo"
     assert ranked[0]["score_breakdown"]["penalties"] >= 20
     assert ranked[0]["score_breakdown"]["shipping_transparency"] == 1
 
