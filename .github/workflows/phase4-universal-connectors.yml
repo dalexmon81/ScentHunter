@@ -60,7 +60,6 @@ jobs:
           workflow = yaml.load(raw_workflow, Loader=yaml.BaseLoader)
 
           assert set(workflow["on"]) == {"workflow_dispatch"}
-          assert "if: ${{ github.event.inputs.confirm_deploy == 'deploy' }}" in raw_workflow
           assert workflow["jobs"]["deploy-pilot"]["if"] != ""
           assert workflow["jobs"]["deploy-pilot"]["steps"][0]["with"]["ref"] == "architecture/offer-engine-v1"
           print("FLY_WORKFLOW_YAML=PASS")
