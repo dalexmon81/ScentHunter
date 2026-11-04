@@ -68,6 +68,18 @@ jobs:
               raise SystemExit("No inline frontend scripts found")
           PY
           node --check /tmp/scenthunter-frontend.js
+      - name: Validate admin dashboard JavaScript
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("frontend/admin.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script(?:\\s[^>]*)?>(.*?)</script>", html, flags=re.S | re.I)
+          Path("/tmp/scenthunter-admin.js").write_text("\\n;\\n".join(scripts), encoding="utf-8")
+          if not scripts:
+              raise SystemExit("No admin dashboard scripts found")
+          PY
+          node --check /tmp/scenthunter-admin.js
       - name: Run backend regression tests
         working-directory: backend
         env:
