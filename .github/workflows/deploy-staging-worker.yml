@@ -48,6 +48,22 @@ jobs:
           fi
       - name: Allow worker startup and broker connection
         run: sleep 10
+      - name: Verify Celery worker responds to broker ping
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started worker machine is available for the Celery ping."
+            exit 1
+          fi
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "celery -A app.workers.celery_app:celery_app inspect ping --timeout=10" 2>&1)"
+          printf '%s\\n' "$output"
+          if ! printf '%s\\n' "$output" | grep -qi "pong"; then
+            echo "::error::Celery worker did not return pong to the remote control ping."
+            exit 1
+          fi
       - name: Inspect worker logs and machine state
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
