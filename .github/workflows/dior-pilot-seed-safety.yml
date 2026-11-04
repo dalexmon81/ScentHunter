@@ -31,3 +31,8 @@ jobs:
         run: >-
           python -m pytest -q
           backend/tests/test_seed_catalog_store_safety.py
+      - name: Run Dior pilot dry-run
+        run: |
+          python backend/scripts/seed_catalog.py --product-id SH-AUTO-0178 > /tmp/dior-seed-report.json
+          cat /tmp/dior-seed-report.json
+          python -c 'import json; r=json.load(open("/tmp/dior-seed-report.json")); expected={"status":"validated","product_filter":["SH-AUTO-0178"],"brands":1,"fragrances":1,"variants":1,"products_without_variants":0,"offers_imported":0,"stores_to_seed":[],"database_written":False,"source_modified":False}; assert all(r.get(k)==v for k,v in expected.items()), r'
