@@ -126,7 +126,7 @@ jobs:
                   assert variant.size_ml == 100, variant.size_ml
                   assert variant.canonical_key == "christian-dior|sauvage|edp|100|standard", variant.canonical_key
                   brand = session.get(Brand, fragrance.brand_id)
-                  assert brand is not None and brand.normalized_name == "dior", brand
+                  assert brand is not None and brand.normalized_name == "christian dior", brand
                   print("DIOR_SAUVAGE_EDP_100ML_POSTGRES_UUID=PASS")
                   print(f"FRAGRANCE_UUID={fragrance.id}")
                   print(f"VARIANT_UUID={variant.id}")
