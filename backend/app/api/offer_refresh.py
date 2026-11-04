@@ -47,9 +47,16 @@ def queue_offer_refresh(
         from app.workers.celery_app import BROKER_URL
         redis_factory = lambda: Redis.from_url(BROKER_URL, decode_responses=True)
 
-    client = redis_factory()
+    try:
+        client = redis_factory()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="refresh_queue_unavailable") from exc
     cooldown_key = f"scenthunter:detail-refresh:{offer_id}"
-    cooldown_seconds = max(30, int(os.environ.get("SCENTHUNTER_DETAIL_REFRESH_COOLDOWN_SECONDS", "300")))
+    try:
+        configured_cooldown = int(os.environ.get("SCENTHUNTER_DETAIL_REFRESH_COOLDOWN_SECONDS", "300"))
+    except (TypeError, ValueError):
+        configured_cooldown = 300
+    cooldown_seconds = min(3600, max(30, configured_cooldown))
     try:
         try:
             acquired = client.set(cooldown_key, "queued", nx=True, ex=cooldown_seconds)
