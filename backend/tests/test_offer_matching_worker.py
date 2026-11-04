@@ -77,7 +77,10 @@ def test_batch_worker_leaves_unknown_identity_unmatched():
     assert result == {"processed": 1, "matched": 0, "unmatched": 1}
     assert raw.status == "unmatched"
     assert raw.product_variant_id is None
-    assert raw.rejection_reason == "no_exact_canonical_variant"\n    assert len(reviews) == 1\n    assert reviews[0].status == "pending"\n    assert reviews[0].reason == "no_exact_match"
+    assert raw.rejection_reason == "no_exact_canonical_variant"
+    assert len(reviews) == 1
+    assert reviews[0].status == "pending"
+    assert reviews[0].reason == "no_exact_match"
 
 
 def test_match_worker_does_not_reprocess_promoted_or_rejected_rows():
