@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
 from uuid import UUID
+import pycountry
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -150,10 +151,10 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected("canonical product variant UUID does not exist")
     if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
         raise PromotionRejected("price must be a positive finite Decimal")
-    if not isinstance(currency, str) or not _CURRENCY.fullmatch(currency):
-        raise PromotionRejected("currency must be an uppercase ISO 4217 code")
-    if availability not in _ALLOWED_AVAILABILITY:
-        raise PromotionRejected("availability must be explicit")
+    if not isinstance(currency, str) or not _CURRENCY.fullmatch(currency) or pycountry.currencies.get(alpha_3=currency) is None:
+        raise PromotionRejected("currency must be a valid ISO 4217 code")
+    if availability != "in_stock":
+        raise PromotionRejected("only explicitly in-stock offers are publishable")
     parsed = urlparse(url or "")
     if parsed.scheme != "https" or not parsed.hostname:
         raise PromotionRejected("offer URL must be absolute HTTPS")
