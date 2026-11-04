@@ -61,19 +61,22 @@ stable retailer ID, uses Redis `SET NX EX` for a five-minute per-offer
 cooldown, and releases the cooldown if Celery enqueueing fails. Redis failure
 fails closed with HTTP 503. A browser cannot supply an arbitrary store or SKU.
 
-The frontend contains a guarded “Aggiorna prezzo” control, rendered only when
-an offer object includes a valid `phase2_offer_id` UUID. The current legacy
-`/search` response still does not include that field, so the control is not
-yet shown to users. The remaining integration is to make the new catalog
-search/detail response return persisted Phase 2 offer UUIDs and then verify the
-control end-to-end. Do not fabricate this field from a legacy URL or retailer
-SKU.
+The read-only endpoint `GET /catalog/legacy-products/{legacy_product_id}/offers`
+bridges the existing frontend product ID through `legacy_product_id_map` to
+matched Phase 2 variants and active offers. It returns the persisted Offer UUID,
+retailer slug, exact URL and variant size. It never infers an ID from a URL or
+SKU. On product/format detail open, the frontend requests this endpoint and
+attaches the UUID only when URL and variant size identify exactly one returned
+offer. If the map or Phase 2 database is empty, the legacy detail continues
+unchanged. The “Aggiorna prezzo” control is therefore shown only for a verified
+match.
 
 Dedicated tests cover active-offer resolution, inactive-store rejection,
-missing retailer IDs, cooldown behavior and cooldown release after enqueue
-failure. The UI data-contract integration is not complete; Phase 5 must not be
-closed until the frontend receives real persisted IDs and the full path passes
-end-to-end verification.
+missing retailer IDs, cooldown behavior, cooldown release after enqueue
+failure, legacy ID mapping, exact persisted UUID return, and rejection of
+unmapped or inactive offers. The frontend bridge is wired, but still requires
+end-to-end verification against a populated Phase 2 database and running
+Redis/Celery services.
 
 ## Configuration
 
