@@ -3984,7 +3984,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         return False
     engine = None
     try:
-        from sqlalchemy import create_engine, event, select
+        from sqlalchemy import create_engine, event, inspect, select, text
         from sqlalchemy.engine import make_url
         from sqlalchemy.orm import Session
         from app.models import Store
@@ -4000,37 +4000,63 @@ def _maybe_persist_bplatz_phase2(item, url):
             or "sqlite:////data/catalog/catalog.sqlite3"
         ).strip()
         parsed_url = make_url(database_url)
-        if parsed_url.get_backend_name() != "sqlite" or not parsed_url.database or parsed_url.database == ":memory:":
-            print("BPLATZ_PHASE2_SKIPPED reason=unsupported_or_missing_database_url", flush=True)
+        backend = parsed_url.get_backend_name()
+        if backend not in {"sqlite", "postgresql"}:
+            print("BPLATZ_PHASE2_SKIPPED reason=unsupported_database_backend", flush=True)
             return False
 
-        phase2_path = Path(parsed_url.database).expanduser().resolve()
-        if not phase2_path.is_file():
-            print(f"BPLATZ_PHASE2_SKIPPED reason=database_file_missing path={phase2_path}", flush=True)
-            return False
-
-        # Read-only preflight: no create_all, no Alembic, no implicit schema changes.
-        readonly_uri = "file:" + urllib.parse.quote(str(phase2_path), safe="/") + "?mode=ro"
-        try:
-            check = connect_catalog_db(readonly_uri, uri=True, timeout=2)
+        if backend == "sqlite":
+            if not parsed_url.database or parsed_url.database == ":memory:":
+                print("BPLATZ_PHASE2_SKIPPED reason=unsupported_or_missing_database_url", flush=True)
+                return False
+            phase2_path = Path(parsed_url.database).expanduser().resolve()
+            if not phase2_path.is_file():
+                print("BPLATZ_PHASE2_SKIPPED reason=database_file_missing", flush=True)
+                return False
+            # SQLite preflight is explicitly read-only; it never creates or upgrades a schema.
+            readonly_uri = "file:" + urllib.parse.quote(str(phase2_path), safe="/") + "?mode=ro"
             try:
-                check.execute("PRAGMA query_only=ON")
-                revision_row = check.execute(
-                    "SELECT version_num FROM alembic_version"
-                ).fetchone()
-                tables = {
-                    row[0] for row in check.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table'"
-                    ).fetchall()
-                }
-            finally:
-                check.close()
-        except sqlite3.Error as exc:
-            print(
-                f"BPLATZ_PHASE2_SKIPPED reason=schema_preflight_error "
-                f"error={type(exc).__name__}:{exc}", flush=True,
+                check = connect_catalog_db(readonly_uri, uri=True, timeout=2)
+                try:
+                    check.execute("PRAGMA query_only=ON")
+                    revision_row = check.execute(
+                        "SELECT version_num FROM alembic_version"
+                    ).fetchone()
+                    tables = {
+                        row[0] for row in check.execute(
+                            "SELECT name FROM sqlite_master WHERE type='table'"
+                        ).fetchall()
+                    }
+                finally:
+                    check.close()
+            except sqlite3.Error as exc:
+                print(
+                    "BPLATZ_PHASE2_SKIPPED reason=schema_preflight_error "
+                    f"error={type(exc).__name__}:{exc}", flush=True,
+                )
+                return False
+            revision = revision_row[0] if revision_row else None
+        else:
+            # PostgreSQL preflight is read-only: inspect metadata and Alembic
+            # revision only. The worker never creates tables or runs migrations.
+            preflight_engine = create_engine(
+                database_url, pool_pre_ping=True, pool_size=1, max_overflow=0
             )
-            return False
+            try:
+                with preflight_engine.connect() as check:
+                    tables = set(inspect(check).get_table_names())
+                    revision = (
+                        check.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
+                        if "alembic_version" in tables else None
+                    )
+            except Exception as exc:
+                print(
+                    "BPLATZ_PHASE2_SKIPPED reason=postgres_schema_preflight_error "
+                    f"error={type(exc).__name__}", flush=True,
+                )
+                return False
+            finally:
+                preflight_engine.dispose()
 
         required_tables = {
             "stores", "brands", "fragrances", "product_variants", "offers",
@@ -4038,7 +4064,6 @@ def _maybe_persist_bplatz_phase2(item, url):
             "legacy_product_id_map", "legacy_variant_id_map",
         }
         missing = sorted(required_tables - tables)
-        revision = revision_row[0] if revision_row else None
         if revision not in {"0002_ingestion_raw", "0003_store_domain"} or missing:
             print(
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
@@ -4048,38 +4073,20 @@ def _maybe_persist_bplatz_phase2(item, url):
 
         phase2_config_source = configuration_source()
         phase2_service_name = "catalog-hydration/bplatz-phase2"
-        engine = create_engine(database_url, connect_args={"timeout": 5})
+        engine = (
+            create_engine(database_url, connect_args={"timeout": 5})
+            if backend == "sqlite"
+            else create_engine(database_url, pool_pre_ping=True, pool_size=2, max_overflow=0)
+        )
 
         @event.listens_for(engine, "connect")
-        def _phase2_sqlite_pragmas(dbapi_connection, connection_record):
-            dbapi_connection.execute("PRAGMA foreign_keys=ON")
-            dbapi_connection.execute("PRAGMA busy_timeout=5000")
-            # Emit startup/open evidence from this exact DBAPI connection.
-            # No URL or full filesystem path is included in the log.
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute("PRAGMA database_list")
-                database_rows = cursor.fetchall()
-            finally:
-                cursor.close()
+        def _phase2_connection_opened(dbapi_connection, connection_record):
+            if backend == "sqlite":
+                dbapi_connection.execute("PRAGMA foreign_keys=ON")
+                dbapi_connection.execute("PRAGMA busy_timeout=5000")
+            # Identity is emitted later using the exact SQLAlchemy persistence connection.
+            # Never log a DSN, password, or unmasked filesystem path.
             connection_record.info["phase2_connection_opened_at"] = opened_at_utc()
-            for database_row in database_rows:
-                database_name = str(database_row[1] or "main")
-                database_path = str(database_row[2] or "")
-                masked_path = ".../" + Path(database_path).name if database_path else "<memory-or-empty>"
-                identity_material = database_name + "\\0" + (database_path or "<memory-or-empty>")
-                database_id = __import__("hashlib").sha256(
-                    identity_material.encode("utf-8")
-                ).hexdigest()[:16]
-                print(
-                    "PHASE2_RUNTIME_DATABASE "
-                    f"event=connection_open pid={os.getpid()} "
-                    f"service={phase2_service_name} config_source={phase2_config_source} "
-                    f"database_name={database_name} database_path={masked_path} "
-                    f"database_id=sha256:{database_id} "
-                    f"connection_opened_at={connection_record.info['phase2_connection_opened_at']}",
-                    flush=True,
-                )
 
         global _BPLATZ_PHASE2_MATCHER
         if _BPLATZ_PHASE2_MATCHER is None:
