@@ -88,7 +88,7 @@ def rank_offers(offers: list[dict[str, Any]], *, now: datetime | None = None) ->
             },
             "landed_price": str(landed) if landed is not None else None,
             "verify_price": stale,
-            "label": "verifica prezzo" if stale else None,
+            "warning": "verifica prezzo" if stale else None,
         })
         item.pop("_currency", None)
         item.pop("_landed", None)
