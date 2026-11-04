@@ -12,6 +12,7 @@ on:
       - phase6/matching-validation
       - phase7/catalog-search
       - phase8/offer-ranking
+      - phase9/api-frontend
 
 jobs:
   parser-regression:
