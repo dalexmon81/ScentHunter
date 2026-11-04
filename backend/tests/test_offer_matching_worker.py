@@ -114,3 +114,23 @@ def test_gtin_conflict_is_not_auto_matched():
         assert decision.method == "gtin_identity_conflict"
         assert raw.product_variant_id is None
         assert raw.status == "unmatched"
+
+
+def test_invalid_supplied_gtin_is_sent_to_review_not_canonical_auto_match():
+    factory, variant_id, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        payload = dict(raw.raw_payload)
+        payload["gtin"] = "4006381333932"  # invalid check digit
+        raw.raw_payload = payload
+        session.commit()
+    with factory() as session:
+        decision = match_staged_offer(session, raw_id)
+        raw = session.get(IngestionRaw, raw_id)
+        reviews = session.scalars(select(CanonicalIdentityReview)).all()
+        assert decision.status == "unmatched"
+        assert decision.method == "invalid_gtin_review"
+        assert raw.product_variant_id is None
+        assert raw.status == "unmatched"
+        assert len(reviews) == 1
+        assert reviews[0].reason == "invalid_gtin_review"
