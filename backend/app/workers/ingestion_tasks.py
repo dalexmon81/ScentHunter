@@ -10,6 +10,7 @@ import asyncio
 import base64
 import json
 import logging
+from uuid import UUID
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -18,7 +19,7 @@ from sqlalchemy import select
 
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
-from app.models import IngestionRaw, IngestionRun, Store
+from app.models import IngestionRaw, IngestionRun, Offer, Store
 from app.matching.offer_matcher import match_staged_offer
 from app.services.product_normalization import normalize_product
 from app.workers.celery_app import celery_app
@@ -46,6 +47,9 @@ class IngestionTask(celery_app.Task):
                 },
                 queue="dead_letter",
             )
+            store_key = kwargs.get("store_key") or (args[0] if args else None)
+            if store_key:
+                quarantine_failed_connector.apply_async(args=[store_key], queue="dead_letter")
         except Exception:
             logger.exception("Unable to enqueue dead-letter record for %s", task_id)
 
@@ -208,7 +212,7 @@ def match_offer_to_variant(self, raw_id: str):
     factory = make_session_factory()
     try:
         with factory() as session:
-            result = match_staged_offer(session, raw_id)
+            result = match_staged_offer(session, UUID(str(raw_id)))
             session.commit()
             status = result.status
         return {"raw_id": raw_id, "status": status}
@@ -303,8 +307,19 @@ def enqueue_refresh_for_active_stores():
     factory = make_session_factory()
     try:
         with factory() as session:
-            stores = session.scalars(select(Store).where(Store.status == "active")).all()
-            keys = [store.slug for store in stores]
-        return {"active_stores": keys, "note": "refresh tasks are scheduled per known offer by the operator or product-detail on-demand path"}
+            rows = session.execute(
+                select(Offer.external_product_id, Store.slug)
+                .join(Store, Offer.store_id == Store.id)
+                .where(Store.status == "active", Offer.status == "active",
+                       Offer.external_product_id.is_not(None))
+            ).all()
+            queued = 0
+            for external_product_id, store_key in rows:
+                refresh_price_and_stock.apply_async(
+                    kwargs={"store_key": store_key, "offer_id": external_product_id},
+                    queue="refresh",
+                )
+                queued += 1
+        return {"refresh_jobs_queued": queued}
     finally:
         factory.kw["bind"].dispose()
