@@ -148,3 +148,40 @@ class RateLimiter:
                 await sleep(wait)
                 now = monotonic()
             self._last_request = now
+
+
+def capture_raw_page_artifact(
+    artifacts: list[dict[str, Any]], loaded: Any, *,
+    requested_url: str, store_key: str,
+) -> bool:
+    """Retain exact HTML bytes returned by a page loader, without re-encoding bytes."""
+    source_url = str(requested_url or "")
+    body = None
+    if isinstance(loaded, tuple) and len(loaded) >= 2:
+        source_url = str(loaded[0] or source_url)
+        body = loaded[1]
+    elif isinstance(loaded, (str, bytes, bytearray)):
+        body = loaded
+    elif isinstance(loaded, Mapping):
+        source_url = str(loaded.get("url") or source_url)
+        body = loaded.get("html", loaded.get("body"))
+
+    if isinstance(body, str):
+        raw = body.encode("utf-8")
+        content_type = "text/html; charset=utf-8"
+    elif isinstance(body, (bytes, bytearray)):
+        raw = bytes(body)
+        content_type = "text/html"
+    else:
+        return False
+    if not raw:
+        return False
+
+    artifacts.append({
+        "format": "html",
+        "data": raw,
+        "content_type": content_type,
+        "source_url": source_url,
+        "metadata": {"capture": "page_loader_body", "store": str(store_key)},
+    })
+    return True
