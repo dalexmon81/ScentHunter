@@ -1163,7 +1163,7 @@ async async function searchStoresProgressive(term,onPartial){
         catalog_id:product.brand_slug+":"+product.fragrance_slug,
         canonical_brand:product.brand,brand:product.brand,
         canonical_name:product.fragrance,name:product.fragrance,
-        family:product.family||"",image:"",offers,variants:product.variants||[],
+        family:product.family||"",image:product.image_url||"",offers,variants:product.variants||[],
         offer_count:product.offer_count||0,_phase2OfferIdsLoaded:true
       };
     });
