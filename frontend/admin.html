@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScentHunter · Admin</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,sans-serif;color:#202124;background:#f5f6f8}
+body{margin:0;padding:24px;max-width:1200px;margin-inline:auto}
+header,.panel{background:#fff;border:1px solid #e3e5e8;border-radius:12px;padding:18px;margin-bottom:16px}
+h1{font-size:24px;margin:0 0 6px}h2{font-size:17px;margin:0 0 14px}
+.muted{color:#687078;font-size:13px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+input,button{font:inherit;border:1px solid #c9cdd2;border-radius:8px;padding:9px 12px}
+input{min-width:240px;flex:1}button{background:#202124;color:#fff;cursor:pointer}button.secondary{background:#fff;color:#202124}
+button:disabled{opacity:.5;cursor:wait}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.metric{background:#f7f8fa;border-radius:9px;padding:12px}.metric strong{display:block;font-size:22px;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:9px;border-bottom:1px solid #eceef0;vertical-align:top}
+.bad{color:#a12a24}.good{color:#187447}.scroll{overflow:auto}
+.alert{padding:10px;border-left:3px solid #d49a2d;background:#fff9ed;margin:8px 0;border-radius:4px;font-size:13px}
+#error{color:#a12a24;white-space:pre-wrap}
+@media(max-width:600px){body{padding:12px}.panel,header{padding:13px}}
+</style>
+</head>
+<body>
+<header>
+<h1>ScentHunter · Pannello admin</h1>
+<div class="muted">Monitoraggio catalogo e gestione controllata dei connector. Il token resta solo in memoria nella pagina e non viene salvato.</div>
+<div class="controls">
+<input id="token" type="password" autocomplete="off" placeholder="SCENTHUNTER_ADMIN_TOKEN">
+<button id="load">Carica dati</button>
+<button id="refresh" class="secondary">Aggiorna</button>
+</div>
+<p id="error"></p>
+</header>
+<section class="panel"><h2>Metriche</h2><div id="metrics" class="grid"><span class="muted">Inserisci il token e carica i dati.</span></div></section>
+<section class="panel"><h2>Alert attivi</h2><div id="alerts" class="muted">—</div></section>
+<section class="panel"><h2>Stato store e connector</h2><div class="scroll"><table><thead><tr><th>Store</th><th>Stato</th><th>Ultimo sync riuscito</th><th>Azione</th></tr></thead><tbody id="stores"></tbody></table></div></section>
+<section class="panel"><h2>Sync recenti ed errori</h2><div class="scroll"><table><thead><tr><th>Data</th><th>Store</th><th>Stato</th><th>Prodotti</th><th>Rifiutate</th><th>Errori</th></tr></thead><tbody id="runs"></tbody></table></div></section>
+<section class="panel"><h2>Match da revisionare</h2><div class="scroll"><table><thead><tr><th>Creato</th><th>Chiave canonica</th><th>Motivo</th><th>Stato</th></tr></thead><tbody id="reviews"></tbody></table></div></section>
+<section class="panel"><h2>Riprocessamento offerte</h2><p class="muted">Accoda solo record rifiutati con motivo esplicito retryable. Non ripubblica automaticamente offerte.</p><div class="controls"><input id="store-filter" placeholder="Store (opzionale, slug)"><button id="reprocess">Accoda riprocessamento</button></div><p id="action-result" class="muted"></p></section>
+<script>
+(() => {
+ const $ = id => document.getElementById(id);
+ const token = () => $('token').value.trim();
+ const esc = value => String(value ?? '—');
+ async function api(path, options={}) {
+   const response = await fetch(path,{...options,headers:{'Authorization':'Bearer '+token(),'Content-Type':'application/json',...(options.headers||{})}});
+   const body = await response.json().catch(()=>({}));
+   if(!response.ok) throw new Error(body.detail || ('HTTP '+response.status));
+   return body;
+ }
+ function cell(row,value){const td=document.createElement('td');td.textContent=esc(value);row.appendChild(td);return td;}
+ function metric(label,value){const div=document.createElement('div');div.className='metric';const name=document.createElement('span');name.className='muted';name.textContent=label;const val=document.createElement('strong');val.textContent=esc(value);div.append(name,val);return div;}
+ async function load(){
+  $('error').textContent='';$('load').disabled=true;
+  try{
+   const [m,a,c,i,r]=await Promise.all([api('/api/admin/metrics'),api('/api/admin/alerts'),api('/api/admin/connectors'),api('/api/admin/ingestion?limit=30'),api('/api/admin/matching?limit=50')]);
+   const grid=$('metrics');grid.replaceChildren();
+   const values=[
+    ['Offerte totali',m.offers.total],['Pubblicate',m.offers.published],['Rifiutate (raw)',m.offers.rejected_raw_records],
+    ['Match automatici',m.matching.automatic_rate==null?'n/d':(m.matching.automatic_rate*100).toFixed(1)+'%'],
+    ['Match ambigui',m.matching.ambiguous_rate==null?'n/d':(m.matching.ambiguous_rate*100).toFixed(1)+'%'],
+    ['Latenza ricerca p50',m.search_latency.available?m.search_latency.p50_ms+' ms':'n/d'],
+    ['Latenza ricerca p95',m.search_latency.available?m.search_latency.p95_ms+' ms':'n/d'],
+    ['Errori connector 24h',m.connectors.error_rate_last_24h==null?'n/d':(m.connectors.error_rate_last_24h*100).toFixed(1)+'%'],
+    ['Store in quarantena',m.connectors.quarantined_stores],
+    ['Età media prezzi',m.price_freshness.average_age_hours==null?'n/d':m.price_freshness.average_age_hours+' h'],
+    ['Stock valido',m.price_freshness.valid_stock_rate==null?'n/d':(m.price_freshness.valid_stock_rate*100).toFixed(1)+'%']
+   ];
+   values.forEach(v=>grid.appendChild(metric(v[0],v[1])));
+   const alerts=$('alerts');alerts.replaceChildren();
+   if(!a.alerts.length){alerts.textContent='Nessun alert attivo.'}
+   a.alerts.forEach(item=>{const div=document.createElement('div');div.className='alert';div.textContent='['+item.severity+'] '+item.message;alerts.appendChild(div)});
+   const stores=$('stores');stores.replaceChildren();
+   c.connectors.forEach(s=>{const tr=document.createElement('tr');cell(tr,s.name);cell(tr,s.status);cell(tr,s.last_successful_sync_at);
+    const td=document.createElement('td');const btn=document.createElement('button');btn.className='secondary';btn.textContent='Riavvia discovery';btn.disabled=s.status!=='active';
+    btn.addEventListener('click',async()=>{btn.disabled=true;try{const result=await api('/api/admin/connectors/'+encodeURIComponent(s.slug)+'/restart',{method:'POST'});$('action-result').textContent='Job accodato: '+result.job_id}catch(e){$('error').textContent=e.message}finally{btn.disabled=false}});td.appendChild(btn);tr.appendChild(td);stores.appendChild(tr)});
+   const runs=$('runs');runs.replaceChildren();
+   i.runs.forEach(x=>{const tr=document.createElement('tr');cell(tr,x.started_at);cell(tr,x.store_id);cell(tr,x.status);cell(tr,x.products_discovered);cell(tr,x.offers_rejected);cell(tr,(x.errors||[]).map(e=>e.message||e.error||e.type||JSON.stringify(e)).join(' · '));runs.appendChild(tr)});
+   const reviews=$('reviews');reviews.replaceChildren();
+   r.reviews.forEach(x=>{const tr=document.createElement('tr');cell(tr,x.created_at);cell(tr,x.canonical_key);cell(tr,x.reason);cell(tr,x.status);reviews.appendChild(tr)});
+  }catch(e){$('error').textContent='Errore: '+e.message}
+  finally{$('load').disabled=false}
+ }
+ $('load').addEventListener('click',load);$('refresh').addEventListener('click',load);
+ $('reprocess').addEventListener('click',async()=>{try{const store=$('store-filter').value.trim();const q=new URLSearchParams({limit:'100'});if(store)q.set('store_key',store);const result=await api('/api/admin/reprocess?'+q.toString(),{method:'POST'});$('action-result').textContent='Riprocessamento accodato: '+result.job_id}catch(e){$('error').textContent='Errore: '+e.message}});
+})();
+</script>
+</body>
+</html>
