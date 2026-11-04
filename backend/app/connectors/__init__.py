@@ -11,6 +11,7 @@ from .base import (
 from .deloox import DelooxConnector
 from .easycosmetic import EasycosmeticConnector
 from .notino import NotinoAffiliateFeedConnector
+from .parfumzentrum import ParfumzentrumConnector
 from .sabina import SabinaConnector
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "OfferRecord",
     "RateLimiter",
     "RetryPolicy",
+    "ParfumzentrumConnector",
     "SabinaConnector",
     "StoreConnector",
     "validate_offer",
