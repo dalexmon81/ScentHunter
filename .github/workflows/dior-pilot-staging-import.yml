@@ -1,0 +1,60 @@
+name: Dior pilot staging import
+
+on:
+  push:
+    branches:
+      - phase5/dior-pilot-scoped-seed
+    paths:
+      - ".github/workflows/dior-pilot-staging-import.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  staging-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Verify Fly token is available
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::Missing repository secret FLY_API_TOKEN"
+            exit 1
+          fi
+      - name: Verify isolated staging state before writing
+        id: preflight
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started staging app worker found; refusing to write."
+            exit 1
+          fi
+          audit="python -c 'import json; from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; values={\"brands\":[r[0] for r in c.execute(text(\"SELECT normalized_name FROM brands\"))],\"fragrances\":[r[0] for r in c.execute(text(\"SELECT slug FROM fragrances\"))],\"variants\":[r[0] for r in c.execute(text(\"SELECT canonical_key FROM product_variants\"))],\"legacy_products\":[r[0] for r in c.execute(text(\"SELECT legacy_product_id FROM legacy_product_id_map\"))],\"legacy_variants\":[r[0] for r in c.execute(text(\"SELECT legacy_variant_id FROM legacy_variant_id_map\"))]}; print(json.dumps({\"counts\":counts,\"values\":values})); c.close(); e.dispose()'"
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "$audit")"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | python -c 'import json,sys; lines=[x for x in sys.stdin.read().splitlines() if x.strip().startswith("{")]; r=json.loads(lines[-1]); c=r["counts"]; v=r["values"]; expected={"brands":["christian dior"],"fragrances":["sauvage"],"variants":["christian-dior|sauvage|edp|100|standard"],"legacy_products":["SH-AUTO-0178"],"legacy_variants":["VAR-9e1f0d0b8a3c6e42"]}; assert c["stores"]==0 and c["offers"]==0, "Retailer rows or offers already exist; refusing"; assert all(len(v[k])<=1 and (not v[k] or v[k]==value) for k,value in expected.items()), "Staging contains unrelated or conflicting catalog identities; refusing"; assert all(c[k]<=1 for k in ("brands","fragrances","product_variants","legacy_product_id_map","legacy_variant_id_map")), "Staging contains additional catalog records; refusing"; print("Staging preflight: isolated and safe for the single Dior identity")'
+      - name: Import only Dior Sauvage EDP 100 ml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          remote_command="python -c \"import sys,urllib.request; u='https://raw.githubusercontent.com/dalexmon81/ScentHunter/85b96a34758df6dcb309cff534551e0d987c12c0/backend/scripts/seed_catalog.py'; s=urllib.request.urlopen(u,timeout=20).read(); sys.argv=['seed_catalog_pilot.py','--product-id','SH-AUTO-0178','--apply']; exec(compile(s,'/app/backend/scripts/seed_catalog_pilot.py','exec'),{'__name__':'__main__','__file__':'/app/backend/scripts/seed_catalog_pilot.py'})\""
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "$remote_command"
+      - name: Verify the resulting staging catalog
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          audit="python -c 'import json; from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; values={\"brands\":[r[0] for r in c.execute(text(\"SELECT normalized_name FROM brands\"))],\"fragrances\":[r[0] for r in c.execute(text(\"SELECT slug FROM fragrances\"))],\"variants\":[r[0] for r in c.execute(text(\"SELECT canonical_key FROM product_variants\"))],\"legacy_products\":[r[0] for r in c.execute(text(\"SELECT legacy_product_id FROM legacy_product_id_map\"))],\"legacy_variants\":[r[0] for r in c.execute(text(\"SELECT legacy_variant_id FROM legacy_variant_id_map\"))]}; print(json.dumps({\"counts\":counts,\"values\":values})); c.close(); e.dispose()'"
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "$audit")"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | python -c 'import json,sys; lines=[x for x in sys.stdin.read().splitlines() if x.strip().startswith("{")]; r=json.loads(lines[-1]); c=r["counts"]; v=r["values"]; assert c=={"brands":1,"fragrances":1,"product_variants":1,"stores":0,"offers":0,"legacy_product_id_map":1,"legacy_variant_id_map":1}, c; assert v=={"brands":["christian dior"],"fragrances":["sauvage"],"variants":["christian-dior|sauvage|edp|100|standard"],"legacy_products":["SH-AUTO-0178"],"legacy_variants":["VAR-9e1f0d0b8a3c6e42"]}, v; print("Dior-only staging import verification: PASS")'
