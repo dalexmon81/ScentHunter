@@ -31,6 +31,7 @@ jobs:
           --health-retries 5
     env:
       SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://scenthunter_test:scenthunter_test@localhost:5432/scenthunter_test
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://scenthunter_test:scenthunter_test@localhost:5432/scenthunter_test
     steps:
       - name: Check out pull request
         uses: actions/checkout@v4
@@ -44,6 +45,11 @@ jobs:
         run: |
           python -m pip install -r backend/requirements.txt
           python -m pip install pytest
+      - name: Apply disposable PostgreSQL schema
+        working-directory: backend
+        env:
+          SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://scenthunter_test:scenthunter_test@localhost:5432/scenthunter_test
+        run: alembic upgrade head
       - name: Compile backend
         run: python -m compileall -q backend
       - name: Run backend regression tests
