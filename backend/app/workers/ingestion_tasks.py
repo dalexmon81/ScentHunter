@@ -372,7 +372,7 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
     try:
         with factory() as session:
             refreshable = session.execute(
-                select(Offer.id)
+                select(Offer.external_product_id, Offer.url)
                 .join(Store, Offer.store_id == Store.id)
                 .where(
                     Store.slug == store_key,
@@ -384,10 +384,16 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
             ).first()
         if refreshable is None:
             return {"store": store_key, "offer_id": offer_id, "status": "not_refreshable"}
+        external_product_id, product_url = refreshable
     finally:
         factory.kw["bind"].dispose()
     connector = get_connector(store_key)
-    record = _run(connector.fetch_price_and_stock(offer_id))
+    # Legacy connectors are recreated per Celery task, so their discovery
+    # cache is empty during refresh. Load by the persisted product URL; the
+    # parser still emits the stable external product ID for idempotent upsert.
+    from app.connectors.legacy_store import LegacyStoreConnector
+    refresh_key = product_url if isinstance(connector, LegacyStoreConnector) else external_product_id
+    record = _run(connector.fetch_price_and_stock(refresh_key))
     raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
     artifact_ids = (
         _persist_raw_artifacts(store_key, None, raw_artifacts)
