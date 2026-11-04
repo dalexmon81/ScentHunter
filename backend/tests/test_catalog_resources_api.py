@@ -69,7 +69,8 @@ def test_product_offers_requires_explicit_variant(catalog_db):
 
 
 def test_product_offers_marks_old_prices_for_verification(catalog_db):
-    variant_id = catalog_db.query(ProductVariant).filter_by(concentration="EDP").one().id
+    with catalog_db() as session:
+        variant_id = session.query(ProductVariant).filter_by(concentration="EDP").one().id
     result = api.get_product_offers("sauvage-resources", variant_id=variant_id)
     assert len(result["offers"]) == 2
     assert result["offers"][0]["is_expired"] is False
