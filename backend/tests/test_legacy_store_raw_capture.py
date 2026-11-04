@@ -56,3 +56,42 @@ def test_legacy_page_capture_ignores_binary_and_failed_responses(monkeypatch):
     with _ArtifactCapturingSession(artifacts) as session:
         session.get(failed.url)
     assert artifacts == []
+
+
+def test_independent_scraper_page_loaders_retain_exact_html_bytes(monkeypatch):
+    from datetime import datetime, timezone
+    from decimal import Decimal
+
+    from app.connectors.base import OfferRecord
+    from app.connectors.deloox import DelooxConnector
+    from app.connectors.easycosmetic import EasycosmeticConnector
+    from app.connectors.sabina import SabinaConnector
+    from app.connectors.parfumzentrum import ParfumzentrumConnector
+
+    url = "https://shop.example/products/perfume"
+    body = b"<html><body>exact retailer response</body></html>"
+    record = OfferRecord(
+        store="fixture-store", external_product_id="sku-1",
+        brand="Test Brand", fragrance="Test Perfume", concentration="EDP",
+        size_ml=100, gtin=None, title="Test Perfume EDP 100 ml",
+        url=url, price=Decimal("49.90"), currency="EUR",
+        availability="in_stock", captured_at=datetime.now(timezone.utc).isoformat(),
+        source="fixture",
+    )
+
+    connectors = [
+        (DelooxConnector(page_loader=lambda _url: (url, body, "test")), (url, body, "test")),
+        (EasycosmeticConnector(page_loader=lambda _url: (url, body)), (url, body)),
+        (SabinaConnector(page_loader=lambda _url: (url, body)), (url, body)),
+        (ParfumzentrumConnector(page_loader=lambda _url: (url, body)), (url, body)),
+    ]
+    for connector, loaded in connectors:
+        monkeypatch.setattr(connector, "parse_raw", lambda _raw: (record,))
+        asyncio.run(connector.fetch_product(url))
+        assert connector._raw_artifacts == [{
+            "format": "html",
+            "data": body,
+            "content_type": "text/html",
+            "source_url": url,
+            "metadata": {"capture": "page_loader_body", "store": connector.store_key},
+        }]
