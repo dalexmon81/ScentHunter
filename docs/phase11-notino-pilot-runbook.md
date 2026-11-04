@@ -29,6 +29,20 @@ Never print, log, commit, paste into a PR, or include these values in diagnostic
 5. The Phase 5 branch now defines the verified catalog identity `SH-AUTO-0178` (Dior / Sauvage / Eau de Parfum) and explicit 100 ml variant `VAR-9e1f0d0b8a3c6e42`, with canonical key `christian-dior|sauvage|edp|100|standard`. The 100 ml format is confirmed on Dior's official product page: https://www.dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum-Y0785220.html. Phase 5 PR #343 CI now seeds and reads this mapping successfully in disposable PostgreSQL: fragrance UUID 590a4d54-d195-5bbd-8e7a-fa2d3255d604 and variant UUID 1cb2c345-8fbd-56b6-9275-87eff09ec3b6. These deterministic CI UUIDs are not evidence of a persistent staging database; verify the mapping again after staging is provisioned. If the exact variant is absent, stop: do not infer or create a variant during offer ingestion.
 6. Approve the cost of a persistent Fly staging worker before deploying it. If not approved, run only in disposable GitHub Actions infrastructure.
 
+## How to run the one-shot live-feed preflight
+
+A manual-only GitHub Actions workflow has been added on the Phase 5 branch:
+`.github/workflows/notino-pilot-live.yml`. It performs one bounded CJ/VIV feed fetch and prints a sanitized exact-SKU summary. It does not write PostgreSQL, publish offers, or retain the raw feed as an Actions artifact.
+
+Before running it:
+1. In GitHub repository Settings → Environments, create/open the environment `notino-pilot-staging`.
+2. Add these three **environment secrets** directly in GitHub (never paste them into chat or commit them):
+   - `NOTINO_CJ_FEED_URL`
+   - `NOTINO_CJ_FEED_USERNAME`
+   - `NOTINO_CJ_FEED_PASSWORD`
+3. In Actions, select **Notino live feed preflight (manual only)** and choose **Run workflow** on the Phase 5 branch.
+4. Review the sanitized result. Continue only if exactly one valid Dior Sauvage EDP 100 ml candidate is found with explicit availability. If no match, multiple candidates, unknown stock, or feed access errors occur, stop and review; nothing is published.
+
 ## Verified CI evidence (not a live retailer result)
 
 - Phase 5 PR #343 pull-request run #149 passed: 48 tests, PostgreSQL catalog seed, exact Dior variant UUID readback, Redis/Celery worker smoke.
