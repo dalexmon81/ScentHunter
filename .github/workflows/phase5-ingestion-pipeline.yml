@@ -38,6 +38,7 @@ on:
       - "backend/tests/test_offer_matching_worker.py"
       - "backend/tests/test_offer_promotion_worker.py"
       - "backend/tests/test_offer_detail_refresh_api.py"
+      - "backend/tests/test_legacy_store_raw_capture.py"
       - "backend/requirements.txt"
       - "backend/Dockerfile.worker"
       - "docker-compose.ingestion.yml"
