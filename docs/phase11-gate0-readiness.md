@@ -49,7 +49,7 @@ Bplatz has a captured product-page fixture and a proven legacy persistence path,
 | Alembic repeatability in disposable CI | PASS | Workflow runs `alembic upgrade head` twice |
 | Canonical catalog seed | PASS | Seed script validates and imports identities/declared variants |
 | Real Phase 5 offers in PostgreSQL | BLOCKED | Seed reports `offers_imported: 0`; no live ingestion evidence |
-| Dior Sauvage EDP 100 ml catalog variant | PARTIAL | Explicit 100 ml variant and matcher-aligned canonical key added on Phase 5 branch from Dior's official product page; CI seed and staging UUID readback still pending |
+| Dior Sauvage EDP 100 ml catalog variant | PASS in disposable CI / NOT VERIFIED in persistent staging | Exact variant seeded and read back from PostgreSQL in Phase 5 PR #343 CI; deterministic CI fragrance UUID 590a4d54-d195-5bbd-8e7a-fa2d3255d604 and variant UUID 1cb2c345-8fbd-56b6-9275-87eff09ec3b6. Persistent staging still needs the same readback. |
 | Authorized pilot source for Dior | NOT VERIFIED | Confirm a specific connector has an authorized, stable source record for this SKU |
 | Real ingestion → staging → matching → promotion | NOT VERIFIED | CI intentionally avoids retailer HTTP calls |
 | Offer readback from PostgreSQL | NOT VERIFIED | Must assert one published offer linked to the exact variant UUID |
@@ -61,7 +61,7 @@ Bplatz has a captured product-page fixture and a proven legacy persistence path,
 ## Exact acceptance test still required
 
 For Dior Sauvage EDP 100 ml and one explicitly approved store:
-1. Resolve the exact canonical fragrance and variant UUID from the migrated PostgreSQL seed.
+1. Resolve the exact canonical fragrance and variant UUID from the persistent staging PostgreSQL seed (disposable CI has already passed this check).
 2. Run one controlled discovery/fetch using the selected connector and approved source.
 3. Persist original source evidence and an ingestion run.
 4. Normalize and match the raw offer to the exact variant; ambiguous matches must remain unpublished.
