@@ -661,6 +661,9 @@ function syncHearts(){
       pic:h.dataset.pic||"🧴"
     };
     const on=saved.some(x=>sameWishOffer(x,item));
+    const refreshId=String(o.phase2_offer_id||'');
+    const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
+    const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':'';
     h.textContent=on?"♥":"♡";
     h.classList.toggle("saved",on);
   });
@@ -919,12 +922,24 @@ function showProducts(groups){
   }).join("");
 }
 
+async function requestOfferRefresh(offerId,button){
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(offerId||'')))return;
+  button.disabled=true;button.textContent='Controllo…';
+  try{
+    const response=await fetch(backend()+'/catalog/offers/'+encodeURIComponent(offerId)+'/refresh',{method:'POST',headers:{'Accept':'application/json'}});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(payload.detail||('HTTP '+response.status));
+    button.textContent=payload.status==='already_queued'?'Già in coda':'Controllo avviato';
+    button.title='Il controllo è stato accodato; il prezzo non è ancora stato aggiornato.';
+  }catch(error){button.textContent='Riprova';button.title='Impossibile avviare il controllo: '+String(error.message||error);}
+  finally{button.disabled=false;}
+}
 function renderOffersHtml(g,img,offers,saved){
   return (offers||[]).map((o,n)=>{
     const out=isOfferOutOfStock(o);
     const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
-    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
   }).join("");
 }
 
