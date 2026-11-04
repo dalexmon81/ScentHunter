@@ -21,7 +21,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+      uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install backend dependencies
@@ -41,3 +41,5 @@ jobs:
           tests/test_notino_authorized_feed.py
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
+
+# Safe re-trigger: test-only workflow; no deployment, migrations, or live scraping.
