@@ -212,11 +212,11 @@ jobs:
 
       - name: Create a consistent snapshot without writing to the source database
         env:
-          FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "\${FLY_API_TOKEN:-}" ]]; then
+          if [[ -z "${FLY_API_TOKEN:-}" ]]; then
             echo "Required Fly.io access secret is unavailable."
             exit 1
           fi
@@ -321,7 +321,7 @@ jobs:
           PY
 
           encoded_script="$(base64 -w 0 create_readonly_snapshot.py)"
-          remote_command="/bin/sh -lc 'echo \${encoded_script} | base64 -d | /app/.venv/bin/python -'"
+          remote_command="/bin/sh -lc 'echo ${encoded_script} | base64 -d | /app/.venv/bin/python -'"
           if ! flyctl ssh console --app scenthunter --select=false -C "$remote_command" > snapshot-metadata.json 2> fly-snapshot-error.txt; then
             echo "SNAPSHOT_CREATION_FAILED; source database was not modified."
             exit 1
@@ -331,7 +331,7 @@ jobs:
 
       - name: Download the temporary snapshot from the machine
         env:
-          FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -383,7 +383,7 @@ jobs:
         if: always()
         continue-on-error: true
         env:
-          FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           flyctl ssh console --app scenthunter --select=false -C "rm -f /tmp/scenthunter-phase2-canonical-snapshot.sqlite3" >/dev/null 2>&1 || true
