@@ -2,7 +2,7 @@
 
 **Selected pilot:** Notino.fr, using the existing authorized CJ/VIV XML affiliate-feed connector in the Phase 5 branch.
 
-**Execution status: NOT RUN.** This runbook is an approved technical direction, not proof that feed credentials are available or that an offer exists. No live feed request, cloud resource, migration, deployment, or production write is performed by preparing this document.
+**Execution status: NOT RUN.** The exact catalog variant is now defined in the Phase 5 branch, but CI verification and staging seeding remain pending. This is not proof that feed credentials are available or that an offer exists. No live feed request, cloud resource, migration, deployment, or production write is performed by preparing this document.
 
 ## Why Notino
 
@@ -26,7 +26,7 @@ Never print, log, commit, paste into a PR, or include these values in diagnostic
 2. Configure the three variables above in the dedicated staging worker app only. Do not copy production secrets or use a production feed URL unless the account owner has explicitly approved it for staging.
 3. Confirm separate staging PostgreSQL and Redis endpoints. Do not use production connection strings.
 4. Provision a staging stores row for slug=notino, name=Notino, domain=notino.fr, country=FR, currency=EUR, status=active. The existing canonical seed script deliberately provisions Bplatz only; do not change it to silently activate Notino.
-5. Verify the seeded canonical fragrance and exact ProductVariant for Dior Sauvage / Eau de Parfum / 100 ml. Record the UUIDs from staging read-only queries. If the exact variant is absent, stop: do not infer or create a variant as part of offer ingestion.
+5. The Phase 5 branch now defines the verified catalog identity `SH-AUTO-0178` (Dior / Sauvage / Eau de Parfum) and explicit 100 ml variant `VAR-9e1f0d0b8a3c6e42`, with canonical key `christian-dior|sauvage|edp|100|standard`. The 100 ml format is confirmed on Dior's official product page: https://www.dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum-Y0785220.html. This catalog change is not yet merged or seeded into staging. After the Phase 5 CI seed passes, verify the generated UUIDs with read-only staging queries. If the exact variant is absent, stop: do not infer or create a variant during offer ingestion.
 6. Approve the cost of a persistent Fly staging worker before deploying it. If not approved, run only in disposable GitHub Actions infrastructure.
 
 ## Controlled pilot procedure
