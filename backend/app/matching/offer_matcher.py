@@ -34,7 +34,8 @@ def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
         identity = normalize_product(
             brand, title,
             concentration=payload.get("concentration"),
-            size_ml=payload.get("sizeMl"),
+            size_ml=payload.get("sizeMl", payload.get("size_ml")),
+            packaging=payload.get("packaging"),
         )
     except (TypeError, ValueError) as exc:
         return MatchDecision("unmatched", "normalization_review", None, None,
