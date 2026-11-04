@@ -24,12 +24,15 @@ Task flow:
    are sent to the `dead_letter` queue and repeated store failures trigger the
    store-scoped quarantine check.
 
-The `_raw_evidence` envelope stores connector discovery evidence and the parsed
-record alongside normalized fields so the matching/promotion contracts remain
-backwards-compatible. Exact HTTP response bodies (especially HTML downloaded
-inside legacy scraper functions) are not yet guaranteed to be captured by every
-connector. A follow-on raw artifact capture adapter is required before claiming
-full byte-for-byte XML/CSV/HTML replay coverage.
+The `ingestion_artifacts` table stores immutable source bytes with SHA-256,
+format, content type, source URL, capture time and run reference. Notino's
+affiliate XML feed is retained byte-for-byte. The other connectors retain the
+raw structured discovery response returned by their scraper adapters. Some
+legacy scrapers parse HTML internally and do not expose the original response
+body; exact HTML/CSV replay is therefore not yet guaranteed for every store.
+Those scraper transports must be instrumented before claiming complete
+byte-for-byte HTML/CSV coverage. Each staged offer records the artifact IDs in
+its `_raw_evidence` envelope.
 
 ## Cadence
 
@@ -39,9 +42,11 @@ Celery Beat defaults:
 - Main-store price/stock refresh: every 30 minutes, only for stores explicitly
   listed in `SCENTHUNTER_MAIN_REFRESH_STORES`.
 
-An on-demand product-page check can call
-`refresh_price_and_stock(store_key, offer_id)` directly. The HTTP product
-detail endpoint is not wired to dispatch that task yet.
+A product-detail handler can call
+`enqueue_product_detail_refresh(store_key, offer_id)` when the user opens a
+detail page. This dispatches the retailer refresh onto the `refresh` queue and
+returns its Celery job ID. The existing public product-detail HTTP handler and
+frontend have not yet been connected to this dispatch helper.
 
 ## Configuration
 
