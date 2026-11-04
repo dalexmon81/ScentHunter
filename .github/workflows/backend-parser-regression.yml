@@ -61,8 +61,8 @@ jobs:
           import re
           from pathlib import Path
           html = Path("frontend/index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r"<script(?:\\s[^>]*)?>(.*?)</script>", html, flags=re.S | re.I)
-          Path("/tmp/scenthunter-frontend.js").write_text("\\n;\\n".join(scripts), encoding="utf-8")
+          scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", html, flags=re.S | re.I)
+          Path("/tmp/scenthunter-frontend.js").write_text("\n;\n".join(scripts), encoding="utf-8")
           if not scripts:
               raise SystemExit("No inline frontend scripts found")
           PY
