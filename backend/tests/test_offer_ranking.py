@@ -44,3 +44,18 @@ def test_price_history_min_average_trend_and_anomaly():
     assert result["minimum"] == "70"
     assert result["trend"] == "down"
     assert result["alert"] == "unusual_price_drop"
+
+
+def test_repeated_low_confidence_matches_reduce_store_score():
+    now = datetime.now(timezone.utc)
+    common = {
+        "price": "50", "shipping_cost": "0", "currency": "EUR",
+        "availability": "in_stock", "captured_at": now, "confidence": "1",
+        "store_reliability": "1",
+    }
+    clean, mismatch = rank_offers([
+        {**common, "store": "clean", "mismatch_rate": 0},
+        {**common, "store": "mismatch", "mismatch_rate": 1},
+    ], now=now)
+    assert clean["score"] > mismatch["score"]
+    assert mismatch["score_breakdown"]["penalties"] == 15
