@@ -54,6 +54,7 @@ class LegacyStoreConnector:
         self._page_loader = page_loader
         self._limiter = RateLimiter(0.5)
         self._offers: dict[str, OfferRecord] = {}
+        self._raw_by_external_id: dict[str, Any] = {}
 
     def _map(self, item: Any) -> tuple[OfferRecord, ...]:
         if not isinstance(item, dict):
@@ -106,8 +107,15 @@ class LegacyStoreConnector:
             raise ValueError(f"{self.store_key}_parse_raw_requires_product_mapping")
         records = []
         for row in rows:
-            records.extend(self._map(row))
+            mapped = self._map(row)
+            records.extend(mapped)
+            for record in mapped:
+                self._raw_by_external_id[record.external_product_id] = row
         return tuple(records)
+
+    def raw_evidence_for(self, external_id: str):
+        """Return the original structured retailer row used to build an offer."""
+        return self._raw_by_external_id.get(str(external_id))
 
     def validate_offer(self, offer: OfferRecord):
         return validate_offer(offer)
