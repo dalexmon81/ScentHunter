@@ -2,7 +2,7 @@
 from __future__ import annotations
 import hmac
 import os
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import select
 from app.db import make_session_factory
 from app.models import CanonicalIdentityReview, IngestionRun, Store
@@ -20,7 +20,7 @@ def _authorize(authorization: str = Header(default="")) -> None:
 
 
 @router.get("/connectors")
-def connector_status(_auth: None = __import__("fastapi").Depends(_authorize)):
+def connector_status(_auth: None = Depends(_authorize)):
     """Return connector/store health metadata; never starts a connector."""
     factory = make_session_factory()
     try:
@@ -38,7 +38,7 @@ def connector_status(_auth: None = __import__("fastapi").Depends(_authorize)):
 
 
 @router.get("/ingestion")
-def ingestion_runs(limit: int = Query(50, ge=1, le=200), _auth: None = __import__("fastapi").Depends(_authorize)):
+def ingestion_runs(limit: int = Query(50, ge=1, le=200), _auth: None = Depends(_authorize)):
     """Return recent durable ingestion runs."""
     factory = make_session_factory()
     try:
@@ -56,7 +56,7 @@ def ingestion_runs(limit: int = Query(50, ge=1, le=200), _auth: None = __import_
 
 
 @router.get("/matching")
-def matching_reviews(status: str = "pending", limit: int = Query(50, ge=1, le=200), _auth: None = __import__("fastapi").Depends(_authorize)):
+def matching_reviews(status: str = "pending", limit: int = Query(50, ge=1, le=200), _auth: None = Depends(_authorize)):
     """Return canonical identity review queue without changing review state."""
     factory = make_session_factory()
     try:
