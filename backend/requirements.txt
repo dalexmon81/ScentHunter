@@ -12,3 +12,4 @@ alembic==1.17.1
 psycopg[binary]==3.2.12
 celery[redis]==5.5.3
 redis==5.2.1
+pycountry==24.6.1
