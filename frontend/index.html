@@ -931,6 +931,45 @@ async function requestOfferRefresh(offerId,button){
   }catch(error){button.textContent='Riprova';button.title='Impossibile avviare il controllo: '+String(error.message||error);}
   finally{button.disabled=false;}
 }
+async function hydratePhase2OfferIds(g){
+  if(!g||!g.catalog_id||g._phase2OfferIdsLoaded)return;
+  if(g._phase2OfferPromise)return g._phase2OfferPromise;
+  const productKey=productGroupKey(g);
+  g._phase2OfferPromise=(async()=>{
+    try{
+      const data=await fetchJSONWithTimeout(backend()+"/catalog/legacy-products/"+encodeURIComponent(productKey)+"/offers",12000);
+      const rows=Array.isArray(data?.offers)?data.offers:[];
+      let changed=false;
+      for(const offer of (g.offers||[])){
+        const url=String(offer?.url||"").trim();
+        if(!url)continue;
+        let matches=rows.filter(row=>String(row?.url||"").trim()===url);
+        const size=Number(String(offer?.size_ml??"").replace(",","."));
+        if(Number.isFinite(size)&&size>0)matches=matches.filter(row=>Number(row?.size_ml)===size);
+        else if(matches.length!==1)continue;
+        if(matches.length===1&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(matches[0].phase2_offer_id||""))){
+          offer.phase2_offer_id=matches[0].phase2_offer_id;
+          changed=true;
+        }
+      }
+      g._phase2OfferIdsLoaded=true;
+      if(changed&&currentOpenProductKey===productKey){
+        const gi=currentProductGroups.findIndex(item=>productGroupKey(item)===productKey);
+        if(gi>=0){
+          if(currentOpenSizeKey!==null)openSize(gi,currentOpenSizeKey);
+          else openProduct(gi);
+        }
+      }
+    }catch(error){
+      // The legacy detail remains usable if the Phase 2 database is not yet populated.
+      console.debug("Phase 2 offer ID bridge unavailable:",error?.message||error);
+    }finally{
+      g._phase2OfferPromise=null;
+    }
+  })();
+  return g._phase2OfferPromise;
+}
+
 function renderOffersHtml(g,img,offers,saved){
   return (offers||[]).map((o,n)=>{
     const out=isOfferOutOfStock(o);
@@ -960,6 +999,7 @@ function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=null;
+  void hydratePhase2OfferIds(g);
 
   const groups=getSizeGroups(g);
   const knownSizes=groups.map(x=>x.size).filter(Boolean);
@@ -1008,6 +1048,7 @@ function openSize(gi,sizeKey){
   const selected=getSizeGroups(g).find(x=>String(x.size)===String(sizeKey));
   if(!selected)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=String(sizeKey);
+  void hydratePhase2OfferIds(g);
   const saved=getWishlist(),img=g.image||g.fallback_image||"";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,selected.offers,saved)}</article>`;
 }
