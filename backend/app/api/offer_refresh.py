@@ -86,6 +86,7 @@ def queue_offer_refresh(
 
 
 @router.post("/catalog/offers/{offer_id}/refresh", status_code=202)
+@router.post("/api/offers/{offer_id}/refresh", status_code=202)
 def refresh_catalog_offer(offer_id: UUID):
     """Refresh a known offer by opaque UUID; store and retailer ID are DB-derived."""
     return queue_offer_refresh(offer_id)
