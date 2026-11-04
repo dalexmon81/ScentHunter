@@ -11,6 +11,7 @@ from .base import (
 from .deloox import DelooxConnector
 from .easycosmetic import EasycosmeticConnector
 from .notino import NotinoAffiliateFeedConnector
+from .sabina import SabinaConnector
 
 __all__ = [
     "ConnectorError",
@@ -21,6 +22,7 @@ __all__ = [
     "OfferRecord",
     "RateLimiter",
     "RetryPolicy",
+    "SabinaConnector",
     "StoreConnector",
     "validate_offer",
 ]
