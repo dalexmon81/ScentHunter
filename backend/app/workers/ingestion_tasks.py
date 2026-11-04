@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+import pycountry
+from datetime import timedelta
 from sqlalchemy import select
 
 from app.db import make_session_factory
@@ -298,6 +300,9 @@ def validate_offer(self, raw_id: str):
                 return {"raw_id": raw_id, "status": "skipped"}
             payload = raw.raw_payload or {}
             errors = []
+            store = session.get(Store, raw.store_id)
+            if store is None or store.status != "active":
+                errors.append("store_not_active")
             for field in ("store", "externalProductId", "brand", "fragrance", "title", "url", "availability", "capturedAt", "source"):
                 if not str(payload.get(field) or "").strip():
                     errors.append(f"missing_{field}")
@@ -309,16 +314,23 @@ def validate_offer(self, raw_id: str):
                     errors.append("invalid_price")
             except (InvalidOperation, TypeError, ValueError):
                 errors.append("invalid_price")
-            if not isinstance(payload.get("currency"), str) or len(payload["currency"]) != 3 or payload["currency"] != payload["currency"].upper():
-                errors.append("invalid_currency")
+            currency = payload.get("currency")
+            if not isinstance(currency, str) or len(currency) != 3 or currency != currency.upper() or pycountry.currencies.get(alpha_3=currency) is None:
+                errors.append("invalid_iso_4217_currency")
             try:
                 captured = datetime.fromisoformat(str(payload.get("capturedAt", "")).replace("Z", "+00:00"))
                 if captured.tzinfo is None:
                     errors.append("captured_at_timezone_required")
+                else:
+                    now = datetime.now(timezone.utc)
+                    if captured > now + timedelta(minutes=5):
+                        errors.append("captured_at_in_future")
+                    if captured < now - timedelta(hours=48):
+                        errors.append("stale_offer_evidence")
             except (TypeError, ValueError):
                 errors.append("invalid_captured_at")
-            if payload.get("availability") not in {"in_stock", "out_of_stock"}:
-                errors.append("invalid_availability")
+            if payload.get("availability") != "in_stock":
+                errors.append("not_explicitly_in_stock")
             if payload.get("purchasable") is False or payload.get("isPurchasable") is False:
                 errors.append("product_not_purchasable")
             if payload.get("price_incoherent") is True or payload.get("page_price_mismatch") is True:
