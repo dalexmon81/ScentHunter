@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
+import os
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Base, Brand, Fragrance, Offer, ProductVariant, Store
@@ -127,4 +128,63 @@ def test_catalog_search_rejects_unsupported_format_and_long_query(tmp_path):
         with pytest.raises(ValueError, match="query_too_long"):
             search_catalog("x" * 161, session_factory=factory)
     finally:
+        engine.dispose()
+
+
+def test_postgres_full_text_catalog_search_reads_published_variant():
+    import pytest
+
+    url = os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL", "")
+    if not url.startswith(("postgresql://", "postgresql+psycopg://")):
+        pytest.skip("requires disposable PostgreSQL full-text search database")
+
+    engine = create_engine(url, pool_pre_ping=True)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    brand_id, fragrance_id, variant_id = uuid4(), uuid4(), uuid4()
+    store_id, offer_id = uuid4(), uuid4()
+    slug = "fts-test-" + store_id.hex
+    now = datetime.now(timezone.utc)
+    try:
+        with factory.begin() as session:
+            session.add(Brand(
+                id=brand_id, name="Dior", slug=slug,
+                normalized_name=slug,
+            ))
+            session.add(Fragrance(
+                id=fragrance_id, brand_id=brand_id,
+                name="Sauvage FTS Probe", slug=slug,
+            ))
+            session.add(ProductVariant(
+                id=variant_id, fragrance_id=fragrance_id,
+                concentration="EDP", size_ml=100,
+                canonical_key=slug,
+            ))
+            session.add(Store(
+                id=store_id, name="FTS Test Store", slug=slug,
+                country="LU", currency="EUR", status="active",
+            ))
+            session.add(Offer(
+                id=offer_id, store_id=store_id,
+                product_variant_id=variant_id,
+                external_product_id=slug,
+                url="https://fts.example.invalid/item",
+                price=Decimal("42.00"), currency="EUR",
+                availability="in_stock", source="test",
+                confidence=Decimal("1.000"), captured_at=now,
+                status="active", publication_status="published",
+            ))
+
+        result = search_catalog(
+            "Sauvage FTS Probe", session_factory=factory, store=slug,
+        )
+        assert result["count"] == 1
+        assert result["offer_count"] == 1
+        assert result["results"][0]["fragrance"] == "Sauvage FTS Probe"
+    finally:
+        with factory.begin() as session:
+            session.execute(delete(Offer).where(Offer.id == offer_id))
+            session.execute(delete(ProductVariant).where(ProductVariant.id == variant_id))
+            session.execute(delete(Fragrance).where(Fragrance.id == fragrance_id))
+            session.execute(delete(Store).where(Store.id == store_id))
+            session.execute(delete(Brand).where(Brand.id == brand_id))
         engine.dispose()
