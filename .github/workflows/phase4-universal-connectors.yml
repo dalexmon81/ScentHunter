@@ -7,6 +7,9 @@ on:
     paths:
       - "backend/app/connectors/**"
       - "backend/app/workers/connector_ingestion.py"
+      - "backend/app/workers/matching_worker.py"
+      - "backend/app/matching/**"
+      - "backend/tests/test_offer_matching_worker.py"
       - "backend/tests/test_connector_ingestion_worker.py"
       - "backend/tests/test_store_connector_contract.py"
       - "backend/tests/test_notino_connector_fixture.py"
@@ -43,6 +46,6 @@ jobs:
       - name: Install focused test dependencies
         run: python -m pip install pytest requests beautifulsoup4 lxml sqlalchemy
       - name: Compile connector contract
-        run: python -m compileall -q backend/app/connectors backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py backend/tests/test_notino_universal_connector.py backend/tests/test_deloox_universal_connector.py backend/tests/test_easycosmetic_universal_connector.py backend/tests/test_sabina_universal_connector.py backend/tests/test_parfumzentrum_universal_connector.py backend/app/workers/connector_ingestion.py backend/tests/test_connector_ingestion_worker.py
+        run: python -m compileall -q backend/app/connectors backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py backend/tests/test_notino_universal_connector.py backend/tests/test_deloox_universal_connector.py backend/tests/test_easycosmetic_universal_connector.py backend/tests/test_sabina_universal_connector.py backend/tests/test_parfumzentrum_universal_connector.py backend/app/workers/connector_ingestion.py backend/app/workers/matching_worker.py backend/app/matching/offer_matcher.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_offer_matching_worker.py
       - name: Run connector contract and retailer fixture tests
         run: python -m pytest -q backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py backend/tests/test_notino_universal_connector.py backend/tests/test_deloox_universal_connector.py backend/tests/test_easycosmetic_universal_connector.py backend/tests/test_sabina_universal_connector.py backend/tests/test_parfumzentrum_universal_connector.py backend/tests/test_connector_ingestion_worker.py
