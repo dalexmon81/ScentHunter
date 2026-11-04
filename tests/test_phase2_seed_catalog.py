@@ -64,10 +64,7 @@ def test_seed_dry_run_keeps_products_without_inventing_variants(tmp_path):
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "validated"
-    assert report["stores_to_seed"] == [{
-        "name": "Bplatz", "slug": "bplatz", "domain": "bplatz.de",
-        "country": "DE", "currency": "EUR", "status": "active",
-    }]
+    assert report["stores_to_seed"] == []
     assert report["brands"] == 1
     assert report["fragrances"] == 2
     assert report["variants"] == 1
@@ -75,6 +72,22 @@ def test_seed_dry_run_keeps_products_without_inventing_variants(tmp_path):
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
     assert not (tmp_path / "unused.sqlite3").exists()
+
+
+def test_bplatz_store_dry_run_requires_explicit_opt_in(tmp_path):
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(json.dumps(sample_catalog()), encoding="utf-8")
+    result = run_seed(
+        catalog_path, f"sqlite:///{tmp_path / 'unused.sqlite3'}",
+        "--seed-bplatz-store",
+    )
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout)
+    assert report["stores_to_seed"] == [{
+        "name": "Bplatz", "slug": "bplatz", "domain": "bplatz.de",
+        "country": "DE", "currency": "EUR", "status": "active",
+    }]
+    assert report["database_written"] is False
 
 
 def test_seed_apply_imports_identity_without_creating_variant_or_offer(tmp_path):
@@ -96,7 +109,7 @@ def test_seed_apply_imports_identity_without_creating_variant_or_offer(tmp_path)
     )
     assert migration.returncode == 0, migration.stderr
 
-    result = run_seed(catalog_path, database_url, "--apply")
+    result = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "seeded"
@@ -204,7 +217,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
     )
     assert migration.returncode == 0, migration.stderr
 
-    first = run_seed(catalog_path, database_url, "--apply")
+    first = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
     assert first.returncode == 0, first.stderr
     first_report = json.loads(first.stdout)
     assert first_report["status"] == "seeded"
@@ -257,7 +270,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
             assert resolved_missing is None
 
         # Re-running the seed must be a no-op for both mapping tables.
-        second = run_seed(catalog_path, database_url, "--apply")
+        second = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert second.returncode == 0, second.stderr
         second_report = json.loads(second.stdout)
         assert second_report["database_counts"]["legacy_product_id_map"] == len(products)
@@ -323,9 +336,9 @@ def test_bplatz_store_seed_is_idempotent_and_leaves_other_eight_stores_untouched
             }
         assert set(before) == {row[0] for row in other_stores}
 
-        first = run_seed(catalog_path, database_url, "--apply")
+        first = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert first.returncode == 0, first.stderr
-        second = run_seed(catalog_path, database_url, "--apply")
+        second = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert second.returncode == 0, second.stderr
 
         with Session(engine) as session:
