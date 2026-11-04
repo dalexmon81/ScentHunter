@@ -91,7 +91,7 @@ def _json_safe(value: Any):
         return value
     return repr(value)[:2000]
 
-def _persist_raw_artifacts(store_key: str, run_id: str, artifacts: list[dict]) -> list[str]:
+def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[dict]) -> list[str]:
     """Persist exact source bytes (or deterministic JSON evidence) once per hash."""
     factory = make_session_factory()
     artifact_ids = []
@@ -123,7 +123,7 @@ def _persist_raw_artifacts(store_key: str, run_id: str, artifacts: list[dict]) -
                     continue
                 row = IngestionArtifact(
                     store_id=store.id,
-                    ingestion_run_id=UUID(str(run_id)),
+                    ingestion_run_id=UUID(str(run_id)) if run_id else None,
                     artifact_format=fmt,
                     content_type=artifact.get("content_type"),
                     source_url=artifact.get("source_url"),
@@ -388,11 +388,26 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
         factory.kw["bind"].dispose()
     connector = get_connector(store_key)
     record = _run(connector.fetch_price_and_stock(offer_id))
+    raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
+    artifact_ids = (
+        _persist_raw_artifacts(store_key, None, raw_artifacts)
+        if raw_artifacts else []
+    )
     if record is None:
-        return {"store": store_key, "offer_id": offer_id, "status": "not_refreshed"}
-    raw_id = _stage_record(store_key, record, {"refresh_of": offer_id})
+        return {
+            "store": store_key, "offer_id": offer_id,
+            "status": "not_refreshed", "raw_artifact_ids": artifact_ids,
+        }
+    raw_id = _stage_record(
+        store_key, record,
+        {"refresh_of": offer_id, "raw_artifact_ids": artifact_ids},
+    )
     validate_offer.apply_async(args=[raw_id], queue="validation")
-    return {"store": store_key, "offer_id": offer_id, "status": "refreshed", "raw_id": raw_id}
+    return {
+        "store": store_key, "offer_id": offer_id,
+        "status": "refreshed", "raw_id": raw_id,
+        "raw_artifact_ids": artifact_ids,
+    }
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.quarantine_failed_connector")
 def quarantine_failed_connector(self, store_key: str):
