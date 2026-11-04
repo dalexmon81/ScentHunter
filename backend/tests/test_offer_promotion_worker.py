@@ -240,3 +240,17 @@ def test_non_iso_currency_is_not_published():
     assert promote_matched_offers(factory) == {"processed": 1, "published": 0, "blocked": 1}
     with factory() as session:
         assert session.scalar(select(Offer)) is None
+
+
+def test_non_monetary_and_test_currencies_are_not_published():
+    for currency in ("XXX", "XTS"):
+        factory, _raw_id = setup_db()
+        with factory() as session:
+            raw = session.scalar(select(IngestionRaw))
+            raw.raw_payload = {**raw.raw_payload, "currency": currency}
+            session.commit()
+        assert promote_matched_offers(factory) == {
+            "processed": 1, "published": 0, "blocked": 1,
+        }
+        with factory() as session:
+            assert session.scalar(select(Offer)) is None
