@@ -50,7 +50,7 @@ def test_dry_run_plans_missing_brand_without_writing():
 def test_existing_identity_is_resolved_without_mutation():
     engine, session = _session()
     try:
-        _brand, _fragrance, variant = _seed(gtin="4006381333931")
+        _brand, _fragrance, variant = _seed(session, gtin="4006381333931")
         product = normalize_product("Dior", "Sauvage EDP 100 ml")
         plan = plan_canonical_identity(session, product, gtin="4006381333931")
         assert plan.status == "existing"
