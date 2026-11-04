@@ -154,9 +154,43 @@ jobs:
                   payload = result.get(timeout=45, propagate=True)
                   assert payload["refresh_jobs_queued"] == 0, payload
                   assert payload["stores"] == [], payload
+
+                  # Exercise a real worker-side database write through the dead-letter queue.
+                  from uuid import uuid4
+                  from sqlalchemy import select
+                  from sqlalchemy.orm import Session
+                  from app.db import make_engine
+                  from app.models import IngestionDeadLetter
+
+                  dead_letter_id = "phase5-runtime-smoke-" + str(uuid4())
+                  recorded = celery_app.send_task(
+                      "app.workers.ingestion_tasks.record_dead_letter",
+                      kwargs={
+                          "task_name": "phase5.runtime.smoke",
+                          "task_id": dead_letter_id,
+                          "args_repr": "[]",
+                          "kwargs_repr": "{}",
+                          "error": "synthetic CI-only failure record",
+                      },
+                      queue="dead_letter",
+                  ).get(timeout=45, propagate=True)
+                  assert recorded == {"recorded": True, "task_id": dead_letter_id}, recorded
+                  engine = make_engine()
+                  try:
+                      with Session(engine) as session:
+                          row = session.scalar(
+                              select(IngestionDeadLetter).where(
+                                  IngestionDeadLetter.task_id == dead_letter_id
+                              )
+                          )
+                          assert row is not None and row.status == "open"
+                  finally:
+                      engine.dispose()
+
                   print("REDIS_BROKER=PASS")
                   print("CELERY_WORKER_CONSUME=PASS")
                   print("POSTGRES_TASK_QUERY=PASS")
+                  print("POSTGRES_DURABLE_DEAD_LETTER_WRITE=PASS")
                   print("PHASE2_CATALOG_SEED=PASS")
                   print("SAFE_NO_RETAILER_NETWORK_CALLS=PASS")
               finally:
