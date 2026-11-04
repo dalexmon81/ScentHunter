@@ -4,6 +4,7 @@ import pytest
 from app.api.admin import _authorize, router as admin_router
 from app.api.catalog_resources import router as resources_router
 from app.api.catalog_search import router as search_router
+from app.api.offer_refresh import router as offer_refresh_router
 from app.schemas.catalog import SearchResponse
 
 
@@ -56,6 +57,7 @@ def test_api_router_namespaces_are_mounted_as_expected():
     search_paths = {route.path for route in search_router.routes}
     resource_paths = {route.path for route in resources_router.routes}
     admin_paths = {route.path for route in admin_router.routes}
+    refresh_paths = {route.path for route in offer_refresh_router.routes}
     assert "/api/search" in search_paths
     assert "/api/products/{slug}" in resource_paths
     assert "/api/products/{slug}/offers" in resource_paths
@@ -65,3 +67,4 @@ def test_api_router_namespaces_are_mounted_as_expected():
     assert "/api/admin/connectors" in admin_paths
     assert "/api/admin/ingestion" in admin_paths
     assert "/api/admin/matching" in admin_paths
+    assert "/api/offers/{offer_id}/refresh" in refresh_paths
