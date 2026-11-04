@@ -80,7 +80,7 @@ class LegacyVariantIdMap(Base):
 
 class IngestionRaw(Base):
     __tablename__ = "ingestion_raw"
-    __table_args__ = (Index("ix_ingestion_raw_store_status", "store_id", "status"), CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"))
+    __table_args__ = (Index("ix_ingestion_raw_store_status", "store_id", "status"), CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"), CheckConstraint("validation_status IN ('pending','validated','rejected')", name="ingestion_raw_validation_status"))
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
@@ -105,7 +105,7 @@ class Offer(Base):
         CheckConstraint("confidence IS NULL OR (confidence >= 0 AND confidence <= 1)", name="confidence_range"),
         CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
         Index("ix_offers_store_external_product", "store_id", "external_product_id", unique=True, sqlite_where=text("external_product_id IS NOT NULL"), postgresql_where=text("external_product_id IS NOT NULL")),
-        Index("ix_offers_status", "status"), Index("ix_offers_captured_at", "captured_at"), Index("ix_offers_price", "price"), Index("ix_offers_store_id", "store_id"), Index("ix_offers_product_variant_id", "product_variant_id"), CheckConstraint("status <> 'active' OR (length(trim(url)) > 0 AND availability IS NOT NULL)", name="active_offer_required_fields"),
+        Index("ix_offers_status", "status"), Index("ix_offers_captured_at", "captured_at"), Index("ix_offers_price", "price"), Index("ix_offers_store_id", "store_id"), Index("ix_offers_product_variant_id", "product_variant_id"), CheckConstraint("status <> 'active' OR (length(trim(url)) > 0 AND availability IS NOT NULL)", name="active_offer_required_fields"), CheckConstraint("publication_status IN ('draft','published','stale','rejected','quarantined')", name="offers_publication_status"), Index("ix_offers_publication_status", "publication_status"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ingestion_raw_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("ingestion_raw.id", ondelete="RESTRICT"), unique=True)
