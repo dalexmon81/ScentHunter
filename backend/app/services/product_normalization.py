@@ -155,8 +155,14 @@ def normalize_product(brand: str, title: str, *, concentration: str | None = Non
         name = re.sub(r"(?<![a-z0-9])" + re.escape(phrase) + r"(?![a-z0-9])", " ", name)
     name = _SIZE.sub(" ", name)
     name = _SPACE.sub(" ", name).strip()
-    if name.startswith(brand_norm + " "):
-        name = name[len(brand_norm):].strip()
+    # Remove either the supplied brand spelling or its canonical alias.
+    # Example: input brand "Dior" normalizes to "Christian Dior", while the
+    # retailer title may still begin with the shorter spelling "Dior".
+    brand_prefixes = sorted({normalize_text(brand), brand_norm}, key=len, reverse=True)
+    for brand_prefix in brand_prefixes:
+        if brand_prefix and name.startswith(brand_prefix + " "):
+            name = name[len(brand_prefix):].strip()
+            break
     if not name:
         raise ValueError("fragrance_name_empty_after_normalization")
 
