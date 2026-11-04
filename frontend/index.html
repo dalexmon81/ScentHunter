@@ -833,6 +833,7 @@ function shGroupData(data){
       image,
       fallback_image,
       fallback_images,
+      variants:Array.isArray(group.variants)?group.variants:[],
       offers
     };
   }).filter(group=>group.catalog_id&&group.name);
