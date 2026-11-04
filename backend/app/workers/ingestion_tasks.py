@@ -100,6 +100,8 @@ def _persist_raw_artifacts(store_key: str, run_id: str, artifacts: list[dict]) -
             store = session.scalar(select(Store).where(Store.slug == store_key))
             if store is None:
                 raise ValueError(f"connector_store_not_configured:{store_key}")
+            if store.status != "active":
+                raise ValueError(f"connector_store_not_active:{store_key}")
             for artifact in artifacts:
                 raw = artifact.get("data")
                 fmt = str(artifact.get("format") or "json").lower()
@@ -145,6 +147,8 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
             store = session.scalar(select(Store).where(Store.slug == store_key))
             if store is None:
                 raise ValueError(f"connector_store_not_configured:{store_key}")
+            if store.status != "active":
+                raise ValueError(f"connector_store_not_active:{store_key}")
             payload = record.to_dict()
             # Keep fields at the root for existing matcher/promotion contracts;
             # preserve source evidence separately for replay and audit.
@@ -200,8 +204,8 @@ def discover_store_products(self, store_key: str):
             store = session.scalar(select(Store).where(Store.slug == store_key))
             if store is None:
                 raise ValueError(f"connector_store_not_configured:{store_key}")
-            if store.status == "quarantined":
-                return {"store": store_key, "status": "quarantined", "queued": 0}
+            if store.status != "active":
+                return {"store": store_key, "status": "inactive", "queued": 0}
             run = IngestionRun(store_id=store.id, status="running", errors=[])
             session.add(run)
             session.flush()
@@ -364,6 +368,24 @@ def enqueue_product_detail_refresh(store_key: str, offer_id: str) -> str:
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.refresh_price_and_stock")
 def refresh_price_and_stock(self, store_key: str, offer_id: str):
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            refreshable = session.execute(
+                select(Offer.id)
+                .join(Store, Offer.store_id == Store.id)
+                .where(
+                    Store.slug == store_key,
+                    Store.status == "active",
+                    Offer.status == "active",
+                    Offer.external_product_id == offer_id,
+                )
+                .limit(1)
+            ).first()
+        if refreshable is None:
+            return {"store": store_key, "offer_id": offer_id, "status": "not_refreshable"}
+    finally:
+        factory.kw["bind"].dispose()
     connector = get_connector(store_key)
     record = _run(connector.fetch_price_and_stock(offer_id))
     if record is None:
@@ -445,7 +467,17 @@ def record_dead_letter(task_name: str, task_id: str, args_repr: str, kwargs_repr
         factory.kw["bind"].dispose()
 
 def _configured_store_keys():
-    return sorted(build_connectors().keys())
+    """Schedule only connectors whose Phase 2 store row is explicitly active."""
+    connector_keys = set(build_connectors().keys())
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            active_store_keys = set(session.scalars(
+                select(Store.slug).where(Store.status == "active")
+            ).all())
+        return sorted(connector_keys & active_store_keys)
+    finally:
+        factory.kw["bind"].dispose()
 
 @celery_app.task(name="app.workers.ingestion_tasks.enqueue_discovery_for_configured_stores")
 def enqueue_discovery_for_configured_stores():
