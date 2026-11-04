@@ -118,6 +118,10 @@ class NextEngineService:
             identity_review_rows=tuple(identity_review_rows),
         )
 
+    def match_offer(self, offer: RetailerOffer) -> OfferMatch:
+        """Return the explicit per-offer match decision, including its confidence."""
+        return self._matcher.match(offer)
+
     def process_offers(self, offers: Iterable[RetailerOffer]) -> AggregationResult:
         """Resolve already-normalized offers and return grouped outcomes."""
         return aggregate_matches(self._matcher.match(offer) for offer in offers)
