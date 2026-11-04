@@ -17,6 +17,7 @@ def _configure(connection=None, url=None):
         literal_binds=connection is None,
         dialect_opts={"paramstyle": "named"} if connection is None else {},
         compare_type=True,
+        version_table_size=128,
         render_as_batch=(dialect == "sqlite"),
     )
 
@@ -30,6 +31,7 @@ def run_migrations_offline():
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        version_table_size=128,
         render_as_batch=(parsed.get_backend_name() == "sqlite"),
     )
     with context.begin_transaction():
