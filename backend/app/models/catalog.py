@@ -186,6 +186,25 @@ class IngestionArtifact(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class IngestionDeadLetter(Base):
+    """Durable record of a Celery task that exhausted its retry policy."""
+    __tablename__ = "ingestion_dead_letters"
+    __table_args__ = (
+        Index("ix_ingestion_dead_letters_status_created", "status", "created_at"),
+        UniqueConstraint("task_id", name="uq_ingestion_dead_letters_task_id"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_name: Mapped[str] = mapped_column(String(240), nullable=False)
+    task_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    args_repr: Mapped[str] = mapped_column(Text, nullable=False)
+    kwargs_repr: Mapped[str] = mapped_column(Text, nullable=False)
+    error: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="open", server_default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_by: Mapped[str | None] = mapped_column(String(160))
+
+
 class CanonicalIdentityReview(Base):
     """Durable, append-once review record for uncertain canonical identities."""
     __tablename__ = "canonical_identity_reviews"
