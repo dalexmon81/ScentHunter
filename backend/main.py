@@ -54,6 +54,8 @@ from app.api.catalog_search import router as catalog_search_router
 app.include_router(catalog_search_router)
 from app.api.catalog_resources import router as catalog_resources_router
 app.include_router(catalog_resources_router)
+from app.api.admin import router as catalog_admin_router
+app.include_router(catalog_admin_router)
 
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
