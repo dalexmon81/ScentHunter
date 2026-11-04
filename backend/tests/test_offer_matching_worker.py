@@ -74,6 +74,7 @@ def test_batch_worker_leaves_unknown_identity_unmatched():
     result = match_pending_offers(factory)
     with factory() as session:
         raw = session.get(IngestionRaw, raw_id)
+        reviews = session.scalars(select(CanonicalIdentityReview)).all()
     assert result == {"processed": 1, "matched": 0, "unmatched": 1}
     assert raw.status == "unmatched"
     assert raw.product_variant_id is None
