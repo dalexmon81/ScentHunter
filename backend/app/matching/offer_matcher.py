@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import IngestionRaw, ProductVariant
+from app.models import IngestionRaw, Offer, ProductVariant
 from app.services.ingestion_persistence import record_match
 from app.services.product_normalization import normalize_gtin, normalize_product
 from app.services.canonical_identity_review_queue import enqueue_identity_review
@@ -59,6 +59,26 @@ def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
                                      "verified_gtin_conflicts_with_normalized_identity")
             return MatchDecision("matched", "gtin_exact", Decimal("1.000"),
                                  candidate.id, "verified_gtin_and_identity_agree")
+
+    if raw.external_product_id:
+        linked = session.scalars(
+            select(Offer.product_variant_id).where(
+                Offer.store_id == raw.store_id,
+                Offer.external_product_id == raw.external_product_id,
+                Offer.product_variant_id.is_not(None),
+            ).distinct()
+        ).all()
+        linked_ids = set(linked)
+        if len(linked_ids) > 1:
+            return MatchDecision("unmatched", "store_sku_ambiguous", None, None,
+                                 "store_sku_is_linked_to_multiple_variants")
+        if len(linked_ids) == 1:
+            linked_variant = session.get(ProductVariant, next(iter(linked_ids)))
+            if linked_variant is None or linked_variant.canonical_key != identity.canonical_key:
+                return MatchDecision("unmatched", "store_sku_identity_conflict", None, None,
+                                     "stored_store_sku_mapping_conflicts_with_current_identity")
+            return MatchDecision("matched", "store_sku_exact", Decimal("0.995"),
+                                 linked_variant.id, "reused_verified_store_sku_mapping")
 
     candidates = session.scalars(
         select(ProductVariant).where(
