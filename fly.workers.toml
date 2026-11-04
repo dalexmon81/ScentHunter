@@ -6,7 +6,7 @@ primary_region = "ams"
   dockerfile = "backend/Dockerfile.worker"
 
 [processes]
-  app = "celery -A app.workers.celery_app:celery_app worker --loglevel=INFO --queues=discovery,offers,validation,matching,refresh,dead_letter --concurrency=2"
+  app = "sh /app/backend/start_worker.sh"
 
 [[vm]]
   memory = "1gb"
