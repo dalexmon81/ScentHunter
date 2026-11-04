@@ -77,6 +77,26 @@ jobs:
             exit 1
           fi
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); i=inspect(e); tables=set(i.get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\"}; present=sorted(required & tables); missing=sorted(required - tables); result={\"database_dialect\":e.dialect.name,\"catalog_schema\":\"ready\" if not missing else \"not_migrated_or_incomplete\",\"required_tables_present\":present,\"required_tables_missing\":missing,\"store_count\":None,\"stores\":[]}; result.update({\"store_count\":0,\"stores\":[]} if \"stores\" not in tables else {}); result.update({\"store_count\":e.connect().execute(text(\"SELECT count(*) FROM stores\")).scalar_one()} if \"stores\" in tables else {}); print(result); e.dispose()'"
+          echo "::notice::Schema audit is read-only. An uninitialized schema is intentionally not migrated by this workflow."
+      - name: Verify worker runs non-root and Beat stays disabled
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          worker_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          beat_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "beat")][0].id')"
+          if [ -z "$worker_id" ] || [ "$worker_id" = "null" ] || [ -z "$beat_id" ] || [ "$beat_id" = "null" ]; then
+            echo "::error::Both worker and beat process groups must have a started machine."
+            exit 1
+          fi
+          uid="$(flyctl ssh console --app scenthunter-staging-workers --machine "$worker_id" --command "id -u" | tail -n 1 | tr -d '\r')"
+          echo "Worker runtime UID: $uid"
+          if [ "$uid" != "10001" ]; then
+            echo "::error::Worker must run as non-root UID 10001."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$beat_id" --command "sh -c '! ps -eo args | grep -E \"[c]elery .* beat\"'"
+          echo "Beat process is not running; scheduled ingestion remains disabled."
       - name: Verify Celery worker responds to broker ping
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
