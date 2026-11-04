@@ -1,0 +1,26 @@
+# Isolated Fly.io staging configuration for the Phase 5 ingestion workers.
+# Deploy only with this config file. Do not use the production fly.toml.
+app = "scenthunter-staging-workers"
+primary_region = "fra"
+
+[build]
+  dockerfile = "backend/Dockerfile.worker"
+
+[processes]
+  worker = "celery -A app.workers.celery_app:celery_app worker --loglevel=INFO --queues=discovery,offers,validation,matching,refresh,dead_letter"
+  beat = "celery -A app.workers.celery_app:celery_app beat --loglevel=INFO"
+
+# No [http_service], [[services]], [mounts], or production volume:
+# these are private background processes only.
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "1gb"
+  processes = ["worker"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"
+  processes = ["beat"]
