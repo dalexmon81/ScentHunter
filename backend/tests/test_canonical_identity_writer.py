@@ -32,6 +32,7 @@ def test_writer_is_blocked_without_explicit_opt_in():
 def test_writer_inserts_missing_identity_but_does_not_commit():
     engine, session = _session()
     try:
+        transaction = session.begin()
         product = normalize_product("Dior", "Sauvage EDP 100 ml")
         result = persist_canonical_identity(
             session, product, gtin="4006381333931", allow_create=True
@@ -46,7 +47,7 @@ def test_writer_inserts_missing_identity_but_does_not_commit():
         assert variant is not None
         assert variant.canonical_key == product.canonical_key
         assert variant.gtin == "4006381333931"
-        session.rollback()
+        transaction.rollback()
         assert session.scalar(select(func.count()).select_from(Brand)) == 0
         assert session.scalar(select(func.count()).select_from(Fragrance)) == 0
         assert session.scalar(select(func.count()).select_from(ProductVariant)) == 0
