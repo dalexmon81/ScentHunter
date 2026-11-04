@@ -1241,15 +1241,18 @@ async function searchPerfume(){
               ? `${count} prodotti trovati — alcuni negozi non verificati`
               : "0 prodotti verificati — alcuni negozi non hanno potuto essere verificati";
         }else if(status === "completed"){
-          const count=Number(data?.count||groups.length||0);
-          // Defensive fallback for older backend states.
-          statusBox.textContent = hasUnverified
-            ? (
-                count > 0
-                  ? `${count} prodotti trovati — alcuni negozi non verificati`
-                  : "0 prodotti verificati — alcuni negozi non hanno potuto essere verificati"
-              )
-            : `${count} prodotti trovati`;
+          const count=Number(data?.count ?? groups.length ?? 0);
+          if(count===0){
+            statusBox.textContent="Nessun prodotto trovato nell'indice. Prova un'altra ricerca.";
+            const suggestions=Array.isArray(data?.suggestions)?data.suggestions:[];
+            if(suggestions.length){
+              errorsBox.innerHTML='<div style="color:#e7b83f;font-weight:900;margin-bottom:6px">Forse cercavi:</div>'+suggestions.map(x=>'<div style="margin-top:5px">'+esc((x.brand||"")+" — "+(x.fragrance||""))+'</div>').join("");
+            }
+          }else{
+            statusBox.textContent=hasUnverified
+              ? count+" prodotti trovati — alcuni negozi non verificati"
+              : count+(count===1?" prodotto trovato":" prodotti trovati");
+          }
         }else if(status === "cancelled_with_results"){
           statusBox.textContent =
             `${Number(data?.count||groups.length||0)} prodotti trovati — ricerca interrotta`;
@@ -1258,7 +1261,7 @@ async function searchPerfume(){
             "Ricerca cancellata (nessun risultato)";
         }else if(status === "error"){
           statusBox.textContent =
-            "Errore nella ricerca";
+            "Servizio di ricerca temporaneamente non disponibile. Riprova tra poco.";
         }else if(data?.completed === true){
           // Unknown final status: the job is finished even if this frontend
           // does not recognize the status label. Never leave the UI "searching".
