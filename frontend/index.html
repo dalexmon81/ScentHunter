@@ -87,6 +87,9 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 
 </style>
 <style>
+.catalog-filters{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0 12px}.catalog-filters label{display:flex;flex-direction:column;gap:5px;color:#b7b9ba;font-size:11px;font-weight:800}.catalog-filters select{width:100%;min-width:0;border:1px solid #34363a;border-radius:12px;padding:10px 9px;background:#121615;color:#f7f7f5;font-size:13px}.offer-freshness{color:#a7b2aa;font-size:11px;margin-top:5px}.offer-warning{color:#e7b83f;font-size:11px;font-weight:800;margin-top:5px}.empty-offers{margin-top:14px;padding:14px;border:1px solid #665522;border-radius:14px;color:#e4d4a1;background:#19160e;line-height:1.45}
+</style>
+<style>
 .nav{position:fixed!important;left:50%!important;right:auto!important;bottom:0!important;top:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;z-index:9999!important;margin:0!important}
 .app{padding-bottom:calc(110px + env(safe-area-inset-bottom))!important}
 </style>
@@ -334,6 +337,10 @@ body{position:relative}
       <span class="home-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg></span>
       <input id="query" type="search" placeholder="Cerca un profumo..." autocomplete="off" enterkeyhint="search" aria-label="Cerca un profumo">
     </div>
+    <div class="catalog-filters" aria-label="Filtri catalogo">
+      <label>Negozio <select id="storeFilter"><option value="">Tutti i negozi</option></select></label>
+      <label>Disponibilità <select id="availabilityFilter"><option value="in_stock">Disponibile</option><option value="all">Tutte</option><option value="out_of_stock">Esaurito</option></select></label>
+    </div>
     <button id="searchButton" class="home-search-button" type="button">INIZIA LA RICERCA</button>
   </div>
 </section>
@@ -367,7 +374,7 @@ body{position:relative}
 </nav>
 <script>
 let isSearching = false;
-const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),unresolvedBox=document.getElementById("unresolvedBox"),errorsBox=document.getElementById("errorsBox");
+const queryInput=document.getElementById("query"),storeFilter=document.getElementById("storeFilter"),availabilityFilter=document.getElementById("availabilityFilter"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),unresolvedBox=document.getElementById("unresolvedBox"),errorsBox=document.getElementById("errorsBox");
 
 const WISH_KEY="scenthunter_wishlist_v4";
 const PREV_WISH_KEY="scenthunter_wishlist_v3";
@@ -1125,68 +1132,58 @@ function renderStoreDiagnostics(data){
   errorsBox.innerHTML=`<div style="color:#e7b83f;font-weight:900;margin-bottom:6px">Problemi tecnici durante la ricerca</div>${rows}`;
 }
 
-async function searchStoresProgressive(term,onPartial){
+async async function searchStoresProgressive(term,onPartial){
   const query=String(term||"").trim();
   const empty={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{},stores:{}};
-  if(!query)return empty;
-  let lastData=empty;
-  const startedAt=Date.now();
-  let jobId="";
+  if(!query)return {...empty,completed:true,status:"completed"};
+  const params=new URLSearchParams({q:query,limit:"50"});
+  if(storeFilter?.value)params.set("store",storeFilter.value);
+  if(availabilityFilter?.value)params.set("availability",availabilityFilter.value);
   try{
-    while(Date.now()-startedAt<180000){
-      const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000);
-      if(start?.status==="busy"){
-        lastData=start;
-        await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||200)));
-        continue;
-      }
-      if(start?.status==="error" || start?.completed===true){
-        return start;
-      }
-      jobId=String(start?.job_id||"").trim();
-      if(!jobId)throw new Error("Il backend non ha restituito il job_id");
-      lastData=start;
-      break;
-    }
-    if(!jobId)throw new Error("Il backend non ha liberato la ricerca precedente entro il tempo previsto");
-    while(Date.now()-startedAt<180000){
-      let status;
-      try{
-        status=await fetchJSONWithTimeout(backend()+"/search-status?job_id="+encodeURIComponent(jobId),15000);
-      }catch(pollError){
-        lastData={...lastData,errors:{...(lastData.errors||{}),_poll:String(pollError?.message||pollError)}};
-        await new Promise(resolve=>setTimeout(resolve,700));
-        continue;
-      }
-      lastData=status||lastData;
-      if(typeof onPartial==="function")onPartial(status||lastData,Boolean(status?.completed));
-      // The backend's completed flag is authoritative. Do not keep polling
-      // for three minutes just because a deployment introduces a new final
-      // status string unknown to this frontend version.
-      if (status?.completed === true) {
-        return status || lastData;
-      }
-      // Avoid a tight polling loop: every status request rebuilds and filters
-      // a snapshot on the backend while the search worker is competing for CPU.
-      // A short fixed interval keeps the UI responsive without hammering the API.
-      await new Promise(resolve=>setTimeout(resolve,300));
-    }
-    throw new Error("Timeout ricerca: il backend non ha completato il job");
-  } catch (error) {
-  const safe = typeof lastData === 'object' ? lastData : empty;
-  const failed = {
-    ...safe,
-    query: safe.query || query,
-    errors: {
-      ...(safe.errors || {}),
-      search: error?.message || 'Errore ricerca'
-    },
-    completed: false,
-    status: 'error'
-  };
-  if (typeof onPartial === 'function') onPartial(failed, true);
-  return failed;
+    const response=await fetchJSONWithTimeout(backend()+"/api/search?"+params.toString(),20000);
+    if(!response||!Array.isArray(response.results))throw new Error("Risposta API non valida");
+    const results=response.results.map(product=>{
+      const offers=(product.variants||[]).flatMap(variant=>(variant.offers||[]).map(offer=>({
+        ...offer,catalog_id:product.brand_slug+":"+product.fragrance_slug,
+        canonical_brand:product.brand,brand:product.brand,
+        canonical_name:product.fragrance,name:product.fragrance,
+        family:product.family||"",size_ml:variant.size_ml??"",
+        concentration:variant.concentration||"",
+        variant:[variant.concentration,variant.size_ml?variant.size_ml+" ml":""].filter(Boolean).join(" · "),
+        phase2_offer_id:offer.offer_id,price_num:Number(offer.price),
+        available:offer.availability==="in_stock",price_stale:Boolean(offer.verify_price),
+        warning:offer.warning||null,score:offer.score,score_breakdown:offer.score_breakdown||{},
+        shipping_cost:offer.shipping_cost
+      })));
+      return {
+        catalog_id:product.brand_slug+":"+product.fragrance_slug,
+        canonical_brand:product.brand,brand:product.brand,
+        canonical_name:product.fragrance,name:product.fragrance,
+        family:product.family||"",image:"",offers,variants:product.variants||[],
+        offer_count:product.offer_count||0
+      };
+    });
+    const data={...empty,query,count:response.count||0,offer_count:response.offer_count||0,
+      results,message:response.message||null,suggestions:response.suggestions||[],
+      completed:true,status:"completed",stores:{},errors:{}};
+    if(typeof onPartial==="function")onPartial(data,true);
+    return data;
+  }catch(error){
+    return {...empty,completed:true,status:"error",errors:{search:String(error?.message||error)}};
+  }
 }
+
+async function loadCatalogStoreFilters(){
+  if(!storeFilter)return;
+  try{
+    const response=await fetchJSONWithTimeout(backend()+"/api/stores?active_only=true&limit=200",10000);
+    const stores=Array.isArray(response?.stores)?response.stores:[];
+    const current=storeFilter.value;
+    storeFilter.innerHTML='<option value="">Tutti i negozi</option>'+stores.map(s=>
+      '<option value="'+esc(s.slug)+'">'+esc(displayStoreName(s.slug))+'</option>'
+    ).join("");
+    storeFilter.value=current;
+  }catch(error){console.debug("Store filter unavailable:",error?.message||error);}
 }
 
 async function searchPerfume(){
@@ -1291,6 +1288,6 @@ async function searchPerfume(){
 
 searchButton.addEventListener("click",searchPerfume);
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume();}});
-renderWishlist();syncHearts();
+renderWishlist();syncHearts();loadCatalogStoreFilters();
 </script>
 </body></html>
