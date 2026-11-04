@@ -61,7 +61,7 @@ def search_catalog(
     limit = max(1, min(int(limit), 100))
     offset = max(0, int(offset))
     freshness_hours = max(1, min(int(freshness_hours), 24 * 30))
-    requested_availability = availability.strip().casefold() if availability else "in_stock"
+    requested_availability = availability.strip().casefold() if availability else None
     if requested_availability == "all":
         requested_availability = None
     factory = session_factory or make_session_factory()
@@ -170,7 +170,6 @@ def search_catalog(
                     "family": fragrance_row.family,
                     "gender": fragrance_row.gender,
                     "olfactory_notes": fragrance_row.olfactory_notes or [],
-                    "image_url": fragrance_row.image_url,
                     "variants": [],
                     "_variant_map": {},
                 })
