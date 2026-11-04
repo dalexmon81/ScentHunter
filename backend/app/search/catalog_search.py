@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import make_session_factory
@@ -78,9 +78,10 @@ def search_catalog(
             )
 
             if dialect == "postgresql":
-                tsquery = func.plainto_tsquery("simple", q)
-                brand_vector = func.to_tsvector("simple", Brand.name)
-                fragrance_vector = func.to_tsvector("simple", Fragrance.name)
+                regconfig = literal_column("'simple'::regconfig")
+                tsquery = func.plainto_tsquery(regconfig, q)
+                brand_vector = func.to_tsvector(regconfig, Brand.name)
+                fragrance_vector = func.to_tsvector(regconfig, Fragrance.name)
                 stmt = stmt.where(or_(brand_vector.op("@@")(tsquery), fragrance_vector.op("@@")(tsquery)))
                 rank = func.ts_rank_cd(brand_vector, tsquery) + func.ts_rank_cd(fragrance_vector, tsquery)
                 stmt = stmt.order_by(rank.desc(), Offer.price.asc(), Store.slug.asc())
