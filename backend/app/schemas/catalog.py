@@ -51,6 +51,7 @@ class SearchProduct(BaseModel):
     brand_slug: str
     fragrance: str
     fragrance_slug: str
+    image_url: str | None = None
     family: str | None = None
     gender: str | None = None
     olfactory_notes: list[Any] = Field(default_factory=list)
