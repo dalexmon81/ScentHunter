@@ -55,13 +55,28 @@ def configure_index():
     return _request("PATCH", f"/indexes/{INDEX_UID}/settings", _settings())
 
 
-def search_variant_ids(query: str, *, limit: int = 100) -> list[str] | None:
+def search_variant_ids(query: str, *, filters: dict | None = None, limit: int = 1000) -> list[str] | None:
     """Return ordered variant IDs, or None when Meilisearch is not configured."""
-    result = _request("POST", f"/indexes/{INDEX_UID}/search", {
+    payload = {
         "q": query,
         "limit": max(1, min(int(limit), 1000)),
         "attributesToRetrieve": ["id"],
-    })
+    }
+    clauses = []
+    for field, value in (filters or {}).items():
+        if value is None or value == "":
+            continue
+        if field not in {"brand_slug", "family", "gender", "concentration", "format", "availability", "country", "currency", "store_slugs"}:
+            continue
+        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        operator = "IN" if field in {"country", "currency", "store_slugs"} else "="
+        if operator == "IN":
+            clauses.append(f'{field} = "{escaped}"')
+        else:
+            clauses.append(f'{field} = "{escaped}"')
+    if clauses:
+        payload["filter"] = clauses
+    result = _request("POST", f"/indexes/{INDEX_UID}/search", payload)
     if result is None:
         return None
     return [str(hit["id"]) for hit in result.get("hits", []) if hit.get("id")]
@@ -127,6 +142,7 @@ def reindex_catalog(session_factory=None) -> dict:
                         currency: float(min(prices)) for currency, prices in by_currency.items()
                     },
                     "store_count": len(stores),
+                    "store_slugs": sorted({store.slug for _, store in offers}),
                     "country": sorted({store.country for _, store in offers if store.country}),
                     "currency": sorted(by_currency),
                 })
