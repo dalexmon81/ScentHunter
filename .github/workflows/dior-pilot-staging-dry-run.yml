@@ -39,6 +39,7 @@ jobs:
             echo "::error::No started staging app worker found; refusing to continue."
             exit 1
           fi
-          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/seed_catalog.py --product-id SH-AUTO-0178")"
+          remote_command="python -c \"import sys,urllib.request; u='https://raw.githubusercontent.com/dalexmon81/ScentHunter/85b96a34758df6dcb309cff534551e0d987c12c0/backend/scripts/seed_catalog.py'; s=urllib.request.urlopen(u,timeout=20).read(); sys.argv=['seed_catalog_pilot.py','--product-id','SH-AUTO-0178']; exec(compile(s,'/app/backend/scripts/seed_catalog_pilot.py','exec'),{'__name__':'__main__','__file__':'/app/backend/scripts/seed_catalog_pilot.py'})\""
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "$remote_command")"
           printf '%s\n' "$output"
           printf '%s\n' "$output" | python -c 'import json,sys; r=json.load(sys.stdin); expected={"status":"validated","product_filter":["SH-AUTO-0178"],"brands":1,"fragrances":1,"variants":1,"products_without_variants":0,"offers_imported":0,"stores_to_seed":[],"database_written":False,"source_modified":False}; assert all(r.get(k)==v for k,v in expected.items()), r; print("Staging Dior dry-run safety assertions: PASS")'
