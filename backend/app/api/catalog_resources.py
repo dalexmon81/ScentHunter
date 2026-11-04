@@ -13,14 +13,26 @@ from app.models import Brand, Fragrance, Offer, ProductVariant, Store
 router = APIRouter(tags=["catalog-resources"])
 
 
-def _offer_payload(offer: Offer, store: Store, *, now: datetime):
-    expired = (
+def _as_utc(value: datetime | None):
+    if value is None:
+        return None
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
+def _offer_is_expired(offer: Offer, store: Store, now: datetime) -> bool:
+    valid_until = _as_utc(offer.valid_until)
+    captured_at = _as_utc(offer.captured_at)
+    return (
         offer.publication_status == "stale"
         or offer.status != "active"
         or store.status != "active"
-        or (offer.valid_until is not None and offer.valid_until <= now)
-        or (offer.captured_at is not None and offer.captured_at < now - timedelta(hours=48))
+        or (valid_until is not None and valid_until <= now)
+        or (captured_at is not None and captured_at < now - timedelta(hours=48))
     )
+
+
+def _offer_payload(offer: Offer, store: Store, *, now: datetime):
+    expired = _offer_is_expired(offer, store, now)
     return {
         "id": str(offer.id),
         "store_id": str(store.id),
@@ -132,12 +144,7 @@ def get_product_offers(
             offers = [
                 _offer_payload(offer, store, now=now)
                 for offer, store in rows
-                if include_expired or not (
-                    offer.publication_status == "stale"
-                    or store.status != "active"
-                    or (offer.valid_until is not None and offer.valid_until <= now)
-                    or (offer.captured_at is not None and offer.captured_at < now - timedelta(hours=48))
-                )
+                if include_expired or not _offer_is_expired(offer, store, now)
             ]
             return {
                 "product_slug": slug,
