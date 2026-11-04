@@ -26,7 +26,7 @@ def _settings():
         ],
         "filterableAttributes": [
             "brand_slug", "concentration", "format", "family", "gender",
-            "availability", "country", "currency", "min_price", "store_count",
+            "availability", "country", "currency", "store_slugs", "min_price", "store_count",
         ],
         "sortableAttributes": ["min_price", "store_count"],
     }
