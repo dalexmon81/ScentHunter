@@ -6,10 +6,11 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import IngestionRaw, Offer, ProductVariant
+from app.models import Brand, Fragrance, IngestionRaw, Offer, ProductVariant
 from app.services.ingestion_persistence import record_match
 from app.services.product_normalization import normalize_gtin, normalize_product
 from app.services.canonical_identity_review_queue import enqueue_identity_review
+from app.matching.semantic_matcher import EmbeddingProvider, semantic_candidate_score
 
 
 @dataclass(frozen=True)
@@ -21,8 +22,11 @@ class MatchDecision:
     reason: str
 
 
-def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
-    """Use verified GTIN first, then exact canonical key; never fuzzy-auto-match."""
+def decide_offer_match(
+    session: Session, raw: IngestionRaw, *,
+    semantic_provider: EmbeddingProvider | None = None,
+) -> MatchDecision:
+    """Use exact evidence first; semantic matching is opt-in and structurally constrained."""
     payload = raw.raw_payload or {}
     brand = str(payload.get("brand") or "").strip()
     title = str(payload.get("title") or "").strip()
@@ -92,18 +96,72 @@ def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
     if len(candidates) > 1:
         return MatchDecision("unmatched", "canonical_key_ambiguous", None, None,
                              "multiple_variants_share_canonical_key")
+
+    # Semantic matching is strictly opt-in. Restrict candidates to the exact
+    # normalized brand, concentration, size, and packaging before comparing
+    # fragrance names. A provider failure or close tie always goes to review.
+    if semantic_provider is not None:
+        variants = session.scalars(
+            select(ProductVariant)
+            .join(Fragrance, ProductVariant.fragrance_id == Fragrance.id)
+            .join(Brand, Fragrance.brand_id == Brand.id)
+            .where(Brand.normalized_name == identity.brand)
+        ).all()
+        scored: list[tuple[float, ProductVariant]] = []
+        expected_packaging = identity.packaging
+        packaging_flags = {
+            "tester": "is_tester", "refill": "is_refill",
+            "gift_set": "is_gift_set", "mini": "is_mini",
+        }
+        for variant in variants:
+            if variant.concentration != identity.concentration:
+                continue
+            if variant.size_ml != identity.size_ml:
+                continue
+            actual_packaging = next(
+                (kind for kind, attr in packaging_flags.items()
+                 if getattr(variant, attr, False) is True),
+                "standard",
+            )
+            if actual_packaging != expected_packaging:
+                continue
+            fragrance = session.get(Fragrance, variant.fragrance_id)
+            if fragrance is None:
+                continue
+            score = semantic_candidate_score(
+                semantic_provider, identity.fragrance_name, fragrance.name,
+            )
+            if score is not None:
+                scored.append((score, variant))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        if scored:
+            best_score, best_variant = scored[0]
+            runner_up = scored[1][0] if len(scored) > 1 else -1.0
+            if best_score >= 0.985 and best_score - runner_up >= 0.025:
+                confidence = Decimal(str(round(best_score, 3)))
+                return MatchDecision(
+                    "matched", "semantic_embedding", confidence,
+                    best_variant.id, "opt_in_semantic_match_above_threshold",
+                )
+            return MatchDecision(
+                "unmatched", "semantic_ambiguous", None, None,
+                "semantic_score_below_threshold_or_candidates_too_close",
+            )
     return MatchDecision("unmatched", "no_exact_match", None, None,
                          "no_exact_canonical_variant")
 
 
-def match_staged_offer(session: Session, ingestion_raw_id) -> MatchDecision:
+def match_staged_offer(
+    session: Session, ingestion_raw_id, *,
+    semantic_provider: EmbeddingProvider | None = None,
+) -> MatchDecision:
     """Persist one conservative match decision; caller controls commit."""
     raw = session.get(IngestionRaw, ingestion_raw_id)
     if raw is None:
         raise LookupError("ingestion_raw_not_found")
     if raw.status not in {"pending", "unmatched"}:
         raise ValueError("ingestion_raw_not_eligible_for_matching")
-    decision = decide_offer_match(session, raw)
+    decision = decide_offer_match(session, raw, semantic_provider=semantic_provider)
     if decision.status == "unmatched" and decision.method not in {
         "insufficient_identity", "normalization_review"
     }:
