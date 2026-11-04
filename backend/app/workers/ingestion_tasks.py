@@ -54,12 +54,17 @@ class IngestionTask(celery_app.Task):
                     with factory() as session:
                         store = session.scalar(select(Store).where(Store.slug == store_key))
                         if store is not None:
-                            session.add(IngestionRun(
-                                store_id=store.id,
-                                status="failed",
-                                errors=[{"task": self.name, "task_id": task_id,
-                                         "error": f"{type(exc).__name__}: {exc}"[:500]}],
-                            ))
+                            run = session.scalar(select(IngestionRun).where(
+                                IngestionRun.store_id == store.id,
+                                IngestionRun.status == "running",
+                            ).order_by(IngestionRun.started_at.desc()).limit(1))
+                            if run is None:
+                                run = IngestionRun(store_id=store.id, status="failed", errors=[])
+                                session.add(run)
+                            run.status = "failed"
+                            run.finished_at = datetime.now(timezone.utc)
+                            run.errors = [{"task": self.name, "task_id": task_id,
+                                           "error": f"{type(exc).__name__}: {exc}"[:500]}]
                             session.commit()
                 finally:
                     factory.kw["bind"].dispose()
