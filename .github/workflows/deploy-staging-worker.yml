@@ -46,6 +46,8 @@ jobs:
               flyctl machine start "$machine_id" --app scenthunter-staging-workers
             done <<< "$machine_ids"
           fi
+      - name: Allow worker startup and broker connection
+        run: sleep 10
       - name: Inspect worker logs and machine state
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
