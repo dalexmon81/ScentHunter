@@ -105,7 +105,7 @@ def test_catalog_search_filters_store_country_currency_and_price(tmp_path):
             max_price=Decimal("100"),
         )
         assert result["offer_count"] == 1
-        assert result["results"][0]["offers"][0]["price"] == "89.90"
+        assert result["results"][0]["variants"][0]["offers"][0]["price"] == "89.90"
     finally:
         engine.dispose()
 
