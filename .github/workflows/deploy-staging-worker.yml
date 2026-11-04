@@ -78,6 +78,17 @@ jobs:
           fi
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); i=inspect(e); tables=set(i.get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\"}; present=sorted(required & tables); missing=sorted(required - tables); result={\"database_dialect\":e.dialect.name,\"catalog_schema\":\"ready\" if not missing else \"not_migrated_or_incomplete\",\"required_tables_present\":present,\"required_tables_missing\":missing,\"store_count\":None,\"stores\":[]}; result.update({\"store_count\":0,\"stores\":[]} if \"stores\" not in tables else {}); result.update({\"store_count\":e.connect().execute(text(\"SELECT count(*) FROM stores\")).scalar_one()} if \"stores\" in tables else {}); print(result); e.dispose()'"
           echo "::notice::Schema audit is read-only. An uninitialized schema is intentionally not migrated by this workflow."
+      - name: Apply Alembic migrations to the verified isolated staging database
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started staging worker machine for the guarded migration."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import hashlib; from sqlalchemy import text; from app.db import make_engine; from app.db_runtime_identity import configuration_source; e=make_engine(); c=e.connect(); row=c.execute(text(\"SELECT current_database(), current_schema()\")).one(); fp=hashlib.sha256((e.dialect.name+chr(0)+str(row[0])+chr(0)+str(row[1])).encode()).hexdigest()[:16]; print({\"database\":row[0],\"schema\":row[1],\"fingerprint\":fp,\"config_source\":configuration_source()}); assert e.dialect.name==\"postgresql\" and row[0]==\"neondb\" and row[1]==\"public\" and fp==\"8b2f015a4746cccc\" and configuration_source()==\"SCENTHUNTER_CATALOG_DATABASE_URL\", \"Refusing migration: staging database identity does not match the reviewed Neon project\"; c.close(); e.dispose()' && python -m alembic upgrade head && python -c 'from sqlalchemy import inspect; from app.db import make_engine; e=make_engine(); t=set(inspect(e).get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"ingestion_dead_letters\"}; print({\"required_tables_present\":sorted(t & required),\"required_tables_missing\":sorted(required-t)}); assert required <= t, \"Catalog migration verification failed\"; e.dispose()'"
       - name: Verify worker runs non-root and Beat stays disabled
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
