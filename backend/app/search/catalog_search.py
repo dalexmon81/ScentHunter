@@ -61,7 +61,9 @@ def search_catalog(
     limit = max(1, min(int(limit), 100))
     offset = max(0, int(offset))
     freshness_hours = max(1, min(int(freshness_hours), 24 * 30))
-    requested_availability = availability.strip().casefold() if availability and availability.strip().casefold() != "all" else None
+    requested_availability = availability.strip().casefold() if availability else "in_stock"
+    if requested_availability == "all":
+        requested_availability = None
     factory = session_factory or make_session_factory()
     try:
         with factory() as session:
@@ -228,7 +230,11 @@ def search_catalog(
                     }
                     variant["min_price"] = variant["min_price_by_currency"].get("EUR")
                     variant["store_count"] = len({offer["store"] for offer in variant["offers"]})
-                    variant["availability"] = "in_stock" if variant["offers"] else "unavailable"
+                    variant["availability"] = (
+                        "in_stock" if any(offer["availability"] == "in_stock" for offer in variant["offers"])
+                        else "out_of_stock" if any(offer["availability"] == "out_of_stock" for offer in variant["offers"])
+                        else "unavailable"
+                    )
                 product["variant_selection_required"] = len(product["variants"]) > 1
                 product["offer_count"] = sum(len(variant["offers"]) for variant in product["variants"])
             products.sort(key=lambda item: (
