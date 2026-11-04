@@ -9,7 +9,9 @@ fi
 case "$SCENTHUNTER_REDIS_URL" in
   rediss://*) echo "Redis broker environment detected (TLS); credentials hidden." ;;
   redis://*) echo "Redis broker environment detected (non-TLS); credentials hidden." ;;
-  *) echo "ERROR: SCENTHUNTER_REDIS_URL has an unsupported URL scheme."
+  *)
+     detected_scheme="$(python -c 'import os; from urllib.parse import urlsplit; print(urlsplit(os.environ.get("SCENTHUNTER_REDIS_URL", "").strip()).scheme or "none")')"
+     echo "ERROR: SCENTHUNTER_REDIS_URL has unsupported scheme '$detected_scheme'; expected rediss or redis. Credentials are not logged."
      exit 1 ;;
 esac
 
