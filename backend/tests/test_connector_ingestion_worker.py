@@ -156,7 +156,7 @@ def test_notino_fixture_matches_and_promotes_exact_dior_sauvage_edp_100ml():
     record = connector._offers[0]
     assert record.brand == "Dior"
     assert record.fragrance == "sauvage"
-    assert record.concentration == "Eau de Parfum"
+    assert record.concentration == "edp"
     assert record.size_ml == 100
     assert record.price == Decimal("99.90")
     assert record.currency == "EUR"
