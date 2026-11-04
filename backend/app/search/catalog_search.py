@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, literal_column, or_, select
+from sqlalchemy import and_, func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import make_session_factory
@@ -66,32 +66,42 @@ def search_catalog(
                 select(Brand, Fragrance, ProductVariant, Offer, Store)
                 .join(Fragrance, Fragrance.brand_id == Brand.id)
                 .join(ProductVariant, ProductVariant.fragrance_id == Fragrance.id)
-                .join(Offer, Offer.product_variant_id == ProductVariant.id)
-                .join(Store, Store.id == Offer.store_id)
-                .where(
+                .outerjoin(Offer, and_(
+                    Offer.product_variant_id == ProductVariant.id,
                     Offer.status == "active",
                     Offer.publication_status == "published",
-                    Store.status == "active",
                     Offer.availability == "in_stock",
                     Offer.captured_at >= datetime.now(timezone.utc) - timedelta(hours=freshness_hours),
-                )
+                ))
+                .outerjoin(Store, and_(
+                    Store.id == Offer.store_id,
+                    Store.status == "active",
+                ))
             )
 
             if dialect == "postgresql":
                 regconfig = literal_column("'simple'::regconfig")
-                tsquery = func.plainto_tsquery(regconfig, q)
                 brand_vector = func.to_tsvector(regconfig, Brand.name)
                 fragrance_vector = func.to_tsvector(regconfig, Fragrance.name)
-                stmt = stmt.where(or_(brand_vector.op("@@")(tsquery), fragrance_vector.op("@@")(tsquery)))
-                rank = func.ts_rank_cd(brand_vector, tsquery) + func.ts_rank_cd(fragrance_vector, tsquery)
-                stmt = stmt.order_by(rank.desc(), Offer.price.asc(), Store.slug.asc())
+                # Each token can match either field: "Dior Sauvage" matches
+                # brand=Dior plus fragrance=Sauvage.
+                token_queries = [func.plainto_tsquery(regconfig, token) for token in q.split() if token]
+                for token_query in token_queries:
+                    stmt = stmt.where(or_(
+                        brand_vector.op("@@")(token_query),
+                        fragrance_vector.op("@@")(token_query),
+                    ))
+                rank = func.ts_rank_cd(brand_vector, func.plainto_tsquery(regconfig, q)) + func.ts_rank_cd(
+                    fragrance_vector, func.plainto_tsquery(regconfig, q)
+                )
+                stmt = stmt.order_by(rank.desc().nullslast(), Offer.price.asc().nullslast(), Store.slug.asc())
             else:
                 pattern = f"%{q}%"
                 stmt = stmt.where(or_(
                     Brand.name.ilike(pattern),
                     Brand.normalized_name.ilike(pattern),
                     Fragrance.name.ilike(pattern),
-                )).order_by(Offer.price.asc(), Store.slug.asc())
+                 )).order_by(Offer.price.asc().nullslast(), Store.slug.asc())
 
             if brand:
                 stmt = stmt.where(Brand.normalized_name == brand.strip().casefold())
@@ -138,17 +148,18 @@ def search_catalog(
                     },
                     "offers": [],
                 })
-                product["offers"].append({
-                    "offer_id": str(offer_row.id),
-                    "store": store_row.slug,
-                    "country": store_row.country,
-                    "price": str(offer_row.price),
-                    "currency": offer_row.currency,
-                    "availability": offer_row.availability,
-                    "url": offer_row.url,
-                    "captured_at": offer_row.captured_at.isoformat() if offer_row.captured_at else None,
-                    "shipping_cost": str(offer_row.shipping_cost) if offer_row.shipping_cost is not None else None,
-                })
+                if offer_row is not None and store_row is not None:
+                    product["offers"].append({
+                        "offer_id": str(offer_row.id),
+                        "store": store_row.slug,
+                        "country": store_row.country,
+                        "price": str(offer_row.price),
+                        "currency": offer_row.currency,
+                        "availability": offer_row.availability,
+                        "url": offer_row.url,
+                        "captured_at": offer_row.captured_at.isoformat() if offer_row.captured_at else None,
+                        "shipping_cost": str(offer_row.shipping_cost) if offer_row.shipping_cost is not None else None,
+                    })
 
             products = list(grouped.values())
             for product in products:
@@ -163,6 +174,11 @@ def search_catalog(
                 "query": q,
                 "count": len(products),
                 "offer_count": sum(len(item["offers"]) for item in products),
+                "message": (
+                    "Prodotto trovato, ma al momento non ci sono offerte aggiornate."
+                    if products and not any(item["offers"] for item in products) else None
+                ),
+                "suggestions": [],
                 "limit": limit,
                 "offset": offset,
                 "results": page,
