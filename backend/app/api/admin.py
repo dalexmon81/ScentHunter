@@ -233,18 +233,28 @@ def operational_alerts(
                     "message": f"{stale_count} offerte pubblicate non aggiornate da oltre {stale_after_hours} ore.",
                 })
 
-            audit_rows = session.scalars(select(MatchAudit).where(
-                MatchAudit.reviewed_at.is_(None),
-                MatchAudit.confidence.is_not(None),
-                MatchAudit.confidence < 0.95,
+            match_window_start = now - timedelta(days=8)
+            recent_raw = session.scalars(select(IngestionRaw).where(
+                IngestionRaw.updated_at >= match_window_start,
+                IngestionRaw.status.in_(("unmatched", "matched")),
             )).all()
-            total_audits = session.scalar(select(func.count()).select_from(MatchAudit)) or 0
-            ambiguous_rate = len(audit_rows) / total_audits if total_audits else 0.0
-            if total_audits >= 10 and ambiguous_rate >= ambiguous_rate_threshold:
+            current_ambiguous = sum(
+                1 for row in recent_raw
+                if row.updated_at >= now - timedelta(hours=24)
+                and (row.status == "unmatched" or row.match_confidence is None or float(row.match_confidence) < 0.95)
+            )
+            previous_ambiguous = sum(
+                1 for row in recent_raw
+                if row.updated_at < now - timedelta(hours=24)
+                and (row.status == "unmatched" or row.match_confidence is None or float(row.match_confidence) < 0.95)
+            )
+            previous_daily_average = previous_ambiguous / 7
+            if previous_daily_average >= 1 and current_ambiguous > previous_daily_average * 1.5:
                 alerts.append({
-                    "severity": "warning", "code": "ambiguous_matching_rate_high",
-                    "rate": round(ambiguous_rate, 4), "sample_size": total_audits,
-                    "message": f"Tasso di match a bassa confidenza: {ambiguous_rate:.0%}.",
+                    "severity": "warning", "code": "ambiguous_matching_rate_rising",
+                    "current_24h": current_ambiguous,
+                    "previous_daily_average": round(previous_daily_average, 1),
+                    "message": "I match ambigui nelle ultime 24 ore sono aumentati di oltre il 50% rispetto alla media giornaliera dei 7 giorni precedenti.",
                 })
 
             # Compare each store's latest 24h published count with the preceding
