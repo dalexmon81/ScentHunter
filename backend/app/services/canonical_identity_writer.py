@@ -28,6 +28,7 @@ def persist_canonical_identity(
 ) -> CanonicalIdentityPlan:
     """Insert a missing identity only after explicit opt-in; never commit.
 
+    Caller must open an explicit outer transaction before calling this function.
     Existing identities are returned unchanged. Ambiguities, invalid supplied
     GTINs, non-integral sizes, and uniqueness races are sent to review.
     """
