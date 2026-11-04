@@ -29,6 +29,7 @@ on:
       - "backend/scrapers/parfumzentrum/scraper.py"
       - "tests/fixtures/connectors/**"
       - ".github/workflows/phase4-universal-connectors.yml"
+      - ".github/workflows/fly-pilot.yml"
   workflow_dispatch:
 
 permissions:
@@ -48,8 +49,23 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install focused test dependencies
-        run: python -m pip install pytest requests beautifulsoup4 lxml sqlalchemy
+        run: python -m pip install pytest requests beautifulsoup4 lxml sqlalchemy pyyaml
+      - name: Validate isolated Fly workflow syntax and manual-only safety gate
+        run: |
+          python - <<'PY'
+          import yaml
+
+          with open(".github/workflows/fly-pilot.yml", encoding="utf-8") as stream:
+              workflow = yaml.load(stream, Loader=yaml.BaseLoader)
+
+          assert set(workflow["on"]) == {"workflow_dispatch"}
+          assert workflow["jobs"]["deploy-pilot"]["if"] == "${{ github.event.inputs.confirm_deploy == 'deploy' }}"
+          assert workflow["jobs"]["deploy-pilot"]["steps"][0]["with"]["ref"] == "architecture/offer-engine-v1"
+          print("FLY_WORKFLOW_YAML=PASS")
+          print("FLY_WORKFLOW_MANUAL_ONLY=PASS")
+          print("FLY_WORKFLOW_ISOLATED_BRANCH=PASS")
+          PY
       - name: Compile connector contract
-        run: python -m compileall -q backend/app/connectors backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py backend/tests/test_notino_universal_connector.py backend/tests/test_deloox_universal_connector.py backend/tests/test_easycosmetic_universal_connector.py backend/tests/test_sabina_universal_connector.py backend/tests/test_parfumzentrum_universal_connector.py backend/app/workers/connector_ingestion.py backend/app/workers/matching_worker.py backend/app/workers/offer_promotion.py backend/app/matching/offer_matcher.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py backend/tests/test_offer_promotion_worker.py
+        run: python -m compileall -q backend/app/connectors backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py backend/tests/test_notino_universal_connector.py backend/tests/test_deloox_universal_connector.py backend/tests/test_easycosmetic_universal_connector.py backend/tests/test_sabina_universal_connector.py backend/tests/test_parfumzentrum_universal_connector.py backend/app/workers/connector_ingestion.py backend/app/workers/matching_worker.py backend/app/workers/offer_promotion.py backend/app/matching/offer_matcher.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py
       - name: Run connector contract and retailer fixture tests
         run: python -m pytest -q backend/tests/test_store_connector_contract.py backend/tests/test_notino_connector_fixture.py backend/tests/test_notino_universal_connector.py backend/tests/test_deloox_universal_connector.py backend/tests/test_easycosmetic_universal_connector.py backend/tests/test_sabina_universal_connector.py backend/tests/test_parfumzentrum_universal_connector.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py
