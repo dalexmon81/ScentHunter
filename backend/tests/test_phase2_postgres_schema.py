@@ -28,11 +28,14 @@ class PostgreSQLMigrationContractTests(unittest.TestCase):
         self.assertTrue(set(Base.metadata.tables).issubset(tables))
         with self.engine.connect() as connection:
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        self.assertEqual(revision, "0009_catalog_search_fts")
+        self.assertEqual(revision, "0011_olfactory_notes_fts")
         for table in ("fragrances", "product_variants", "offers", "ingestion_raw"):
             self.assertTrue(inspector.get_foreign_keys(table), table)
         indexes = {item["name"] for table in ("brands", "fragrances") for item in inspector.get_indexes(table)}
-        self.assertTrue({"ix_brands_name_fts", "ix_fragrances_name_fts"}.issubset(indexes))
+        self.assertTrue({
+            "ix_brands_name_fts", "ix_fragrances_name_fts",
+            "ix_fragrances_olfactory_notes_fts",
+        }.issubset(indexes))
 
     def test_json_uuid_numeric_and_transaction_rollback(self):
         from uuid import uuid4
