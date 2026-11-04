@@ -14,6 +14,7 @@ from app.models import (
     Offer, Store,
 )
 from app.schemas.catalog import AdminConnectorList, AdminIngestionRunList, AdminMatchingReviewList
+from app.services.observability import search_latency_snapshot
 
 router = APIRouter(prefix="/api/admin", tags=["catalog-admin"])
 
@@ -158,12 +159,7 @@ def operational_metrics(_auth: None = Depends(_authorize)):
                     "ambiguous_rate": round(ambiguous_matches / audit_count, 4) if audit_count else None,
                     "confidence_threshold": 0.95,
                 },
-                "search_latency": {
-                    "available": False,
-                    "p50_ms": None,
-                    "p95_ms": None,
-                    "note": "Search latency instrumentation is not yet persisted; no synthetic value is reported.",
-                },
+                "search_latency": search_latency_snapshot(),
                 "connectors": {
                     "runs_last_24h": len(runs_24h),
                     "failed_runs_last_24h": failed_runs,
