@@ -11,6 +11,7 @@ on:
       - fix/notino-authorized-feed-import
       - phase6/matching-validation
       - phase7/catalog-search
+      - phase8/offer-ranking
 
 jobs:
   parser-regression:
