@@ -5,10 +5,10 @@ primary_region = "ams"
 [build]
   dockerfile = "backend/Dockerfile.worker"
 
+[processes]
+  app = "celery -A app.workers.celery_app:celery_app worker --loglevel=INFO --queues=discovery,offers,validation,matching,refresh,dead_letter --concurrency=2"
+
 [[vm]]
   memory = "1gb"
   cpu_kind = "shared"
   cpus = 1
-
-# The Dockerfile CMD starts Celery. Omitting [processes] uses Fly's
-# default "app" process group, which matches the launch wizard's default.
