@@ -10,6 +10,7 @@ import asyncio
 import base64
 import json
 import logging
+import hashlib
 from uuid import UUID
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -19,7 +20,7 @@ from sqlalchemy import select
 
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
-from app.models import IngestionRaw, IngestionRun, Offer, Store
+from app.models import IngestionArtifact, IngestionRaw, IngestionRun, Offer, Store
 from app.matching.offer_matcher import match_staged_offer
 from app.services.product_normalization import normalize_product
 from app.workers.celery_app import celery_app
@@ -89,6 +90,53 @@ def _json_safe(value: Any):
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     return repr(value)[:2000]
+
+def _persist_raw_artifacts(store_key: str, run_id: str, artifacts: list[dict]) -> list[str]:
+    """Persist exact source bytes (or deterministic JSON evidence) once per hash."""
+    factory = make_session_factory()
+    artifact_ids = []
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_key))
+            if store is None:
+                raise ValueError(f"connector_store_not_configured:{store_key}")
+            for artifact in artifacts:
+                raw = artifact.get("data")
+                fmt = str(artifact.get("format") or "json").lower()
+                if isinstance(raw, bytes):
+                    blob = raw
+                elif isinstance(raw, bytearray):
+                    blob = bytes(raw)
+                elif isinstance(raw, str) and fmt == "html":
+                    blob = raw.encode("utf-8")
+                else:
+                    blob = json.dumps(_json_safe(raw), ensure_ascii=False, sort_keys=True).encode("utf-8")
+                digest = hashlib.sha256(blob).hexdigest()
+                existing = session.scalar(select(IngestionArtifact).where(
+                    IngestionArtifact.store_id == store.id,
+                    IngestionArtifact.sha256 == digest,
+                ))
+                if existing is not None:
+                    artifact_ids.append(str(existing.id))
+                    continue
+                row = IngestionArtifact(
+                    store_id=store.id,
+                    ingestion_run_id=UUID(str(run_id)),
+                    artifact_format=fmt,
+                    content_type=artifact.get("content_type"),
+                    source_url=artifact.get("source_url"),
+                    sha256=digest,
+                    size_bytes=len(blob),
+                    raw_data=blob,
+                    metadata_json=_json_safe(artifact.get("metadata") or {}),
+                )
+                session.add(row)
+                session.flush()
+                artifact_ids.append(str(row.id))
+            session.commit()
+        return artifact_ids
+    finally:
+        factory.kw["bind"].dispose()
 
 def _stage_record(store_key: str, record, discovery_evidence: dict | None = None) -> str:
     factory = make_session_factory()
@@ -160,6 +208,19 @@ def discover_store_products(self, store_key: str):
     finally:
         factory.kw["bind"].dispose()
     products = _run(connector.discover_products())
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            run = session.scalar(select(IngestionRun).join(Store).where(
+                Store.slug == store_key, IngestionRun.status == "running"
+            ).order_by(IngestionRun.started_at.desc()).limit(1))
+            run_id = str(run.id) if run is not None else None
+    finally:
+        factory.kw["bind"].dispose()
+    raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
+    if not raw_artifacts:
+        raw_artifacts = [{"format": "json", "data": list(products), "metadata": {"kind": "discovery_result"}}]
+    artifact_ids = _persist_raw_artifacts(store_key, run_id, raw_artifacts) if run_id else []
     staged = []
     # Discovery and offer extraction must share this connector instance:
     # connector adapters keep their parsed discovery cache in memory, and
@@ -171,7 +232,9 @@ def discover_store_products(self, store_key: str):
             continue
         records = _run(connector.fetch_offers(product_key))
         for record in records:
-            raw_id = _stage_record(store_key, record, _json_safe(dict(product)))
+            evidence = _json_safe(dict(product))
+            evidence["raw_artifact_ids"] = artifact_ids
+            raw_id = _stage_record(store_key, record, evidence)
             normalize_offer.apply_async(args=[raw_id], queue="validation")
             staged.append(raw_id)
     factory = make_session_factory()
