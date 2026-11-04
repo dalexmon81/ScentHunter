@@ -1,0 +1,141 @@
+"""Store-scoped ingestion runner.
+
+This worker only stages raw connector evidence. It never matches or publishes
+offers; canonical matching and promotion remain separate, explicit steps.
+"""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Callable
+
+from sqlalchemy import select
+
+from app.connectors.base import ConnectorError, StoreConnector
+from app.models import IngestionRaw, IngestionRun, Store
+
+
+def run_connector_once(
+    connector: StoreConnector,
+    session_factory: Callable,
+    *,
+    quarantine_after: int = 3,
+) -> dict:
+    """Discover and stage one store's offers in an isolated DB transaction.
+
+    Invalid evidence is retained with status=rejected. Valid evidence remains
+    pending for later matching. Repeated consecutive connector failures set
+    only that store to quarantined; no offer is published here.
+    """
+    if quarantine_after < 1:
+        raise ValueError("quarantine_after_must_be_positive")
+
+    session = session_factory()
+    run = None
+    try:
+        store = session.scalar(select(Store).where(Store.slug == connector.store_key))
+        if store is None:
+            raise ValueError(f"connector_store_not_configured:{connector.store_key}")
+        if store.status == "quarantined":
+            return {"store": connector.store_key, "status": "quarantined", "staged": 0}
+
+        run = IngestionRun(store_id=store.id, status="running", errors=[])
+        session.add(run)
+        session.flush()
+        session.commit()
+    finally:
+        session.close()
+
+    async def collect():
+        discovered = await connector.discover_products()
+        records = []
+        seen = set()
+        for product in discovered:
+            product_key = str(
+                product.get("externalProductId")
+                or product.get("external_product_id")
+                or product.get("url")
+                or ""
+            ).strip()
+            if not product_key or product_key in seen:
+                continue
+            seen.add(product_key)
+            records.extend(await connector.fetch_offers(product_key))
+        return len(discovered), records
+
+    try:
+        import asyncio
+        discovered_count, records = asyncio.run(collect())
+        session = session_factory()
+        try:
+            run = session.get(IngestionRun, run.id)
+            store = session.get(Store, run.store_id)
+            staged = rejected = 0
+            for record in records:
+                payload = record.to_dict()
+                valid, errors = connector.validate_offer(record)
+                raw = IngestionRaw(
+                    store_id=store.id,
+                    raw_payload=payload,
+                    external_product_id=record.external_product_id,
+                    status="pending" if valid else "rejected",
+                    rejection_reason=None if valid else ",".join(errors),
+                )
+                session.add(raw)
+                staged += 1
+                rejected += int(not valid)
+            run.products_discovered = discovered_count
+            run.offers_created = 0
+            run.offers_updated = 0
+            run.offers_rejected = rejected
+            run.status = "completed"
+            run.finished_at = datetime.now(timezone.utc)
+            # A successful run resets consecutive failure history.
+            store.last_successful_sync_at = run.finished_at
+            session.commit()
+            return {
+                "store": connector.store_key,
+                "status": "completed",
+                "discovered": discovered_count,
+                "staged": staged,
+                "rejected": rejected,
+                "published": 0,
+            }
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+    except Exception as exc:
+        session = session_factory()
+        try:
+            run = session.get(IngestionRun, run.id)
+            store = session.get(Store, run.store_id)
+            run.status = "failed"
+            run.finished_at = datetime.now(timezone.utc)
+            run.errors = [{"type": type(exc).__name__, "message": str(exc)[:500]}]
+            # Count only the immediately preceding failed runs for this store.
+            recent = session.scalars(
+                select(IngestionRun)
+                .where(IngestionRun.store_id == store.id)
+                .order_by(IngestionRun.started_at.desc())
+                .limit(quarantine_after)
+            ).all()
+            consecutive = 0
+            for previous in recent:
+                if previous.status != "failed":
+                    break
+                consecutive += 1
+            if consecutive >= quarantine_after:
+                store.status = "quarantined"
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return {
+            "store": connector.store_key,
+            "status": "quarantined" if consecutive >= quarantine_after else "failed",
+            "error": type(exc).__name__,
+            "published": 0,
+        }
