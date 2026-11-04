@@ -9,8 +9,16 @@ depends_on = None
 
 
 def upgrade():
-    # The parent revisions contain the actual schema changes.
-    pass
+    # Alembic defaults version_num to VARCHAR(32), but this merged revision
+    # identifier is longer. Widen existing PostgreSQL databases before Alembic
+    # writes the new revision; SQLite does not enforce VARCHAR lengths.
+    from alembic import op
+
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute(
+            "ALTER TABLE alembic_version "
+            "ALTER COLUMN version_num TYPE VARCHAR(128)"
+        )
 
 
 def downgrade():
