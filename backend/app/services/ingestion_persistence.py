@@ -144,6 +144,8 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise ValueError("unknown ingestion_raw_id")
     if row.status != "matched" or row.product_variant_id is None:
         raise PromotionRejected("only rows with a resolved UUID match can be promoted")
+    if row.validation_status != "validated":
+        raise PromotionRejected("offer evidence must pass validation before publication")
     store = session.get(Store, row.store_id)
     if store is None or store.status != "active":
         raise PromotionRejected("store is not active")
@@ -208,7 +210,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
             external_product_id=row.external_product_id, url=url, price=price,
             currency=currency, availability=availability, source=source,
             confidence=confidence if confidence is not None else row.match_confidence,
-            status="active",
+            status="active", publication_status="published",
         )
         session.add(offer)
         session.flush()
@@ -227,6 +229,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing.source = source
         existing.confidence = confidence if confidence is not None else row.match_confidence
         existing.status = "active"
+        existing.publication_status = "published"
         # Record every successfully captured observation, including an unchanged
         # price. This makes each normal hydration auditable without creating a
         # second Offer row for the same retailer product.
