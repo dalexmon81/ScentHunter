@@ -509,7 +509,35 @@ def enqueue_discovery_for_configured_stores():
 
 @celery_app.task(name="app.workers.ingestion_tasks.enqueue_offer_collection_for_configured_stores")
 def enqueue_offer_collection_for_configured_stores():
-    return enqueue_discovery_for_configured_stores()
+    """Refresh all known active offers without repeating product discovery."""
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            rows = session.execute(
+                select(Offer.external_product_id, Store.slug)
+                .join(Store, Offer.store_id == Store.id)
+                .where(
+                    Store.status == "active",
+                    Offer.status == "active",
+                    Offer.external_product_id.is_not(None),
+                )
+                .order_by(Store.slug.asc(), Offer.external_product_id.asc())
+            ).all()
+            queued = 0
+            seen = set()
+            for external_product_id, store_key in rows:
+                key = (store_key, external_product_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                refresh_price_and_stock.apply_async(
+                    kwargs={"store_key": store_key, "offer_id": external_product_id},
+                    queue="refresh",
+                )
+                queued += 1
+        return {"refresh_jobs_queued": queued, "stores": sorted({key[0] for key in seen})}
+    finally:
+        factory.kw["bind"].dispose()
 
 @celery_app.task(name="app.workers.ingestion_tasks.enqueue_refresh_for_active_stores")
 def enqueue_refresh_for_active_stores():
