@@ -18,7 +18,10 @@ def test_pipeline_routes_jobs_to_separate_queues():
 def test_pipeline_beat_cadence_is_catalog_first():
     schedule = celery_app.conf.beat_schedule
     assert schedule["discover-store-products-daily"]["schedule"] == 86400.0
-    assert schedule["fetch-store-offers-every-eight-hours"]["schedule"] == 28800.0
+    assert schedule["refresh-known-active-offers-every-eight-hours"]["schedule"] == 28800.0
+    assert schedule["refresh-known-active-offers-every-eight-hours"]["task"] == (
+        "app.workers.ingestion_tasks.enqueue_offer_collection_for_configured_stores"
+    )
     assert schedule["refresh-main-store-prices-every-thirty-minutes"]["schedule"] == 1800.0
 
 def test_all_pipeline_jobs_are_registered_and_runtime_has_nine_connectors():
