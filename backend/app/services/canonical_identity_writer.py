@@ -6,6 +6,7 @@ operational safety checks. Conflicts are returned for review, never merged.
 """
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -52,7 +53,7 @@ def persist_canonical_identity(
         # transaction. The outer transaction remains owned by the caller.
         with session.begin_nested():
             brand = session.scalar(
-                __import__("sqlalchemy").select(Brand).where(
+                select(Brand).where(
                     Brand.normalized_name == normalized.brand
                 )
             )
