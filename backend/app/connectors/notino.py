@@ -23,16 +23,23 @@ class NotinoAffiliateFeedConnector:
     def __init__(self, feed_loader: Callable[[], bytes | Awaitable[bytes]] | None = None):
         self._feed_loader = feed_loader
         self._offers: tuple[OfferRecord, ...] = ()
+        self._last_raw_feed: bytes | None = None
 
     async def _load_bytes(self) -> bytes:
         if self._feed_loader is None:
-            return await asyncio.to_thread(affiliate_feed._fetch_feed)
-        payload = self._feed_loader()
-        if hasattr(payload, "__await__"):
-            payload = await payload
+            payload = await asyncio.to_thread(affiliate_feed._fetch_feed)
+        else:
+            payload = self._feed_loader()
+            if hasattr(payload, "__await__"):
+                payload = await payload
         if not isinstance(payload, (bytes, bytearray)):
             raise affiliate_feed.FeedImportError("notino_feed_loader_must_return_bytes")
-        return bytes(payload)
+        self._last_raw_feed = bytes(payload)
+        return self._last_raw_feed
+
+    def raw_evidence_for(self, external_id: str | None = None):
+        """Return the exact source XML feed bytes for durable raw capture."""
+        return self._last_raw_feed
 
     def parse_raw(self, raw: bytes) -> Sequence[OfferRecord]:
         parsed = affiliate_feed.parse_feed(raw)
