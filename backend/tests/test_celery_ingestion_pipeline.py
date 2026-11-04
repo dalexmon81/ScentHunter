@@ -113,3 +113,36 @@ def test_periodic_discovery_uses_only_active_catalog_stores(tmp_path, monkeypatc
         assert ingestion_tasks._configured_store_keys() == ["bplatz"]
     finally:
         engine.dispose()
+
+
+def test_refresh_raw_artifacts_are_persisted_without_an_ingestion_run(tmp_path, monkeypatch):
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Base, IngestionArtifact, Store
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'refresh-artifacts.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        session.add(Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"))
+        session.commit()
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+
+    original = b"<html><body>retailer refresh page</body></html>"
+    ids = ingestion_tasks._persist_raw_artifacts("bplatz", None, [{
+        "format": "html",
+        "data": original,
+        "content_type": "text/html",
+        "source_url": "https://shop.example/item",
+        "metadata": {"capture": "page_loader_body"},
+    }])
+    try:
+        with factory() as session:
+            artifact = session.scalar(select(IngestionArtifact))
+            assert ids == [str(artifact.id)]
+            assert artifact.raw_data == original
+            assert artifact.sha256
+            assert artifact.ingestion_run_id is None
+    finally:
+        engine.dispose()
