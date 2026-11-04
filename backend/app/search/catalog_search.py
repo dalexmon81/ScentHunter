@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import and_, func, literal_column, or_, select
+from sqlalchemy import String, and_, func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import make_session_factory
@@ -83,16 +83,22 @@ def search_catalog(
                 regconfig = literal_column("'simple'::regconfig")
                 brand_vector = func.to_tsvector(regconfig, Brand.name)
                 fragrance_vector = func.to_tsvector(regconfig, Fragrance.name)
-                # Each token can match either field: "Dior Sauvage" matches
+                notes_vector = func.to_tsvector(
+                    regconfig, func.coalesce(Fragrance.olfactory_notes.cast(String), "")
+                )
+                # Each token can match either field, including olfactory notes.
                 # brand=Dior plus fragrance=Sauvage.
                 token_queries = [func.plainto_tsquery(regconfig, token) for token in q.split() if token]
                 for token_query in token_queries:
                     stmt = stmt.where(or_(
                         brand_vector.op("@@")(token_query),
                         fragrance_vector.op("@@")(token_query),
+                        notes_vector.op("@@")(token_query),
                     ))
-                rank = func.ts_rank_cd(brand_vector, func.plainto_tsquery(regconfig, q)) + func.ts_rank_cd(
-                    fragrance_vector, func.plainto_tsquery(regconfig, q)
+                rank = (
+                    func.ts_rank_cd(brand_vector, func.plainto_tsquery(regconfig, q))
+                    + func.ts_rank_cd(fragrance_vector, func.plainto_tsquery(regconfig, q))
+                    + func.ts_rank_cd(notes_vector, func.plainto_tsquery(regconfig, q))
                 )
                 stmt = stmt.order_by(rank.desc().nullslast(), Offer.price.asc().nullslast(), Store.slug.asc())
             else:
