@@ -222,3 +222,21 @@ def test_non_purchasable_or_incoherent_page_evidence_is_blocked():
         assert promote_matched_offers(factory) == {"processed": 1, "published": 0, "blocked": 1}
         with factory() as session:
             assert session.scalar(select(Offer)) is None
+
+
+def test_out_of_stock_offer_is_not_published():
+    factory, raw_id = setup_db("out_of_stock")
+    assert promote_matched_offers(factory) == {"processed": 1, "published": 0, "blocked": 1}
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+
+
+def test_non_iso_currency_is_not_published():
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {**raw.raw_payload, "currency": "ZZZ"}
+        session.commit()
+    assert promote_matched_offers(factory) == {"processed": 1, "published": 0, "blocked": 1}
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
