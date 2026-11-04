@@ -235,3 +235,95 @@ def test_notino_live_preflight_requires_exact_and_explicitly_available_candidate
     unmatched = module.summarize_candidates([wrong_concentration])
     assert unmatched["status"] == "no_exact_product"
     assert unmatched["exact_candidate_count"] == 0
+
+
+def test_bplatz_saved_fixture_stages_matches_and_promotes_exact_offer():
+    from pathlib import Path
+    from app.connectors import BplatzConnector
+    from app.matching.offer_matcher import match_staged_offer
+    from app.models import Brand, Fragrance, ProductVariant, Offer, PriceHistory, MatchAudit
+    from app.services.ingestion_persistence import promote_offer
+    from scrapers.bplatz import scraper
+
+    fixture = (
+        Path(__file__).resolve().parent / "fixtures" / "connectors"
+        / "bplatz-dior-sauvage-edp-100.html"
+    )
+    url = "https://en.bplatz.de/products/dior-sauvage-eau-de-parfum"
+    html = fixture.read_text(encoding="utf-8")
+    parsed = scraper.parse_product_html(html, url, "Dior Sauvage")
+    assert parsed is not None
+    connector = BplatzConnector()
+    records = connector.parse_raw(parsed)
+    assert len(records) == 1
+    record = records[0]
+    assert record.gtin is None  # Fixture carries no independently verified GTIN.
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        brand = Brand(name="Dior", slug="dior", normalized_name="christian dior")
+        session.add(brand)
+        session.flush()
+        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage")
+        session.add(fragrance)
+        session.flush()
+        session.add(ProductVariant(
+            fragrance_id=fragrance.id,
+            concentration="Eau de Parfum",
+            size_ml=100,
+            canonical_key="christian-dior|sauvage|edp|100|standard",
+        ))
+        session.add(Store(
+            name="Bplatz", slug="bplatz", domain="en.bplatz.de",
+            country="DE", currency="EUR", status="active",
+        ))
+        session.commit()
+
+    # Exercise the real ingestion runner with the parsed fixture and no HTTP.
+    async def discover_products():
+        return ({"externalProductId": record.external_product_id, "url": record.url},)
+
+    async def fetch_offers(_product_key):
+        return (record,)
+
+    connector.discover_products = discover_products
+    connector.fetch_offers = fetch_offers
+    result = run_connector_once(connector, factory)
+    assert result == {
+        "store": "bplatz", "status": "completed", "discovered": 1,
+        "staged": 1, "rejected": 0, "published": 0,
+    }
+
+    with factory() as session:
+        raw = session.scalar(select(IngestionRaw))
+        decision = match_staged_offer(session, raw.id)
+        assert decision.status == "matched"
+        assert decision.method == "canonical_key_exact"
+        offer_id = promote_offer(
+            session,
+            ingestion_raw_id=raw.id,
+            price=record.price,
+            currency=record.currency,
+            url=record.url,
+            availability=record.availability,
+            source=record.source,
+            confidence=decision.confidence,
+        )
+        session.commit()
+        offer = session.get(Offer, offer_id)
+        assert offer is not None and offer.status == "active"
+        assert offer.store_id == raw.store_id
+        assert offer.product_variant_id == decision.product_variant_id
+        assert offer.price == Decimal("89.90")
+        assert offer.currency == "EUR"
+        assert offer.availability == "in_stock"
+        assert raw.status == "promoted"
+        assert len(list(session.scalars(select(PriceHistory).where(
+            PriceHistory.offer_id == offer_id
+        )))) == 1
+        assert len(list(session.scalars(select(MatchAudit).where(
+            MatchAudit.offer_id == offer_id
+        )))) == 1
+    engine.dispose()
