@@ -126,7 +126,7 @@ def get_product_offers(
                 Store.status == "active",
                     Store.status == "active",
                 )
-                .order_by(Offer.price.asc())
+                .order_by(Offer.captured_at.desc(), Offer.price.asc())
             ).all()
             now = datetime.now(timezone.utc)
             offers = [
