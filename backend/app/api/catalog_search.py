@@ -6,11 +6,12 @@ from decimal import Decimal, InvalidOperation
 from fastapi import APIRouter, HTTPException, Query
 
 from app.search.catalog_search import search_catalog
+from app.schemas.catalog import SearchResponse
 
 router = APIRouter(prefix="/api", tags=["catalog-search"])
 
 
-@router.get("/search")
+@router.get("/search", response_model=SearchResponse)
 def search_products(
     q: str = Query(..., min_length=1, max_length=160),
     brand: str | None = None,
