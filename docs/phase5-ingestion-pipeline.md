@@ -48,47 +48,28 @@ detail page. This dispatches the retailer refresh onto the `refresh` queue and
 returns its Celery job ID. The existing public product-detail HTTP handler and
 frontend have not yet been connected to this dispatch helper.
 
-### Detail-refresh integration gate (intentional blocker)
+### Detail-refresh integration
 
-The current `frontend/index.html` detail view is populated from the legacy
-`/search` response. Its offer objects expose display fields such as `store`,
-`url` and price, but they do not carry the UUID of a row in the Phase 2
-SQLAlchemy `offers` table. The current API also still serves the legacy
-catalog/search pipeline; it does not yet read those SQLAlchemy offer rows.
-
-Do not add a browser-facing endpoint that accepts an arbitrary `store_key` and
-retailer product ID and forwards it to Celery. That would let unauthenticated
-clients enqueue refresh work for arbitrary retailer identifiers and would
-bypass validation against the canonical offer table. Do not try to use the
-legacy URL as a substitute for the persisted offer ID: the connector refresh
-contract expects the retailer's stable external product ID.
-
-Safe completion requires the product-detail API to read a persisted active
-`Offer`, return its opaque offer UUID (or a server-side refresh token), and
-expose a rate-limited refresh action that resolves that UUID back to the
-persisted `Offer` and its `Store` before enqueueing. The handler must verify
-that the store is active, the offer is active, and `external_product_id` is
-present; it must apply a per-offer cooldown/deduplication policy. The browser
-must never supply the store slug or external retailer ID as authority.
-
-The backend now exposes `POST /catalog/offers/{offer_id}/refresh`. It accepts
+The backend exposes `POST /catalog/offers/{offer_id}/refresh`. It accepts
 only the persisted Offer UUID; store slug and retailer product ID are resolved
 from the database. It rejects missing/inactive offers and offers without a
 stable retailer ID, uses Redis `SET NX EX` for a five-minute per-offer
 cooldown, and releases the cooldown if Celery enqueueing fails. Redis failure
-fails closed with HTTP 503. No arbitrary store/SKU can be supplied by a browser.
+fails closed with HTTP 503. A browser cannot supply an arbitrary store or SKU.
 
-The frontend now contains a guarded “Aggiorna prezzo” control, rendered only
-when an offer object includes a valid `phase2_offer_id` UUID. The current
-legacy `/search` response still does not include that field, so the control is
-not yet shown to users. The remaining integration is to make the new catalog
-search/detail response return persisted Phase 2 offer UUIDs and then verify
-the control end-to-end. Do not fabricate this field from the legacy URL or
-retailer SKU.
+The frontend contains a guarded “Aggiorna prezzo” control, rendered only when
+an offer object includes a valid `phase2_offer_id` UUID. The current legacy
+`/search` response still does not include that field, so the control is not
+yet shown to users. The remaining integration is to make the new catalog
+search/detail response return persisted Phase 2 offer UUIDs and then verify the
+control end-to-end. Do not fabricate this field from a legacy URL or retailer
+SKU.
 
-The endpoint and cooldown behavior have dedicated tests. The remaining UI
-data-contract integration is not yet complete; the phase must not be closed
-until the frontend receives real persisted IDs and the full path is verified.
+Dedicated tests cover active-offer resolution, inactive-store rejection,
+missing retailer IDs, cooldown behavior and cooldown release after enqueue
+failure. The UI data-contract integration is not complete; Phase 5 must not be
+closed until the frontend receives real persisted IDs and the full path passes
+end-to-end verification.
 
 ## Configuration
 
