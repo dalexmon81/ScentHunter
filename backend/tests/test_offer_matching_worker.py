@@ -276,3 +276,29 @@ def test_semantic_match_never_crosses_packaging_boundary():
         assert decision.status == "unmatched"
         assert decision.method == "no_exact_match"
 
+def test_unknown_tester_identity_is_persisted_in_review_queue():
+    factory, _variant_id, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "title": "Dior Unknown Fragrance Eau de Parfum 100 ml tester",
+            "packaging": "tester",
+            "size_ml": 100,
+        }
+        session.commit()
+
+    with factory() as session:
+        decision = match_staged_offer(session, raw_id)
+        review = session.scalar(select(CanonicalIdentityReview))
+        raw = session.get(IngestionRaw, raw_id)
+
+    assert decision.status == "unmatched"
+    assert decision.method == "no_exact_match"
+    assert raw.status == "unmatched"
+    assert review is not None
+    assert review.status == "pending"
+    assert review.normalized_payload["packaging"] == "tester"
+    assert review.normalized_payload["size_ml"] == 100
+    assert review.canonical_key.endswith("|100|tester")
+
