@@ -1,4 +1,4 @@
-name: Phase 4 Universal Connector Contract
+name: Phase 4 Universal Connector Contract # Includes Sabina adapter fixtures
 
 on:
   pull_request:
