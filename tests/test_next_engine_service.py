@@ -56,6 +56,45 @@ def test_process_records_normalizes_matches_and_aggregates():
     assert len(result.groups[0].offers) == 2
 
 
+def test_product_identity_normalization_is_audit_only_and_does_not_block_matching():
+    service = make_service()
+    result = service.process_records(
+        [{"name": "Example Fragrance", "size_ml": 100, "price": "49.90"}],
+        retailer="test-shop",
+    )
+
+    # Brandless input can still be resolved by the existing conservative matcher
+    # when the exact title and declared variant are unique. The identity sidecar
+    # flags missing brand metadata for review without changing that decision.
+    assert result.matched_offer_count == 1
+    assert result.groups[0].canonical_variant_id == "variant-example-100"
+    assert result.normalized_product_identities == ()
+    assert result.identity_review_rows == ({
+        "index": 0,
+        "reason": "brand_and_fragrance_name_are_required",
+    },)
+
+
+def test_product_identity_sidecar_extracts_variant_attributes():
+    service = make_service()
+    result = service.process_records(
+        [{
+            "name": "Example Fragrance Eau de Parfum 100 ml",
+            "brand": "Example",
+            "price": "49.90",
+        }],
+        retailer="test-shop",
+    )
+
+    assert len(result.normalized_product_identities) == 1
+    index, identity = result.normalized_product_identities[0]
+    assert index == 0
+    assert identity.brand == "example"
+    assert identity.fragrance_name == "fragrance"
+    assert identity.concentration == "edp"
+    assert identity.size_ml == 100
+
+
 def test_process_records_keeps_missing_format_unresolved():
     service = make_service()
     result = service.process_records(
