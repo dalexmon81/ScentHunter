@@ -38,7 +38,7 @@ def decide_offer_match(
         identity = normalize_product(
             brand, title,
             concentration=payload.get("concentration"),
-            size_ml=payload.get("sizeMl", payload.get("size_ml")),
+            size_ml=payload.get("sizeMl") if payload.get("sizeMl") is not None else payload.get("size_ml"),
             packaging=payload.get("packaging"),
         )
     except (TypeError, ValueError) as exc:
@@ -169,7 +169,7 @@ def match_staged_offer(
         identity = normalize_product(
             str(payload.get("brand") or ""), str(payload.get("title") or ""),
             concentration=payload.get("concentration"),
-            size_ml=payload.get("sizeMl", payload.get("size_ml")),
+            size_ml=payload.get("sizeMl") if payload.get("sizeMl") is not None else payload.get("size_ml"),
             packaging=payload.get("packaging"),
         )
         enqueue_identity_review(
