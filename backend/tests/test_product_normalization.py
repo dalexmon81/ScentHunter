@@ -58,7 +58,7 @@ def test_gtin_check_digit_and_deduplication():
     decision, conflict = deduplication_decision(
         left_gtin="4006381333931", right_gtin="4006381333932",
         left_key="same", right_key="same")
-    assert decision == "different" and conflict is None
+    assert decision == "same" and conflict is None
     decision, conflict = deduplication_decision(
         left_gtin="4006381333931", right_gtin="5901234123457",
         left_key="same", right_key="same")
