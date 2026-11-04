@@ -94,3 +94,42 @@ def test_worker_ignores_unmatched_rows():
     }
     with factory() as session:
         assert session.scalar(select(Offer)) is None
+
+
+
+def test_blocked_old_row_does_not_starve_later_promotion_batch():
+    factory, blocked_id = setup_db("preorder")
+    with factory() as session:
+        blocked = session.get(IngestionRaw, blocked_id)
+        later = IngestionRaw(
+            store_id=blocked.store_id,
+            external_product_id="sku-101",
+            raw_payload={
+                **blocked.raw_payload,
+                "externalProductId": "sku-101",
+                "url": "https://shop.example/item/sku-101",
+                "availability": "in_stock",
+            },
+            status="matched",
+            product_variant_id=blocked.product_variant_id,
+            match_method=blocked.match_method,
+            match_confidence=blocked.match_confidence,
+        )
+        session.add(later)
+        session.commit()
+        later_id = later.id
+
+    first = promote_matched_offers(factory, limit=1)
+    second = promote_matched_offers(factory, limit=1)
+
+    assert first == {"processed": 1, "published": 0, "blocked": 1}
+    assert second == {"processed": 1, "published": 1, "blocked": 0}
+    with factory() as session:
+        blocked = session.get(IngestionRaw, blocked_id)
+        later = session.get(IngestionRaw, later_id)
+        offers = session.scalars(select(Offer)).all()
+        assert blocked.status == "matched"
+        assert blocked.rejection_reason.startswith("promotion_blocked:")
+        assert later.status == "promoted"
+        assert len(offers) == 1
+        assert offers[0].external_product_id == "sku-101"
