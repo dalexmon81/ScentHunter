@@ -82,3 +82,11 @@ def test_product_detail_refresh_can_be_enqueued_on_refresh_queue(monkeypatch):
         "kwargs": {"store_key": "notino", "offer_id": "sku-123"},
         "queue": "refresh",
     }
+
+
+def test_dead_letter_model_is_durable_and_unique_per_task():
+    from app.models import IngestionDeadLetter
+
+    table = IngestionDeadLetter.__table__
+    assert {"task_name", "task_id", "args_repr", "kwargs_repr", "error", "status"} <= set(table.columns.keys())
+    assert any(constraint.name == "uq_ingestion_dead_letters_task_id" for constraint in table.constraints)
