@@ -213,3 +213,66 @@ def test_identity_review_preserves_snake_case_size_and_packaging():
         assert decision.status == "unmatched"
         assert review is not None
         assert review.canonical_key.endswith("|50|tester")
+
+def test_semantic_matching_requires_explicit_provider_and_structural_identity():
+    factory, variant_id, raw_id = setup_db()
+
+    class FixedProvider:
+        def embed(self, text):
+            if text in {"sauvagge", "Sauvage"}:
+                return [1.0, 0.0]
+            return [0.0, 1.0]
+
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "title": "Dior Sauvagge Eau de Parfum 100 ml",
+            "fragrance": "sauvagge",
+        }
+        session.commit()
+
+    with factory() as session:
+        from app.matching.offer_matcher import decide_offer_match
+        raw = session.get(IngestionRaw, raw_id)
+        disabled = decide_offer_match(session, raw)
+        assert disabled.status == "unmatched"
+        assert disabled.method == "no_exact_match"
+
+    with factory() as session:
+        from app.matching.offer_matcher import decide_offer_match
+        raw = session.get(IngestionRaw, raw_id)
+        enabled = decide_offer_match(
+            session, raw, semantic_provider=FixedProvider(),
+        )
+        assert enabled.status == "matched"
+        assert enabled.method == "semantic_embedding"
+        assert enabled.product_variant_id == variant_id
+        assert enabled.confidence >= Decimal("0.985")
+
+
+def test_semantic_match_never_crosses_packaging_boundary():
+    factory, _variant_id, raw_id = setup_db()
+
+    class FixedProvider:
+        def embed(self, text):
+            return [1.0, 0.0]
+
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "title": "Dior Sauvagge Eau de Parfum 100 ml tester",
+            "packaging": "tester",
+        }
+        session.commit()
+
+    with factory() as session:
+        from app.matching.offer_matcher import decide_offer_match
+        raw = session.get(IngestionRaw, raw_id)
+        decision = decide_offer_match(
+            session, raw, semantic_provider=FixedProvider(),
+        )
+        assert decision.status == "unmatched"
+        assert decision.method == "no_exact_match"
+
