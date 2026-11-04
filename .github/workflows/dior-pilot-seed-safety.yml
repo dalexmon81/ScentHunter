@@ -1,0 +1,32 @@
+name: Dior pilot seed safety
+
+on:
+  pull_request:
+    branches:
+      - phase5/redis-celery-ingestion-pipeline
+    paths:
+      - "backend/scripts/seed_catalog.py"
+      - "backend/tests/test_seed_catalog_store_safety.py"
+      - ".github/workflows/dior-pilot-seed-safety.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  seed-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Run focused seed safety tests
+        run: >-
+          python -m pytest -q
+          backend/tests/test_seed_catalog_store_safety.py
+          backend/tests/test_phase2_seed_catalog.py
