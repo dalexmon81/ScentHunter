@@ -1155,7 +1155,7 @@ function renderStoreDiagnostics(data){
   errorsBox.innerHTML=`<div style="color:#e7b83f;font-weight:900;margin-bottom:6px">Problemi tecnici durante la ricerca</div>${rows}`;
 }
 
-async async function searchStoresProgressive(term,onPartial){
+async function searchStoresProgressive(term,onPartial){
   const query=String(term||"").trim();
   const empty={query,results:[],unresolved_offers:[],errors:{},stores:{},status:"completed"};
   if(!query)return empty;
