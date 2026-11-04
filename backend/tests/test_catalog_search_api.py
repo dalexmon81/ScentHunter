@@ -208,3 +208,27 @@ def test_catalog_search_returns_similar_suggestions_when_not_found(tmp_path):
         assert result["suggestions"][0]["fragrance"] == "Sauvage"
     finally:
         engine.dispose()
+
+
+def test_catalog_search_supports_all_availability_values(tmp_path):
+    factory, engine = _factory(tmp_path)
+    try:
+        with factory.begin() as session:
+            variant = session.query(ProductVariant).filter_by(is_tester=False).one()
+            store = session.query(Store).filter_by(slug="notino").one()
+            session.add(Offer(
+                id=uuid4(), store_id=store.id, product_variant_id=variant.id,
+                external_product_id="sauvage-out-of-stock",
+                url="https://notino.example/sauvage-out-of-stock",
+                price=Decimal("75.00"), currency="EUR", availability="out_of_stock",
+                source="fixture", confidence=Decimal("1.000"),
+                captured_at=datetime.now(timezone.utc), status="active",
+                publication_status="published",
+            ))
+        all_results = search_catalog("Sauvage", session_factory=factory, availability="all")
+        assert all_results["offer_count"] == 2
+        out_results = search_catalog("Sauvage", session_factory=factory, availability="out_of_stock")
+        assert out_results["offer_count"] == 1
+        assert out_results["results"][0]["variants"][0]["availability"] == "out_of_stock"
+    finally:
+        engine.dispose()
