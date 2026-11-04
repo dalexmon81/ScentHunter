@@ -1,0 +1,44 @@
+name: Dior pilot staging dry-run
+
+on:
+  push:
+    branches:
+      - phase5/dior-pilot-scoped-seed
+    paths:
+      - ".github/workflows/dior-pilot-staging-dry-run.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  staging-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out pilot branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase5/dior-pilot-scoped-seed
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Verify Fly token is available
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::Missing repository secret FLY_API_TOKEN"
+            exit 1
+          fi
+      - name: Run scoped dry-run on the isolated staging worker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started staging app worker found; refusing to continue."
+            exit 1
+          fi
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/seed_catalog.py --product-id SH-AUTO-0178")"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | python -c 'import json,sys; r=json.load(sys.stdin); expected={"status":"validated","product_filter":["SH-AUTO-0178"],"brands":1,"fragrances":1,"variants":1,"products_without_variants":0,"offers_imported":0,"stores_to_seed":[],"database_written":False,"source_modified":False}; assert all(r.get(k)==v for k,v in expected.items()), r; print("Staging Dior dry-run safety assertions: PASS")'
