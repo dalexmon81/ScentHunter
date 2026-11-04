@@ -4066,7 +4066,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         missing = sorted(required_tables - tables)
         if revision not in {
             "0002_ingestion_raw", "0003_store_domain",
-            "0008_offer_lifecycle_states",
+            "0008_offer_lifecycle_states", "0009_catalog_search_fts",
         } or missing:
             print(
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
