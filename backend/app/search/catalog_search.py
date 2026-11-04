@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.db import make_session_factory
 from app.models import Brand, Fragrance, Offer, ProductVariant, Store
+from app.search.meilisearch import MeiliSearchUnavailable, search_variant_ids
 
 
 _FORMAT_FIELDS = {
@@ -62,6 +63,22 @@ def search_catalog(
     try:
         with factory() as session:
             dialect = session.get_bind().dialect.name
+            meili_ids = None
+            try:
+                meili_ids = search_variant_ids(q, filters={
+                    "brand_slug": brand.strip().casefold() if brand else None,
+                    "family": family.strip() if family else None,
+                    "gender": gender.strip() if gender else None,
+                    "concentration": concentration.strip() if concentration else None,
+                    "format": product_format,
+                    "availability": availability.strip().casefold() if availability else None,
+                    "country": country.strip().upper() if country else None,
+                    "currency": currency.strip().upper() if currency else None,
+                    "store_slugs": store.strip().casefold() if store else None,
+                })
+            except MeiliSearchUnavailable:
+                # Meilisearch is an accelerator only; PostgreSQL FTS stays authoritative.
+                meili_ids = None
             stmt = (
                 select(Brand, Fragrance, ProductVariant, Offer, Store)
                 .join(Fragrance, Fragrance.brand_id == Brand.id)
@@ -79,7 +96,9 @@ def search_catalog(
                 ))
             )
 
-            if dialect == "postgresql":
+            if meili_ids:
+                stmt = stmt.where(ProductVariant.id.in_(meili_ids))
+            elif dialect == "postgresql":
                 regconfig = literal_column("'simple'::regconfig")
                 brand_vector = func.to_tsvector(regconfig, Brand.name)
                 fragrance_vector = func.to_tsvector(regconfig, Fragrance.name)
