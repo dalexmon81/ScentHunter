@@ -128,3 +128,18 @@ class AdminMatchingReviewRead(BaseModel):
     status: str
     created_at: datetime
     normalized_payload: dict[str, Any]
+
+
+class AdminConnectorList(BaseModel):
+    count: int
+    connectors: list[dict[str, Any]]
+
+
+class AdminIngestionRunList(BaseModel):
+    count: int
+    runs: list[AdminIngestionRunRead]
+
+
+class AdminMatchingReviewList(BaseModel):
+    count: int
+    reviews: list[AdminMatchingReviewRead]
