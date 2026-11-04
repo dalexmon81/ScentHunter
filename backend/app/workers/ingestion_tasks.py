@@ -202,7 +202,7 @@ def normalize_offer(self, raw_id: str):
     factory = make_session_factory()
     try:
         with factory() as session:
-            raw = session.get(IngestionRaw, raw_id)
+            raw = session.get(IngestionRaw, UUID(str(raw_id)))
             if raw is None or raw.status not in {"pending", "unmatched"}:
                 return {"raw_id": raw_id, "status": "skipped"}
             payload = raw.raw_payload or {}
@@ -273,12 +273,20 @@ def match_offer_to_variant(self, raw_id: str):
             result = match_staged_offer(session, UUID(str(raw_id)))
             session.commit()
             status = result.status
+        if status == "matched":
+            promote_matched_offers_task.apply_async(queue="offers")
         return {"raw_id": raw_id, "status": status}
     except Exception:
         factory.kw["bind"].dispose()
         raise
     finally:
         factory.kw["bind"].dispose()
+
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.promote_matched_offers_task")
+def promote_matched_offers_task(self, limit: int = 100):
+    from app.workers.offer_promotion import promote_matched_offers
+    return promote_matched_offers(make_session_factory, limit=limit)
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.refresh_price_and_stock")
 def refresh_price_and_stock(self, store_key: str, offer_id: str):
