@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.db import make_session_factory
 from app.models import Brand, Fragrance, Offer, ProductVariant, Store
 from app.search.meilisearch import MeiliSearchUnavailable, search_variant_ids
+from app.services.offer_ranking import rank_offers
 
 
 _FORMAT_FIELDS = {
@@ -191,14 +192,14 @@ def search_catalog(
                         "availability": offer_row.availability,
                         "url": offer_row.url,
                         "captured_at": offer_row.captured_at.isoformat() if offer_row.captured_at else None,
-                        "shipping_cost": str(offer_row.shipping_cost) if offer_row.shipping_cost is not None else None,
+                        "shipping_cost": str(offer_row.shipping_cost) if offer_row.shipping_cost is not None else None,\n                        "store_reliability": str(store_row.reliability_score) if store_row.reliability_score is not None else "0.5",\n                        "store_status": store_row.status,\n                        "confidence": str(offer_row.confidence) if offer_row.confidence is not None else "0",\n                        "match_confidence": str(offer_row.confidence) if offer_row.confidence is not None else "0",\n                        "valid_until": offer_row.valid_until.isoformat() if offer_row.valid_until else None,
                     })
 
             products = list(grouped.values())
             for product in products:
                 product["variants"] = list(product.pop("_variant_map").values())
                 for variant in product["variants"]:
-                    variant["offers"].sort(key=lambda item: (Decimal(item["price"]), item["store"]))
+                    variant["offers"] = rank_offers(variant["offers"])
                     by_currency = {}
                     for offer in variant["offers"]:
                         by_currency.setdefault(offer["currency"], []).append(Decimal(offer["price"]))
