@@ -23,6 +23,7 @@ class NotinoAffiliateFeedConnector:
     def __init__(self, feed_loader: Callable[[], bytes | Awaitable[bytes]] | None = None):
         self._feed_loader = feed_loader
         self._offers: tuple[OfferRecord, ...] = ()
+        self._raw_artifacts: list[dict[str, Any]] = []
         self._last_raw_feed: bytes | None = None
 
     async def _load_bytes(self) -> bytes:
@@ -80,6 +81,7 @@ class NotinoAffiliateFeedConnector:
 
     async def discover_products(self) -> Sequence[dict]:
         raw = await self._load_bytes()
+        self._raw_artifacts = [{"format": "xml", "content_type": "application/xml", "data": raw}]
         self._offers = tuple(self.parse_raw(raw))
         return tuple({
             "externalProductId": offer.external_product_id,
