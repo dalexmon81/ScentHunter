@@ -11,7 +11,7 @@ from app.db import make_session_factory
 from app.models import Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
 from app.services.offer_ranking import rank_offers, store_mismatch_rates, summarize_price_history
 
-router = APIRouter(tags=["catalog-resources"])
+router = APIRouter(prefix="/api", tags=["catalog-resources"])
 
 
 def _as_utc(value: datetime | None):
@@ -243,6 +243,7 @@ def list_offers(
             payload = [
                 {
                     **_offer_payload(offer, store, now=now),
+                    "_store_id": store.id,
                     "store_reliability": str(store.reliability_score) if store.reliability_score is not None else "0.5",
                     "store_status": store.status,
                     "confidence": str(offer.confidence) if offer.confidence is not None else "0",
