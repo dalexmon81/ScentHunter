@@ -1269,10 +1269,13 @@ async function searchPerfume(){
             if(suggestions.length){
               errorsBox.innerHTML='<div style="color:#e7b83f;font-weight:900;margin-bottom:6px">Forse cercavi:</div>'+suggestions.map(x=>'<div style="margin-top:5px">'+esc((x.brand||"")+" — "+(x.fragrance||""))+'</div>').join("");
             }
+          }else if(Number(data?.offer_count??groups.reduce((n,g)=>n+(g.offers||[]).length,0))===0){
+            statusBox.textContent="Prodotto presente nel catalogo, ma nessuna offerta verificata al momento.";
           }else{
+            const offers=Number(data?.offer_count??groups.reduce((n,g)=>n+(g.offers||[]).length,0));
             statusBox.textContent=hasUnverified
               ? count+" prodotti trovati — alcuni negozi non verificati"
-              : count+(count===1?" prodotto trovato":" prodotti trovati");
+              : count+(count===1?" prodotto trovato":" prodotti trovati")+" · "+offers+" offerte verificate";
           }
         }else if(status === "cancelled_with_results"){
           statusBox.textContent =
