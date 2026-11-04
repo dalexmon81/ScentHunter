@@ -1,0 +1,310 @@
+"""Redis/Celery tasks for the catalog-first ingestion pipeline.
+
+Each task is idempotent at the evidence boundary where possible. Raw retailer
+and parser evidence is retained in ingestion_raw.raw_payload alongside the
+normalized offer fields. Matching and promotion remain separate gates.
+"""
+from __future__ import annotations
+
+import asyncio
+import base64
+import json
+import logging
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+from sqlalchemy import select
+
+from app.db import make_session_factory
+from app.connectors.runtime_registry import build_connectors, get_connector
+from app.models import IngestionRaw, IngestionRun, Store
+from app.matching.offer_matcher import match_staged_offer
+from app.services.product_normalization import normalize_product
+from app.workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
+QUARANTINE_AFTER = max(1, int(__import__("os").environ.get("SCENTHUNTER_CONNECTOR_QUARANTINE_AFTER", "3")))
+
+class IngestionTask(celery_app.Task):
+    abstract = True
+    autoretry_for = (TimeoutError, ConnectionError, OSError)
+    retry_backoff = True
+    retry_backoff_max = 900
+    retry_jitter = True
+    max_retries = 5
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        try:
+            record_dead_letter.apply_async(
+                kwargs={
+                    "task_name": self.name,
+                    "task_id": task_id,
+                    "args_repr": repr(args)[:2000],
+                    "kwargs_repr": repr(kwargs)[:2000],
+                    "error": f"{type(exc).__name__}: {exc}"[:1000],
+                },
+                queue="dead_letter",
+            )
+        except Exception:
+            logger.exception("Unable to enqueue dead-letter record for %s", task_id)
+
+def _run(coro):
+    return asyncio.run(coro)
+
+def _json_safe(value: Any):
+    if isinstance(value, bytes):
+        return {"encoding": "base64", "data": base64.b64encode(value).decode("ascii")}
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, (datetime,)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return repr(value)[:2000]
+
+def _stage_record(store_key: str, record, discovery_evidence: dict | None = None) -> str:
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_key))
+            if store is None:
+                raise ValueError(f"connector_store_not_configured:{store_key}")
+            payload = record.to_dict()
+            # Keep fields at the root for existing matcher/promotion contracts;
+            # preserve source evidence separately for replay and audit.
+            payload["_raw_evidence"] = {
+                "format": "connector_discovery_and_parsed_record",
+                "captured_at": datetime.now(timezone.utc).isoformat(),
+                "discovery": _json_safe(discovery_evidence or {}),
+                "parser_output": _json_safe(payload),
+            }
+            existing = session.scalar(select(IngestionRaw).where(
+                IngestionRaw.store_id == store.id,
+                IngestionRaw.external_product_id == record.external_product_id,
+                IngestionRaw.status.in_(("pending", "unmatched", "matched")),
+            ).order_by(IngestionRaw.created_at.desc()).limit(1))
+            if existing is not None:
+                # Preserve original capture and append latest observation history
+                # in the evidence envelope rather than creating duplicate rows.
+                evidence = existing.raw_payload or {}
+                history = evidence.get("_refresh_history", [])
+                history.append(payload["_raw_evidence"])
+                evidence["_refresh_history"] = history[-20:]
+                for key, value in payload.items():
+                    if key != "_raw_evidence":
+                        evidence[key] = value
+                existing.raw_payload = evidence
+                raw_id = existing.id
+            else:
+                raw = IngestionRaw(
+                    store_id=store.id,
+                    raw_payload=payload,
+                    external_product_id=record.external_product_id,
+                    status="pending",
+                )
+                session.add(raw)
+                session.flush()
+                raw_id = raw.id
+            session.commit()
+            return str(raw_id)
+    finally:
+        factory.kw["bind"].dispose()
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.discover_store_products")
+def discover_store_products(self, store_key: str):
+    connector = get_connector(store_key)
+    products = _run(connector.discover_products())
+    staged = []
+    for product in products:
+        product_key = str(product.get("externalProductId") or product.get("external_product_id") or product.get("url") or "").strip()
+        if product_key:
+            fetch_store_offers.apply_async(
+                kwargs={"store_key": store_key, "product_key": product_key, "discovery_evidence": _json_safe(dict(product))},
+                queue="offers",
+            )
+            staged.append(product_key)
+    return {"store": store_key, "discovered": len(products), "queued": len(staged)}
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.fetch_store_offers")
+def fetch_store_offers(self, store_key: str, product_key: str, discovery_evidence: dict | None = None):
+    connector = get_connector(store_key)
+    records = _run(connector.fetch_offers(product_key))
+    ids = []
+    for record in records:
+        raw_id = _stage_record(store_key, record, discovery_evidence)
+        ids.append(raw_id)
+        normalize_offer.apply_async(args=[raw_id], queue="validation")
+    return {"store": store_key, "product": product_key, "offers_staged": len(ids), "raw_ids": ids}
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.normalize_offer")
+def normalize_offer(self, raw_id: str):
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            raw = session.get(IngestionRaw, raw_id)
+            if raw is None or raw.status not in {"pending", "unmatched"}:
+                return {"raw_id": raw_id, "status": "skipped"}
+            payload = raw.raw_payload or {}
+            normalized = normalize_product(
+                str(payload.get("brand") or ""),
+                str(payload.get("title") or ""),
+                concentration=payload.get("concentration"),
+                size_ml=payload.get("sizeMl"),
+            )
+            payload["fragrance"] = normalized.fragrance_name
+            payload["concentration"] = normalized.concentration
+            payload["sizeMl"] = normalized.size_ml
+            payload["_normalization"] = {"status": "normalized", "at": datetime.now(timezone.utc).isoformat()}
+            raw.raw_payload = payload
+            session.commit()
+        validate_offer.apply_async(args=[raw_id], queue="validation")
+        return {"raw_id": raw_id, "status": "normalized"}
+    finally:
+        factory.kw["bind"].dispose()
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.validate_offer")
+def validate_offer(self, raw_id: str):
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            raw = session.get(IngestionRaw, raw_id)
+            if raw is None or raw.status not in {"pending", "unmatched"}:
+                return {"raw_id": raw_id, "status": "skipped"}
+            payload = raw.raw_payload or {}
+            errors = []
+            for field in ("store", "externalProductId", "brand", "fragrance", "title", "url", "availability", "capturedAt", "source"):
+                if not str(payload.get(field) or "").strip():
+                    errors.append(f"missing_{field}")
+            if not str(payload.get("url") or "").startswith("https://"):
+                errors.append("invalid_https_url")
+            try:
+                price = Decimal(str(payload.get("price")))
+                if not price.is_finite() or price <= 0:
+                    errors.append("invalid_price")
+            except (InvalidOperation, TypeError, ValueError):
+                errors.append("invalid_price")
+            if not isinstance(payload.get("currency"), str) or len(payload["currency"]) != 3:
+                errors.append("invalid_currency")
+            if payload.get("availability") not in {"in_stock", "out_of_stock", "preorder", "unknown"}:
+                errors.append("invalid_availability")
+            if errors:
+                raw.status = "rejected"
+                raw.rejection_reason = ",".join(errors)
+                session.commit()
+                return {"raw_id": raw_id, "status": "rejected", "errors": errors}
+            session.commit()
+        match_offer_to_variant.apply_async(args=[raw_id], queue="matching")
+        return {"raw_id": raw_id, "status": "validated"}
+    finally:
+        factory.kw["bind"].dispose()
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.match_offer_to_variant")
+def match_offer_to_variant(self, raw_id: str):
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            result = match_staged_offer(session, raw_id)
+            session.commit()
+            status = result.status
+        return {"raw_id": raw_id, "status": status}
+    except Exception:
+        factory.kw["bind"].dispose()
+        raise
+    finally:
+        factory.kw["bind"].dispose()
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.refresh_price_and_stock")
+def refresh_price_and_stock(self, store_key: str, offer_id: str):
+    connector = get_connector(store_key)
+    record = _run(connector.fetch_price_and_stock(offer_id))
+    if record is None:
+        return {"store": store_key, "offer_id": offer_id, "status": "not_refreshed"}
+    raw_id = _stage_record(store_key, record, {"refresh_of": offer_id})
+    validate_offer.apply_async(args=[raw_id], queue="validation")
+    return {"store": store_key, "offer_id": offer_id, "status": "refreshed", "raw_id": raw_id}
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.quarantine_failed_connector")
+def quarantine_failed_connector(self, store_key: str):
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_key))
+            if store is None:
+                raise ValueError(f"unknown_store:{store_key}")
+            recent = session.scalars(select(IngestionRun).where(
+                IngestionRun.store_id == store.id
+            ).order_by(IngestionRun.started_at.desc()).limit(QUARANTINE_AFTER)).all()
+            consecutive = 0
+            for run in recent:
+                if run.status != "failed":
+                    break
+                consecutive += 1
+            if consecutive >= QUARANTINE_AFTER:
+                store.status = "quarantined"
+            session.commit()
+            return {"store": store_key, "consecutive_failures": consecutive, "status": store.status}
+    finally:
+        factory.kw["bind"].dispose()
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.reprocess_failed_offers")
+def reprocess_failed_offers(self, store_key: str | None = None, limit: int = 100):
+    if limit < 1 or limit > 5000:
+        raise ValueError("limit_must_be_between_1_and_5000")
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            query = select(IngestionRaw).where(
+                IngestionRaw.status == "rejected",
+                IngestionRaw.rejection_reason.like("retryable:%"),
+            ).order_by(IngestionRaw.created_at.asc()).limit(limit)
+            rows = session.scalars(query).all()
+            queued = []
+            for row in rows:
+                row.status = "pending"
+                row.rejection_reason = None
+                queued.append(str(row.id))
+            session.commit()
+        for raw_id in queued:
+            normalize_offer.apply_async(args=[raw_id], queue="validation")
+        return {"requeued": len(queued), "raw_ids": queued}
+    finally:
+        factory.kw["bind"].dispose()
+
+@celery_app.task(name="app.workers.ingestion_tasks.record_dead_letter")
+def record_dead_letter(task_name: str, task_id: str, args_repr: str, kwargs_repr: str, error: str):
+    # Celery's durable broker queue is the DLQ transport. Logs provide a
+    # searchable audit trail; a DB-backed DLQ table can be added with a schema
+    # migration when operational retention requirements are finalized.
+    logger.error("DEAD_LETTER task=%s id=%s args=%s kwargs=%s error=%s",
+                 task_name, task_id, args_repr, kwargs_repr, error)
+    return {"recorded": True, "task_id": task_id}
+
+def _configured_store_keys():
+    return sorted(build_connectors().keys())
+
+@celery_app.task(name="app.workers.ingestion_tasks.enqueue_discovery_for_configured_stores")
+def enqueue_discovery_for_configured_stores():
+    keys = _configured_store_keys()
+    for key in keys:
+        discover_store_products.apply_async(args=[key], queue="discovery")
+    return {"queued_stores": keys}
+
+@celery_app.task(name="app.workers.ingestion_tasks.enqueue_offer_collection_for_configured_stores")
+def enqueue_offer_collection_for_configured_stores():
+    return enqueue_discovery_for_configured_stores()
+
+@celery_app.task(name="app.workers.ingestion_tasks.enqueue_refresh_for_active_stores")
+def enqueue_refresh_for_active_stores():
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            stores = session.scalars(select(Store).where(Store.status == "active")).all()
+            keys = [store.slug for store in stores]
+        return {"active_stores": keys, "note": "refresh tasks are scheduled per known offer by the operator or product-detail on-demand path"}
+    finally:
+        factory.kw["bind"].dispose()
