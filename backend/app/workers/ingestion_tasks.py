@@ -337,10 +337,12 @@ def validate_offer(self, raw_id: str):
             if payload.get("price_incoherent") is True or payload.get("page_price_mismatch") is True:
                 errors.append("price_page_inconsistency")
             if errors:
+                raw.validation_status = "rejected"
                 raw.status = "rejected"
                 raw.rejection_reason = ",".join(errors)
                 session.commit()
                 return {"raw_id": raw_id, "status": "rejected", "errors": errors}
+            raw.validation_status = "validated"
             session.commit()
         match_offer_to_variant.apply_async(args=[raw_id], queue="matching")
         return {"raw_id": raw_id, "status": "validated"}
