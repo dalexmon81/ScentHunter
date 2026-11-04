@@ -2,7 +2,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, func, text
+from sqlalchemy import LargeBinary, Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, func, text
 from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
@@ -164,6 +164,26 @@ class IngestionRun(Base):
     offers_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     offers_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     errors: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default=text("'[]'"))
+
+
+class IngestionArtifact(Base):
+    """Immutable raw source artifact retained for deterministic reprocessing."""
+    __tablename__ = "ingestion_artifacts"
+    __table_args__ = (
+        Index("ix_ingestion_artifacts_store_captured", "store_id", "captured_at"),
+        UniqueConstraint("store_id", "sha256", name="uq_ingestion_artifacts_store_sha256"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
+    ingestion_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("ingestion_runs.id", ondelete="SET NULL"))
+    artifact_format: Mapped[str] = mapped_column(String(24), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(120))
+    source_url: Mapped[str | None] = mapped_column(Text)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class CanonicalIdentityReview(Base):
