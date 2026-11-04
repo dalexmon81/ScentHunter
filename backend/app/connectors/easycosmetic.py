@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Sequence
 
-from app.connectors.base import OfferRecord, RateLimiter, validate_offer
+from app.connectors.base import OfferRecord, RateLimiter, capture_raw_page_artifact, validate_offer
 from app.services.product_normalization import normalize_product
 from scrapers.easycosmetic import scraper
 
@@ -104,6 +104,7 @@ class EasycosmeticConnector:
             return None
         await self._limiter.acquire()
         loaded = await asyncio.to_thread(self._page_loader, key)
+        capture_raw_page_artifact(self._raw_artifacts, loaded, requested_url=key, store_key=self.store_key)
         records = self.parse_raw(loaded)
         if not records:
             return None
