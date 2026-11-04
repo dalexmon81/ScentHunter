@@ -103,6 +103,36 @@ jobs:
           alembic upgrade head
       - name: Seed isolated canonical catalog and verify schema
         run: python backend/scripts/seed_catalog.py --apply
+      - name: Verify Dior Sauvage EDP 100 ml UUID mapping in PostgreSQL
+        run: |
+          python - <<'PY'
+          from sqlalchemy.orm import Session
+          from app.db import make_engine
+          from app.models import Brand, Fragrance, LegacyProductIdMap, LegacyVariantIdMap, ProductVariant
+
+          engine = make_engine()
+          try:
+              with Session(engine) as session:
+                  product_map = session.get(LegacyProductIdMap, "SH-AUTO-0178")
+                  variant_map = session.get(LegacyVariantIdMap, "VAR-9e1f0d0b8a3c6e42")
+                  assert product_map is not None, "Dior Sauvage EDP fragrance mapping missing"
+                  assert variant_map is not None, "Dior Sauvage EDP 100 ml variant mapping missing"
+                  fragrance = session.get(Fragrance, product_map.fragrance_id)
+                  variant = session.get(ProductVariant, variant_map.product_variant_id)
+                  assert fragrance is not None and fragrance.name == "Sauvage", fragrance
+                  assert variant is not None, "Canonical 100 ml variant UUID missing"
+                  assert variant.fragrance_id == fragrance.id, "Variant belongs to a different fragrance"
+                  assert variant.concentration == "Eau de Parfum", variant.concentration
+                  assert variant.size_ml == 100, variant.size_ml
+                  assert variant.canonical_key == "christian-dior|sauvage|edp|100|standard", variant.canonical_key
+                  brand = session.get(Brand, fragrance.brand_id)
+                  assert brand is not None and brand.normalized_name == "dior", brand
+                  print("DIOR_SAUVAGE_EDP_100ML_POSTGRES_UUID=PASS")
+                  print(f"FRAGRANCE_UUID={fragrance.id}")
+                  print(f"VARIANT_UUID={variant.id}")
+          finally:
+              engine.dispose()
+          PY
       - name: Start a real Celery worker and verify Redis queue plus PostgreSQL task execution
         shell: bash
         run: |
