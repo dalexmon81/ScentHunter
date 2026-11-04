@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.db import make_session_factory
 from app.models import Brand, Fragrance, Offer, ProductVariant, Store
 from app.search.meilisearch import MeiliSearchUnavailable, search_variant_ids
-from app.services.offer_ranking import rank_offers
+from app.services.offer_ranking import rank_offers, store_mismatch_rates
 
 
 _FORMAT_FIELDS = {
@@ -185,6 +185,7 @@ def search_catalog(
                 if offer_row is not None and store_row is not None:
                     variant["offers"].append({
                         "offer_id": str(offer_row.id),
+                        "_store_id": store_row.id,
                         "store": store_row.slug,
                         "country": store_row.country,
                         "price": str(offer_row.price),
@@ -199,6 +200,19 @@ def search_catalog(
                         "match_confidence": str(offer_row.confidence) if offer_row.confidence is not None else "0",
                         "valid_until": offer_row.valid_until.isoformat() if offer_row.valid_until else None,
                     })
+
+            store_ids = {
+                offer["_store_id"]
+                for product in grouped.values()
+                for variant in product["_variant_map"].values()
+                for offer in variant["offers"]
+            }
+            mismatch_rates = store_mismatch_rates(session, store_ids)
+            for product in grouped.values():
+                for variant in product["_variant_map"].values():
+                    for offer in variant["offers"]:
+                        offer["mismatch_rate"] = mismatch_rates.get(str(offer["_store_id"]), 0.0)
+                        offer.pop("_store_id", None)
 
             products = list(grouped.values())
             for product in products:
