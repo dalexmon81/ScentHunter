@@ -315,7 +315,7 @@ def validate_offer(self, raw_id: str):
             except (InvalidOperation, TypeError, ValueError):
                 errors.append("invalid_price")
             currency = payload.get("currency")
-            if not isinstance(currency, str) or len(currency) != 3 or currency != currency.upper() or pycountry.currencies.get(alpha_3=currency) is None:
+            if not isinstance(currency, str) or len(currency) != 3 or currency != currency.upper() or (pycountry.currencies.get(alpha_3=currency) is None or currency in {"XXX", "XTS"}):
                 errors.append("invalid_iso_4217_currency")
             try:
                 captured = datetime.fromisoformat(str(payload.get("capturedAt", "")).replace("Z", "+00:00"))
