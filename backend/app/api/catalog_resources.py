@@ -8,7 +8,8 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import or_, select
 
 from app.db import make_session_factory
-from app.models import Brand, Fragrance, Offer, ProductVariant, Store
+from app.models import Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
+from app.services.offer_ranking import rank_offers, summarize_price_history
 
 router = APIRouter(tags=["catalog-resources"])
 
@@ -45,6 +46,9 @@ def _offer_payload(offer: Offer, store: Store, *, now: datetime):
         "captured_at": offer.captured_at.isoformat() if offer.captured_at else None,
         "label": "dato_da_verificare" if expired else None,
         "is_expired": expired,
+        "shipping_cost": str(offer.shipping_cost) if offer.shipping_cost is not None else None,
+        "verify_price": expired,
+        "label": "verifica prezzo" if expired else None,
     }
 
 
@@ -142,10 +146,26 @@ def get_product_offers(
             ).all()
             now = datetime.now(timezone.utc)
             offers = [
-                _offer_payload(offer, store, now=now)
+                {
+                    **_offer_payload(offer, store, now=now),
+                    "store_reliability": str(store.reliability_score) if store.reliability_score is not None else "0.5",
+                    "store_status": store.status,
+                    "confidence": str(offer.confidence) if offer.confidence is not None else "0",
+                    "match_confidence": str(offer.confidence) if offer.confidence is not None else "0",
+                    "captured_at": offer.captured_at,
+                    "valid_until": offer.valid_until,
+                }
                 for offer, store in rows
                 if include_expired or not _offer_is_expired(offer, store, now)
             ]
+            offers = rank_offers(offers, now=now)
+            for offer in offers:
+                if isinstance(offer.get("captured_at"), datetime):
+                    offer["captured_at"] = offer["captured_at"].isoformat()
+                if isinstance(offer.get("valid_until"), datetime):
+                    offer["valid_until"] = offer["valid_until"].isoformat()
+                for key in ("store_reliability", "store_status", "confidence", "match_confidence"):
+                    offer.pop(key, None)
             return {
                 "product_slug": slug,
                 "variant_id": str(selected_variant.id),
@@ -216,10 +236,65 @@ def list_offers(
             rows = session.execute(stmt.order_by(Offer.captured_at.desc()).limit(limit)).all()
             now = datetime.now(timezone.utc)
             payload = [
-                _offer_payload(offer, store, now=now)
+                {
+                    **_offer_payload(offer, store, now=now),
+                    "store_reliability": str(store.reliability_score) if store.reliability_score is not None else "0.5",
+                    "store_status": store.status,
+                    "confidence": str(offer.confidence) if offer.confidence is not None else "0",
+                    "match_confidence": str(offer.confidence) if offer.confidence is not None else "0",
+                    "captured_at": offer.captured_at,
+                    "valid_until": offer.valid_until,
+                }
                 for offer, store in rows
                 if include_expired or not _offer_is_expired(offer, store, now)
             ]
+            payload = rank_offers(payload, now=now)
+            for offer in payload:
+                if isinstance(offer.get("captured_at"), datetime):
+                    offer["captured_at"] = offer["captured_at"].isoformat()
+                if isinstance(offer.get("valid_until"), datetime):
+                    offer["valid_until"] = offer["valid_until"].isoformat()
+                for key in ("store_reliability", "store_status", "confidence", "match_confidence"):
+                    offer.pop(key, None)
             return {"count": len(payload), "offers": payload}
+    finally:
+        factory.kw["bind"].dispose()
+
+ 
+@router.get("/products/{slug}/price-history")
+def get_product_price_history(slug: str, variant_id: UUID):
+    """Return per-currency historical minimum, average, trend and anomaly alerts."""
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            variant = session.execute(
+                select(ProductVariant)
+                .join(Fragrance, Fragrance.id == ProductVariant.fragrance_id)
+                .where(Fragrance.slug == slug, ProductVariant.id == variant_id)
+            ).scalar_one_or_none()
+            if variant is None:
+                raise HTTPException(status_code=404, detail="variant_not_found")
+            samples = session.execute(
+                select(PriceHistory)
+                .join(Offer, Offer.id == PriceHistory.offer_id)
+                .where(Offer.product_variant_id == variant.id)
+                .order_by(PriceHistory.captured_at.asc())
+            ).scalars().all()
+            grouped = {}
+            for sample in samples:
+                grouped.setdefault(sample.currency, []).append({
+                    "price": str(sample.price),
+                    "currency": sample.currency,
+                    "captured_at": sample.captured_at,
+                })
+            return {
+                "product_slug": slug,
+                "variant_id": str(variant.id),
+                "history": {
+                    currency: summarize_price_history(items)
+                    for currency, items in grouped.items()
+                },
+                "message": "Storico prezzi non ancora disponibile." if not samples else None,
+            }
     finally:
         factory.kw["bind"].dispose()
