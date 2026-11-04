@@ -11,6 +11,37 @@ from app.connectors.base import OfferRecord, RateLimiter, validate_offer
 from app.services.product_normalization import normalize_product
 
 
+class _ArtifactCapturingSession(requests.Session):
+    """Capture exact response bodies for textual product-page requests only."""
+    def __init__(self, artifacts):
+        super().__init__()
+        self._artifacts = artifacts
+
+    def request(self, method, url, *args, **kwargs):
+        response = super().request(method, url, *args, **kwargs)
+        content_type = str(response.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        formats = {
+            "text/html": "html",
+            "application/xhtml+xml": "html",
+            "application/json": "json",
+            "text/csv": "csv",
+            "application/xml": "xml",
+            "text/xml": "xml",
+            "application/rss+xml": "xml",
+            "application/atom+xml": "xml",
+        }
+        artifact_format = formats.get(content_type)
+        if artifact_format and 200 <= response.status_code < 400:
+            self._artifacts.append({
+                "format": artifact_format,
+                "data": bytes(response.content),
+                "content_type": content_type,
+                "source_url": response.url,
+                "metadata": {"http_status": response.status_code, "method": str(method).upper()},
+            })
+        return response
+
+
 def _value(value):
     if isinstance(value, dict) and "value" in value:
         return value.get("value")
@@ -131,7 +162,7 @@ class LegacyStoreConnector:
         if self.page_parser is None:
             return None
         def load():
-            with requests.Session() as session:
+            with _ArtifactCapturingSession(self._raw_artifacts) as session:
                 return self.page_parser(session, url, query)
         return await asyncio.to_thread(load)
 
