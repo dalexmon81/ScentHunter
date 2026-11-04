@@ -85,6 +85,7 @@ def get_product(slug: str):
                     "slug": fragrance.slug,
                     "family": fragrance.family,
                     "gender": fragrance.gender,
+                    "olfactory_notes": fragrance.olfactory_notes or [],
                     "description": fragrance.description,
                     "image_url": fragrance.image_url,
                 },
