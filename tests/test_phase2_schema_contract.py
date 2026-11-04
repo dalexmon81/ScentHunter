@@ -80,8 +80,7 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
     finally:
         engine.dispose()
 
-def test_database_url_rejects_postgresql_for_current_phase(monkeypatch):
+def test_database_url_normalizes_postgresql_to_psycopg3(monkeypatch):
     monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "postgresql://example.invalid/catalog")
     from app.db import database_url
-    with pytest.raises(RuntimeError, match="SQLite only"):
-        database_url()
+    assert database_url() == "postgresql+psycopg://example.invalid/catalog"
