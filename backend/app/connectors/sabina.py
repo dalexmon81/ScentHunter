@@ -93,7 +93,7 @@ class SabinaConnector:
             identifier = str(external_id or row_url).strip()
             if not identifier:
                 return
-            signature = (row_url, str(normalized.size_ml), str(price))
+            signature = (str(normalized.size_ml), str(price), str(normalized.concentration))
             if signature in seen_records:
                 return
             seen_records.add(signature)
