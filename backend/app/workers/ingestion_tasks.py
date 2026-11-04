@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
-from app.models import IngestionArtifact, IngestionRaw, IngestionRun, Offer, Store
+from app.models import IngestionArtifact, IngestionDeadLetter, IngestionRaw, IngestionRun, Offer, Store
 from app.matching.offer_matcher import match_staged_offer
 from app.services.product_normalization import normalize_product
 from app.workers.celery_app import celery_app
@@ -204,23 +204,16 @@ def discover_store_products(self, store_key: str):
                 return {"store": store_key, "status": "quarantined", "queued": 0}
             run = IngestionRun(store_id=store.id, status="running", errors=[])
             session.add(run)
+            session.flush()
+            run_id = str(run.id)
             session.commit()
     finally:
         factory.kw["bind"].dispose()
     products = _run(connector.discover_products())
-    factory = make_session_factory()
-    try:
-        with factory() as session:
-            run = session.scalar(select(IngestionRun).join(Store).where(
-                Store.slug == store_key, IngestionRun.status == "running"
-            ).order_by(IngestionRun.started_at.desc()).limit(1))
-            run_id = str(run.id) if run is not None else None
-    finally:
-        factory.kw["bind"].dispose()
     raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
     if not raw_artifacts:
         raw_artifacts = [{"format": "json", "data": list(products), "metadata": {"kind": "discovery_result"}}]
-    artifact_ids = _persist_raw_artifacts(store_key, run_id, raw_artifacts) if run_id else []
+    artifact_ids = _persist_raw_artifacts(store_key, run_id, raw_artifacts)
     staged = []
     # Discovery and offer extraction must share this connector instance:
     # connector adapters keep their parsed discovery cache in memory, and
@@ -428,12 +421,28 @@ def reprocess_failed_offers(self, store_key: str | None = None, limit: int = 100
 
 @celery_app.task(name="app.workers.ingestion_tasks.record_dead_letter")
 def record_dead_letter(task_name: str, task_id: str, args_repr: str, kwargs_repr: str, error: str):
-    # Celery's durable broker queue is the DLQ transport. Logs provide a
-    # searchable audit trail; a DB-backed DLQ table can be added with a schema
-    # migration when operational retention requirements are finalized.
-    logger.error("DEAD_LETTER task=%s id=%s args=%s kwargs=%s error=%s",
-                 task_name, task_id, args_repr, kwargs_repr, error)
-    return {"recorded": True, "task_id": task_id}
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            row = session.scalar(select(IngestionDeadLetter).where(IngestionDeadLetter.task_id == task_id))
+            if row is None:
+                row = IngestionDeadLetter(
+                    task_name=task_name,
+                    task_id=task_id,
+                    args_repr=args_repr[:4000],
+                    kwargs_repr=kwargs_repr[:4000],
+                    error=error[:2000],
+                    status="open",
+                )
+                session.add(row)
+            else:
+                row.error = error[:2000]
+                row.status = "open"
+            session.commit()
+        logger.error("DEAD_LETTER task=%s id=%s error=%s", task_name, task_id, error)
+        return {"recorded": True, "task_id": task_id}
+    finally:
+        factory.kw["bind"].dispose()
 
 def _configured_store_keys():
     return sorted(build_connectors().keys())
