@@ -15,6 +15,10 @@ from .catalog_repository import CatalogRepository
 from .models import OfferMatch, RetailerOffer
 from .offer_aggregator import AggregationResult, aggregate_matches
 from .offer_normalizer import normalize_offers
+from backend.app.services.product_normalization import (
+    NormalizedProduct,
+    normalize_product,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +28,8 @@ class ProcessingResult:
     aggregation: AggregationResult
     rejected_rows: tuple[dict[str, Any], ...]
     normalized_offer_count: int
+    normalized_product_identities: tuple[tuple[int, NormalizedProduct], ...] = ()
+    identity_review_rows: tuple[dict[str, Any], ...] = ()
 
     def __post_init__(self) -> None:
         if self.normalized_offer_count < 0:
@@ -85,12 +91,31 @@ class NextEngineService:
             retailer=retailer,
             currency_default=currency_default,
         )
+        # Product identity normalization is an audit sidecar at this stage.
+        # It deliberately does not rewrite offer titles or influence matching:
+        # only reviewed catalog evidence may assign canonical IDs.
+        normalized_identities: list[tuple[int, NormalizedProduct]] = []
+        identity_review_rows: list[dict[str, Any]] = []
+        for index, offer in enumerate(offers):
+            try:
+                identity = normalize_product(
+                    offer.brand_raw or "",
+                    offer.raw_name,
+                    size_ml=offer.size_ml,
+                )
+            except ValueError as exc:
+                identity_review_rows.append({"index": index, "reason": str(exc)})
+            else:
+                normalized_identities.append((index, identity))
+
         matches = tuple(self._matcher.match(offer) for offer in offers)
         aggregation = aggregate_matches(matches)
         return ProcessingResult(
             aggregation=aggregation,
             rejected_rows=rejected_rows,
             normalized_offer_count=len(offers),
+            normalized_product_identities=tuple(normalized_identities),
+            identity_review_rows=tuple(identity_review_rows),
         )
 
     def process_offers(self, offers: Iterable[RetailerOffer]) -> AggregationResult:
