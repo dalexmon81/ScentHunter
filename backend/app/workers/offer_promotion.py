@@ -1,4 +1,4 @@
-"""Controlled publication worker for already matched, validated offer evidence."""
+""""Controlled publication worker for already matched, validated offer evidence."""
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -10,11 +10,12 @@ from app.services.ingestion_persistence import PromotionRejected, promote_offer
 
 
 def promote_matched_offers(session_factory, *, limit: int = 100) -> dict:
-    """Publish only rows with an existing canonical match and complete evidence.
+    """Publish eligible matched rows without allowing blocked rows to starve a batch.
 
-    The caller supplies the session factory. This worker never opens the
-    application's production database itself; transaction ownership is local
-    to this invocation and failures roll back the batch.
+    A blocked row remains matched for audit/review, with a promotion_blocked
+    rejection_reason. After its raw evidence is corrected, an operator may
+    clear that reason to make the row eligible for another promotion attempt.
+    The caller owns the database target and this function never selects one.
     """
     if limit < 1 or limit > 5000:
         raise ValueError("limit_must_be_between_1_and_5000")
@@ -22,7 +23,10 @@ def promote_matched_offers(session_factory, *, limit: int = 100) -> dict:
     try:
         rows = session.scalars(
             select(IngestionRaw.id)
-            .where(IngestionRaw.status == "matched")
+            .where(
+                IngestionRaw.status == "matched",
+                IngestionRaw.rejection_reason.is_(None),
+            )
             .order_by(IngestionRaw.created_at.asc())
             .limit(limit)
         ).all()
@@ -43,9 +47,8 @@ def promote_matched_offers(session_factory, *, limit: int = 100) -> dict:
                     source=str(payload.get("source") or ""),
                     confidence=raw.match_confidence,
                 )
-            except (PromotionRejected, InvalidOperation, TypeError, ValueError):
-                # Keep the row matched so corrected evidence can be retried;
-                # never weaken the publication contract to force a publish.
+            except (PromotionRejected, InvalidOperation, TypeError, ValueError) as exc:
+                raw.rejection_reason = f"promotion_blocked:{str(exc)[:450]}"
                 counts["blocked"] += 1
                 continue
             counts["published"] += 1
