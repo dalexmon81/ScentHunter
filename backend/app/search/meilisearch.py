@@ -46,13 +46,21 @@ def _request(method: str, path: str, payload=None):
         with urlopen(request, timeout=4) as response:
             raw = response.read()
             return json.loads(raw.decode("utf-8")) if raw else {}
-    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+    except HTTPError as exc:
+        if exc.code == 409:
+            return {"already_exists": True}
+        raise MeiliSearchUnavailable(f"HTTP{exc.code}") from exc
+    except (URLError, TimeoutError, ValueError) as exc:
         raise MeiliSearchUnavailable(type(exc).__name__) from exc
 
 
 def configure_index():
-    """Configure searchable/filterable fields; safe to call during deployment."""
-    return _request("PATCH", f"/indexes/{INDEX_UID}/settings", _settings())
+    """Create the index if needed, then configure searchable/filterable fields."""
+    created = _request("POST", "/indexes", {"uid": INDEX_UID, "primaryKey": "id"})
+    if created is None:
+        return None
+    settings = _request("PATCH", f"/indexes/{INDEX_UID}/settings", _settings())
+    return {"create": created, "settings": settings}
 
 
 def search_variant_ids(query: str, *, filters: dict | None = None, limit: int = 1000) -> list[str] | None:
