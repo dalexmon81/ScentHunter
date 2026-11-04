@@ -48,7 +48,7 @@ def _offer_payload(offer: Offer, store: Store, *, now: datetime):
         "is_expired": expired,
         "shipping_cost": str(offer.shipping_cost) if offer.shipping_cost is not None else None,
         "verify_price": expired,
-        "label": "verifica prezzo" if expired else None,
+        "warning": "verifica prezzo" if expired else None,
     }
 
 
