@@ -162,6 +162,7 @@ def persist_bplatz_record(
         session, ingestion_raw_id=raw_id, price=normalized.price,
         currency=normalized.currency, url=normalized.product_url,
         availability=normalized.availability, source="bplatz_parser",
+        confidence=match_decision.confidence,
     )
     return BplatzPhase2Result(
         raw_id, "promoted", offer_id=offer_id,
