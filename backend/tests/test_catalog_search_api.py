@@ -158,6 +158,7 @@ def test_postgres_full_text_catalog_search_reads_published_variant():
             session.add(Fragrance(
                 id=fragrance_id, brand_id=brand_id,
                 name="Sauvage FTS Probe", slug=slug,
+                olfactory_notes=["bergamot", "pepper"],
             ))
             session.add(ProductVariant(
                 id=variant_id, fragrance_id=fragrance_id,
@@ -180,7 +181,7 @@ def test_postgres_full_text_catalog_search_reads_published_variant():
             ))
 
         result = search_catalog(
-            "Sauvage FTS Probe", session_factory=factory, store=slug,
+            "Dior Bergamot", session_factory=factory, store=slug,
         )
         assert result["count"] == 1
         assert result["offer_count"] == 1
