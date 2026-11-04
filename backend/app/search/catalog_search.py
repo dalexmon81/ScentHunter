@@ -135,16 +135,22 @@ def search_catalog(
             rows = session.execute(stmt).all()
             grouped: dict[str, dict[str, Any]] = {}
             for brand_row, fragrance_row, variant_row, offer_row, store_row in rows:
-                key = str(variant_row.id)
-                product = grouped.setdefault(key, {
-                    "variant_id": key,
-                    "canonical_key": variant_row.canonical_key,
+                fragrance_key = str(fragrance_row.id)
+                product = grouped.setdefault(fragrance_key, {
                     "brand": brand_row.name,
                     "brand_slug": brand_row.slug,
                     "fragrance": fragrance_row.name,
                     "fragrance_slug": fragrance_row.slug,
                     "family": fragrance_row.family,
                     "gender": fragrance_row.gender,
+                    "olfactory_notes": fragrance_row.olfactory_notes or [],
+                    "variants": [],
+                    "_variant_map": {},
+                })
+                variant_key = str(variant_row.id)
+                variant = product["_variant_map"].setdefault(variant_key, {
+                    "variant_id": variant_key,
+                    "canonical_key": variant_row.canonical_key,
                     "concentration": variant_row.concentration,
                     "size_ml": variant_row.size_ml,
                     "format": {
@@ -155,7 +161,7 @@ def search_catalog(
                     "offers": [],
                 })
                 if offer_row is not None and store_row is not None:
-                    product["offers"].append({
+                    variant["offers"].append({
                         "offer_id": str(offer_row.id),
                         "store": store_row.slug,
                         "country": store_row.country,
@@ -168,6 +174,20 @@ def search_catalog(
                     })
 
             products = list(grouped.values())
+            for product in products:
+                product["variants"] = list(product.pop("_variant_map").values())
+                for variant in product["variants"]:
+                    variant["offers"].sort(key=lambda item: (Decimal(item["price"]), item["store"]))
+                product["variant_selection_required"] = len(product["variants"]) > 1
+                product["offer_count"] = sum(len(variant["offers"]) for variant in product["variants"])
+            products.sort(key=lambda item: (
+                min(
+                    (Decimal(offer["price"]) for variant in item["variants"] for offer in variant["offers"]),
+                    default=Decimal("Infinity"),
+                ),
+                item["brand"].casefold(),
+                item["fragrance"].casefold(),
+            ))
             suggestions = []
             if not products:
                 suggestion_stmt = (
@@ -197,10 +217,10 @@ def search_catalog(
             return {
                 "query": q,
                 "count": len(products),
-                "offer_count": sum(len(item["offers"]) for item in products),
+                "offer_count": sum(item["offer_count"] for item in products),
                 "message": (
                     "Prodotto trovato, ma al momento non ci sono offerte aggiornate."
-                    if products and not any(item["offers"] for item in products) else None
+                    if products and not any(item["offer_count"] for item in products) else None
                 ),
                 "suggestions": suggestions,
                 "limit": limit,
