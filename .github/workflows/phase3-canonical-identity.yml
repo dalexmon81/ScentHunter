@@ -10,6 +10,8 @@ on:
       - "backend/app/services/canonical_identity_persistence.py"
       - "backend/app/services/canonical_identity_writer.py"
       - "backend/app/services/canonical_identity_review_queue.py"
+      - "backend/app/services/canonical_identity_backfill.py"
+      - "backend/tests/test_canonical_identity_backfill.py"
       - "backend/tests/test_canonical_identity_review_queue.py"
       - "backend/tests/test_canonical_identity_writer.py"
       - "backend/app/services/product_normalization.py"
@@ -40,13 +42,14 @@ jobs:
       - name: Install focused test dependencies
         run: python -m pip install pytest "SQLAlchemy==2.0.44" "alembic==1.17.1"
       - name: Compile canonical identity modules
-        run: python -m compileall -q backend/app/services/canonical_identity_persistence.py backend/app/services/canonical_identity_writer.py backend/app/services/canonical_identity_review_queue.py backend/app/services/product_normalization.py backend/app/models
+        run: python -m compileall -q backend/app/services/canonical_identity_persistence.py backend/app/services/canonical_identity_writer.py backend/app/services/canonical_identity_review_queue.py backend/app/services/canonical_identity_backfill.py backend/app/services/product_normalization.py backend/app/models
       - name: Run canonical identity and normalization tests
         run: >-
           python -m pytest -q
           backend/tests/test_canonical_identity_persistence.py
           backend/tests/test_canonical_identity_writer.py
           backend/tests/test_canonical_identity_review_queue.py
+          backend/tests/test_canonical_identity_backfill.py
           backend/tests/test_product_normalization.py
           tests/test_next_engine_service.py
           tests/test_phase2_schema_contract.py
