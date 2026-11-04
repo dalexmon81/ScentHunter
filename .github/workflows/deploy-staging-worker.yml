@@ -4,6 +4,9 @@ on:
     branches:
       - phase5/fly-staging-workers-config
   workflow_dispatch:
+concurrency:
+  group: scenthunter-staging-worker-deploy
+  cancel-in-progress: true
 jobs:
   deploy:
     runs-on: ubuntu-latest
