@@ -24,6 +24,7 @@ class Fragrance(Base):
     slug: Mapped[str] = mapped_column(String(260), nullable=False)
     gender: Mapped[str | None] = mapped_column(String(40))
     family: Mapped[str | None] = mapped_column(String(100))
+    olfactory_notes: Mapped[list | None] = mapped_column(JSON)
     description: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
     brand: Mapped[Brand] = relationship(back_populates="fragrances")
