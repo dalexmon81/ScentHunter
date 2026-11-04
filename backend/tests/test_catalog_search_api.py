@@ -86,9 +86,12 @@ def test_catalog_search_returns_only_fresh_published_offers(tmp_path):
         product = result["results"][0]
         assert product["brand"] == "Dior"
         assert product["fragrance"] == "Sauvage"
-        assert product["size_ml"] == 100
-        assert product["offers"][0]["store"] == "notino"
-        assert product["offers"][0]["price"] == "89.90"
+        assert product["variant_selection_required"] is True
+        assert len(product["variants"]) == 2
+        offered_variant = next(item for item in product["variants"] if item["offers"])
+        assert offered_variant["size_ml"] == 100
+        assert offered_variant["offers"][0]["store"] == "notino"
+        assert offered_variant["offers"][0]["price"] == "89.90"
     finally:
         engine.dispose()
 
@@ -115,7 +118,7 @@ def test_catalog_search_can_filter_variant_format(tmp_path):
         )
         assert result["count"] == 1
         assert result["offer_count"] == 0
-        assert result["results"][0]["offers"] == []
+        assert result["results"][0]["variants"][0]["offers"] == []
         assert "non ci sono offerte" in result["message"]
     finally:
         engine.dispose()
@@ -195,7 +198,7 @@ def test_postgres_full_text_catalog_search_reads_published_variant():
 def test_catalog_search_returns_similar_suggestions_when_not_found(tmp_path):
     factory, engine = _factory(tmp_path)
     try:
-        result = search_catalog("Sauvag", session_factory=factory)
+        result = search_catalog("Dior SauvagX", session_factory=factory)
         assert result["count"] == 0
         assert result["suggestions"]
         assert result["suggestions"][0]["fragrance"] == "Sauvage"
