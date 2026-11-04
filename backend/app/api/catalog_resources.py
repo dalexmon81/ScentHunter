@@ -10,6 +10,7 @@ from sqlalchemy import or_, select
 from app.db import make_session_factory
 from app.models import Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
 from app.services.offer_ranking import rank_offers, store_mismatch_rates, summarize_price_history
+from app.schemas.catalog import ProductRead, OfferListRead
 
 router = APIRouter(prefix="/api", tags=["catalog-resources"])
 
@@ -52,7 +53,7 @@ def _offer_payload(offer: Offer, store: Store, *, now: datetime):
     }
 
 
-@router.get("/products/{slug}")
+@router.get("/products/{slug}", response_model=ProductRead)
 def get_product(slug: str):
     factory = make_session_factory()
     try:
@@ -100,7 +101,7 @@ def get_product(slug: str):
         factory.kw["bind"].dispose()
 
 
-@router.get("/products/{slug}/offers")
+@router.get("/products/{slug}/offers", response_model=OfferListRead)
 def get_product_offers(
     slug: str,
     variant_id: UUID | None = None,
@@ -213,7 +214,7 @@ def list_stores(active_only: bool = True, limit: int = Query(100, ge=1, le=500))
         factory.kw["bind"].dispose()
 
 
-@router.get("/offers")
+@router.get("/offers", response_model=OfferListRead)
 def list_offers(
     storeId: UUID | None = Query(None),
     availability: str | None = None,
