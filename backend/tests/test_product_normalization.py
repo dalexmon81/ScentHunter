@@ -71,3 +71,23 @@ def test_gtin_accepts_formatting_but_rejects_embedded_letters():
     assert normalize_gtin("4006-3813-33931") == "4006381333931"
     assert normalize_gtin("EAN4006381333931") is None
     assert normalize_gtin("4006381333931X") is None
+
+def test_explicit_connector_packaging_is_part_of_canonical_identity():
+    standard = normalize_product(
+        "Dior", "Sauvage EDP 100 ml", concentration="edp", size_ml=100,
+        packaging="standard",
+    )
+    tester = normalize_product(
+        "Dior", "Sauvage EDP 100 ml", concentration="edp", size_ml=100,
+        packaging="tester",
+    )
+    assert standard.packaging == "standard"
+    assert tester.packaging == "tester"
+    assert standard.canonical_key != tester.canonical_key
+
+
+def test_unsupported_explicit_packaging_requires_review():
+    import pytest
+    with pytest.raises(ValueError, match="unsupported_packaging_requires_review"):
+        normalize_product("Dior", "Sauvage EDP 100 ml", packaging="mystery_pack")
+
