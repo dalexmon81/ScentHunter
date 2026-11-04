@@ -54,6 +54,7 @@ class LegacyStoreConnector:
         self._page_loader = page_loader
         self._limiter = RateLimiter(0.5)
         self._offers: dict[str, OfferRecord] = {}
+        self._raw_artifacts: list[dict[str, Any]] = []
         self._raw_by_external_id: dict[str, Any] = {}
 
     def _map(self, item: Any) -> tuple[OfferRecord, ...]:
@@ -125,6 +126,7 @@ class LegacyStoreConnector:
             result = self._page_loader(url, query)
             if hasattr(result, "__await__"):
                 result = await result
+            self._raw_artifacts.append({"format": "html" if isinstance(result, (str, bytes)) else "json", "data": result, "source_url": url})
             return result
         if self.page_parser is None:
             return None
@@ -140,6 +142,7 @@ class LegacyStoreConnector:
         for term in self.discovery_terms:
             await self._limiter.acquire()
             rows = await asyncio.to_thread(self._search, term)
+            self._raw_artifacts.append({"format": "json", "data": rows, "metadata": {"query": term}})
             for record in self.parse_raw(rows or []):
                 found[record.external_product_id] = record
             # Some legacy search endpoints return candidate URLs only. Enrich
