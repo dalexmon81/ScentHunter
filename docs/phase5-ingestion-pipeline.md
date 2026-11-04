@@ -26,13 +26,17 @@ Task flow:
 
 The `ingestion_artifacts` table stores immutable source bytes with SHA-256,
 format, content type, source URL, capture time and run reference. Notino's
-affiliate XML feed is retained byte-for-byte. The other connectors retain the
-raw structured discovery response returned by their scraper adapters. Some
-legacy scrapers parse HTML internally and do not expose the original response
-body; exact HTML/CSV replay is therefore not yet guaranteed for every store.
-Those scraper transports must be instrumented before claiming complete
-byte-for-byte HTML/CSV coverage. Each staged offer records the artifact IDs in
-its `_raw_evidence` envelope.
+affiliate XML feed is retained byte-for-byte. The shared `LegacyStoreConnector`
+now uses a request-scoped `requests.Session` subclass to retain exact response
+bodies for successful HTML, XHTML, JSON, CSV and XML product-page requests.
+This covers the page-parser path used by Bplatz, Orioudh, PerfumeMarket and
+ParfumCity when that path is invoked; binary assets and failed responses are
+not retained. The adapters also retain their raw structured discovery output.
+Deloox, Easycosmetic, Sabina and Parfumzentrum still use their own search/page
+paths and do not yet guarantee original HTML/CSV body capture. Therefore
+byte-for-byte HTML/CSV coverage is improved but not complete across all nine
+stores. Each staged offer records the artifact IDs in its `_raw_evidence`
+envelope.
 
 ## Cadence
 
