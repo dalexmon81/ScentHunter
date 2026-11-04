@@ -1,4 +1,4 @@
-"""Store-scoped ingestion runner.
+""""Store-scoped ingestion runner.
 
 This worker only stages raw connector evidence. It never matches or publishes
 offers; canonical matching and promotion remain separate, explicit steps.
@@ -10,7 +10,7 @@ from typing import Callable
 
 from sqlalchemy import select
 
-from app.connectors.base import ConnectorError, StoreConnector
+from app.connectors.base import StoreConnector
 from app.models import IngestionRaw, IngestionRun, Store
 
 
@@ -30,7 +30,7 @@ def run_connector_once(
         raise ValueError("quarantine_after_must_be_positive")
 
     session = session_factory()
-    run = None
+    run_id = None
     try:
         store = session.scalar(select(Store).where(Store.slug == connector.store_key))
         if store is None:
@@ -41,6 +41,7 @@ def run_connector_once(
         run = IngestionRun(store_id=store.id, status="running", errors=[])
         session.add(run)
         session.flush()
+        run_id = run.id
         session.commit()
     finally:
         session.close()
@@ -67,7 +68,9 @@ def run_connector_once(
         discovered_count, records = asyncio.run(collect())
         session = session_factory()
         try:
-            run = session.get(IngestionRun, run.id)
+            run = session.get(IngestionRun, run_id)
+            if run is None:
+                raise LookupError("ingestion_run_not_found_after_collection")
             store = session.get(Store, run.store_id)
             staged = rejected = 0
             for record in records:
@@ -108,7 +111,9 @@ def run_connector_once(
     except Exception as exc:
         session = session_factory()
         try:
-            run = session.get(IngestionRun, run.id)
+            run = session.get(IngestionRun, run_id)
+            if run is None:
+                raise LookupError("ingestion_run_not_found_while_recording_failure")
             store = session.get(Store, run.store_id)
             run.status = "failed"
             run.finished_at = datetime.now(timezone.utc)
@@ -139,3 +144,4 @@ def run_connector_once(
             "error": type(exc).__name__,
             "published": 0,
         }
+}
