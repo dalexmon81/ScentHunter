@@ -1,4 +1,5 @@
 name: Phase 3 Canonical Identity Checks
+# Includes gated writer rollback and explicit opt-in coverage.
 
 on:
   pull_request:
