@@ -39,6 +39,7 @@ class OfferRecord:
     captured_at: str
     source: str
     external_offer_id: str | None = None
+    packaging: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize using the shared camelCase ingestion payload contract."""
@@ -51,6 +52,7 @@ class OfferRecord:
             "fragrance": data["fragrance"],
             "concentration": data["concentration"],
             "sizeMl": data["size_ml"],
+            "packaging": data["packaging"],
             "gtin": data["gtin"],
             "title": data["title"],
             "url": data["url"],
