@@ -356,6 +356,19 @@ def promote_matched_offers_task(self, limit: int = 100):
     from app.workers.offer_promotion import promote_matched_offers
     return promote_matched_offers(make_session_factory, limit=limit)
 
+def enqueue_product_detail_refresh(store_key: str, offer_id: str) -> str:
+    """Queue a fresh price/stock check when a product detail is opened."""
+    store_key = str(store_key or "").strip().lower()
+    offer_id = str(offer_id or "").strip()
+    if not store_key or not offer_id:
+        raise ValueError("store_key_and_offer_id_required")
+    result = refresh_price_and_stock.apply_async(
+        kwargs={"store_key": store_key, "offer_id": offer_id},
+        queue="refresh",
+    )
+    return str(result.id)
+
+
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.refresh_price_and_stock")
 def refresh_price_and_stock(self, store_key: str, offer_id: str):
     connector = get_connector(store_key)
