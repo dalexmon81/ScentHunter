@@ -1,0 +1,15 @@
+name: Deploy staging worker
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase5/fly-staging-workers-config
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy worker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --config fly.workers.toml --remote-only --yes
