@@ -63,3 +63,11 @@ def test_gtin_check_digit_and_deduplication():
         left_gtin="4006381333931", right_gtin="5901234123457",
         left_key="same", right_key="same")
     assert decision == "review" and conflict is not None
+
+
+
+def test_gtin_accepts_formatting_but_rejects_embedded_letters():
+    assert normalize_gtin("4006 3813 33931") == "4006381333931"
+    assert normalize_gtin("4006-3813-33931") == "4006381333931"
+    assert normalize_gtin("EAN4006381333931") is None
+    assert normalize_gtin("4006381333931X") is None
