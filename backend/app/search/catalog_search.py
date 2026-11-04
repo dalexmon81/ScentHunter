@@ -165,6 +165,7 @@ def search_catalog(
                     "brand": brand_row.name,
                     "brand_slug": brand_row.slug,
                     "fragrance": fragrance_row.name,
+                    "image_url": fragrance_row.image_url,
                     "fragrance_slug": fragrance_row.slug,
                     "family": fragrance_row.family,
                     "gender": fragrance_row.gender,
