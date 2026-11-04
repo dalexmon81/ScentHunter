@@ -43,3 +43,42 @@ def test_all_pipeline_jobs_are_registered_and_runtime_has_nine_connectors():
         "notino", "deloox", "easycosmetic", "sabina", "parfumzentrum",
         "perfumemarket", "parfumcity", "bplatz", "orioudh",
     }
+
+
+def test_raw_artifact_model_stores_immutable_source_bytes():
+    from app.models import IngestionArtifact
+
+    table = IngestionArtifact.__table__
+    assert {"artifact_format", "sha256", "size_bytes", "raw_data", "metadata_json"} <= set(table.columns.keys())
+    assert table.c.sha256.type.length == 64
+    assert table.c.raw_data.nullable is False
+
+
+def test_raw_evidence_bytes_are_base64_encoded_for_json_payloads():
+    import base64
+    from app.workers.ingestion_tasks import _json_safe
+
+    original = b"<feed><item>original</item></feed>"
+    encoded = _json_safe(original)
+    assert encoded["encoding"] == "base64"
+    assert base64.b64decode(encoded["data"]) == original
+
+
+def test_product_detail_refresh_can_be_enqueued_on_refresh_queue(monkeypatch):
+    from app.workers import ingestion_tasks
+
+    class FakeResult:
+        id = "refresh-job-123"
+
+    calls = {}
+    def fake_apply_async(*, kwargs, queue):
+        calls.update(kwargs=kwargs, queue=queue)
+        return FakeResult()
+
+    monkeypatch.setattr(ingestion_tasks.refresh_price_and_stock, "apply_async", fake_apply_async)
+    result = ingestion_tasks.enqueue_product_detail_refresh("notino", "sku-123")
+    assert result == "refresh-job-123"
+    assert calls == {
+        "kwargs": {"store_key": "notino", "offer_id": "sku-123"},
+        "queue": "refresh",
+    }
