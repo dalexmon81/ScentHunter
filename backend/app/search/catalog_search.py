@@ -192,7 +192,12 @@ def search_catalog(
                         "availability": offer_row.availability,
                         "url": offer_row.url,
                         "captured_at": offer_row.captured_at.isoformat() if offer_row.captured_at else None,
-                        "shipping_cost": str(offer_row.shipping_cost) if offer_row.shipping_cost is not None else None,\n                        "store_reliability": str(store_row.reliability_score) if store_row.reliability_score is not None else "0.5",\n                        "store_status": store_row.status,\n                        "confidence": str(offer_row.confidence) if offer_row.confidence is not None else "0",\n                        "match_confidence": str(offer_row.confidence) if offer_row.confidence is not None else "0",\n                        "valid_until": offer_row.valid_until.isoformat() if offer_row.valid_until else None,
+                        "shipping_cost": str(offer_row.shipping_cost) if offer_row.shipping_cost is not None else None,
+                        "store_reliability": str(store_row.reliability_score) if store_row.reliability_score is not None else "0.5",
+                        "store_status": store_row.status,
+                        "confidence": str(offer_row.confidence) if offer_row.confidence is not None else "0",
+                        "match_confidence": str(offer_row.confidence) if offer_row.confidence is not None else "0",
+                        "valid_until": offer_row.valid_until.isoformat() if offer_row.valid_until else None,
                     })
 
             products = list(grouped.values())
@@ -212,9 +217,9 @@ def search_catalog(
                 product["variant_selection_required"] = len(product["variants"]) > 1
                 product["offer_count"] = sum(len(variant["offers"]) for variant in product["variants"])
             products.sort(key=lambda item: (
-                min(
-                    (Decimal(offer["price"]) for variant in item["variants"] for offer in variant["offers"]),
-                    default=Decimal("Infinity"),
+                -max(
+                    (offer["score"] for variant in item["variants"] for offer in variant["offers"]),
+                    default=0,
                 ),
                 item["brand"].casefold(),
                 item["fragrance"].casefold(),
