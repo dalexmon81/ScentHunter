@@ -90,3 +90,26 @@ def test_dead_letter_model_is_durable_and_unique_per_task():
     table = IngestionDeadLetter.__table__
     assert {"task_name", "task_id", "args_repr", "kwargs_repr", "error", "status"} <= set(table.columns.keys())
     assert any(constraint.name == "uq_ingestion_dead_letters_task_id" for constraint in table.constraints)
+
+
+def test_periodic_discovery_uses_only_active_catalog_stores(tmp_path, monkeypatch):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Base, Store
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'active-stores.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        session.add_all([
+            Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"),
+            Store(name="Notino", slug="notino", currency="EUR", status="inactive"),
+        ])
+        session.commit()
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(ingestion_tasks, "build_connectors", lambda: {"bplatz": object(), "notino": object(), "sabina": object()})
+    try:
+        assert ingestion_tasks._configured_store_keys() == ["bplatz"]
+    finally:
+        engine.dispose()
