@@ -12,6 +12,8 @@ depends_on = None
 
 
 def upgrade():
+    if op.get_bind().dialect.name != "postgresql":
+        return
     # Keep index expressions byte-for-byte aligned with the query expressions
     # in app.search.catalog_search. The simple configuration avoids language-
     # specific stemming across the supported European retailer catalogs.
@@ -26,5 +28,7 @@ def upgrade():
 
 
 def downgrade():
+    if op.get_bind().dialect.name != "postgresql":
+        return
     op.execute("DROP INDEX IF EXISTS ix_fragrances_name_fts")
     op.execute("DROP INDEX IF EXISTS ix_brands_name_fts")
