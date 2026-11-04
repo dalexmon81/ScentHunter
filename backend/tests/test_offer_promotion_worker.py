@@ -44,7 +44,7 @@ def setup_db(availability="in_stock"):
                 "capturedAt": datetime.now(timezone.utc).isoformat(),
                 "source": "fixture",
             },
-            status="matched", product_variant_id=variant.id,
+            status="matched", validation_status="validated", product_variant_id=variant.id,
             match_method="canonical_key_exact", match_confidence=Decimal("0.990"),
         )
         session.add(raw)
@@ -65,6 +65,7 @@ def test_promotion_creates_offer_history_and_audit():
         assert len(offers) == len(history) == len(audits) == 1
         assert offers[0].price == Decimal("90.50")
         assert offers[0].status == "active"
+        assert offers[0].publication_status == "published"
         assert history[0].price == Decimal("90.50")
         assert audits[0].method == "canonical_key_exact"
         assert raw.status == "promoted"
@@ -110,7 +111,7 @@ def test_blocked_old_row_does_not_starve_later_promotion_batch():
                 "url": "https://shop.example/item/sku-101",
                 "availability": "in_stock",
             },
-            status="matched",
+            status="matched", validation_status="validated",
             product_variant_id=blocked.product_variant_id,
             match_method=blocked.match_method,
             match_confidence=blocked.match_confidence,
@@ -148,7 +149,7 @@ def test_distinct_retailer_listings_for_same_variant_create_distinct_offers():
                 "url": "https://shop.example/item/sku-duplicate-listing",
                 "price": 87.25,
             },
-            status="matched",
+            status="matched", validation_status="validated",
             product_variant_id=first.product_variant_id,
             match_method=first.match_method,
             match_confidence=first.match_confidence,
@@ -254,3 +255,19 @@ def test_non_monetary_and_test_currencies_are_not_published():
         }
         with factory() as session:
             assert session.scalar(select(Offer)) is None
+
+
+def test_unvalidated_matched_row_cannot_be_published():
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.validation_status = "pending"
+        session.commit()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert raw.rejection_reason.startswith("promotion_blocked:")
