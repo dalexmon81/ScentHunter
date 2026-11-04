@@ -146,3 +146,51 @@ def test_refresh_raw_artifacts_are_persisted_without_an_ingestion_run(tmp_path, 
             assert artifact.ingestion_run_id is None
     finally:
         engine.dispose()
+
+
+def test_eight_hour_collection_refreshes_known_active_offers_not_discovery(tmp_path, monkeypatch):
+    from decimal import Decimal
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Base, Offer, Store
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'eight-hour-refresh.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        active = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
+        inactive = Store(name="Notino", slug="notino", currency="EUR", status="inactive")
+        session.add_all([active, inactive])
+        session.flush()
+        session.add_all([
+            Offer(store_id=active.id, external_product_id="sku-active",
+                  url="https://shop.example/active", price=Decimal("49.90"),
+                  currency="EUR", availability="in_stock", source="fixture",
+                  status="active"),
+            Offer(store_id=active.id, external_product_id="sku-disabled",
+                  url="https://shop.example/disabled", price=Decimal("39.90"),
+                  currency="EUR", availability="in_stock", source="fixture",
+                  status="inactive"),
+            Offer(store_id=inactive.id, external_product_id="sku-inactive-store",
+                  url="https://shop.example/inactive", price=Decimal("29.90"),
+                  currency="EUR", availability="in_stock", source="fixture",
+                  status="active"),
+        ])
+        session.commit()
+
+    queued = []
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(
+        ingestion_tasks.refresh_price_and_stock, "apply_async",
+        lambda **kwargs: queued.append(kwargs),
+    )
+    try:
+        result = ingestion_tasks.enqueue_offer_collection_for_configured_stores()
+        assert result == {"refresh_jobs_queued": 1, "stores": ["bplatz"]}
+        assert queued == [{
+            "kwargs": {"store_key": "bplatz", "offer_id": "sku-active"},
+            "queue": "refresh",
+        }]
+    finally:
+        engine.dispose()
