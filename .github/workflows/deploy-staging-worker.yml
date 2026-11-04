@@ -21,6 +21,12 @@ jobs:
             echo "::error::Missing repository secret FLY_API_TOKEN"
             exit 1
           fi
+      - name: Apply staged Fly secrets
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl secrets list --app scenthunter-staging-workers
+          flyctl secrets deploy --app scenthunter-staging-workers
       - name: Deploy isolated worker
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
