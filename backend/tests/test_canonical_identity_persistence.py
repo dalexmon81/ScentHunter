@@ -79,7 +79,7 @@ def test_brand_slug_collision_is_sent_to_review():
 def test_same_canonical_key_with_different_valid_gtin_requires_review():
     engine, session = _session()
     try:
-        _seed(gtin="4006381333931")
+        _seed(session, gtin="4006381333931")
         product = normalize_product("Dior", "Sauvage EDP 100 ml")
         plan = plan_canonical_identity(session, product, gtin="5901234123457")
         assert plan.status == "review"
@@ -92,7 +92,7 @@ def test_same_canonical_key_with_different_valid_gtin_requires_review():
 def test_same_canonical_key_with_missing_gtin_is_not_auto_accepted():
     engine, session = _session()
     try:
-        _seed(gtin="4006381333931")
+        _seed(session, gtin="4006381333931")
         product = normalize_product("Dior", "Sauvage EDP 100 ml")
         plan = plan_canonical_identity(session, product)
         assert plan.status == "review"
