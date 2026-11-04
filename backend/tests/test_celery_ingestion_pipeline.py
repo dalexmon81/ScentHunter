@@ -11,6 +11,7 @@ def test_pipeline_routes_jobs_to_separate_queues():
     assert routes["app.workers.ingestion_tasks.normalize_offer"]["queue"] == "validation"
     assert routes["app.workers.ingestion_tasks.validate_offer"]["queue"] == "validation"
     assert routes["app.workers.ingestion_tasks.match_offer_to_variant"]["queue"] == "matching"
+    assert routes["app.workers.ingestion_tasks.promote_matched_offers_task"]["queue"] == "offers"
     assert routes["app.workers.ingestion_tasks.refresh_price_and_stock"]["queue"] == "refresh"
     assert routes["app.workers.ingestion_tasks.record_dead_letter"]["queue"] == "dead_letter"
 
@@ -31,6 +32,7 @@ def test_all_pipeline_jobs_are_registered_and_runtime_has_nine_connectors():
         "app.workers.ingestion_tasks.normalize_offer",
         "app.workers.ingestion_tasks.validate_offer",
         "app.workers.ingestion_tasks.match_offer_to_variant",
+        "app.workers.ingestion_tasks.promote_matched_offers_task",
         "app.workers.ingestion_tasks.refresh_price_and_stock",
         "app.workers.ingestion_tasks.quarantine_failed_connector",
         "app.workers.ingestion_tasks.reprocess_failed_offers",
