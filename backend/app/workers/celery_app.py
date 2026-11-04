@@ -56,7 +56,7 @@ celery_app.conf.update(
             "schedule": 86400.0,
             "options": {"queue": "discovery"},
         },
-        "fetch-store-offers-every-eight-hours": {
+        "refresh-known-active-offers-every-eight-hours": {
             "task": "app.workers.ingestion_tasks.enqueue_offer_collection_for_configured_stores",
             "schedule": 28800.0,
             "options": {"queue": "offers"},
