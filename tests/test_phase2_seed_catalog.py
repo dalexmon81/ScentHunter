@@ -259,6 +259,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
             sauvage_variant = session.get(ProductVariant, sauvage_mapping.product_variant_id)
             assert sauvage_variant is not None
             assert sauvage_variant.canonical_key == "christian-dior|sauvage|edp|100|standard"
+            assert sauvage_variant.fragrance.brand.normalized_name == "christian dior"
 
             first_product_id = str(products[0]["product_id"])
             missing_variant_id = "LEGACY-VARIANT-ID-DOES-NOT-EXIST"

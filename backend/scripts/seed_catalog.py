@@ -22,6 +22,7 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
+from app.services.product_normalization import normalize_brand
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -139,7 +140,7 @@ def main() -> int:
 
     names: dict[str, str] = {}
     for row in products:
-        names.setdefault(norm(str(row["brand_name"])), str(row["brand_name"]).strip())
+        names.setdefault(normalize_brand(str(row["brand_name"])), str(row["brand_name"]).strip())
 
     products_without_variants = [
         str(row["product_id"]).strip()
@@ -188,7 +189,7 @@ def main() -> int:
 
             for product in products:
                 pid = str(product["product_id"]).strip()
-                brand = brand_rows[norm(str(product["brand_name"]))]
+                brand = brand_rows[normalize_brand(str(product["brand_name"]))]
                 name = str(product["canonical_name"]).strip()
                 fragrance = session.scalar(select(Fragrance).where(
                     Fragrance.brand_id == brand.id,
@@ -219,7 +220,7 @@ def main() -> int:
                     concentration = variant.get("concentration") or product.get("concentration")
                     size = variant.get("size_ml")
                     key = "|".join((
-                        norm(str(product["brand_name"])),
+                        normalize_brand(str(product["brand_name"])),
                         norm(name),
                         norm(str(concentration or "")),
                         str(size or ""),
