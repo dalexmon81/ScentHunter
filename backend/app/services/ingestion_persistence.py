@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -159,8 +159,25 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected("offer URL must be absolute HTTPS")
     if not source or not source.strip():
         raise PromotionRejected("source is required")
-    if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
-        raise PromotionRejected("confidence must be between 0 and 1")
+    if confidence is None or not confidence.is_finite() or confidence < Decimal("0.950") or confidence > 1:
+        raise PromotionRejected("match confidence must be at least 0.950")
+    payload = row.raw_payload or {}
+    captured_value = payload.get("capturedAt") or payload.get("captured_at")
+    try:
+        captured_at = datetime.fromisoformat(str(captured_value).replace("Z", "+00:00"))
+        if captured_at.tzinfo is None:
+            raise ValueError("capture timestamp must include timezone")
+        now = datetime.now(timezone.utc)
+        if captured_at > now + timedelta(minutes=5):
+            raise ValueError("capture timestamp is in the future")
+        if captured_at < now - timedelta(hours=48):
+            raise ValueError("offer evidence is stale")
+    except (TypeError, ValueError) as exc:
+        raise PromotionRejected(f"invalid or stale capture timestamp: {exc}") from exc
+    if payload.get("purchasable") is False or payload.get("isPurchasable") is False:
+        raise PromotionRejected("product is not purchasable")
+    if payload.get("price_incoherent") is True or payload.get("page_price_mismatch") is True:
+        raise PromotionRejected("price and product page evidence is inconsistent")
 
     # Retailer identity is the idempotency key. Never reuse an unrelated
     # listing merely because it maps to the same canonical variant: a shop may
