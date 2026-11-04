@@ -161,14 +161,19 @@ def discover_store_products(self, store_key: str):
         factory.kw["bind"].dispose()
     products = _run(connector.discover_products())
     staged = []
+    # Discovery and offer extraction must share this connector instance:
+    # connector adapters keep their parsed discovery cache in memory, and
+    # Celery tasks may execute on different workers. Queueing only the product
+    # key here would lose that cache and silently produce zero offers.
     for product in products:
         product_key = str(product.get("externalProductId") or product.get("external_product_id") or product.get("url") or "").strip()
-        if product_key:
-            fetch_store_offers.apply_async(
-                kwargs={"store_key": store_key, "product_key": product_key, "discovery_evidence": _json_safe(dict(product))},
-                queue="offers",
-            )
-            staged.append(product_key)
+        if not product_key:
+            continue
+        records = _run(connector.fetch_offers(product_key))
+        for record in records:
+            raw_id = _stage_record(store_key, record, _json_safe(dict(product)))
+            normalize_offer.apply_async(args=[raw_id], queue="validation")
+            staged.append(raw_id)
     factory = make_session_factory()
     try:
         with factory() as session:
@@ -184,7 +189,7 @@ def discover_store_products(self, store_key: str):
                 session.commit()
     finally:
         factory.kw["bind"].dispose()
-    return {"store": store_key, "discovered": len(products), "queued": len(staged)}
+    return {"store": store_key, "discovered": len(products), "offers_staged": len(staged), "raw_ids": staged}
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.fetch_store_offers")
 def fetch_store_offers(self, store_key: str, product_key: str, discovery_evidence: dict | None = None):
