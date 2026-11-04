@@ -22,6 +22,13 @@ class MatchDecision:
     reason: str
 
 
+def _payload_size_ml(payload: dict):
+    """Prefer the canonical snake_case field when both legacy aliases exist."""
+    if payload.get("size_ml") is not None:
+        return payload["size_ml"]
+    return payload.get("sizeMl")
+
+
 def decide_offer_match(
     session: Session, raw: IngestionRaw, *,
     semantic_provider: EmbeddingProvider | None = None,
@@ -38,7 +45,7 @@ def decide_offer_match(
         identity = normalize_product(
             brand, title,
             concentration=payload.get("concentration"),
-            size_ml=payload.get("sizeMl") if payload.get("sizeMl") is not None else payload.get("size_ml"),
+            size_ml=_payload_size_ml(payload),
             packaging=payload.get("packaging"),
         )
     except (TypeError, ValueError) as exc:
@@ -169,7 +176,7 @@ def match_staged_offer(
         identity = normalize_product(
             str(payload.get("brand") or ""), str(payload.get("title") or ""),
             concentration=payload.get("concentration"),
-            size_ml=payload.get("sizeMl") if payload.get("sizeMl") is not None else payload.get("size_ml"),
+            size_ml=_payload_size_ml(payload),
             packaging=payload.get("packaging"),
         )
         enqueue_identity_review(
