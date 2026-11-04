@@ -4,4 +4,4 @@ WORKDIR /app
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 COPY backend /app/backend
-CMD ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--loglevel=INFO", "--queues=discovery,offers,validation,matching,refresh,dead_letter"]
+CMD ["sh", "/app/backend/start_worker.sh"]
