@@ -1,10 +1,24 @@
-"""Universal retailer connector contracts and shared runtime helpers."""
-from .deloox import DelooxConnector\nfrom .base import (
-    ConnectorError, ConnectorQuarantined, OfferRecord, RateLimiter,
-    RetryPolicy, StoreConnector, validate_offer,
+"""Universal retailer connector contracts and adapters."""
+from .base import (
+    ConnectorError,
+    ConnectorQuarantined,
+    OfferRecord,
+    RateLimiter,
+    RetryPolicy,
+    StoreConnector,
+    validate_offer,
 )
+from .deloox import DelooxConnector
+from .notino import NotinoAffiliateFeedConnector
 
 __all__ = [
-    "DelooxConnector", "ConnectorError", "ConnectorQuarantined", "OfferRecord", "RateLimiter",
-    "RetryPolicy", "StoreConnector", "validate_offer",
+    "ConnectorError",
+    "ConnectorQuarantined",
+    "DelooxConnector",
+    "NotinoAffiliateFeedConnector",
+    "OfferRecord",
+    "RateLimiter",
+    "RetryPolicy",
+    "StoreConnector",
+    "validate_offer",
 ]
