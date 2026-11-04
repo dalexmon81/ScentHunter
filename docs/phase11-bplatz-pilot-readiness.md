@@ -1,0 +1,115 @@
+# Phase 11 — Bplatz candidate pilot readiness
+
+**Audit date:** 2026-11-04  
+**Branch reviewed:** `phase5/redis-celery-ingestion-pipeline`  
+**Decision:** candidate for a controlled staging pilot, **not yet approved for execution or traffic**.
+
+This is a source-code review only. No request was sent to Bplatz, no store was activated, no staging database was changed, and no offer was created.
+
+## Why Bplatz is the next candidate to assess
+
+- The repository contains a dedicated `BplatzConnector` registered under runtime key `bplatz`.
+- It wraps the existing Bplatz scraper through `LegacyStoreConnector`.
+- A previous Phase 2/legacy proof for a Bplatz Liquid Brun fixture is documented in the Phase 11 Gate 0 audit. That proves a legacy persistence path for that fixture only; it does not prove Phase 5 PostgreSQL/Celery ingestion.
+- Unlike Notino, this candidate is not dependent on the pending CJ publisher application. However, the permitted access method, current retailer terms, and operational reachability still need to be confirmed before a live request.
+
+## Code path inspected
+
+### Connector construction
+
+`backend/app/connectors/runtime_registry.py` registers:
+- `"bplatz": BplatzConnector(terms.get("bplatz", ()))`
+
+Discovery terms are supplied explicitly through `SCENTHUNTER_DISCOVERY_TERMS_JSON`. No discovery term is automatically invented when none is configured.
+
+### Adapter
+
+`backend/app/connectors/bplatz.py` creates a `LegacyStoreConnector` with:
+- store key `bplatz`;
+- scraper `scrapers.bplatz.scraper`;
+- product page parser `scraper.product_from_page`;
+- optional configured discovery terms.
+
+The shared adapter:
+- maps the scraper's structured result into `OfferRecord`;
+- captures raw product-page response bytes when the parser uses its session;
+- exposes `discover_products`, `fetch_product`, `fetch_offers` and `fetch_price_and_stock`;
+- validates the normalized offer contract;
+- does not write to the canonical database itself.
+
+### Source parser
+
+`backend/scrapers/bplatz/scraper.py`:
+- uses `https://en.bplatz.de`;
+- has bounded timeouts and candidate/page limits;
+- discovers candidate product URLs through Shopify predictive search, search JSON, products JSON, sitemap and HTML search fallbacks;
+- fetches the product page and parses Product/ProductGroup JSON-LD;
+- extracts title, brand, SKU and GTIN only when present in structured product data;
+- derives size and concentration from the product page;
+- extracts price and availability from JSON-LD and page text;
+- treats explicit unavailable/sold-out signals before positive availability signals;
+- leaves missing SKU/GTIN absent rather than fabricating identifiers.
+
+## Risks and gaps to resolve before a live pilot
+
+1. **No Phase 5 end-to-end proof:** the existing Phase 5 runtime CI intentionally has zero configured stores and zero refresh jobs. It does not call Bplatz or persist a real Bplatz offer.
+2. **Historical evidence is a different path/product:** the earlier Liquid Brun proof is not evidence for the new PostgreSQL/Celery path and must not be represented as a Dior result.
+3. **Variant identity:** the parser emits product-level data and may not expose a stable retailer variant ID. The canonical matcher must resolve exact fragrance, concentration and size; ambiguous or incomplete identity stays unpublished.
+4. **Availability quality:** unknown availability is represented as unknown and must not be promoted. Only explicit supported states may pass canonical promotion.
+5. **Identifier quality:** missing SKU/GTIN must remain missing. Do not use a product URL as a fabricated GTIN or claim it is a retailer variant identifier.
+6. **Source/access review:** confirm the retailer's current permitted automated access method, terms and rate limits before enabling any live discovery. Do not bypass blocks or access controls.
+7. **Refresh behavior:** prove that refresh reloads the same product page and updates the same offer identity, without creating duplicates or doing any retailer request during normal user search.
+8. **Error handling:** distinguish verified empty search results from blocked, timed-out or unavailable source responses; ensure one Bplatz failure cannot block other store queues.
+
+## Controlled acceptance plan
+
+### Gate B1 — fixture-only contract tests (no network)
+
+- [ ] Use saved, sanitized Bplatz HTML fixtures containing Product JSON-LD for one product.
+- [ ] Test a product with explicit SKU and GTIN; test another with neither, ensuring neither is fabricated.
+- [ ] Test positive stock, sold-out stock and unknown stock.
+- [ ] Test EUR price parsing and missing/invalid/zero price rejection.
+- [ ] Test exact concentration and size extraction for multiple sizes/concentrations.
+- [ ] Test unavailable text is not misclassified as in-stock.
+- [ ] Test raw HTML bytes and source URL are captured.
+- [ ] Test that ambiguous or wrong-size products do not match the intended canonical variant.
+- [ ] Test that unknown availability is not published.
+- [ ] Test retry/quarantine isolation and no cross-store queue failure.
+
+### Gate B2 — isolated staging one-offer vertical slice
+
+Only after B1 passes and access is approved:
+1. Confirm separate staging PostgreSQL and Redis.
+2. Provision the Bplatz store explicitly in staging; do not silently activate it from the general catalog seed.
+3. Select one exact canonical product/variant for which the Bplatz page has clear evidence. Do not assume Liquid Brun or Dior is available.
+4. Run one bounded discovery/fetch through the Bplatz connector.
+5. Persist source evidence, ingestion run and staged offer.
+6. Verify exact brand/fragrance/concentration/size mapping.
+7. Promote only if URL, positive EUR price, explicit availability, timestamp, store status and exact match pass.
+8. Read the published offer back in a new DB session and verify its exact variant/store/external identity.
+9. Enqueue one Celery refresh; verify the same offer is updated and price history is recorded without duplicates.
+10. Run an ordinary catalog search and prove it reads the stored/indexed offer with zero synchronous Bplatz requests.
+11. Attach sanitized run IDs, task IDs, counts and evidence to the Phase 11 PR.
+
+### Gate B3 — shadow-read eligibility
+
+Bplatz can be included in Phase 11 shadow mode only after B2 passes and the wider Phase 11 Gate 0 requirements, monitoring, kill switch and rollback are also verified.
+
+A successful Bplatz pilot alone does not authorize 5% user traffic or prove readiness of the other eight stores.
+
+## Current status
+
+| Gate | Status |
+|---|---|
+| Connector registered | PASS |
+| Adapter and scraper code reviewed | PASS |
+| Legacy Phase 2 persistence proof | PARTIAL; legacy-only, Liquid Brun fixture |
+| Fixture contract test evidence for this audit | NOT RUN |
+| Live source authorization/terms review | NOT VERIFIED |
+| Phase 5 staging store provisioned | NOT VERIFIED |
+| Real offer persisted in Phase 5 PostgreSQL | NOT RUN |
+| Celery refresh and price-history readback | NOT RUN |
+| Search performs no synchronous retailer request | Requires end-to-end proof |
+| Phase 11 shadow/canary | BLOCKED |
+
+**Safe next action:** implement/run the fixture-only Bplatz contract test suite first. Do not make a live retailer request or change staging until those tests and the source-access review are complete.
