@@ -38,6 +38,29 @@ class SabinaConnector:
     def _map_product(cls, item: dict[str, Any]) -> tuple[OfferRecord, ...]:
         if not isinstance(item, dict):
             return ()
+        # Discovery/test adapters may supply a flat scraper-compatible row.
+        # Convert it to the same evidence shape emitted by the legacy parser.
+        if not isinstance(item.get("source"), dict):
+            item = {
+                **item,
+                "source": {
+                    "url": item.get("url"), "name": item.get("name"),
+                    "brand": item.get("brand"),
+                },
+                "identity": {
+                    "store_product_id": item.get("product_id"),
+                    "sku": item.get("sku"), "gtin": item.get("gtin"),
+                },
+                "attributes": {
+                    "size_ml": item.get("size_ml"),
+                    "concentration": item.get("concentration"),
+                },
+                "offer": {
+                    "price": item.get("price_num", item.get("price")),
+                    "currency": item.get("currency"),
+                    "availability": item.get("availability", "unknown"),
+                },
+            }
         source = item.get("source") if isinstance(item.get("source"), dict) else {}
         identity = item.get("identity") if isinstance(item.get("identity"), dict) else {}
         attributes = item.get("attributes") if isinstance(item.get("attributes"), dict) else {}
@@ -51,6 +74,7 @@ class SabinaConnector:
             return ()
         captured_at = datetime.now(timezone.utc).isoformat()
         rows: list[OfferRecord] = []
+        seen_records: set[tuple[str, str, str]] = set()
 
         def add(*, external_id: Any, row_title: str, row_url: str,
                 raw_price: Any, currency: Any, availability: Any,
@@ -69,6 +93,10 @@ class SabinaConnector:
             identifier = str(external_id or row_url).strip()
             if not identifier:
                 return
+            signature = (row_url, str(normalized.size_ml), str(price))
+            if signature in seen_records:
+                return
+            seen_records.add(signature)
             stock = str(availability or "unknown").strip().casefold()
             if stock not in {"in_stock", "out_of_stock", "preorder", "unknown"}:
                 stock = "unknown"
