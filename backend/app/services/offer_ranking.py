@@ -10,6 +10,10 @@ from decimal import Decimal
 from statistics import mean
 from typing import Any
 
+from sqlalchemy import case, func, select
+
+from app.models import MatchAudit, Offer
+
 
 def _decimal(value, default=Decimal("0")) -> Decimal:
     try:
@@ -125,4 +129,25 @@ def summarize_price_history(samples: list[dict[str, Any]]) -> dict[str, Any]:
         "sample_count": len(values), "currency": valid[0][2],
         "minimum": str(min(values)), "average": str(Decimal(str(mean([float(x) for x in values]))).quantize(Decimal("0.01"))),
         "latest": str(latest), "trend": trend, "alert": alert,
+    }
+
+
+def store_mismatch_rates(session, store_ids) -> dict[str, float]:
+    """Estimate repeated mismatch rate from audited low-confidence matches."""
+    ids = list(store_ids)
+    if not ids:
+        return {}
+    rows = session.execute(
+        select(
+            Offer.store_id,
+            func.count(MatchAudit.id),
+            func.sum(case((MatchAudit.confidence < Decimal("0.950"), 1), else_=0)),
+        )
+        .join(MatchAudit, MatchAudit.offer_id == Offer.id)
+        .where(Offer.store_id.in_(ids))
+        .group_by(Offer.store_id)
+    ).all()
+    return {
+        str(store_id): (float(low_confidence or 0) / float(total or 1))
+        for store_id, total, low_confidence in rows
     }
