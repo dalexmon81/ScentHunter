@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import select
 from app.db import make_session_factory
 from app.models import CanonicalIdentityReview, IngestionRun, Store
+from app.schemas.catalog import AdminConnectorList, AdminIngestionRunList, AdminMatchingReviewList
 
 router = APIRouter(prefix="/api/admin", tags=["catalog-admin"])
 
@@ -19,7 +20,7 @@ def _authorize(authorization: str = Header(default="")) -> None:
         raise HTTPException(status_code=401, detail="admin_unauthorized")
 
 
-@router.get("/connectors")
+@router.get("/connectors", response_model=AdminConnectorList)
 def connector_status(_auth: None = Depends(_authorize)):
     """Return connector/store health metadata; never starts a connector."""
     factory = make_session_factory()
@@ -37,7 +38,7 @@ def connector_status(_auth: None = Depends(_authorize)):
         factory.kw["bind"].dispose()
 
 
-@router.get("/ingestion")
+@router.get("/ingestion", response_model=AdminIngestionRunList)
 def ingestion_runs(limit: int = Query(50, ge=1, le=200), _auth: None = Depends(_authorize)):
     """Return recent durable ingestion runs."""
     factory = make_session_factory()
@@ -55,7 +56,7 @@ def ingestion_runs(limit: int = Query(50, ge=1, le=200), _auth: None = Depends(_
         factory.kw["bind"].dispose()
 
 
-@router.get("/matching")
+@router.get("/matching", response_model=AdminMatchingReviewList)
 def matching_reviews(status: str = "pending", limit: int = Query(50, ge=1, le=200), _auth: None = Depends(_authorize)):
     """Return canonical identity review queue without changing review state."""
     factory = make_session_factory()
