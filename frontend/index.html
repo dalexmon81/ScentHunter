@@ -661,6 +661,9 @@ function syncHearts(){
       pic:h.dataset.pic||"🧴"
     };
     const on=saved.some(x=>sameWishOffer(x,item));
+    const refreshId=String(o.phase2_offer_id||"");
+    const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
+    const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':"";
     const refreshId=String(o.phase2_offer_id||'');
     const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
     const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':'';
