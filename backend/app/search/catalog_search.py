@@ -59,6 +59,7 @@ def search_catalog(
     limit = max(1, min(int(limit), 100))
     offset = max(0, int(offset))
     freshness_hours = max(1, min(int(freshness_hours), 24 * 30))
+    requested_availability = availability.strip().casefold() if availability else "in_stock"
     factory = session_factory or make_session_factory()
     try:
         with factory() as session:
@@ -87,7 +88,7 @@ def search_catalog(
                     Offer.product_variant_id == ProductVariant.id,
                     Offer.status == "active",
                     Offer.publication_status == "published",
-                    Offer.availability == "in_stock",
+                    Offer.availability == requested_availability,
                     Offer.captured_at >= datetime.now(timezone.utc) - timedelta(hours=freshness_hours),
                 ))
                 .outerjoin(Store, and_(
