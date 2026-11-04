@@ -6,16 +6,16 @@ and backfill have been reviewed and tested on isolated staging.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum
 
 
-class ValidationStatus(StrEnum):
+class ValidationStatus(str, Enum):
     PENDING = "pending"
     VALIDATED = "validated"
     REJECTED = "rejected"
 
 
-class PublicationStatus(StrEnum):
+class PublicationStatus(str, Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
     STALE = "stale"
