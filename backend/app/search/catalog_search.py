@@ -198,6 +198,15 @@ def search_catalog(
                 product["variants"] = list(product.pop("_variant_map").values())
                 for variant in product["variants"]:
                     variant["offers"].sort(key=lambda item: (Decimal(item["price"]), item["store"]))
+                    by_currency = {}
+                    for offer in variant["offers"]:
+                        by_currency.setdefault(offer["currency"], []).append(Decimal(offer["price"]))
+                    variant["min_price_by_currency"] = {
+                        currency: str(min(prices)) for currency, prices in by_currency.items()
+                    }
+                    variant["min_price"] = variant["min_price_by_currency"].get("EUR")
+                    variant["store_count"] = len({offer["store"] for offer in variant["offers"]})
+                    variant["availability"] = "in_stock" if variant["offers"] else "unavailable"
                 product["variant_selection_required"] = len(product["variants"]) > 1
                 product["offer_count"] = sum(len(variant["offers"]) for variant in product["variants"])
             products.sort(key=lambda item: (
