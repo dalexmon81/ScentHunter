@@ -53,7 +53,7 @@ def test_admin_metrics_uses_persisted_counts_and_match_rates(admin_db):
 
 
 def test_admin_alerts_returns_empty_for_healthy_store(admin_db):
-    result = admin.operational_alerts(_auth=None)
+    result = admin.operational_alerts(stale_after_hours=48, error_rate_threshold=0.25, ambiguous_rate_threshold=0.20, _auth=None)
     assert result["count"] == 0
     assert result["alerts"] == []
 
