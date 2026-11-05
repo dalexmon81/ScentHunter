@@ -39,7 +39,7 @@ The Notino CJ application is pending, not approved. Bplatz has an unanswered per
 
 - **ParfumZentrum:** retailer-specific offline HTML/JSON-LD parser tests and captured-live-output canonical GTIN/variant matching tests exist. These are meaningful regression tests, but do not fetch the retailer or write a real offer.
 - **Deloox:** URL admission, search budget/deadline, and parser regression tests exist. A previous live probe still recorded HTTP 403; passing offline tests do not remove that access blocker.
-- **Easycosmetic:** generic hydration timeout and deduplication tests exist, but this audit did not locate a comparable retailer-specific end-to-end fixture suite proving full product/offer extraction.
+- **Easycosmetic:** added `backend/tests/test_easycosmetic_parser_contract.py` on 2026-11-05. Synthetic offline HTML tests exercise exact `?variant=` JSON-LD selection, prevent borrowing another variant's offer, verify selected-size extraction, ensure the visible product-detail price wins over cached JSON-LD, and preserve explicit out-of-stock state. These tests make no retailer requests and do not prove live authorization or persistence/refresh/search integration. The commit is `4e5a3f86e9168220f6c279d05a1dcd7f790391ea`; no associated PR workflow run was returned at audit time, so CI status is not yet verified.
 - **PerfumeMarket, Orioudh, ParfumCity, Sabina and Notino:** scraper code exists, but this audit did not locate sufficient retailer-specific contract tests proving the complete normalized offer contract end to end.
 - **Bplatz:** bounded ingestion fixture/authentication tests exist for the manual-only pilot; the task has not been invoked.
 
@@ -69,6 +69,6 @@ This is infrastructure readiness only. It is not a nine-store integration test.
 
 ## Status
 
-**Nine-store audit: code inventory completed; authorization and end-to-end readiness remain unverified for most stores.**  
+**Nine-store audit: code inventory completed; Easycosmetic now has an additional offline variant/offer parser regression suite. Authorization and end-to-end readiness remain unverified for most stores.**  
 **Gate 0: BLOCKED. Shadow/canary: 0%.**  
 No production changes, live retailer requests, feed downloads, or retailer activation were performed by this audit.
