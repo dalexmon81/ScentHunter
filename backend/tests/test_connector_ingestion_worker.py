@@ -366,11 +366,11 @@ def test_bplatz_page_loader_retains_raw_html_evidence_without_network():
         return html
 
     connector = BplatzConnector(page_loader=page_loader)
-    loaded = asyncio.run(connector.fetch_product(
-        "https://en.bplatz.de/products/fixture"
+    loaded = asyncio.run(connector._load_page(
+        "https://en.bplatz.de/products/fixture", "fixture"
     ))
 
-    assert loaded is None  # Fixture is intentionally not a parsed product mapping.
+    assert loaded == html
     assert len(connector._raw_artifacts) == 1
     artifact = connector._raw_artifacts[0]
     assert artifact["format"] == "html"
