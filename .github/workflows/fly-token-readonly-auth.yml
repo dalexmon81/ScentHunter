@@ -19,7 +19,7 @@ jobs:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Identify token scope and app visibility
+      - name: Verify direct access to ScentHunter app
         env:
           FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         shell: bash
@@ -27,9 +27,7 @@ jobs:
           set -euo pipefail
           echo "STEP 1: Fly recognizes the configured token"
           flyctl auth whoami
-          echo "STEP 2: Apps visible to this token in organization Personal"
-          flyctl apps list --org personal --json | jq -r '.[] | (.Name // .name // "unknown")'
-          echo "STEP 3: Direct visibility of app scenthunter"
+          echo "STEP 2: Direct visibility of app scenthunter"
           flyctl status --app scenthunter --json
-          echo "STEP 4: Volume visibility"
+          echo "STEP 3: Volume visibility"
           flyctl volumes list --app scenthunter --json
