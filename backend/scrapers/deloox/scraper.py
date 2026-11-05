@@ -486,6 +486,19 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
 
     price = parse_price(offer.get("price"))
     if price is None:
+        # Schema.org may place the sellable amount on priceSpecification
+        # rather than directly on Offer. Read only the selected offer's
+        # explicit specification; never borrow a sibling offer's price.
+        specification = offer.get("priceSpecification")
+        specifications = specification if isinstance(specification, list) else [specification]
+        for item in specifications:
+            if not isinstance(item, dict):
+                continue
+            candidate_price = parse_price(item.get("price"))
+            if candidate_price is not None and candidate_price > 0:
+                price = candidate_price
+                break
+    if price is None:
         # Only consider visible text outside the product title when falling
         # back to page-price extraction. Otherwise a title such as "125 ml"
         # can be misread as a 125.00 price when JSON-LD omits its offer.
