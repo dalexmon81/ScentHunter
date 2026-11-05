@@ -32,6 +32,18 @@ jobs:
             echo "TOKEN_FORMAT=other"
           fi
           echo "TOKEN_LENGTH=${#raw_token}"
+          # Ask Fly to identify this macaroon directly. This is read-only and
+          # distinguishes an invalid token from a valid token scoped elsewhere.
+          for auth_value in "FlyV1 ${raw_token}" "Bearer ${raw_token}"; do
+            scheme="${auth_value%% *}"
+            code=$(curl --silent --show-error \
+              -H "Authorization: ${auth_value}" \
+              -H "Accept: application/json" \
+              -o /tmp/fly-token-current.json \
+              -w "%{http_code}" "https://api.machines.dev/v1/tokens/current")
+            echo "TOKEN_IDENTITY_HTTP_STATUS=${code} auth=${scheme}"
+            jq -c . /tmp/fly-token-current.json 2>/dev/null || sed -n '1,4p' /tmp/fly-token-current.json
+          done
           for auth_value in "$FLY_API_TOKEN" "FlyV1 ${raw_token}" "Bearer ${raw_token}"; do
             scheme="${auth_value%% *}"
             echo "Testing authorization value form: ${scheme}"
