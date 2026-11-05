@@ -30,9 +30,11 @@ These are fixture identifiers, not current stock, price, authorization, or Phase
 
 PR #347 adds an offline fixture validation matrix. Its push and pull-request Actions runs passed. Coverage includes stock states, invalid prices, currency handling, size/concentration parsing, and absent SKU/GTIN handling.
 
-A Bplatz-specific test was added in PR #343 commit `99c2842287df681d8cd5c5abece4aeef97c9068f`. Workflow run [`41967935150`](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150) completed successfully: both `ingestion-pipeline` and `runtime-integration` jobs passed. The test runs the committed historical Liquid Brun HTML fixture through the Bplatz parser/connector and Celery discovery task, then verifies the unchanged HTML bytes and SHA-256, artifact-to-ingestion-run linkage, and raw-evidence artifact reference.
+A Bplatz-specific artifact-linkage test was added in PR #343 commit `99c2842287df681d8cd5c5abece4aeef97c9068f`. Workflow run [`41967935150`](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150) completed successfully: both `ingestion-pipeline` and `runtime-integration` jobs passed. It runs the historical Liquid Brun HTML fixture through the Bplatz parser/connector and Celery discovery task, verifying unchanged bytes and SHA-256, artifact-to-ingestion-run linkage, and the raw-evidence artifact reference.
 
-This proves the Bplatz fixture artifact path in offline, disposable CI only. It is not a live ingestion, current retailer offer, or persistent staging proof.
+Further Bplatz-specific negative-path tests passed in PR #343 workflow run [`41968439231`](https://github.com/dalexmon81/ScentHunter/actions/runs/41968439231), commit `b609eaa353355fe03a6540035fb028ef87f86a83`. Both `ingestion-pipeline` and `runtime-integration` jobs passed. Coverage verifies timeout retry and quarantine isolation (other stores remain active), rejection of a 50 ml record against the 100 ml canonical variant, and ambiguous duplicate-GTIN review with no automatic match.
+
+These are fixture/stub-based tests in offline, disposable CI only. They are not live ingestion, a current retailer offer, or persistent staging proof.
 
 ### Source access and infrastructure
 
@@ -51,7 +53,7 @@ This proves the Bplatz fixture artifact path in offline, disposable CI only. It 
 | Bplatz Liquid Brun historical fixture | PASS — historical evidence only |
 | Offline Bplatz B1 validation matrix | PASS — PR #347 |
 | Bplatz fixture artifact/run linkage | PASS — PR #343 run 41967935150, offline only |
-| Retry/quarantine and wrong-size/ambiguous-match coverage | OPEN |
+| Retry/quarantine and wrong-size/ambiguous-match coverage | PASS — PR #343 run 41968439231, offline fixture/stub tests only |
 | Bplatz automated access permission/method | NOT VERIFIED |
 | Isolated persistent staging resources | NOT VERIFIED |
 | Real offer in Phase 5 PostgreSQL | NOT RUN |
@@ -61,11 +63,10 @@ This proves the Bplatz fixture artifact path in offline, disposable CI only. It 
 
 ## Required next steps
 
-1. Complete Bplatz-specific retry/quarantine isolation and wrong-size/ambiguous-match rejection tests, reusing generic Phase 5 tests where they already cover the behavior.
-2. Review Bplatz's current terms and confirm the exact permitted access method before any live request. If permission is unclear, stop.
-3. Verify isolated staging PostgreSQL and Redis without exposing secrets or using production resources.
-4. Only after explicit source-access approval and staging verification, run one bounded pilot for the exact Liquid Brun EDP 100 ml variant.
-5. Verify persistence, one Celery refresh, price history, and catalog search with no synchronous retailer request.
+1. Review Bplatz's current terms and confirm the exact permitted access method before any live request. If permission is unclear, stop.
+2. Verify isolated staging PostgreSQL and Redis without exposing secrets or using production resources.
+3. Only after explicit source-access approval and staging verification, run one bounded pilot for the exact Liquid Brun EDP 100 ml variant.
+4. Verify persistence, one Celery refresh, price history, and catalog search with no synchronous retailer request.
 
 Do not create a synthetic published offer, substitute another product, scrape around a block, deploy a persistent worker without cost approval, or enable shadow/canary traffic.
 
