@@ -4,92 +4,69 @@
 
 **STATUS: BLOCKED — do not start shadow traffic or the 5% canary.**
 
-The selected pilot for Phase 11 is **Bplatz — French Avenue Liquid Brun Eau de Parfum 100 ml**. Notino/Dior references in older planning material are superseded and are not the active pilot.
+The selected pilot remains **Bplatz — French Avenue Liquid Brun Eau de Parfum 100 ml**. Notino/Dior references in older planning material are superseded and are not the active pilot.
 
-This audit uses repository and GitHub Actions evidence. The manual staging deployment/smoke test is now verified by run [42042272812](https://github.com/dalexmon81/ScentHunter/actions/runs/42042272812). It does not claim a live Bplatz request or a real retailer offer.
+This audit distinguishes CI fixtures, staging infrastructure, retailer authorization, and live offer evidence. Passing one category does not imply another.
 
-## Evidence
+## Current verified evidence
 
-### Phase 5 infrastructure — PR #343
+### Phase 5 staging infrastructure
 
-The CI integration path exercises PostgreSQL 16, Redis 7.4, Alembic migrations, canonical seed, Celery worker registration and dead-letter readback. It remains a synthetic/disposable CI environment. The seed reports zero imported retailer offers; no live retailer request is part of this proof.
+The isolated Fly.io staging deployment [run 42085586218](https://github.com/dalexmon81/ScentHunter/actions/runs/42085586218) completed successfully. All 20 job steps passed, including isolated ingestion/connector tests, Fly token scope verification and staging secret application, worker deploy with one app worker and zero Beat machines, worker startup and broker connection, read-only database/store safety audit, Alembic migrations, canonical brand-alias normalization, canonical catalog seed without activating a retailer, non-root worker verification, Celery broker ping, and queued-task smoke execution.
 
-### Bplatz pilot identity
+The seeded staging catalog contains **60 brands, 1,389 fragrances, and 512 variants**. It reports **stores=0, offers=0, invalid_active_offers=0**. The deployment includes the bounded manual-only Bplatz task from merged PR #360.
 
-The historical fixture identifies:
-- Product: French Avenue Liquid Brun EDP 100 ml
-- Captured Shopify variant: `54015243419916`
-- Captured SKU/GTIN: `6290360375694`
-- Legacy product: `SH-0030`
-- Legacy variant: `VAR-f87146c82d167f4c`
-- Fixture SHA-256: `9f76b00bc7472ccd389116302f06e2e02f258dc17fee7f43371993f79284c017`
+This proves staging deployment and smoke execution. It does not prove retailer authorization, a live offer, offer refresh, price history, or end-to-end catalog-first search.
 
-These are fixture identifiers, not current stock, price, authorization, or Phase 5 database UUIDs.
+### Bplatz bounded pilot implementation
 
-### Bplatz Gate B1
+PR [#360](https://github.com/dalexmon81/ScentHunter/pull/360) added a manual-only task for the exact Bplatz Liquid Brun EDP 100 ml product page. It is restricted to the approved product path, records source evidence against an ingestion run, and passes data through the existing validation/matching/promotion pipeline. It requires an explicit authorization reference.
 
-PR #347 adds an offline fixture validation matrix. Its push and pull-request Actions runs passed. Coverage includes stock states, invalid prices, currency handling, size/concentration parsing, and absent SKU/GTIN handling.
+The offline fixture tests passed in workflow [42073836383](https://github.com/dalexmon81/ScentHunter/actions/runs/42073836383), with 39 tests passing. The task is deployed to staging but **has not been invoked**. The authorization-reference field is a safeguard, not proof that permission exists.
 
-A Bplatz-specific artifact-linkage test was added in PR #343 commit `99c2842287df681d8cd5c5abece4aeef97c9068f`. Workflow run [`41967935150`](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150) completed successfully: both `ingestion-pipeline` and `runtime-integration` jobs passed. It runs the historical Liquid Brun HTML fixture through the Bplatz parser/connector and Celery discovery task, verifying unchanged bytes and SHA-256, artifact-to-ingestion-run linkage, and the raw-evidence artifact reference.
+### Bplatz permission request
 
-Further Bplatz-specific negative-path tests passed in PR #343 workflow run [`41968439231`](https://github.com/dalexmon81/ScentHunter/actions/runs/41968439231), commit `b609eaa353355fe03a6540035fb028ef87f86a83`. Both `ingestion-pipeline` and `runtime-integration` jobs passed. Coverage verifies timeout retry and quarantine isolation (other stores remain active), rejection of a 50 ml record against the 100 ml canonical variant, and ambiguous duplicate-GTIN review with no automatic match.
+Bplatz's official [Terms and Conditions](https://en.bplatz.de/pages/purchase-clauses) and [Privacy Policy](https://en.bplatz.de/pages/Data-protection) were reviewed. They do not expressly authorize automated collection or scraping. robots.txt could not be retrieved, so no allow/disallow conclusion is recorded.
 
-These are fixture/stub-based tests in offline, disposable CI only. They are not live ingestion, a current retailer offer, or persistent staging proof.
+A permission request was sent to **orders@bplatz.de** on 2026-11-05. It asks for an approved API/feed/affiliate feed or written permission for a limited one-product test, restricted to product URL, price/currency, and availability. **No reply or authorization has been received yet.** No live Bplatz request has been made.
 
-### Live staging worker evidence — 2026-11-05 (successful follow-up)
+Do not invoke the task until a permitted access method is confirmed and the authorization reference records the actual approval.
 
-Workflow run [42042272812](https://github.com/dalexmon81/ScentHunter/actions/runs/42042272812) reached the actual Fly.io staging environment and completed successfully. Its logs confirm:
+### Offline quality evidence
 
-- The isolated worker image was deployed and the process groups were scaled to one `app` worker and zero `beat` machines.
-- PostgreSQL identity matched the guarded staging fingerprint for database `neondb`, schema `public`, via `SCENTHUNTER_CATALOG_DATABASE_URL`.
-- Alembic migration completed and the database reported revision `0007_ingestion_dead_letters`, with all required catalog/ingestion tables present.
-- The pre-seed audit reported zero store rows.
-- The Celery worker loaded the ingestion tasks/queues, connected to Redis over TLS, and logged `ready`. Beat remained intentionally disabled.
+- PR #347 adds the Bplatz offline fixture validation matrix.
+- PR #343 workflow [41967935150](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150) passed Bplatz fixture parsing, Celery discovery, raw artifact SHA-256, and artifact-to-ingestion-run linkage.
+- PR #343 workflow [41968439231](https://github.com/dalexmon81/ScentHunter/actions/runs/41968439231) passed timeout retry/quarantine isolation, wrong-size rejection (50 ml versus canonical 100 ml), and ambiguous duplicate-GTIN review without automatic matching.
+- Latest PR #345 CI checks passed: backend parser [42074248195](https://github.com/dalexmon81/ScentHunter/actions/runs/42074248195), Next Engine Shadow Integration [42074248249](https://github.com/dalexmon81/ScentHunter/actions/runs/42074248249), and Hydration Regression [42074248330](https://github.com/dalexmon81/ScentHunter/actions/runs/42074248330).
 
-**The first staging attempt** (run [41911919350](https://github.com/dalexmon81/ScentHunter/actions/runs/41911919350)) failed at the duplicate `viktor-rolf` slug. The correction was merged in PR [#359](https://github.com/dalexmon81/ScentHunter/pull/359); duplicate PR #348 was closed.
-
-**Successful follow-up — run [42042272812](https://github.com/dalexmon81/ScentHunter/actions/runs/42042272812):** the canonical seed completed with 60 brands, 1,389 fragrances and 512 variants; `stores=0`, `offers=0`, and `invalid_active_offers=0`. The run verified all required tables and Alembic revision `0007_ingestion_dead_letters`, Celery `pong`, and a queued smoke task returning `{'ok': True}`. It also verified one non-root app worker and zero Beat machines.
-
-This is persistent staging infrastructure and catalog-seed evidence, **not** a Bplatz offer ingestion. The seed intentionally did not activate a retailer. The run reported all three Notino CJ feed credentials absent; Notino remains deferred.
-
-### Source access and infrastructure
-
-- Current Bplatz terms and the permitted automated access method: **NOT VERIFIED**.
-- Persistent isolated PostgreSQL staging identity: **VERIFIED for the guarded Neon fingerprint in PR #344 run 41911919350**; sustained availability/backup-restore still NOT VERIFIED.
-- Redis TLS connectivity from the staging worker: **VERIFIED by startup logs**; dedicated Redis isolation/retention configuration still NOT VERIFIED.
-- Real Bplatz offer persisted through Phase 5: **NOT RUN** (staging still has zero offers and zero stores).
-- Celery refresh of a real Bplatz offer: **NOT RUN** (only the generic queued smoke task has been verified).
-- Catalog search proven to avoid synchronous retailer requests: **NOT RUN**.
-- Fly staging worker deployment: **VERIFIED** by run 42042272812; production deployment: **NOT RUN**.
+These are offline fixture/stub or CI checks. They are not evidence of a current retailer offer or live authorized ingestion.
 
 ## Gate 0 checklist
 
 | Requirement | Status |
 |---|---|
 | Disposable PostgreSQL/Redis/Celery CI integration | PASS — synthetic CI only |
-| Bplatz Liquid Brun historical fixture | PASS — historical evidence only |
-| Offline Bplatz B1 validation matrix | PASS — PR #347 |
-| Bplatz fixture artifact/run linkage | PASS — PR #343 run 41967935150, offline only |
-| Retry/quarantine and wrong-size/ambiguous-match coverage | PASS — PR #343 run 41968439231, offline fixture/stub tests only |
-| Bplatz automated access permission/method | NOT VERIFIED |
-| PostgreSQL staging identity and schema/migrations | PASS — PR #344 run 41911919350; uptime/restore still unverified |
-| Redis TLS broker connectivity | PASS — worker startup log; dedicated-instance isolation not independently verified |
-| Canonical staging seed | BLOCKED — duplicate brand slug `viktor-rolf`; draft fix PR #348 |
-| Celery queued task execution | NOT VERIFIED — workflow failed before ping/smoke steps |
-| Real offer in Phase 5 PostgreSQL | NOT RUN |
-| Real Celery refresh and price history | NOT RUN |
-| Search with zero synchronous Bplatz requests | NOT RUN |
+| Bplatz Liquid Brun historical fixture and validation matrix | PASS — historical/offline only |
+| Bplatz artifact linkage and negative-path tests | PASS — fixture/stub CI only |
+| Bounded manual Bplatz task implemented | PASS — merged and deployed to staging; not invoked |
+| Isolated staging deploy, migrations, canonical seed | PASS — run 42085586218 |
+| Staging worker non-root, Celery ping and queued smoke task | PASS — run 42085586218 |
+| Bplatz automated access permission/method | BLOCKED — email sent; awaiting reply |
+| Retailer activated in staging | NOT RUN — stores=0 |
+| Real offer persisted through Phase 5 PostgreSQL | NOT RUN — offers=0 |
+| Real Celery price/stock refresh and price history | NOT RUN |
+| Catalog search proven to avoid synchronous retailer requests | NOT RUN |
+| Rollback/readiness proof for live traffic | NOT COMPLETE |
 | Shadow/canary traffic | BLOCKED — 0% |
 
 ## Required next steps
 
-1. Review Bplatz's current terms and confirm the exact permitted access method before any live request. If permission is unclear, stop.
-2. Resolve the duplicate-brand seed defect in draft PR #348; run unit/regression CI without triggering a staging deployment.
-3. Perform a read-only staging count/identity audit after the failed seed, accounting for the separately committed one-row brand-alias normalization.
-4. Only after review, explicitly approve a controlled seed retry; then verify expected canonical counts and zero stores/offers.
-5. Verify the worker remains up, answers Celery ping, and executes the side-effect-free queued smoke task. Keep Beat disabled.
-6. Separately verify Bplatz source-access permission before any retailer request. Only then consider a bounded Liquid Brun EDP 100 ml pilot.
+1. Await Bplatz's response. If it confirms an approved API/feed or grants written permission, record the exact scope and approval reference before any live request.
+2. In parallel, evaluate alternative retailers that provide a documented API, product feed, or affiliate feed with terms permitting the intended use. Do not assume that an affiliate account alone authorizes scraping or feed reuse.
+3. For the first retailer with a confirmed permitted method, configure it explicitly in isolated staging and run a narrowly bounded pilot. Keep the Bplatz task dormant unless Bplatz approval arrives.
+4. Verify one genuine offer is persisted, validated, refreshed by Celery, represented in price history, and returned by catalog-first search without a synchronous retailer request.
+5. Complete rollback, monitoring, and readiness checks before considering shadow traffic. Start with shadow only after Gate 0 approval; consider 5% canary only after shadow evidence is acceptable.
 
-Do not create a synthetic published offer, substitute another product, scrape around a block, deploy a persistent worker without cost approval, or enable shadow/canary traffic.
+Do not create a synthetic published offer, scrape around a block, activate a retailer without a permitted access method, or enable shadow/canary traffic while the gate is blocked.
 
-**Gate 0 remains BLOCKED and new-API user traffic remains 0%.**
+**Gate 0 remains BLOCKED; shadow/canary remain 0%.**
