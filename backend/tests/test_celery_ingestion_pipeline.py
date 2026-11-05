@@ -206,6 +206,7 @@ def test_discovery_task_persists_original_page_bytes_and_links_them_to_staged_of
     import hashlib
     from datetime import datetime, timezone
     from decimal import Decimal
+    from uuid import UUID
 
     from sqlalchemy import create_engine, select
     from sqlalchemy.orm import sessionmaker
@@ -278,7 +279,7 @@ def test_discovery_task_persists_original_page_bytes_and_links_them_to_staged_of
 
         with factory() as session:
             artifact = session.scalar(select(IngestionArtifact))
-            raw = session.get(IngestionRaw, result["raw_ids"][0])
+            raw = session.get(IngestionRaw, UUID(result["raw_ids"][0]))
             run = session.get(IngestionRun, artifact.ingestion_run_id)
 
             assert artifact.raw_data == html
