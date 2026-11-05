@@ -58,6 +58,14 @@ Before any live request, the repository owner must confirm:
 
 If permission or the allowed method cannot be confirmed, stop. Do not attempt alternate domains, proxies, browser automation, or scraping to work around a block.
 
+### Public terms review — 2026-11-05
+
+The public Bplatz terms page was reviewed: https://en.bplatz.de/pages/purchase-clauses. It describes consumer purchase contracts, payment, delivery, returns and applicable law. It does **not** expressly grant permission for automated product-page collection or define an allowed automated-access method. The public terms therefore do not establish scraping authorization.
+
+The site's `/robots.txt` could not be retrieved in this review. Its contents and any crawl directives remain unverified. This is not evidence that access is allowed or denied.
+
+**Decision: source-access gate remains NOT VERIFIED.** Do not run a product-page request, feed fetch, browser automation or scraper until the repository owner confirms an authorized method (for example, written permission or an approved affiliate/feed arrangement). If that cannot be confirmed, choose a permitted data source instead.
+
 ## Gate B2 — one-offer Phase 5 staging proof
 
 Only after B1 and source-access approval:
