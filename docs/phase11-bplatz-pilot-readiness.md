@@ -1,6 +1,6 @@
 # Phase 11 — Bplatz candidate pilot readiness
 
-**Audit date:** 2026-11-04  
+**Audit date:** 2026-11-05  
 **Branch reviewed:** `phase5/redis-celery-ingestion-pipeline`  
 **Decision:** candidate for a controlled staging pilot, **not yet approved for execution or traffic**.
 
@@ -52,7 +52,7 @@ The shared adapter:
 
 ## Risks and gaps to resolve before a live pilot
 
-1. **No Phase 5 end-to-end proof:** the existing Phase 5 runtime CI intentionally has zero configured stores and zero refresh jobs. It does not call Bplatz or persist a real Bplatz offer.
+1. **No live Phase 5 retailer proof:** Phase 5 CI now proves the Bplatz connector path against a synthetic, local fixture, including canonical matching, offer promotion, price history and refresh behavior. It still does not call Bplatz, use a retailer-authorized source response, or persist a real retailer offer in persistent staging.
 2. **Historical evidence is a different path/product:** the earlier Liquid Brun proof is not evidence for the new PostgreSQL/Celery path and must not be represented as a Dior result.
 3. **Variant identity:** the parser emits product-level data and may not expose a stable retailer variant ID. The canonical matcher must resolve exact fragrance, concentration and size; ambiguous or incomplete identity stays unpublished.
 4. **Availability quality:** unknown availability is represented as unknown and must not be promoted. Only explicit supported states may pass canonical promotion.
@@ -65,16 +65,21 @@ The shared adapter:
 
 ### Gate B1 — fixture-only contract tests (no network)
 
-- [ ] Use saved, sanitized Bplatz HTML fixtures containing Product JSON-LD for one product.
-- [ ] Test a product with explicit SKU and GTIN; test another with neither, ensuring neither is fabricated.
-- [ ] Test positive stock, sold-out stock and unknown stock.
-- [ ] Test EUR price parsing and missing/invalid/zero price rejection.
-- [ ] Test exact concentration and size extraction for multiple sizes/concentrations.
-- [ ] Test unavailable text is not misclassified as in-stock.
-- [ ] Test raw HTML bytes and source URL are captured.
-- [ ] Test that ambiguous or wrong-size products do not match the intended canonical variant.
-- [ ] Test that unknown availability is not published.
-- [ ] Test retry/quarantine isolation and no cross-store queue failure.
+**Partial PASS — core Bplatz fixture path and refresh regression are covered by CI; the full checklist below is not yet proven.**
+
+Evidence on Phase 5 branch commit `5edc244ef1ddaa6d99dfbb8342c39649fd3dec20`:
+- Phase 4 connector contract: **76 passed** (run `41963630229`).
+- Phase 5 ingestion tests: **51 passed** and runtime integration succeeded (run `41963625254`).
+- The Bplatz synthetic HTML fixture has no fabricated SKU or GTIN; absent identifiers remain absent and the product URL is used only as the external ID fallback.
+- The local end-to-end fixture test exercises `run_connector_once`, exact Dior Sauvage EDP 100 ml canonical matching, promotion in an in-memory SQLite test database, active-offer readback, EUR price, stock, PriceHistory and MatchAudit. This is a test fixture, not retailer evidence or persistent staging.
+- Refresh regression tests cover Bplatz alongside PerfumeMarket, ParfumCity and Orioudh, verifying that a fresh page observation updates the same offer identity rather than retaining the stale price.
+
+Remaining B1 checks (do not infer they passed from the aggregate CI totals):
+- [ ] Separate positive-stock, sold-out and unknown-stock Bplatz fixture matrix.
+- [ ] Full invalid/missing/zero-price rejection matrix for Bplatz.
+- [ ] Multiple concentration/size parsing matrix and explicit wrong-size/ambiguous-match cases.
+- [ ] Raw HTML artifact capture assertions for the Bplatz path.
+- [ ] Explicit retry/quarantine isolation test for a Bplatz source failure.
 
 ### Gate B2 — isolated staging one-offer vertical slice
 
@@ -104,7 +109,7 @@ A successful Bplatz pilot alone does not authorize 5% user traffic or prove read
 | Connector registered | PASS |
 | Adapter and scraper code reviewed | PASS |
 | Legacy Phase 2 persistence proof | PARTIAL; legacy-only, Liquid Brun fixture |
-| Fixture contract test evidence for this audit | NOT RUN |
+| Fixture contract test evidence for this audit | PARTIAL PASS — synthetic fixture E2E + refresh regression in CI |
 | Live source authorization/terms review | NOT VERIFIED |
 | Phase 5 staging store provisioned | NOT VERIFIED |
 | Real offer persisted in Phase 5 PostgreSQL | NOT RUN |
@@ -112,4 +117,4 @@ A successful Bplatz pilot alone does not authorize 5% user traffic or prove read
 | Search performs no synchronous retailer request | Requires end-to-end proof |
 | Phase 11 shadow/canary | BLOCKED |
 
-**Safe next action:** implement/run the fixture-only Bplatz contract test suite first. Do not make a live retailer request or change staging until those tests and the source-access review are complete.
+**Safe next action:** complete the remaining B1 fixture matrix and source-access review. Only then consider one bounded B2 staging run, after isolated staging and explicit retailer-access approval are confirmed. No live request or staging write has been performed.
