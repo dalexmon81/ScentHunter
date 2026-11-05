@@ -42,6 +42,9 @@ The Notino CJ application is pending, not approved. Bplatz has an unanswered per
 - **Easycosmetic:** added `backend/tests/test_easycosmetic_parser_contract.py` on 2026-11-05. Synthetic offline HTML tests exercise exact `?variant=` JSON-LD selection, prevent borrowing another variant's offer, verify selected-size extraction, ensure the visible product-detail price wins over cached JSON-LD, and preserve explicit out-of-stock state. These tests make no retailer requests and do not prove live authorization or persistence/refresh/search integration. The commit is `4e5a3f86e9168220f6c279d05a1dcd7f790391ea`; no associated PR workflow run was returned at audit time, so CI status is not yet verified.
 - **PerfumeMarket, Orioudh, ParfumCity, Sabina and Notino:** scraper code exists, but this audit did not locate sufficient retailer-specific contract tests proving the complete normalized offer contract end to end.
 - **Bplatz:** bounded ingestion fixture/authentication tests exist for the manual-only pilot; the task has not been invoked.
+- **Orioudh:** added `backend/tests/test_orioudh_perfumemarket_parser_contract.py` on 2026-11-05. Synthetic Shopify `.js` payload tests verify integer-cent price conversion, GTIN/barcode, product/variant IDs, 100 ml and concentration extraction, availability mapping, and rejection of a zero-price variant. These tests do not call Orioudh or establish permission/feed entitlement.
+- **PerfumeMarket:** the same offline suite tests the adapter's Shopify predictive-search payload parser and product-page JSON-LD parser, including localized euro price formatting and rejection of a non-matching product query. The current legacy result shape contains only store/name/price/URL; it does not expose explicit availability, currency, GTIN or variant identity in these tested paths. This is a material contract gap to close before treating it as a validated catalog-first offer source.
+
 
 A missing test found by this search is recorded as “not located in the reviewed paths”, not proof that no test exists anywhere in the repository.
 
@@ -69,6 +72,6 @@ This is infrastructure readiness only. It is not a nine-store integration test.
 
 ## Status
 
-**Nine-store audit: code inventory completed; Easycosmetic now has an additional offline variant/offer parser regression suite. Authorization and end-to-end readiness remain unverified for most stores.**  
+**Nine-store audit: code inventory completed; additional offline parser regressions now cover Easycosmetic, Orioudh and PerfumeMarket. Authorization and end-to-end readiness remain unverified for most stores; PerfumeMarket's legacy output is missing key offer identity/availability fields.**  
 **Gate 0: BLOCKED. Shadow/canary: 0%.**  
 No production changes, live retailer requests, feed downloads, or retailer activation were performed by this audit.
