@@ -25,7 +25,9 @@ The captured response is historical evidence only. Its price and stock must not 
 - Adapter wraps the existing Bplatz scraper and emits normalized offer records; it does not write to the canonical database itself.
 - Existing legacy persistence proof covers this Liquid Brun fixture on the older persistence path only.
 - Phase 5 CI has tested the Bplatz fixture path synthetically, including matching, promotion, price history and refresh behavior. This does not establish a live Phase 5 offer.
-- New PR #347 adds an offline B1 matrix for stock states, invalid prices, currency handling, size/concentration parsing and missing identifiers. Push workflow run `41967161582` passed.
+- PR #347 adds an offline B1 matrix for stock states, invalid prices, currencies, sizes/concentrations and missing identifiers. Push workflow run `41967161582` passed.
+- **New Bplatz-specific artifact-linkage test passed:** PR #343 commit `99c2842287df681d8cd5c5abece4aeef97c9068f`, workflow run [`41967935150`](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150). The test loads the committed Liquid Brun fixture offline, runs the Bplatz parser/connector through Celery discovery, and verifies original HTML bytes, SHA-256, artifact-to-ingestion-run linkage and the raw-evidence artifact reference. Both `ingestion-pipeline` and `runtime-integration` jobs passed.
+- This is fixture-only CI evidence in disposable test infrastructure. It does not establish live source access, a current offer, persistent staging or a real retailer refresh.
 - No live Bplatz request, Phase 5 staging write, Celery refresh of a real offer, or search/no-retailer-call proof has been performed.
 
 ## Gate B1 — fixture and source review
@@ -41,11 +43,12 @@ The B1 matrix must remain offline and cover:
 - Eau de Parfum, Eau de Toilette and Extrait concentration parsing;
 - absent SKU/GTIN remain absent.
 
-Additional B1 work still required before a live run:
+Bplatz-specific work still required before a live run:
 
-- verify raw HTML artifact capture is linked to the ingestion run in the Bplatz connector path;
-- verify Bplatz-specific retry/quarantine isolation for blocked, timeout and unavailable responses;
+- verify retry/quarantine isolation for blocked, timeout and unavailable responses;
 - verify the complete wrong-size and ambiguous-match rejection path using the Phase 5 matcher and promotion service.
+
+Artifact persistence/linkage is covered by the offline Bplatz-specific test cited above; it is not a live ingestion proof.
 
 ### Source-access review — mandatory stop gate
 
@@ -104,7 +107,8 @@ A successful B2 pilot proves only this Bplatz product path. It does not automati
 | Historical Liquid Brun fixture | PASS |
 | Legacy persistence proof | PASS, legacy path only |
 | Offline B1 matrix | PASS in PR #347 CI |
-| Remaining B1 artifact/quarantine cases | OPEN |
+| Bplatz fixture artifact/run linkage | PASS, offline CI only — PR #343 run 41967935150 |
+| Retry/quarantine and wrong-size/ambiguous-match cases | OPEN |
 | Current source terms and permitted access | NOT VERIFIED |
 | Persistent Phase 5 staging resources | NOT VERIFIED |
 | Real offer in Phase 5 PostgreSQL | NOT RUN |
