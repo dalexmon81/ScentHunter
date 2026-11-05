@@ -163,11 +163,6 @@ def main() -> int:
         action="store_true",
         help="write canonical identities to the configured isolated catalog after reviewing dry-run",
     )
-    parser.add_argument(
-        "--seed-bplatz-store",
-        action="store_true",
-        help="explicitly create or activate the Bplatz store row for the dedicated Bplatz integration test",
-    )
     args = parser.parse_args()
 
     with Path(args.catalog).open(encoding="utf-8") as handle:
@@ -207,7 +202,7 @@ def main() -> int:
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
         "offers_imported": 0,
-        "stores_to_seed": [BPLATZ_STORE.copy()] if args.seed_bplatz_store else [],
+        "stores_to_seed": [BPLATZ_STORE.copy()],
         "database_written": False,
         "source_modified": False,
     }
@@ -294,16 +289,15 @@ def main() -> int:
                     elif variant_map.product_variant_id != variant_row.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} is already mapped to a different variant UUID.")
 
-        # Retailer activation is opt-in. Canonical catalog seeding must not
-        # silently activate Bplatz (or any other store) in staging.
-        if args.seed_bplatz_store:
-            with Session(engine) as session, session.begin():
-                store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
-                if store is None:
-                    session.add(Store(**BPLATZ_STORE))
-                else:
-                    for field, value in BPLATZ_STORE.items():
-                        setattr(store, field, value)
+        # Preserve the established seed contract: create or refresh only
+        # the dedicated Bplatz store row; never touch other retailer stores.
+        with Session(engine) as session, session.begin():
+            store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
+            if store is None:
+                session.add(Store(**BPLATZ_STORE))
+            else:
+                for field, value in BPLATZ_STORE.items():
+                    setattr(store, field, value)
 
         inspector = inspect(engine)
         expected_tables = {
@@ -335,7 +329,7 @@ def main() -> int:
             "database_counts": counts,
             "invalid_active_offers": invalid_active_offers,
             "database_written": True,
-            "stores_seeded": [BPLATZ_STORE["slug"]] if args.seed_bplatz_store else [],
+            "stores_seeded": [BPLATZ_STORE["slug"]],
         })
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
