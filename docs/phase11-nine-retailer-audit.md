@@ -25,7 +25,7 @@ A code path, parser fixture, HTTP 200, or a successful CI workflow is not proof 
 | **Notino** | Legacy scraper module exists; separate CJ affiliate-feed route is documented. | CJ confirms XML feed exists for approved publishers. User's CJ screenshot shows advertiser 4912189 in Pending Applications. | Await Notino approval. After approval, verify feed entitlement, terms, credentials and schema; prefer the official feed over scraping. |
 | **Orioudh** | Legacy Shopify-oriented scraper module exists; product JSON endpoint handling is present in code. | Code parses Shopify product JSON and variant prices; no current authorized-feed entitlement or current end-to-end staging evidence recorded. | Confirm permitted API/feed route and terms; fixture-test integer-cent prices, variant IDs, GTIN, stock and canonical variant matching. |
 | **ParfumCity** | Legacy scraper module exists; retailer base URL and bounded candidate discovery are defined. | Code-level parser/discovery only in the evidence reviewed for this audit. | Confirm permitted feed/API or written terms; create representative parser fixtures and test price/stock/variant extraction. |
-| **ParfumZentrum** | Legacy scraper module exists; parser and sitemap/search discovery are implemented. | Previous exact-product probe recorded HTTP 200 and adapter status `parsed`; earlier review also recorded GTIN/variant-resolution checks. | This is the strongest technical evidence among the nine, but permission and a real Phase 5 persisted offer/refresh/search path remain unproven. Verify access terms and repeat through isolated staging only after approval. |
+| **ParfumZentrum** | Legacy scraper module exists; parser and sitemap/search discovery are implemented. | Strongest current evidence: offline parser tests cover JSON-LD price, availability and placeholder-price rejection (`backend/tests/test_parfumzentrum_hydration.py`); captured live output is covered by `tests/test_live_retailer_identity_resolution.py`, including exact 125 ml GTIN-to-variant mapping and fail-closed conflicts; a prior bounded probe recorded HTTP 200 and `adapter_status=parsed`. | Permission and a real Phase 5 persisted offer/refresh/search path remain unproven. Verify access terms and repeat through isolated staging only after approval. |
 | **PerfumeMarket** | Legacy scraper module exists; Shopify-style product/card parsing is present. | Previous bounded probe recorded HTTP 200 for one page. That response alone does not prove successful structured product extraction. | Confirm permitted API/feed or written terms; add fixtures and verify GTIN, variant, price, currency, availability and canonical match. |
 | **Sabina** | Legacy scraper module exists; code includes native search, Sellboost search endpoint and a bounded browser fallback. | The implementation has multiple discovery paths, but this audit has no current end-to-end Phase 5 offer evidence. | Confirm terms and permitted API/feed route. Review the third-party search endpoint and browser fallback against the retailer/network's conditions; test stock and variant correctness. |
 
@@ -34,6 +34,16 @@ A code path, parser fixture, HTTP 200, or a successful CI workflow is not proof 
 Several existing scrapers use direct HTTP, retailer search pages, sitemaps, Shopify-style JSON endpoints, or browser automation. Their presence in the repository is not itself authorization to automate access. Do not activate a store, download a feed, or schedule live refresh until the permitted method and applicable terms are confirmed.
 
 The Notino CJ application is pending, not approved. Bplatz has an unanswered permission request. For the other seven stores, this audit has not established written permission, an enabled affiliate feed, or a documented API entitlement. Treat their authorization status as **unverified**, not as denied and not as approved.
+
+## Existing automated test coverage found during this audit
+
+- **ParfumZentrum:** retailer-specific offline HTML/JSON-LD parser tests and captured-live-output canonical GTIN/variant matching tests exist. These are meaningful regression tests, but do not fetch the retailer or write a real offer.
+- **Deloox:** URL admission, search budget/deadline, and parser regression tests exist. A previous live probe still recorded HTTP 403; passing offline tests do not remove that access blocker.
+- **Easycosmetic:** generic hydration timeout and deduplication tests exist, but this audit did not locate a comparable retailer-specific end-to-end fixture suite proving full product/offer extraction.
+- **PerfumeMarket, Orioudh, ParfumCity, Sabina and Notino:** scraper code exists, but this audit did not locate sufficient retailer-specific contract tests proving the complete normalized offer contract end to end.
+- **Bplatz:** bounded ingestion fixture/authentication tests exist for the manual-only pilot; the task has not been invoked.
+
+A missing test found by this search is recorded as “not located in the reviewed paths”, not proof that no test exists anywhere in the repository.
 
 ## What has been verified in Phase 5 staging
 
