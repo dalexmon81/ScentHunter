@@ -896,6 +896,7 @@ jobs:
           PY
 
       - name: Recover Easycosmetic catalog when its index is empty
+        if: ${{ contains(github.event.head_commit.message, 'trigger Easycosmetic catalog recovery') }}
         continue-on-error: true
         timeout-minutes: 6
         shell: bash
