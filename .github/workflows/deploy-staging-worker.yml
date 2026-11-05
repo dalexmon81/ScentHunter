@@ -38,33 +38,37 @@ jobs:
             backend/tests/test_product_normalization.py \
             backend/tests/test_store_connector_contract.py \
             backend/tests/test_seed_catalog_store_safety.py
-      - name: Check Fly token
+      - name: Verify Fly token is scoped to the staging worker app
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
-          if [ -z "$FLY_API_TOKEN" ]; then
-            echo "::error::Missing repository secret FLY_API_TOKEN"
+          set -euo pipefail
+          if [ -z "$FLY_STAGING_API_TOKEN" ]; then
+            echo "::error::Missing repository secret FLY_STAGING_API_TOKEN"
             exit 1
           fi
+          identity="$(curl --fail --silent --show-error -H "Authorization: $FLY_STAGING_API_TOKEN" https://api.machines.dev/v1/tokens/current)"
+          printf '%s' "$identity" | jq -e '.tokens | any(.apps | index("scenthunter-staging-workers"))' >/dev/null
+          echo "Fly token identity verified for scentHunter staging worker app."
       - name: Apply staged Fly secrets
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           flyctl secrets list --app scenthunter-staging-workers
           flyctl secrets deploy --app scenthunter-staging-workers
       - name: Deploy isolated worker
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: flyctl deploy --config fly.staging-workers.toml --remote-only --yes
       - name: Keep staging footprint to one worker and zero Beat machines
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: flyctl scale count app=1 beat=0 --app scenthunter-staging-workers --yes
       - name: Allow worker startup and broker connection
         run: sleep 10
       - name: Read-only staging catalog schema and store safety audit
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
@@ -76,7 +80,7 @@ jobs:
           echo "::notice::Schema audit is read-only. An uninitialized schema is intentionally not migrated by this workflow."
       - name: Apply Alembic migrations to the verified isolated staging database
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
@@ -89,14 +93,14 @@ jobs:
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); c=e.connect(); tables=set(inspect(e).get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"price_history\",\"match_audit\",\"ingestion_runs\",\"ingestion_raw\",\"ingestion_artifacts\",\"ingestion_dead_letters\",\"legacy_product_id_map\",\"legacy_variant_id_map\"}; missing=sorted(required-tables); revisions=c.execute(text(\"SELECT version_num FROM alembic_version\")).scalars().all() if \"alembic_version\" in tables else []; result={\"database_dialect\":e.dialect.name,\"required_tables_missing\":missing,\"alembic_revisions\":revisions}; print(result); assert not missing and revisions==[\"0007_ingestion_dead_letters\"], \"Staging schema or Alembic head verification failed\"; c.close(); e.dispose()'"
       - name: Normalize known brand aliases in the isolated staging seed
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); tx=c.begin(); aliases=((\"dior\",\"christian dior\"),(\"nishane\",\"nishane istanbul\")); rows=[(old,new,c.execute(text(\"SELECT COUNT(*) FROM brands WHERE normalized_name=:v\"),{\"v\":old}).scalar_one(),c.execute(text(\"SELECT COUNT(*) FROM brands WHERE normalized_name=:v\"),{\"v\":new}).scalar_one()) for old,new in aliases]; assert not any(old_count and new_count for _,_,old_count,new_count in rows), \"brand_alias_conflict_requires_manual_review\"; [c.execute(text(\"UPDATE brands SET normalized_name=:new WHERE normalized_name=:old\"),{\"new\":new,\"old\":old}) for old,new,old_count,new_count in rows if old_count]; tx.commit(); print({\"brand_alias_rows_updated\":sum(old_count for _,_,old_count,_ in rows)}); c.close(); e.dispose()'"
       - name: Seed canonical catalog without activating a retailer
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
@@ -104,14 +108,14 @@ jobs:
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; q=\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand AND f.slug=:slug AND pv.canonical_key=:key\"; dior=c.execute(text(q),{\"brand\":\"christian dior\",\"slug\":\"sauvage\",\"key\":\"christian-dior|sauvage|edp|100|standard\"}).scalar_one(); print({\"counts\":counts,\"dior_sauvage_edp_100ml_matches\":dior}); assert counts[\"brands\"]==60 and counts[\"fragrances\"]>0 and counts[\"product_variants\"]==512 and counts[\"legacy_product_id_map\"]==1389 and counts[\"legacy_variant_id_map\"]==512 and counts[\"stores\"]==0 and counts[\"offers\"]==0 and dior==1; c.close(); e.dispose()'"
       - name: Report Notino credential presence without exposing values or calling the feed
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import os; keys=(\"NOTINO_CJ_FEED_URL\",\"NOTINO_CJ_FEED_USERNAME\",\"NOTINO_CJ_FEED_PASSWORD\"); print({key:bool(os.environ.get(key)) for key in keys})'"
       - name: Verify one non-root worker and zero Beat machines
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machines="$(flyctl machines list --app scenthunter-staging-workers --json)"
@@ -126,7 +130,7 @@ jobs:
           printf '%s\\n' "$process_info"
       - name: Verify Celery worker responds to broker ping
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
@@ -142,7 +146,7 @@ jobs:
           fi
       - name: Verify a queued Celery task executes
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
@@ -158,7 +162,7 @@ jobs:
           fi
       - name: Inspect worker logs and machine state
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           flyctl status --app scenthunter-staging-workers
           flyctl scale show --app scenthunter-staging-workers
