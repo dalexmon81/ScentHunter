@@ -79,3 +79,24 @@ def test_easycosmetic_variant_with_no_matching_jsonld_does_not_borrow_other_size
     # offer. The page-scoped visible price remains independently usable.
     assert row["price_num"] == 89.95
     assert row["brand"] == ""
+
+
+def test_easycosmetic_does_not_invent_eur_when_selected_offer_omits_currency():
+    html = _product_html().replace(',\n                     "priceCurrency": "EUR"', '')
+    row = easycosmetic.extract_product_page(
+        None, PRODUCT_URL + "?variant=1000", html=html
+    )
+
+    assert row is not None
+    assert row["price_num"] == 89.95
+    assert row["currency"] is None
+
+
+def test_easycosmetic_rejects_malformed_currency_code():
+    html = _product_html().replace('"priceCurrency": "EUR"', '"priceCurrency": "EURO"')
+    row = easycosmetic.extract_product_page(
+        None, PRODUCT_URL + "?variant=1000", html=html
+    )
+
+    assert row is not None
+    assert row["currency"] is None
