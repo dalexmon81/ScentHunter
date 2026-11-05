@@ -1434,11 +1434,8 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     if price is None:
         price, price_source = extract_price_from_html(soup)
 
-    currency = (
-        clean(offer.get("priceCurrency"))
-        if isinstance(offer, dict)
-        else ""
-    ) or "EUR"
+    raw_currency = offer.get("priceCurrency") if isinstance(offer, dict) else None
+    currency = clean(raw_currency) or None
 
     availability, availability_source = availability_from_product_page(
         soup,
