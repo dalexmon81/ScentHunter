@@ -2,6 +2,7 @@
 from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
+from dataclasses import replace
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Sequence
 from urllib.parse import urlparse
@@ -216,13 +217,25 @@ class LegacyStoreConnector:
                      if x.external_product_id == key or x.url == key)
 
     async def fetch_price_and_stock(self, offer_id: str):
-        # Refresh APIs identify offers by their retailer/variant ID, while the
-        # page parser needs the product URL. Resolve the stored record first.
+        # Resolve the stored retailer ID to the product URL used by page parsers.
         key = str(offer_id)
         existing = self._offers.get(key) or next(
             (x for x in self._offers.values() if x.url == key), None
         )
         target = existing.url if existing is not None else key
         await self.fetch_product(target)
-        refreshed = next((x for x in self._offers.values() if x.url == target), None)
-        return refreshed or self._offers.get(key)
+
+        # Page parsers may identify refreshed rows by URL only. Preserve the
+        # retailer offer identity while replacing stale price/stock values.
+        fresh = self._offers.get(target)
+        if fresh is None:
+            return self._offers.get(key)
+        if existing is not None and key != target:
+            fresh = replace(
+                fresh,
+                external_product_id=existing.external_product_id,
+                external_offer_id=existing.external_offer_id,
+            )
+            self._offers[key] = fresh
+            self._offers.pop(target, None)
+        return fresh
