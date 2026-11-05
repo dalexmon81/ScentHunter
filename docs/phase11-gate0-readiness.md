@@ -1,80 +1,68 @@
-# Gate 0 — readiness audit (2026-11-04)
+# Gate 0 — readiness audit (2026-11-05)
 
 ## Decision
 
 **STATUS: BLOCKED — do not start shadow traffic or the 5% canary.**
 
-This audit is based on repository files and pull-request records. It does not claim to have queried a live retailer, staging database, Fly.io, Neon, or Upstash.
+The selected pilot for Phase 11 is **Bplatz — French Avenue Liquid Brun Eau de Parfum 100 ml**. Notino/Dior references in older planning material are superseded and are not the active pilot.
 
-## Evidence checked
+This audit is based on repository and GitHub Actions evidence only. It does not claim a live Bplatz request, persistent staging access, or a real retailer offer.
 
-### Phase 5 pipeline — PR #343
+## Evidence
 
-PR #343 is open and draft. Its current implementation includes:
-- PostgreSQL 16 and Redis 7.4 disposable GitHub Actions services;
-- Alembic migrations applied twice in the runtime integration job;
-- canonical catalog seed;
-- a real Celery worker registered against Redis;
-- a scheduler task querying the seeded PostgreSQL offers table;
-- a durable dead-letter write/readback.
+### Phase 5 infrastructure — PR #343
 
-The runtime test explicitly asserts zero refresh jobs and zero configured stores, and deliberately performs no retailer HTTP calls. The seed report explicitly sets `offers_imported: 0`. Therefore this is a valid infrastructure integration test, but not a live-offer end-to-end proof.
+The CI integration path exercises PostgreSQL 16, Redis 7.4, Alembic migrations, canonical seed, Celery worker registration and dead-letter readback. It remains a synthetic/disposable CI environment. The seed reports zero imported retailer offers; no live retailer request is part of this proof.
 
-### Phase 5 staging worker — PR #344
+### Bplatz pilot identity
 
-PR #344 is open and draft. It defines a separate Fly app/configuration with no production volume or public HTTP service. Its runbook requires separate staging Neon PostgreSQL and Upstash Redis credentials before deployment. No such credentials or staging deployment were verified in this audit. The existing zero-cost staging plan also says not to deploy a persistent Fly worker without checking and approving its compute cost.
+The historical fixture identifies:
+- Product: French Avenue Liquid Brun EDP 100 ml
+- Captured Shopify variant: `54015243419916`
+- Captured SKU/GTIN: `6290360375694`
+- Legacy product: `SH-0030`
+- Legacy variant: `VAR-f87146c82d167f4c`
+- Fixture SHA-256: `9f76b00bc7472ccd389116302f06e2e02f258dc17fee7f43371993f79284c017`
 
-### Existing Bplatz Phase 2 evidence
+These are fixture identifiers, not current stock, price, authorization, or Phase 5 database UUIDs.
 
-PR #313 is merged and records a successful proof of Bplatz persistence through the normal legacy hydration worker, including offer upsert, price history, match audit, duplicate checks and database integrity verification.
+### Bplatz Gate B1
 
-That proof is useful but does **not** satisfy the Phase 5 PostgreSQL/Celery vertical slice:
-- it is the existing Bplatz Phase 2 persistence path, not the new PostgreSQL + Redis/Celery runtime;
-- the committed Bplatz fixture is Liquid Brun, not Dior Sauvage EDP 100 ml;
-- the Phase 5 seed still imports zero retailer offers and seeds only the Bplatz store row.
+PR #347 adds an offline fixture validation matrix. Its push and pull-request Actions runs passed. Coverage includes stock states, invalid prices, currency handling, size/concentration parsing, and absent SKU/GTIN handling.
 
-Do not treat the merged Bplatz proof as evidence that Dior Sauvage has a published Phase 5 offer.
+The tests do not contact Bplatz and do not prove live source access, a real offer, or persistent staging readiness.
 
-### Connector choice
+### Source access and infrastructure
 
-The Phase 5 registry contains nine connectors. Notino uses the authorized CJ/VIV XML affiliate feed; the adapter parses feed data without writing to the database. However, no feed fixture or live staging feed response was found during this audit, and no feed credentials or runtime secret were inspected.
-
-Bplatz has a captured product-page fixture and a proven legacy persistence path, but the fixture is for a different fragrance. A connector must not be declared suitable for Dior merely because it is already integrated.
+- Current Bplatz terms and the permitted automated access method: **NOT VERIFIED**.
+- Persistent isolated PostgreSQL/Redis staging: **NOT VERIFIED**.
+- Real Bplatz offer persisted through Phase 5: **NOT RUN**.
+- Celery refresh of a real Bplatz offer: **NOT RUN**.
+- Catalog search proven to avoid synchronous retailer requests: **NOT RUN**.
+- Fly worker deployment/cost approval: **NOT RUN**.
 
 ## Gate 0 checklist
 
-| Requirement | Status | Evidence / next action |
-|---|---|---|
-| Isolated PostgreSQL + Redis runtime in CI | PASS | Disposable CI services and real Celery worker test are defined in PR #343 |
-| Alembic repeatability in disposable CI | PASS | Workflow runs `alembic upgrade head` twice |
-| Canonical catalog seed | PASS | Seed script validates and imports identities/declared variants |
-| Real Phase 5 offers in PostgreSQL | BLOCKED | Seed reports `offers_imported: 0`; no live ingestion evidence |
-| Dior Sauvage EDP 100 ml catalog variant | PASS in disposable CI / NOT VERIFIED in persistent staging | Exact variant seeded and read back from PostgreSQL in Phase 5 PR #343 CI; deterministic CI fragrance UUID 590a4d54-d195-5bbd-8e7a-fa2d3255d604 and variant UUID 1cb2c345-8fbd-56b6-9275-87eff09ec3b6. Persistent staging still needs the same readback. |
-| Authorized pilot source for Dior | NOT VERIFIED | Confirm a specific connector has an authorized, stable source record for this SKU |
-| Real ingestion → staging → matching → promotion | NOT VERIFIED | CI intentionally avoids retailer HTTP calls |
-| Offer readback from PostgreSQL | NOT VERIFIED | Must assert one published offer linked to the exact variant UUID |
-| Refresh via Celery and price/stock readback | PARTIAL | Worker infrastructure is tested, but there is no real offer to refresh |
-| Staging Neon/Upstash isolated resources | NOT VERIFIED | Must be confirmed by owner in provider consoles |
-| Fly staging worker deployed | NOT RUN | Requires staging secrets and explicit cost approval |
-| Production untouched | PASS (this audit) | No production endpoint, database, secret, worker or deployment was accessed |
+| Requirement | Status |
+|---|---|
+| Disposable PostgreSQL/Redis/Celery CI integration | PASS — synthetic CI only |
+| Bplatz Liquid Brun historical fixture | PASS — historical evidence only |
+| Offline Bplatz B1 validation matrix | PASS — PR #347 |
+| Bplatz automated access permission/method | NOT VERIFIED |
+| Isolated persistent staging resources | NOT VERIFIED |
+| Real offer in Phase 5 PostgreSQL | NOT RUN |
+| Real Celery refresh and price history | NOT RUN |
+| Search with zero synchronous Bplatz requests | NOT RUN |
+| Shadow/canary traffic | BLOCKED — 0% |
 
-## Exact acceptance test still required
+## Required next steps
 
-For Dior Sauvage EDP 100 ml and one explicitly approved store:
-1. Resolve the exact canonical fragrance and variant UUID from the persistent staging PostgreSQL seed (disposable CI has already passed this check).
-2. Run one controlled discovery/fetch using the selected connector and approved source.
-3. Persist original source evidence and an ingestion run.
-4. Normalize and match the raw offer to the exact variant; ambiguous matches must remain unpublished.
-5. Promote only if URL, positive price, ISO currency, explicit availability, timestamp and store status pass validation.
-6. Read back the published offer in a new database session and verify exact variant linkage.
-7. Enqueue one refresh through Redis/Celery, consume it with a real worker, and verify price/availability observation and history.
-8. Confirm an ordinary product search reads PostgreSQL/indexed data and does not call the retailer.
-9. Attach sanitized run IDs, offer UUID, variant UUID, timestamps, test output and CI links to the PR.
+1. Complete the remaining Bplatz-specific B1 checks in the Bplatz pilot runbook: artifact linkage, retry/quarantine isolation, and wrong-size/ambiguous-match rejection. Reuse existing generic Phase 5 tests where they already cover the behavior; avoid duplicate tests.
+2. Review Bplatz's current terms and confirm the exact permitted access method before any live request. If permission is unclear, stop.
+3. Verify isolated staging PostgreSQL and Redis without exposing secrets or using production resources.
+4. Only after explicit source-access approval and staging verification, run one bounded pilot for the exact Liquid Brun EDP 100 ml variant.
+5. Verify persistence, one Celery refresh, price history, and catalog search with no synchronous retailer request.
 
-## Safe next action
+Do not create a synthetic published offer, substitute another product, scrape around a block, deploy a persistent worker without cost approval, or enable shadow/canary traffic.
 
-Do not invent a retailer offer, seed a synthetic published offer, scrape an unapproved source, or reuse the Bplatz Liquid Brun proof as a Dior result.
-
-The next action is for the repository owner to configure the three CJ/VIV credentials as GitHub Environment secrets in `notino-pilot-staging` and manually run **Notino live feed preflight (manual only)** on the Phase 5 branch. This workflow makes one bounded feed request and does not write to a database or publish offers. Continue only if exactly one valid Dior Sauvage EDP 100 ml candidate with explicit availability is found. After that, configure separate staging PostgreSQL/Redis and decide whether a persistent Fly worker cost is approved or the pilot must remain in disposable CI.
-
-Until these conditions are met, Gate 0 remains blocked and the new API must serve 0% user traffic.
+**Gate 0 remains BLOCKED and new-API user traffic remains 0%.**
