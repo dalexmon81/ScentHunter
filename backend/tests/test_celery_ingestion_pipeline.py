@@ -296,12 +296,14 @@ def test_discovery_task_persists_original_page_bytes_and_links_them_to_staged_of
         engine.dispose()
 
 
-def test_bplatz_connector_fixture_html_is_persisted_and_linked_by_celery_discovery(
+
+def test_bplatz_liquid_brun_pilot_html_is_persisted_and_linked_by_celery_discovery(
     tmp_path, monkeypatch
 ):
-    """Exercise Bplatz parser + universal connector + Celery artifact persistence offline."""
+    """Exercise the selected Liquid Brun parser + connector + Celery artifact path offline."""
     import asyncio
     import hashlib
+    import json
     from pathlib import Path
     from uuid import UUID
 
@@ -313,18 +315,18 @@ def test_bplatz_connector_fixture_html_is_persisted_and_linked_by_celery_discove
     from app.workers import ingestion_tasks
     from scrapers.bplatz import scraper
 
-    fixture = (
-        Path(__file__).resolve().parent
-        / "fixtures"
-        / "connectors"
-        / "bplatz-dior-sauvage-edp-100.html"
+    root = Path(__file__).resolve().parents[2]
+    fixture = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.raw.html"
+    metadata = json.loads(
+        (root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.meta.json")
+        .read_text(encoding="utf-8")
     )
     html = fixture.read_bytes()
-    url = "https://en.bplatz.de/products/dior-sauvage-eau-de-parfum"
-    query = "Dior Sauvage"
+    url = metadata["url_final"]
+    query = "French Avenue Liquid Brun"
 
-    # Use the real Bplatz production parser and connector mapper; only the
-    # transport is replaced with the saved, immutable fixture.
+    # Real Bplatz parser and universal connector; only transport is replaced
+    # with the previously captured response bytes. No retailer request occurs.
     connector = BplatzConnector(page_loader=lambda _url, _query: html)
     loaded = asyncio.run(connector._load_page(url, query))
     assert loaded == html
@@ -333,8 +335,8 @@ def test_bplatz_connector_fixture_html_is_persisted_and_linked_by_celery_discove
     records = connector.parse_raw(parsed)
     assert len(records) == 1
     record = records[0]
-    assert record.brand == "Dior"
-    assert record.fragrance == "sauvage"
+    assert record.brand == "French Avenue"
+    assert record.fragrance == "liquid brun"
     assert record.concentration == "edp"
     assert record.size_ml == 100
     assert record.price is not None and record.price > 0
@@ -354,12 +356,12 @@ def test_bplatz_connector_fixture_html_is_persisted_and_linked_by_celery_discove
     connector.discover_products = discover_products
     connector.fetch_offers = fetch_offers
 
-    engine = create_engine(f"sqlite:///{tmp_path / 'bplatz-celery-artifacts.sqlite'}")
+    engine = create_engine(f"sqlite:///{tmp_path / 'bplatz-liquid-brun-celery-artifacts.sqlite'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
         session.add(Store(
-            name="Bplatz", slug="bplatz", domain="en.bplatz.de",
+            name="Bplatz", slug="bplatz", domain="bplatz.de",
             country="DE", currency="EUR", status="active",
         ))
         session.commit()
@@ -387,6 +389,7 @@ def test_bplatz_connector_fixture_html_is_persisted_and_linked_by_celery_discove
 
             assert artifact.raw_data == html
             assert artifact.sha256 == hashlib.sha256(html).hexdigest()
+            assert artifact.sha256 == metadata["sha256"]
             assert artifact.size_bytes == len(html)
             assert artifact.source_url == url
             assert artifact.artifact_format == "html"
