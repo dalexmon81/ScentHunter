@@ -1,0 +1,28 @@
+{
+  "source": "user_provided_screenshot",
+  "source_note": "Manual visual observation only; this is not an HTTP response or an authentic HTML fixture.",
+  "observed_at": null,
+  "retailer": "Bplatz",
+  "product": {
+    "title": "French Avenue Liquid Brun Eau de Parfum 100ml",
+    "brand_from_title": "French Avenue",
+    "localized_brand_label": "Viale Francese",
+    "concentration": "Eau de Parfum",
+    "size_ml": 100,
+    "article_number": "6290360375694",
+    "gtin": "6290360375694"
+  },
+  "offer": {
+    "price": "27.50",
+    "currency": "EUR",
+    "previous_price": "35.00",
+    "displayed_discount_percent": 21,
+    "shipping_note": "VAT included; shipping calculated at checkout"
+  },
+  "limitations": [
+    "Availability is not visible in the supplied screenshot.",
+    "Product URL is not visible in the supplied screenshot.",
+    "This observation must not be treated as a current live price.",
+    "Do not use this fixture as a production price source or hardcode its price in application code."
+  ]
+}
