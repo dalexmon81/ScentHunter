@@ -9,6 +9,7 @@ on:
       - fix/catalog-hydration-mainline
       - fix/catalog-hydration-slug-normalization
       - fix/notino-authorized-feed-import
+      - phase5/bplatz-bounded-product-ingestion
 
 jobs:
   parser-regression:
@@ -34,9 +35,12 @@ jobs:
       - name: Install pytest for repository-level regression tests
         run: python -m pip install pytest
 
-      - name: Run Notino feed regression tests
+      - name: Run Notino and bounded Bplatz connector regression tests
+        env:
+          PYTHONPATH: backend
         run: >-
           python -m pytest -q
+          backend/tests/test_connector_ingestion_worker.py
           tests/test_notino_authorized_feed.py
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
