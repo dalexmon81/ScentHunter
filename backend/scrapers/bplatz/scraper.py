@@ -76,9 +76,16 @@ def parse_price(value):
         return None
     raw = m.group(0)
     if "," in raw and "." in raw:
-        raw = raw.replace(".", "").replace(",", ".")
-    else:
-        raw = raw.replace(",", ".")
+        # The last separator is the decimal separator (EU and US grouping).
+        if raw.rfind(",") > raw.rfind("."):
+            raw = raw.replace(".", "").replace(",", ".")
+        else:
+            raw = raw.replace(",", "")
+    elif "," in raw:
+        tail = raw.rsplit(",", 1)[-1]
+        raw = raw.replace(",", ".") if len(tail) in (1, 2) else raw.replace(",", "")
+    elif "." in raw and re.fullmatch(r"\d{1,3}(?:\.\d{3})+", raw):
+        raw = raw.replace(".", "")
     try:
         n = float(raw)
     except ValueError:
@@ -397,9 +404,9 @@ def parse_product_html(html, final_url, query):
 
     if price is None:
         price_patterns = [
-            r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"retail\s+price\s*€\s*([0-9][0-9.,]*)",
+            r"price\s*€\s*([0-9][0-9.,]*)",
+            r"€\s*([0-9][0-9.,]*)",
         ]
         for pattern in price_patterns:
             m = re.search(pattern, page_text, re.I)
