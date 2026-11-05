@@ -121,3 +121,15 @@ A successful Bplatz pilot alone does not authorize 5% user traffic or prove read
 | Phase 11 shadow/canary | BLOCKED |
 
 **Safe next action:** complete the remaining B1 fixture matrix and source-access review. Only then consider one bounded B2 staging run, after isolated staging and explicit retailer-access approval are confirmed. No live request or staging write has been performed.
+
+
+## Evidence refresh — 2026-11-05 (offline CI only)
+
+The following additional checks are now green on their respective branches:
+
+- PR #347 Bplatz Gate B1 fixture matrix, commit `0dca6eafde091252963c6c03787eb360b82c639f`: both `fixture-matrix` check runs passed. The matrix covers explicit in-stock/out-of-stock/preorder/unknown signals, missing/zero/negative/malformed prices, EUR vs foreign currencies, size/concentration parsing, and absent SKU/GTIN. [PR #347](https://github.com/dalexmon81/ScentHunter/pull/347)
+- PR #343 Phase 5 pipeline, commit `644a92d929834bc88d031003cfd92975ff1f275c`: connector-contract, ingestion-pipeline and runtime-integration checks passed. Existing Bplatz parser/connector tests include wrong-size and identity-conflict cases; the worker suite exercises store quarantine isolation with a fake connector. [PR #343](https://github.com/dalexmon81/ScentHunter/pull/343)
+- The Phase 5 Bplatz artifact-linkage and ingestion tests remain synthetic/offline evidence. They do not constitute a retailer fetch or a persistent staging offer.
+- PR #348 seed-collision fix has a green parser-regression check, but it has not been merged or applied to staging. [PR #348](https://github.com/dalexmon81/ScentHunter/pull/348)
+
+These results improve B1 confidence but do not close every B1 acceptance item: in particular, Bplatz-specific retry/quarantine isolation and the full Phase 5 promotion rejection path should be demonstrated together. Gate B2 remains blocked until the permitted Bplatz access method is confirmed and a separately authorized, isolated staging write is approved. No live retailer request, staging database write, or traffic change is implied by these CI results.
