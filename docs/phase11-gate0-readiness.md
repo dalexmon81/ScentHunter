@@ -42,7 +42,18 @@ CJ/VIVnetworks previously confirmed by email that a Notino.fr XML product feed i
 
 Next action: wait for the NOTINO.fr application to change from **Pending Applications** to an active/approved status, or for a direct decision from the program. After approval, inspect the program terms and feed access instructions in CJ, confirm the feed's permitted use and technical format, then implement a dedicated feed connector. Until then, do not attempt to fetch the feed or treat Notino as an authorized source.
 
-### Offline quality evidence
+### Latest retailer parser verification — 2026-11-05
+
+Deloox parser hardening commit `136d381ca44057a2cd0774cc5a4cc6c3764a4720` passed all three relevant CI workflows:
+- Backend Parser Regression: [42108328640](https://github.com/dalexmon81/ScentHunter/actions/runs/42108328640)
+- Hydration Regression: [42108328805](https://github.com/dalexmon81/ScentHunter/actions/runs/42108328805)
+- Next Engine Shadow Integration: [42108328702](https://github.com/dalexmon81/ScentHunter/actions/runs/42108328702)
+
+The fix reads an explicit price from the selected Schema.org `priceSpecification` when `Offer.price` is absent. This is parser/fixture validation only. Deloox's earlier HTTP 403 remains an access blocker; no further live request was made.
+
+The latest Gmail check found no new Bplatz permission response and no Notino advertiser approval/feed entitlement. The CJ network welcome email is not advertiser approval. Therefore these results do not change any Gate 0 authorization or real-offer requirements.
+
+## Offline quality evidence
 
 - PR #347 adds the Bplatz offline fixture validation matrix.
 - PR #343 workflow [41967935150](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150) passed Bplatz fixture parsing, Celery discovery, raw artifact SHA-256, and artifact-to-ingestion-run linkage.
