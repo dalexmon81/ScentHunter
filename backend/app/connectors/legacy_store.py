@@ -224,6 +224,5 @@ class LegacyStoreConnector:
         )
         target = existing.url if existing is not None else key
         await self.fetch_product(target)
-        return self._offers.get(key) or next(
-            (x for x in self._offers.values() if x.url == target), None
-        )
+        refreshed = next((x for x in self._offers.values() if x.url == target), None)
+        return refreshed or self._offers.get(key)
