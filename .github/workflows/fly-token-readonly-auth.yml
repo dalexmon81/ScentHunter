@@ -12,26 +12,25 @@ permissions:
 
 jobs:
   verify-fly-auth:
-    name: Verify Fly app token via Machines API (read-only)
+    name: Diagnose Fly app token authorization (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify app and volume access directly through Fly Machines API
+      - name: Capture direct Fly API authorization response
         env:
           FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "STEP 1: Verify token authentication against the exact app"
-          curl --fail-with-body --silent --show-error \
-            -H "Authorization: Bearer ${FLY_API_TOKEN}" \
-            -H "Accept: application/json" \
-            https://api.machines.dev/v1/apps/scenthunter \
-            -o /tmp/fly-app.json
-          jq '{name, organization, status}' /tmp/fly-app.json
-          echo "STEP 2: Verify read access to this app's volumes"
-          curl --fail-with-body --silent --show-error \
-            -H "Authorization: Bearer ${FLY_API_TOKEN}" \
-            -H "Accept: application/json" \
-            https://api.machines.dev/v1/apps/scenthunter/volumes \
-            | jq 'if type == "array" then map({id, name, region, state}) else . end'
+          for endpoint in \
+            "https://api.machines.dev/v1/apps/scenthunter" \
+            "https://api.machines.dev/v1/apps/scenthunter/volumes"; do
+            echo "Checking endpoint: ${endpoint##*/}"
+            code=$(curl --silent --show-error \
+              -H "Authorization: Bearer ${FLY_API_TOKEN}" \
+              -H "Accept: application/json" \
+              -o /tmp/fly-response.json \
+              -w "%{http_code}" "$endpoint")
+            echo "HTTP_STATUS=$code"
+            jq -c . /tmp/fly-response.json 2>/dev/null || sed -n '1,8p' /tmp/fly-response.json
+          done
