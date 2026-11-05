@@ -141,3 +141,91 @@ def test_perfumemarket_product_page_uses_jsonld_price_and_rejects_wrong_product(
         "url": "https://www.perfumemarket.nl/products/liquid-brun",
     }
     assert rejected is None
+
+
+
+class _HtmlResponse:
+    status_code = 200
+    url = "https://www.perfumemarket.nl/products/liquid-brun"
+
+    def __init__(self, html):
+        self.text = html
+
+
+class _HtmlSession:
+    def __init__(self, html):
+        self.html = html
+        self.urls = []
+
+    def get(self, url, **kwargs):
+        self.urls.append(url)
+        return _HtmlResponse(self.html)
+
+
+def test_perfumemarket_product_page_exposes_normalized_offer_and_identity():
+    html = """<!doctype html><html><head>
+      <script type="application/ld+json">
+      {
+        "@type": "Product",
+        "name": "French Avenue Liquid Brun Eau de Parfum 100 ml",
+        "brand": {"@type": "Brand", "name": "French Avenue"},
+        "sku": "FA-LB-100",
+        "gtin13": "6290360599999",
+        "offers": {
+          "@type": "Offer",
+          "price": "31.85",
+          "priceCurrency": "EUR",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+      </script>
+    </head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>"""
+    session = _HtmlSession(html)
+
+    row = perfume_market.extract_product_page(
+        session,
+        "https://www.perfumemarket.nl/products/liquid-brun",
+        "Liquid Brun",
+    )
+
+    assert session.urls == ["https://www.perfumemarket.nl/products/liquid-brun"]
+    assert row["brand"] == "French Avenue"
+    assert row["identity"]["sku"]["value"] == "FA-LB-100"
+    assert row["identity"]["gtin"]["value"] == "6290360599999"
+    assert row["offer"] == {
+        "price": 31.85,
+        "currency": "EUR",
+        "availability": "in_stock",
+    }
+
+
+def test_perfumemarket_missing_currency_and_stock_evidence_stay_unknown():
+    html = """<!doctype html><html><head>
+      <script type="application/ld+json">
+      {
+        "@type": "Product",
+        "name": "French Avenue Liquid Brun Eau de Parfum 100 ml",
+        "offers": {"@type": "Offer", "price": "31.85"}
+      }
+      </script>
+    </head><body>
+      <h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
+      <p>Available for fast delivery information and support.</p>
+    </body></html>"""
+    session = _HtmlSession(html)
+
+    row = perfume_market.extract_product_page(
+        session,
+        "https://www.perfumemarket.nl/products/liquid-brun",
+        "Liquid Brun",
+    )
+
+    assert row["price_num"] == 31.85
+    assert row["currency"] is None
+    assert row["availability"] == "unknown"
+    assert row["available"] is None
+    assert row["offer"] == {
+        "price": 31.85,
+        "currency": None,
+        "availability": "unknown",
+    }
