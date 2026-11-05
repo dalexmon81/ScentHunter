@@ -1,14 +1,20 @@
 name: Deploy staging worker # verify refreshed Fly secrets
 on:
-  push:
-    branches:
-      - phase5/fly-staging-workers-config
   workflow_dispatch:
+    inputs:
+      confirm_staging_deploy:
+        description: "Type yes to deploy the isolated staging worker"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
 concurrency:
   group: scenthunter-staging-worker-deploy
   cancel-in-progress: true
 jobs:
   deploy:
+    if: inputs.confirm_staging_deploy == 'yes'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
