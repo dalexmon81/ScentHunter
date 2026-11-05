@@ -18,16 +18,21 @@ jobs:
     steps:
       - name: Capture direct Fly API authorization response
         env:
-          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$FLY_API_TOKEN" == fm2_* ]]; then
+            auth_header="Authorization: FlyV1 ${FLY_API_TOKEN}"
+          else
+            auth_header="Authorization: Bearer ${FLY_API_TOKEN}"
+          fi
           for endpoint in \
             "https://api.machines.dev/v1/apps/scenthunter" \
             "https://api.machines.dev/v1/apps/scenthunter/volumes"; do
             echo "Checking endpoint: ${endpoint##*/}"
             code=$(curl --silent --show-error \
-              -H "Authorization: Bearer ${FLY_API_TOKEN}" \
+              -H "$auth_header" \
               -H "Accept: application/json" \
               -o /tmp/fly-response.json \
               -w "%{http_code}" "$endpoint")
