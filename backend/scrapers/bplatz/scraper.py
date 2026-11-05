@@ -373,7 +373,15 @@ def parse_product_html(html, final_url, query):
     price = None
     availability = None
     for offer in offers:
-        p = parse_price(offer.get("price") or offer.get("lowPrice"))
+        currency = clean(offer.get("priceCurrency") or "").upper()
+        # This connector currently publishes EUR only. Never label a foreign
+        # currency amount as EUR just because the store default is EUR.
+        if currency and currency != "EUR":
+            continue
+        raw_price = offer.get("price")
+        if raw_price is None or raw_price == "":
+            raw_price = offer.get("lowPrice")
+        p = parse_price(raw_price)
         if p is not None:
             price = p
             break
@@ -389,9 +397,9 @@ def parse_product_html(html, final_url, query):
 
     if price is None:
         price_patterns = [
-            r"retail\\s+price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
         ]
         for pattern in price_patterns:
             m = re.search(pattern, page_text, re.I)

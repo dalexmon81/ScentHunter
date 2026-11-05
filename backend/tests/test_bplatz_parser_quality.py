@@ -152,3 +152,58 @@ def test_bplatz_variant_conflicts_are_not_rewritten_to_requested_identity(title,
     # the page's actual variant attributes for the canonical matcher to reject.
     if row is not None:
         assert row["size_ml"] != 100 or row["concentration"] != "Eau de Parfum" or title.endswith("100 ml")
+
+
+def _product_html_with_body(*, title, body, currency=None):
+    product = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": title,
+        "brand": {"@type": "Brand", "name": "Dior"},
+    }
+    if currency is not None:
+        product["offers"] = {
+            "@type": "Offer",
+            "price": "89.90",
+            "priceCurrency": currency,
+            "availability": "https://schema.org/InStock",
+        }
+    return (
+        '<html><head><script type="application/ld+json">'
+        + json.dumps(product)
+        + "</script></head><body><h1>"
+        + title
+        + "</h1><div>"
+        + body
+        + "</div></body></html>"
+    )
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ("Retail price €89.90", 89.90),
+        ("Price €89,90", 89.90),
+        ("€1,299.00", 1299.00),
+    ],
+)
+def test_bplatz_fallback_price_text_is_parsed_when_jsonld_has_no_offer(body, expected):
+    title = "Dior Sauvage Eau de Parfum 100 ml"
+    row = scraper.parse_product_html(
+        _product_html_with_body(title=title, body=body),
+        "https://en.bplatz.de/products/dior-sauvage",
+        "Dior Sauvage",
+    )
+    assert row is not None
+    assert row["price_num"] == expected
+
+
+def test_bplatz_foreign_jsonld_currency_is_not_mislabeled_as_eur():
+    title = "Dior Sauvage Eau de Parfum 100 ml"
+    row = scraper.parse_product_html(
+        _product_html_with_body(title=title, body="Price €89.90", currency="GBP"),
+        "https://en.bplatz.de/products/dior-sauvage",
+        "Dior Sauvage",
+    )
+    assert row is not None
+    assert row["price_num"] is None
