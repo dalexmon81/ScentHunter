@@ -27,7 +27,9 @@ jobs:
           set -euo pipefail
           echo "STEP 1: Fly recognizes the configured token"
           flyctl auth whoami
-          echo "STEP 2: Direct visibility of app scenthunter"
+          echo "STEP 2: Apps visible within this token scope (no org-wide filter)"
+          flyctl apps list --json
+          echo "STEP 3: Direct visibility of app scenthunter"
           flyctl status --app scenthunter --json
-          echo "STEP 3: Volume visibility"
+          echo "STEP 4: Volume visibility"
           flyctl volumes list --app scenthunter --json
