@@ -90,8 +90,6 @@ def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Br
     return brand
 
 
-
-
 def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list[str]]:
     products = raw.get("products")
     variants = raw.get("variants")
