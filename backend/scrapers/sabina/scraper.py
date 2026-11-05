@@ -1232,7 +1232,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     variants = []
     seen_variant_keys = set()
 
-    def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None, gtin=None, mpn=None, variant_id=None):
+    def add_variant(raw_size, raw_price, currency=None, availability=None, sku=None, variant_url=None, gtin=None, mpn=None, variant_id=None):
         variant_size = extract_size_ml(raw_size)
         variant_price = money_to_float(raw_price)
         if variant_size is None or variant_price is None or variant_price <= 0:
@@ -1273,7 +1273,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     target_url = target_url.split("#", 1)[0]
         variants.append({
             "size_ml": float(variant_size), "price_num": float(variant_price),
-            "currency": clean(currency) or "EUR",
+            "currency": clean(currency) or None,
             "availability": availability or "unknown", "sku": clean(sku) or None,
             "gtin": clean(gtin) or None, "mpn": clean(mpn) or None,
             "url": target_url,
