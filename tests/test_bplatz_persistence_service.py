@@ -55,7 +55,7 @@ def _seed_real_catalog(db_url):
     result = subprocess.run(
         [
             sys.executable, str(BACKEND / "scripts/seed_catalog.py"),
-            "--catalog", str(BACKEND / "product_catalog.json"), "--apply",
+            "--catalog", str(BACKEND / "product_catalog.json"), "--apply", "--seed-bplatz-store",
         ],
         cwd=ROOT, env=env, text=True, capture_output=True, check=False,
     )
