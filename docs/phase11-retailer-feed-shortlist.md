@@ -23,7 +23,7 @@ An affiliate link or approval alone is not permission to scrape the retailer web
 | 2 | Paco Perfumerías — Awin | Awin merchant profile explicitly advertises a **Daily Product Feed**. | Large Spanish perfumery catalogue; concrete documented feed and strong fragrance relevance. | Confirm programme territory and publisher approval; verify whether the feed is available to this account and whether shipping serves target countries. |
 | 3 | ParfumGroup DE — Awin | Awin profile says a regularly updated product data feed is available. | German retailer is geographically relevant to Luxembourg; fragrance-led assortment. | Confirm publisher acceptance, actual feed access, feed field completeness, target-country shipping and permitted comparison use. |
 | 4 | Douglas NL — Awin | Douglas NL programme page advertises a daily-updated datafeed and says the feed meets its requirements. | Nearby Benelux market and a broad beauty catalogue. | Confirm the exact programme/feed is accessible to this publisher and whether it includes fragrance stock, EAN, price, currency, and Luxembourg delivery. |
-| 5 | Notino — CJ | Notino's official affiliate pages route partners through CJ; CJ's Product Feed API supports product-feed summary and product detail queries for joined and non-joined advertisers, subject to API credentials and advertiser/company IDs. | Large European fragrance catalogue; existing ScentHunter integration planning already considered Notino. | Staging previously reported CJ feed credentials absent. Confirm publisher relationship, Notino feed availability, API token/company IDs, and use rights before implementation. |
+| 5 | Notino.fr — CJ | CJ/VIVnetworks confirmed by email that an XML product feed is available to approved publishers; fields include product name, EAN/GTIN, direct URL, current price, currency, availability, and images, updated daily. | Large European fragrance catalogue; ScentHunter has an existing CJ publisher account and the NOTINO.fr application is now visibly listed in CJ Pending Applications. | **Application pending, not approved.** Screenshot supplied 2026-11-05 shows advertiser 4912189 — NOTINO.fr under Pending Applications. Confirm advertiser approval, feed entitlement/API credentials and use rights before implementation. |
 | 6 | Perfumería Comas FR/ES — Awin | Awin programme profiles confirm affiliate programmes and broad perfume assortments; public profile evidence reviewed here does not establish a product feed. | Specialist fragrance retailer with France/Spain programme coverage. | Lower priority until the advertiser confirms an actual product feed or API and approves the intended use. |
 
 ## Source links
@@ -38,10 +38,10 @@ An affiliate link or approval alone is not permission to scrape the retailer web
 
 ## Recommended next action
 
-Start with **BeautyTheShop FR** and **Paco Perfumerías** in the Awin account: verify whether their feeds are available to the publisher and download only through the network's authorized feed/API mechanism. In parallel, check ParfumGroup DE for Luxembourg delivery. Do not write a scraper or activate any store until the feed terms and actual account permissions are confirmed.
+Start with **BeautyTheShop FR** and **Paco Perfumerías** in the Awin account: verify whether their feeds are available to the publisher and download only through the network's authorized feed/API mechanism. In parallel, check ParfumGroup DE for Luxembourg delivery. For **Notino.fr**, monitor the existing pending application; once approved, inspect the programme terms and feed access instructions before implementing a CJ connector.
 
-If none of these feeds is accessible, request written confirmation from the advertiser/network rather than falling back to live HTML scraping.
+Do not write a scraper or activate any store until the feed terms and actual account permissions are confirmed.
 
 ## Status
 
-Research only. No programmes joined, no credentials accessed, no feeds downloaded, no retailer activated, and no live store requests made. Gate 0 remains BLOCKED; shadow/canary remain 0%.
+Research only. No programmes joined, no credentials accessed, no feeds downloaded, no retailer activated, and no live store requests made. Notino.fr application is pending according to the user's CJ screenshot; this is not advertiser approval or feed entitlement. Gate 0 remains BLOCKED; shadow/canary remain 0%.
