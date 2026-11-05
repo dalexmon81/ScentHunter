@@ -108,7 +108,7 @@ A successful B2 pilot proves only this Bplatz product path. It does not automati
 | Legacy persistence proof | PASS, legacy path only |
 | Offline B1 matrix | PASS in PR #347 CI |
 | Bplatz fixture artifact/run linkage | PASS, offline CI only — PR #343 run 41967935150 |
-| Retry/quarantine and wrong-size/ambiguous-match cases | OPEN |
+| Retry/quarantine and wrong-size/ambiguous-match cases | PASS, offline CI only — PR #343 run 41968439231 |
 | Current source terms and permitted access | NOT VERIFIED |
 | Persistent Phase 5 staging resources | NOT VERIFIED |
 | Real offer in Phase 5 PostgreSQL | NOT RUN |
