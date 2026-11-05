@@ -216,6 +216,14 @@ class LegacyStoreConnector:
                      if x.external_product_id == key or x.url == key)
 
     async def fetch_price_and_stock(self, offer_id: str):
-        await self.fetch_product(offer_id)
-        return self._offers.get(str(offer_id)) or next(
-            (x for x in self._offers.values() if x.url == str(offer_id)), None)
+        # Refresh APIs identify offers by their retailer/variant ID, while the
+        # page parser needs the product URL. Resolve the stored record first.
+        key = str(offer_id)
+        existing = self._offers.get(key) or next(
+            (x for x in self._offers.values() if x.url == key), None
+        )
+        target = existing.url if existing is not None else key
+        await self.fetch_product(target)
+        return self._offers.get(key) or next(
+            (x for x in self._offers.values() if x.url == target), None
+        )
