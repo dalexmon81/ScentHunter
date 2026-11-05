@@ -64,10 +64,7 @@ def test_seed_dry_run_keeps_products_without_inventing_variants(tmp_path):
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "validated"
-    assert report["stores_to_seed"] == [{
-        "name": "Bplatz", "slug": "bplatz", "domain": "bplatz.de",
-        "country": "DE", "currency": "EUR", "status": "active",
-    }]
+    assert report["stores_to_seed"] == []
     assert report["brands"] == 1
     assert report["fragrances"] == 2
     assert report["variants"] == 1
@@ -75,6 +72,22 @@ def test_seed_dry_run_keeps_products_without_inventing_variants(tmp_path):
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
     assert not (tmp_path / "unused.sqlite3").exists()
+
+
+def test_bplatz_store_dry_run_requires_explicit_opt_in(tmp_path):
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(json.dumps(sample_catalog()), encoding="utf-8")
+    result = run_seed(
+        catalog_path, f"sqlite:///{tmp_path / 'unused.sqlite3'}",
+        "--seed-bplatz-store",
+    )
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout)
+    assert report["stores_to_seed"] == [{
+        "name": "Bplatz", "slug": "bplatz", "domain": "bplatz.de",
+        "country": "DE", "currency": "EUR", "status": "active",
+    }]
+    assert report["database_written"] is False
 
 
 def test_seed_apply_imports_identity_without_creating_variant_or_offer(tmp_path):
@@ -96,7 +109,7 @@ def test_seed_apply_imports_identity_without_creating_variant_or_offer(tmp_path)
     )
     assert migration.returncode == 0, migration.stderr
 
-    result = run_seed(catalog_path, database_url, "--apply")
+    result = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "seeded"
@@ -155,10 +168,27 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["source_brand_records"] == 61
     assert report["brands"] == 60
     assert report["fragrances"] == 1389
-    assert report["variants"] == 511
-    assert report["products_without_variants"] == 1063
+    assert report["variants"] == 512
+    assert report["products_without_variants"] == 1062
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
+
+
+def test_dior_sauvage_edp_has_verified_100ml_variant():
+    catalog = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    product = next(row for row in catalog["products"] if row["product_id"] == "SH-AUTO-0178")
+    assert product["brand_name"] == "Dior"
+    assert product["canonical_name"] == "Sauvage"
+    assert product["concentration"] == "Eau de Parfum"
+    assert any("dior.com/fr_fr/beauty/products/sauvage-eau-de-parfum" in url
+               for url in product["verification_sources"])
+    variants = [row for row in catalog["variants"]
+                if row["product_id"] == "SH-AUTO-0178" and row["size_ml"] == 100]
+    assert len(variants) == 1
+    assert variants[0]["variant_id"] == "VAR-9e1f0d0b8a3c6e42"
+    assert variants[0]["gtins"] == []
+    assert variants[0]["mpns"] == []
+    assert variants[0]["canonical_key"] == "christian-dior|sauvage|edp|100|standard"
 
 
 def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path):
@@ -168,7 +198,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
     from sqlalchemy.orm import Session
 
     sys.path.insert(0, str(BACKEND))
-    from app.models import LegacyProductIdMap, LegacyVariantIdMap
+    from app.models import LegacyProductIdMap, LegacyVariantIdMap, ProductVariant
     from app.services.ingestion_persistence import resolve_legacy_ids
 
     catalog_path = BACKEND / "product_catalog.json"
@@ -187,7 +217,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
     )
     assert migration.returncode == 0, migration.stderr
 
-    first = run_seed(catalog_path, database_url, "--apply")
+    first = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
     assert first.returncode == 0, first.stderr
     first_report = json.loads(first.stdout)
     assert first_report["status"] == "seeded"
@@ -220,6 +250,17 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
                     f"unresolved legacy IDs: {variant['product_id']} / {variant['variant_id']}"
                 )
 
+            sauvage_mapping = resolve_legacy_ids(
+                session,
+                legacy_product_id="SH-AUTO-0178",
+                legacy_variant_id="VAR-9e1f0d0b8a3c6e42",
+            )
+            assert sauvage_mapping is not None
+            sauvage_variant = session.get(ProductVariant, sauvage_mapping.product_variant_id)
+            assert sauvage_variant is not None
+            assert sauvage_variant.canonical_key == "christian-dior|sauvage|edp|100|standard"
+            assert sauvage_variant.fragrance.brand.normalized_name == "christian dior"
+
             first_product_id = str(products[0]["product_id"])
             missing_variant_id = "LEGACY-VARIANT-ID-DOES-NOT-EXIST"
             resolved_missing = resolve_legacy_ids(
@@ -230,7 +271,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
             assert resolved_missing is None
 
         # Re-running the seed must be a no-op for both mapping tables.
-        second = run_seed(catalog_path, database_url, "--apply")
+        second = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert second.returncode == 0, second.stderr
         second_report = json.loads(second.stdout)
         assert second_report["database_counts"]["legacy_product_id_map"] == len(products)
@@ -296,9 +337,9 @@ def test_bplatz_store_seed_is_idempotent_and_leaves_other_eight_stores_untouched
             }
         assert set(before) == {row[0] for row in other_stores}
 
-        first = run_seed(catalog_path, database_url, "--apply")
+        first = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert first.returncode == 0, first.stderr
-        second = run_seed(catalog_path, database_url, "--apply")
+        second = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert second.returncode == 0, second.stderr
 
         with Session(engine) as session:

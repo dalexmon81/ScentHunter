@@ -2,6 +2,7 @@
 from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
+from dataclasses import replace
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Sequence
 from urllib.parse import urlparse
@@ -9,6 +10,37 @@ from urllib.parse import urlparse
 import requests
 from app.connectors.base import OfferRecord, RateLimiter, validate_offer
 from app.services.product_normalization import normalize_product
+
+
+class _ArtifactCapturingSession(requests.Session):
+    """Capture exact response bodies for textual product-page requests only."""
+    def __init__(self, artifacts):
+        super().__init__()
+        self._artifacts = artifacts
+
+    def request(self, method, url, *args, **kwargs):
+        response = super().request(method, url, *args, **kwargs)
+        content_type = str(response.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        formats = {
+            "text/html": "html",
+            "application/xhtml+xml": "html",
+            "application/json": "json",
+            "text/csv": "csv",
+            "application/xml": "xml",
+            "text/xml": "xml",
+            "application/rss+xml": "xml",
+            "application/atom+xml": "xml",
+        }
+        artifact_format = formats.get(content_type)
+        if artifact_format and 200 <= response.status_code < 400:
+            self._artifacts.append({
+                "format": artifact_format,
+                "data": bytes(response.content),
+                "content_type": content_type,
+                "source_url": response.url,
+                "metadata": {"http_status": response.status_code, "method": str(method).upper()},
+            })
+        return response
 
 
 def _value(value):
@@ -54,6 +86,8 @@ class LegacyStoreConnector:
         self._page_loader = page_loader
         self._limiter = RateLimiter(0.5)
         self._offers: dict[str, OfferRecord] = {}
+        self._raw_artifacts: list[dict[str, Any]] = []
+        self._raw_by_external_id: dict[str, Any] = {}
 
     def _map(self, item: Any) -> tuple[OfferRecord, ...]:
         if not isinstance(item, dict):
@@ -106,8 +140,15 @@ class LegacyStoreConnector:
             raise ValueError(f"{self.store_key}_parse_raw_requires_product_mapping")
         records = []
         for row in rows:
-            records.extend(self._map(row))
+            mapped = self._map(row)
+            records.extend(mapped)
+            for record in mapped:
+                self._raw_by_external_id[record.external_product_id] = row
         return tuple(records)
+
+    def raw_evidence_for(self, external_id: str):
+        """Return the original structured retailer row used to build an offer."""
+        return self._raw_by_external_id.get(str(external_id))
 
     def validate_offer(self, offer: OfferRecord):
         return validate_offer(offer)
@@ -117,11 +158,12 @@ class LegacyStoreConnector:
             result = self._page_loader(url, query)
             if hasattr(result, "__await__"):
                 result = await result
+            self._raw_artifacts.append({"format": "html" if isinstance(result, (str, bytes)) else "json", "data": result, "source_url": url})
             return result
         if self.page_parser is None:
             return None
         def load():
-            with requests.Session() as session:
+            with _ArtifactCapturingSession(self._raw_artifacts) as session:
                 return self.page_parser(session, url, query)
         return await asyncio.to_thread(load)
 
@@ -132,6 +174,7 @@ class LegacyStoreConnector:
         for term in self.discovery_terms:
             await self._limiter.acquire()
             rows = await asyncio.to_thread(self._search, term)
+            self._raw_artifacts.append({"format": "json", "data": rows, "metadata": {"query": term}})
             for record in self.parse_raw(rows or []):
                 found[record.external_product_id] = record
             # Some legacy search endpoints return candidate URLs only. Enrich
@@ -174,6 +217,25 @@ class LegacyStoreConnector:
                      if x.external_product_id == key or x.url == key)
 
     async def fetch_price_and_stock(self, offer_id: str):
-        await self.fetch_product(offer_id)
-        return self._offers.get(str(offer_id)) or next(
-            (x for x in self._offers.values() if x.url == str(offer_id)), None)
+        # Resolve the stored retailer ID to the product URL used by page parsers.
+        key = str(offer_id)
+        existing = self._offers.get(key) or next(
+            (x for x in self._offers.values() if x.url == key), None
+        )
+        target = existing.url if existing is not None else key
+        await self.fetch_product(target)
+
+        # Page parsers may identify refreshed rows by URL only. Preserve the
+        # retailer offer identity while replacing stale price/stock values.
+        fresh = self._offers.get(target)
+        if fresh is None:
+            return self._offers.get(key)
+        if existing is not None and key != target:
+            fresh = replace(
+                fresh,
+                external_product_id=existing.external_product_id,
+                external_offer_id=existing.external_offer_id,
+            )
+            self._offers[key] = fresh
+            self._offers.pop(target, None)
+        return fresh

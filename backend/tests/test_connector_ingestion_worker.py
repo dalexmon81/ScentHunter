@@ -104,3 +104,321 @@ def test_worker_quarantines_only_after_repeated_store_failures():
     assert first["status"] == "failed"
     assert second["status"] == "quarantined"
     assert store.status == "quarantined"
+
+
+def test_notino_fixture_matches_and_promotes_exact_dior_sauvage_edp_100ml():
+    from app.connectors.notino import NotinoAffiliateFeedConnector
+    from app.matching.offer_matcher import match_staged_offer
+    from app.models import Brand, Fragrance, ProductVariant, Offer, PriceHistory, MatchAudit
+    from app.services.ingestion_persistence import promote_offer
+
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <rss xmlns:g="http://base.google.com/ns/1.0"><channel><item>
+      <g:id>notino-dior-sauvage-edp-100</g:id>
+      <g:title>Dior Sauvage Eau de Parfum 100 ml</g:title>
+      <g:brand>Dior</g:brand>
+      <g:price>99.90 EUR</g:price>
+      <g:availability>in stock</g:availability>
+      <g:link>https://www.notino.fr/dior/sauvage-eau-de-parfum/</g:link>
+      <g:size>100 ml</g:size>
+    </item></channel></rss>"""
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        brand = Brand(name="Dior", slug="dior", normalized_name="christian dior")
+        session.add(brand)
+        session.flush()
+        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage")
+        session.add(fragrance)
+        session.flush()
+        variant = ProductVariant(
+            fragrance_id=fragrance.id,
+            concentration="Eau de Parfum",
+            size_ml=100,
+            canonical_key="christian-dior|sauvage|edp|100|standard",
+        )
+        session.add(variant)
+        session.add(Store(
+            name="Notino", slug="notino", domain="notino.fr",
+            country="FR", currency="EUR", status="active",
+        ))
+        session.commit()
+
+    connector = NotinoAffiliateFeedConnector(feed_loader=lambda: xml)
+    result = run_connector_once(connector, factory)
+    assert result == {
+        "store": "notino", "status": "completed", "discovered": 1,
+        "staged": 1, "rejected": 0, "published": 0,
+    }
+    assert connector.raw_evidence_for() == xml
+    record = connector._offers[0]
+    assert record.brand == "Dior"
+    assert record.fragrance == "sauvage"
+    assert record.concentration == "edp"
+    assert record.size_ml == 100
+    assert record.price == Decimal("99.90")
+    assert record.currency == "EUR"
+    assert record.availability == "in_stock"
+
+    with factory() as session:
+        raw = session.scalar(select(IngestionRaw))
+        decision = match_staged_offer(session, raw.id)
+        assert decision.status == "matched"
+        assert decision.method == "canonical_key_exact"
+        offer_id = promote_offer(
+            session,
+            ingestion_raw_id=raw.id,
+            price=record.price,
+            currency=record.currency,
+            url=record.url,
+            availability=record.availability,
+            source=record.source,
+            confidence=decision.confidence,
+        )
+        session.commit()
+        offer = session.get(Offer, offer_id)
+        assert offer is not None
+        assert offer.status == "active"
+        assert offer.product_variant_id == decision.product_variant_id
+        assert offer.price == Decimal("99.90")
+        assert offer.currency == "EUR"
+        assert offer.availability == "in_stock"
+        assert raw.status == "promoted"
+        assert len(list(session.scalars(select(PriceHistory).where(
+            PriceHistory.offer_id == offer_id
+        )))) == 1
+        assert len(list(session.scalars(select(MatchAudit).where(
+            MatchAudit.offer_id == offer_id
+        )))) == 1
+    engine.dispose()
+
+
+def test_notino_live_preflight_requires_exact_and_explicitly_available_candidate():
+    import importlib.util
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / "notino_pilot_preflight.py"
+    spec = importlib.util.spec_from_file_location("notino_pilot_preflight", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    record = OfferRecord(
+        store="notino",
+        external_product_id="fixture-notino-sauvage-edp-100",
+        brand="Dior",
+        fragrance="sauvage",
+        concentration="edp",
+        size_ml=100,
+        gtin=None,
+        title="Dior Sauvage Eau de Parfum 100 ml",
+        url="https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+        price=Decimal("99.90"),
+        currency="EUR",
+        availability="in_stock",
+        captured_at=datetime.now(timezone.utc).isoformat(),
+        source="authorized_affiliate_xml",
+    )
+    report = module.summarize_candidates([record])
+    assert report["status"] == "ready_for_staging_review"
+    assert report["ready_for_staging_review"] is True
+    assert report["database_written"] is False
+    assert report["offer_published"] is False
+
+    unknown = OfferRecord(**{**record.__dict__, "availability": "unknown"})
+    blocked = module.summarize_candidates([unknown])
+    assert blocked["status"] == "candidate_requires_availability_review"
+    assert blocked["ready_for_staging_review"] is False
+
+    wrong_concentration = OfferRecord(**{**record.__dict__, "concentration": "edt"})
+    unmatched = module.summarize_candidates([wrong_concentration])
+    assert unmatched["status"] == "no_exact_product"
+    assert unmatched["exact_candidate_count"] == 0
+
+
+def test_bplatz_saved_fixture_stages_matches_and_promotes_exact_offer():
+    from pathlib import Path
+    from app.connectors import BplatzConnector
+    from app.matching.offer_matcher import match_staged_offer
+    from app.models import Brand, Fragrance, ProductVariant, Offer, PriceHistory, MatchAudit
+    from app.services.ingestion_persistence import promote_offer
+    from scrapers.bplatz import scraper
+
+    fixture = (
+        Path(__file__).resolve().parent / "fixtures" / "connectors"
+        / "bplatz-dior-sauvage-edp-100.html"
+    )
+    url = "https://en.bplatz.de/products/dior-sauvage-eau-de-parfum"
+    html = fixture.read_text(encoding="utf-8")
+    parsed = scraper.parse_product_html(html, url, "Dior Sauvage")
+    assert parsed is not None
+    connector = BplatzConnector()
+    records = connector.parse_raw(parsed)
+    assert len(records) == 1
+    record = records[0]
+    assert record.gtin is None  # Fixture carries no independently verified GTIN.
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        brand = Brand(name="Dior", slug="dior", normalized_name="christian dior")
+        session.add(brand)
+        session.flush()
+        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage")
+        session.add(fragrance)
+        session.flush()
+        session.add(ProductVariant(
+            fragrance_id=fragrance.id,
+            concentration="Eau de Parfum",
+            size_ml=100,
+            canonical_key="christian-dior|sauvage|edp|100|standard",
+        ))
+        session.add(Store(
+            name="Bplatz", slug="bplatz", domain="en.bplatz.de",
+            country="DE", currency="EUR", status="active",
+        ))
+        session.commit()
+
+    # Exercise the real ingestion runner with the parsed fixture and no HTTP.
+    async def discover_products():
+        return ({"externalProductId": record.external_product_id, "url": record.url},)
+
+    async def fetch_offers(_product_key):
+        return (record,)
+
+    connector.discover_products = discover_products
+    connector.fetch_offers = fetch_offers
+    result = run_connector_once(connector, factory)
+    assert result == {
+        "store": "bplatz", "status": "completed", "discovered": 1,
+        "staged": 1, "rejected": 0, "published": 0,
+    }
+
+    with factory() as session:
+        raw = session.scalar(select(IngestionRaw))
+        decision = match_staged_offer(session, raw.id)
+        assert decision.status == "matched"
+        assert decision.method == "canonical_key_exact"
+        offer_id = promote_offer(
+            session,
+            ingestion_raw_id=raw.id,
+            price=record.price,
+            currency=record.currency,
+            url=record.url,
+            availability=record.availability,
+            source=record.source,
+            confidence=decision.confidence,
+        )
+        session.commit()
+        offer = session.get(Offer, offer_id)
+        assert offer is not None and offer.status == "active"
+        assert offer.store_id == raw.store_id
+        assert offer.product_variant_id == decision.product_variant_id
+        assert offer.price == Decimal("89.90")
+        assert offer.currency == "EUR"
+        assert offer.availability == "in_stock"
+        assert raw.status == "promoted"
+        assert len(list(session.scalars(select(PriceHistory).where(
+            PriceHistory.offer_id == offer_id
+        )))) == 1
+        assert len(list(session.scalars(select(MatchAudit).where(
+            MatchAudit.offer_id == offer_id
+        )))) == 1
+    engine.dispose()
+
+
+
+def test_bplatz_source_failure_quarantines_only_bplatz_after_threshold():
+    factory = make_session_factory()
+    with factory() as session:
+        session.add(Store(name="Other Store", slug="other-store", currency="EUR", status="active"))
+        session.commit()
+
+    class BplatzFailingConnector(FakeConnector):
+        store_key = "bplatz"
+
+    # Store-scoped failure accounting: repeated Bplatz failures must not
+    # quarantine an unrelated retailer.
+    with factory() as session:
+        session.add(Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"))
+        session.commit()
+
+    connector = BplatzFailingConnector(fail=True)
+    run_connector_once(connector, factory, quarantine_after=2)
+    result = run_connector_once(connector, factory, quarantine_after=2)
+
+    with factory() as session:
+        bplatz = session.scalar(select(Store).where(Store.slug == "bplatz"))
+        other = session.scalar(select(Store).where(Store.slug == "other-store"))
+    assert result["status"] == "quarantined"
+    assert bplatz.status == "quarantined"
+    assert other.status == "active"
+
+
+def test_bplatz_page_loader_retains_raw_html_evidence_without_network():
+    from app.connectors import BplatzConnector
+
+    html = "<html><body>fixture page bytes</body></html>"
+
+    def page_loader(_url, _query):
+        return html
+
+    connector = BplatzConnector(page_loader=page_loader)
+    loaded = asyncio.run(connector._load_page(
+        "https://en.bplatz.de/products/fixture", "fixture"
+    ))
+
+    assert loaded == html
+    assert len(connector._raw_artifacts) == 1
+    artifact = connector._raw_artifacts[0]
+    assert artifact["format"] == "html"
+    assert artifact["data"] == html
+    assert artifact["source_url"] == "https://en.bplatz.de/products/fixture"
+
+
+def test_bplatz_connector_timeout_is_retried_and_quarantined_without_affecting_other_stores():
+    from app.connectors import BplatzConnector
+
+    factory = make_session_factory()
+    with factory() as session:
+        session.add(Store(
+            name="Bplatz", slug="bplatz", currency="EUR", status="active"
+        ))
+        session.add(Store(
+            name="Other Store", slug="other-store", currency="EUR", status="active"
+        ))
+        session.commit()
+
+    calls = []
+
+    def blocked_or_timed_out_search(_query):
+        calls.append("attempt")
+        raise TimeoutError("synthetic Bplatz transport timeout")
+
+    # Real Bplatz adapter, deterministic failing transport. No network request.
+    connector = BplatzConnector(
+        discovery_terms=("French Avenue Liquid Brun",),
+        search_func=blocked_or_timed_out_search,
+    )
+
+    first = run_connector_once(connector, factory, quarantine_after=2)
+    second = run_connector_once(connector, factory, quarantine_after=2)
+    third = run_connector_once(connector, factory, quarantine_after=2)
+
+    with factory() as session:
+        bplatz = session.scalar(select(Store).where(Store.slug == "bplatz"))
+        other = session.scalar(select(Store).where(Store.slug == "other-store"))
+        runs = session.scalars(
+            select(IngestionRun).where(IngestionRun.store_id == bplatz.id)
+            .order_by(IngestionRun.started_at.asc())
+        ).all()
+
+    assert first["status"] == "failed"
+    assert second["status"] == "quarantined"
+    assert third == {"store": "bplatz", "status": "quarantined", "staged": 0}
+    assert calls == ["attempt", "attempt"]
+    assert [run.status for run in runs] == ["failed", "failed"]
+    assert bplatz.status == "quarantined"
+    assert other.status == "active"

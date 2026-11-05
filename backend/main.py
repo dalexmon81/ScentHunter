@@ -45,6 +45,12 @@ except Exception as exc:
 APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
+# Phase 5: validated offer-scoped refresh; IDs and store identity are resolved server-side.
+from app.api.offer_refresh import router as phase5_offer_refresh_router
+app.include_router(phase5_offer_refresh_router)
+from app.api.legacy_catalog import router as phase5_legacy_catalog_router
+app.include_router(phase5_legacy_catalog_router)
+
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
 # present in this deployment, keep the legacy application available instead of

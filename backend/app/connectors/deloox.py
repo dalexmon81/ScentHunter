@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Sequence
 
-from app.connectors.base import OfferRecord, RateLimiter, validate_offer
+from app.connectors.base import OfferRecord, RateLimiter, capture_raw_page_artifact, validate_offer
 from app.services.product_normalization import normalize_product
 from scrapers.deloox import scraper
 
@@ -28,6 +28,7 @@ class DelooxConnector:
         self._page_loader = page_loader
         self._limiter = RateLimiter(0.5)
         self._offers: dict[str, OfferRecord] = {}
+        self._raw_artifacts: list[dict[str, Any]] = []
 
     @staticmethod
     def _map_product(item: dict[str, Any]) -> OfferRecord | None:
@@ -90,6 +91,7 @@ class DelooxConnector:
         for term in self.discovery_terms:
             await self._limiter.acquire()
             rows = await asyncio.to_thread(self._search, term)
+            self._raw_artifacts.append({"format": "json", "data": rows, "metadata": {"query": term}})
             for record in self.parse_raw(rows or []):
                 found[record.external_product_id] = record
         self._offers.update(found)
@@ -104,6 +106,7 @@ class DelooxConnector:
             return None
         await self._limiter.acquire()
         loaded = await asyncio.to_thread(self._page_loader, key)
+        capture_raw_page_artifact(self._raw_artifacts, loaded, requested_url=key, store_key=self.store_key)
         record = self.parse_raw(loaded)
         if not record:
             return None

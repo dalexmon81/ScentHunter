@@ -1,0 +1,27 @@
+name: Notino live feed preflight (manual only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-feed-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: notino-pilot-staging
+    env:
+      PYTHONPATH: backend
+      NOTINO_CJ_FEED_URL: ${{ secrets.NOTINO_CJ_FEED_URL }}
+      NOTINO_CJ_FEED_USERNAME: ${{ secrets.NOTINO_CJ_FEED_USERNAME }}
+      NOTINO_CJ_FEED_PASSWORD: ${{ secrets.NOTINO_CJ_FEED_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install feed parser dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Fetch once and inspect exact Dior Sauvage EDP 100 ml candidate
+        run: python backend/scripts/notino_pilot_preflight.py

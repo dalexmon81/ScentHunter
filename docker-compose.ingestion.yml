@@ -1,0 +1,46 @@
+# Optional Phase 5 services. Start explicitly with:
+# docker compose -f docker-compose.ingestion.yml up -d redis celery-worker celery-beat
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - scent-hunter-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    environment:
+      SCENTHUNTER_REDIS_URL: redis://redis:6379/0
+      SCENTHUNTER_CATALOG_DATABASE_URL: ${SCENTHUNTER_CATALOG_DATABASE_URL:?Set the existing Phase 2 catalog DB URL}
+      SCENTHUNTER_DISCOVERY_TERMS_JSON: ${SCENTHUNTER_DISCOVERY_TERMS_JSON:-{}}
+      SCENTHUNTER_CONNECTOR_QUARANTINE_AFTER: ${SCENTHUNTER_CONNECTOR_QUARANTINE_AFTER:-3}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "beat", "--loglevel=INFO"]
+    environment:
+      SCENTHUNTER_REDIS_URL: redis://redis:6379/0
+      SCENTHUNTER_CATALOG_DATABASE_URL: ${SCENTHUNTER_CATALOG_DATABASE_URL:?Set the existing Phase 2 catalog DB URL}
+      SCENTHUNTER_DISCOVERY_TERMS_JSON: ${SCENTHUNTER_DISCOVERY_TERMS_JSON:-{}}
+      SCENTHUNTER_CONNECTOR_QUARANTINE_AFTER: ${SCENTHUNTER_CONNECTOR_QUARANTINE_AFTER:-3}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  scent-hunter-redis:

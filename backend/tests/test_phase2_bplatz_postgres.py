@@ -46,7 +46,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
         seed_env["PYTHONPATH"] = str(BACKEND) + os.pathsep + seed_env.get("PYTHONPATH", "")
         seeded = subprocess.run(
             [sys.executable, str(BACKEND / "scripts/seed_catalog.py"),
-             "--catalog", str(BACKEND / "product_catalog.json"), "--apply"],
+             "--catalog", str(BACKEND / "product_catalog.json"), "--apply", "--seed-bplatz-store"],
             cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
         )
         assert seeded.returncode == 0, (
@@ -185,7 +185,7 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
         seed_env["PYTHONPATH"] = str(BACKEND) + os.pathsep + seed_env.get("PYTHONPATH", "")
         seeded = subprocess.run(
             [sys.executable, str(BACKEND / "scripts/seed_catalog.py"),
-             "--catalog", str(BACKEND / "product_catalog.json"), "--apply"],
+             "--catalog", str(BACKEND / "product_catalog.json"), "--apply", "--seed-bplatz-store"],
             cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
         )
         assert seeded.returncode == 0, seeded.stdout + "\\n" + seeded.stderr

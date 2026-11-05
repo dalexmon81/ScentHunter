@@ -67,14 +67,25 @@ def parse_price(value):
     if value is None or value == "":
         return None
     text = clean(value).replace("€", "").replace("EUR", "").strip()
-    m = re.search(r"\d{1,3}(?:[.,]\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?", text)
+    # Reject negative values before extracting digits; otherwise "-12.50"
+    # could be misread as a positive 12.50 offer.
+    if re.search(r"(^|[^\d])-\s*\d", text):
+        return None
+    m = re.search(r"\d[\d.,]*", text)
     if not m:
         return None
     raw = m.group(0)
     if "," in raw and "." in raw:
-        raw = raw.replace(".", "").replace(",", ".")
-    else:
-        raw = raw.replace(",", ".")
+        # The last separator is the decimal separator (EU and US grouping).
+        if raw.rfind(",") > raw.rfind("."):
+            raw = raw.replace(".", "").replace(",", ".")
+        else:
+            raw = raw.replace(",", "")
+    elif "," in raw:
+        tail = raw.rsplit(",", 1)[-1]
+        raw = raw.replace(",", ".") if len(tail) in (1, 2) else raw.replace(",", "")
+    elif "." in raw and re.fullmatch(r"\d{1,3}(?:\.\d{3})+", raw):
+        raw = raw.replace(".", "")
     try:
         n = float(raw)
     except ValueError:
@@ -368,8 +379,20 @@ def parse_product_html(html, final_url, query):
     offers = offer_list(data)
     price = None
     availability = None
+    foreign_currency_seen = any(
+        clean(offer.get("priceCurrency") or "").upper() not in ("", "EUR")
+        for offer in offers
+    )
     for offer in offers:
-        p = parse_price(offer.get("price") or offer.get("lowPrice"))
+        currency = clean(offer.get("priceCurrency") or "").upper()
+        # This connector currently publishes EUR only. Never label a foreign
+        # currency amount as EUR just because the store default is EUR.
+        if currency and currency != "EUR":
+            continue
+        raw_price = offer.get("price")
+        if raw_price is None or raw_price == "":
+            raw_price = offer.get("lowPrice")
+        p = parse_price(raw_price)
         if p is not None:
             price = p
             break
@@ -383,11 +406,11 @@ def parse_product_html(html, final_url, query):
     if availability is None:
         availability = availability_from_text(page_text)
 
-    if price is None:
+    if price is None and not foreign_currency_seen:
         price_patterns = [
-            r"retail\\s+price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"retail\s+price\s*€\s*([0-9][0-9.,]*)",
+            r"price\s*€\s*([0-9][0-9.,]*)",
+            r"€\s*([0-9][0-9.,]*)",
         ]
         for pattern in price_patterns:
             m = re.search(pattern, page_text, re.I)

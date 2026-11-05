@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Awaitable, Callable, Sequence
+from typing import Any, Awaitable, Callable, Sequence
 
 from app.connectors.base import OfferRecord, validate_offer
 from app.services.product_normalization import normalize_product
@@ -23,16 +23,24 @@ class NotinoAffiliateFeedConnector:
     def __init__(self, feed_loader: Callable[[], bytes | Awaitable[bytes]] | None = None):
         self._feed_loader = feed_loader
         self._offers: tuple[OfferRecord, ...] = ()
+        self._raw_artifacts: list[dict[str, Any]] = []
+        self._last_raw_feed: bytes | None = None
 
     async def _load_bytes(self) -> bytes:
         if self._feed_loader is None:
-            return await asyncio.to_thread(affiliate_feed._fetch_feed)
-        payload = self._feed_loader()
-        if hasattr(payload, "__await__"):
-            payload = await payload
+            payload = await asyncio.to_thread(affiliate_feed._fetch_feed)
+        else:
+            payload = self._feed_loader()
+            if hasattr(payload, "__await__"):
+                payload = await payload
         if not isinstance(payload, (bytes, bytearray)):
             raise affiliate_feed.FeedImportError("notino_feed_loader_must_return_bytes")
-        return bytes(payload)
+        self._last_raw_feed = bytes(payload)
+        return self._last_raw_feed
+
+    def raw_evidence_for(self, external_id: str | None = None):
+        """Return the exact source XML feed bytes for durable raw capture."""
+        return self._last_raw_feed
 
     def parse_raw(self, raw: bytes) -> Sequence[OfferRecord]:
         parsed = affiliate_feed.parse_feed(raw)
@@ -73,6 +81,7 @@ class NotinoAffiliateFeedConnector:
 
     async def discover_products(self) -> Sequence[dict]:
         raw = await self._load_bytes()
+        self._raw_artifacts = [{"format": "xml", "content_type": "application/xml", "data": raw}]
         self._offers = tuple(self.parse_raw(raw))
         return tuple({
             "externalProductId": offer.external_product_id,

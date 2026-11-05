@@ -22,6 +22,7 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
+from app.services.product_normalization import normalize_brand
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -49,6 +50,46 @@ def slugify(value: str) -> str:
 
 def stable_id(kind: str, source_id: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"{kind}:{source_id}")
+
+
+def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Brand:
+    """Resolve an existing brand by either canonical name or unique slug.
+
+    Legacy seed data can contain a display-name normalization that differs
+    from the current normalizer while retaining the same stable slug. Reuse
+    that row instead of attempting a second insert that violates uq_brands_slug.
+    If the two identifiers point to different rows, stop for manual review.
+    """
+    normalized_match = session.scalar(
+        select(Brand).where(Brand.normalized_name == normalized_name)
+    )
+    slug_match = session.scalar(
+        select(Brand).where(Brand.slug == slugify(name))
+    )
+    if (
+        normalized_match is not None
+        and slug_match is not None
+        and normalized_match.id != slug_match.id
+    ):
+        raise RuntimeError(
+            f"Brand identity conflict for {name!r}: normalized name and slug "
+            "resolve to different existing rows."
+        )
+
+    existing = normalized_match or slug_match
+    if existing is not None:
+        return existing
+
+    brand = Brand(
+        id=stable_id("brand", normalized_name),
+        name=name,
+        slug=slugify(name),
+        normalized_name=normalized_name,
+    )
+    session.add(brand)
+    return brand
+
+
 
 
 def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list[str]]:
@@ -114,7 +155,12 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="write canonical identities to the isolated SQLite catalog after reviewing dry-run",
+        help="write canonical identities to the configured isolated catalog after reviewing dry-run",
+    )
+    parser.add_argument(
+        "--seed-bplatz-store",
+        action="store_true",
+        help="explicitly create or activate the Bplatz store row for the dedicated Bplatz integration test",
     )
     args = parser.parse_args()
 
@@ -134,7 +180,7 @@ def main() -> int:
 
     names: dict[str, str] = {}
     for row in products:
-        names.setdefault(norm(str(row["brand_name"])), str(row["brand_name"]).strip())
+        names.setdefault(normalize_brand(str(row["brand_name"])), str(row["brand_name"]).strip())
 
     products_without_variants = [
         str(row["product_id"]).strip()
@@ -155,7 +201,7 @@ def main() -> int:
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
         "offers_imported": 0,
-        "stores_to_seed": [BPLATZ_STORE.copy()],
+        "stores_to_seed": [BPLATZ_STORE.copy()] if args.seed_bplatz_store else [],
         "database_written": False,
         "source_modified": False,
     }
@@ -169,21 +215,12 @@ def main() -> int:
         with Session(engine) as session, session.begin():
             brand_rows = {}
             for key, name in names.items():
-                brand = session.scalar(select(Brand).where(Brand.normalized_name == key))
-                if brand is None:
-                    brand = Brand(
-                        id=stable_id("brand", key),
-                        name=name,
-                        slug=slugify(name),
-                        normalized_name=key,
-                    )
-                    session.add(brand)
-                brand_rows[key] = brand
+                brand_rows[key] = get_or_create_brand(session, key, name)
             session.flush()
 
             for product in products:
                 pid = str(product["product_id"]).strip()
-                brand = brand_rows[norm(str(product["brand_name"]))]
+                brand = brand_rows[normalize_brand(str(product["brand_name"]))]
                 name = str(product["canonical_name"]).strip()
                 fragrance = session.scalar(select(Fragrance).where(
                     Fragrance.brand_id == brand.id,
@@ -214,7 +251,7 @@ def main() -> int:
                     concentration = variant.get("concentration") or product.get("concentration")
                     size = variant.get("size_ml")
                     key = "|".join((
-                        norm(str(product["brand_name"])),
+                        normalize_brand(str(product["brand_name"])),
                         norm(name),
                         norm(str(concentration or "")),
                         str(size or ""),
@@ -235,7 +272,7 @@ def main() -> int:
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
                             gtin=variant.get("gtin"),
-                            canonical_key=key[:320],
+                            canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
                         session.add(variant_row)
                         session.flush()
@@ -251,15 +288,16 @@ def main() -> int:
                     elif variant_map.product_variant_id != variant_row.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} is already mapped to a different variant UUID.")
 
-        # Idempotent, narrowly-scoped upsert: this seed owns only slug=bplatz.
-        # No other retailer rows are queried for mutation or created here.
-        with Session(engine) as session, session.begin():
-            store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
-            if store is None:
-                session.add(Store(**BPLATZ_STORE))
-            else:
-                for field, value in BPLATZ_STORE.items():
-                    setattr(store, field, value)
+        # Retailer activation is opt-in. Canonical catalog seeding must not
+        # silently activate Bplatz (or any other store) in staging.
+        if args.seed_bplatz_store:
+            with Session(engine) as session, session.begin():
+                store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
+                if store is None:
+                    session.add(Store(**BPLATZ_STORE))
+                else:
+                    for field, value in BPLATZ_STORE.items():
+                        setattr(store, field, value)
 
         inspector = inspect(engine)
         expected_tables = {
@@ -291,7 +329,7 @@ def main() -> int:
             "database_counts": counts,
             "invalid_active_offers": invalid_active_offers,
             "database_written": True,
-            "seeded_store": BPLATZ_STORE.copy(),
+            "stores_seeded": [BPLATZ_STORE["slug"]] if args.seed_bplatz_store else [],
         })
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0

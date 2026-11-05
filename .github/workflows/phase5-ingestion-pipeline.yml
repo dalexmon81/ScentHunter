@@ -1,0 +1,250 @@
+name: Phase 5 Ingestion Pipeline
+
+on:
+  push:
+    branches:
+      - phase5/redis-celery-ingestion-pipeline
+    paths:
+      - "backend/app/workers/**"
+      - "backend/app/api/**"
+      - "backend/tests/test_legacy_catalog_offer_bridge.py"
+      - "backend/main.py"
+      - "frontend/index.html"
+      - "backend/app/connectors/**"
+      - "backend/app/models/**"
+      - "backend/alembic/versions/**"
+      - "backend/scripts/seed_catalog.py"
+      - "tests/test_phase2_seed_catalog.py"
+      - "backend/tests/test_celery_ingestion_pipeline.py"
+      - "backend/tests/test_connector_ingestion_worker.py"
+      - "backend/tests/test_connector_ingestion_session_defaults.py"
+      - "backend/tests/test_offer_matching_worker.py"
+      - "backend/tests/test_offer_promotion_worker.py"
+      - "backend/tests/test_offer_detail_refresh_api.py"
+      - "backend/tests/test_legacy_store_raw_capture.py"
+      - "backend/requirements.txt"
+      - "backend/Dockerfile.worker"
+      - "docker-compose.ingestion.yml"
+      - ".github/workflows/phase5-ingestion-pipeline.yml"
+  pull_request:
+    branches:
+      - phase3/product-normalization
+    paths:
+      - "backend/app/workers/**"
+      - "backend/app/api/**"
+      - "backend/tests/test_legacy_catalog_offer_bridge.py"
+      - "backend/main.py"
+      - "frontend/index.html"
+      - "backend/app/connectors/**"
+      - "backend/app/models/**"
+      - "backend/alembic/versions/**"
+      - "backend/scripts/seed_catalog.py"
+      - "tests/test_phase2_seed_catalog.py"
+      - "backend/tests/test_celery_ingestion_pipeline.py"
+      - "backend/tests/test_connector_ingestion_worker.py"
+      - "backend/tests/test_connector_ingestion_session_defaults.py"
+      - "backend/tests/test_offer_matching_worker.py"
+      - "backend/tests/test_offer_promotion_worker.py"
+      - "backend/tests/test_offer_detail_refresh_api.py"
+      - "backend/tests/test_legacy_store_raw_capture.py"
+      - "backend/requirements.txt"
+      - "backend/Dockerfile.worker"
+      - "docker-compose.ingestion.yml"
+      - ".github/workflows/phase5-ingestion-pipeline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: phase5
+          POSTGRES_PASSWORD: phase5_ci_only
+          POSTGRES_DB: phase5_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U phase5 -d phase5_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://phase5:phase5_ci_only@127.0.0.1:5432/phase5_test
+      SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
+      SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
+      SCENTHUNTER_DISCOVERY_TERMS_JSON: "{}"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend and worker dependencies
+        run: python -m pip install -r backend/requirements.txt "celery[redis]==5.5.3" pytest
+      - name: Apply all catalog and ingestion migrations to disposable PostgreSQL
+        working-directory: backend
+        run: |
+          alembic upgrade head
+          alembic upgrade head
+      - name: Seed isolated canonical catalog and verify schema
+        run: python backend/scripts/seed_catalog.py --apply
+      - name: Verify Dior Sauvage EDP 100 ml UUID mapping in PostgreSQL
+        run: |
+          python - <<'PY'
+          from sqlalchemy.orm import Session
+          from app.db import make_engine
+          from app.models import Brand, Fragrance, LegacyProductIdMap, LegacyVariantIdMap, ProductVariant
+
+          engine = make_engine()
+          try:
+              with Session(engine) as session:
+                  product_map = session.get(LegacyProductIdMap, "SH-AUTO-0178")
+                  variant_map = session.get(LegacyVariantIdMap, "VAR-9e1f0d0b8a3c6e42")
+                  assert product_map is not None, "Dior Sauvage EDP fragrance mapping missing"
+                  assert variant_map is not None, "Dior Sauvage EDP 100 ml variant mapping missing"
+                  fragrance = session.get(Fragrance, product_map.fragrance_id)
+                  variant = session.get(ProductVariant, variant_map.product_variant_id)
+                  assert fragrance is not None and fragrance.name == "Sauvage", fragrance
+                  assert variant is not None, "Canonical 100 ml variant UUID missing"
+                  assert variant.fragrance_id == fragrance.id, "Variant belongs to a different fragrance"
+                  assert variant.concentration == "Eau de Parfum", variant.concentration
+                  assert variant.size_ml == 100, variant.size_ml
+                  assert variant.canonical_key == "christian-dior|sauvage|edp|100|standard", variant.canonical_key
+                  brand = session.get(Brand, fragrance.brand_id)
+                  assert brand is not None and brand.normalized_name == "christian dior", brand
+                  print("DIOR_SAUVAGE_EDP_100ML_POSTGRES_UUID=PASS")
+                  print(f"FRAGRANCE_UUID={fragrance.id}")
+                  print(f"VARIANT_UUID={variant.id}")
+          finally:
+              engine.dispose()
+          PY
+      - name: Start a real Celery worker and verify Redis queue plus PostgreSQL task execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import subprocess
+          import sys
+          import time
+          from pathlib import Path
+
+          from app.workers.celery_app import celery_app
+
+          log_path = Path("/tmp/phase5-celery-worker.log")
+          with log_path.open("w") as log:
+              worker = subprocess.Popen(
+                  [
+                      sys.executable, "-m", "celery",
+                      "-A", "app.workers.celery_app:celery_app",
+                      "worker", "--pool=solo", "--loglevel=INFO",
+                      "--queues=discovery,offers,validation,matching,refresh,dead_letter",
+                      "--hostname=phase5-runtime-smoke@%h",
+                  ],
+                  cwd="backend",
+                  env=os.environ.copy(),
+                  stdout=log,
+                  stderr=subprocess.STDOUT,
+                  start_new_session=True,
+              )
+              try:
+                  inspector = celery_app.control.inspect(timeout=1)
+                  deadline = time.monotonic() + 45
+                  while time.monotonic() < deadline:
+                      if worker.poll() is not None:
+                          raise RuntimeError(f"Celery worker exited early with {worker.returncode}")
+                      if inspector.ping():
+                          break
+                      time.sleep(2)
+                  else:
+                      raise RuntimeError("Celery worker did not register with Redis in 45 seconds")
+
+                  # This scheduled task reads the seeded PostgreSQL offers table.
+                  # The fixture catalog intentionally contains no live retailer offers,
+                  # so it must complete without contacting any retailer.
+                  result = celery_app.send_task(
+                      "app.workers.ingestion_tasks.enqueue_offer_collection_for_configured_stores",
+                      queue="offers",
+                  )
+                  payload = result.get(timeout=45, propagate=True)
+                  assert payload["refresh_jobs_queued"] == 0, payload
+                  assert payload["stores"] == [], payload
+
+                  # Exercise a real worker-side database write through the dead-letter queue.
+                  from uuid import uuid4
+                  from sqlalchemy import select
+                  from sqlalchemy.orm import Session
+                  from app.db import make_engine
+                  from app.models import IngestionDeadLetter
+
+                  dead_letter_id = "phase5-runtime-smoke-" + str(uuid4())
+                  recorded = celery_app.send_task(
+                      "app.workers.ingestion_tasks.record_dead_letter",
+                      kwargs={
+                          "task_name": "phase5.runtime.smoke",
+                          "task_id": dead_letter_id,
+                          "args_repr": "[]",
+                          "kwargs_repr": "{}",
+                          "error": "synthetic CI-only failure record",
+                      },
+                      queue="dead_letter",
+                  ).get(timeout=45, propagate=True)
+                  assert recorded == {"recorded": True, "task_id": dead_letter_id}, recorded
+                  engine = make_engine()
+                  try:
+                      with Session(engine) as session:
+                          row = session.scalar(
+                              select(IngestionDeadLetter).where(
+                                  IngestionDeadLetter.task_id == dead_letter_id
+                              )
+                          )
+                          assert row is not None and row.status == "open"
+                  finally:
+                      engine.dispose()
+
+                  print("REDIS_BROKER=PASS")
+                  print("CELERY_WORKER_CONSUME=PASS")
+                  print("POSTGRES_TASK_QUERY=PASS")
+                  print("POSTGRES_DURABLE_DEAD_LETTER_WRITE=PASS")
+                  print("PHASE2_CATALOG_SEED=PASS")
+                  print("SAFE_NO_RETAILER_NETWORK_CALLS=PASS")
+              finally:
+                  if worker.poll() is None:
+                      worker.terminate()
+                      try:
+                          worker.wait(timeout=10)
+                      except subprocess.TimeoutExpired:
+                          worker.kill()
+                          worker.wait(timeout=5)
+                  print(log_path.read_text(errors="replace")[-12000:])
+  ingestion-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused dependencies
+        run: python -m pip install pytest fastapi==0.115.0 requests beautifulsoup4 lxml sqlalchemy alembic pyyaml celery[redis]==5.5.3
+      - name: Compile pipeline and workers
+        run: python -m compileall -q backend/app/workers backend/app/connectors backend/app/models backend/app/api backend/main.py backend/alembic/versions backend/scripts/seed_catalog.py tests/test_phase2_seed_catalog.py backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py backend/tests/test_offer_detail_refresh_api.py backend/tests/test_legacy_catalog_offer_bridge.py backend/tests/test_legacy_store_raw_capture.py
+      - name: Run ingestion, matching, promotion and queue tests
+        run: python -m pytest -q tests/test_phase2_seed_catalog.py backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_connector_ingestion_session_defaults.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py backend/tests/test_offer_detail_refresh_api.py backend/tests/test_legacy_catalog_offer_bridge.py backend/tests/test_legacy_store_raw_capture.py
