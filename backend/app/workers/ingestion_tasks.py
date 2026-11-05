@@ -197,7 +197,7 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
         factory.kw["bind"].dispose()
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.ingest_bounded_bplatz_product_url")
-def ingest_bounded_bplatz_product_url(self, product_url: str):
+def ingest_bounded_bplatz_product_url(self, product_url: str, authorization_reference: str):
     """Ingest one explicitly supplied Bplatz product URL without discovery.
 
     This task is intentionally manual-only: it performs one bounded product
@@ -205,6 +205,9 @@ def ingest_bounded_bplatz_product_url(self, product_url: str):
     the normal validation/matching/promotion queues. It never searches Bplatz.
     """
     store_key = "bplatz"
+    authorization_reference = str(authorization_reference or "").strip()
+    if not authorization_reference or len(authorization_reference) > 200:
+        raise ValueError("bplatz_automated_access_authorization_reference_required")
     parsed = urlparse(str(product_url or "").strip())
     allowed_hosts = {"bplatz.de", "www.bplatz.de", "en.bplatz.de"}
     expected_path = "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
@@ -284,6 +287,7 @@ def ingest_bounded_bplatz_product_url(self, product_url: str):
                 "ingestion_run_id": run_id,
                 "ingestion_mode": "bounded_single_product_url",
                 "requested_url": str(product_url),
+                "authorization_reference": authorization_reference,
                 "raw_artifact_ids": artifact_ids,
             },
         )
