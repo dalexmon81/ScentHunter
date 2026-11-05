@@ -1417,7 +1417,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         raw_price = next((attrs.get(k) for k in ("data-price", "data-product-price", "data-final-price", "data-price-amount") if attrs.get(k) not in (None, "")), None)
         if raw_price is None:
             continue
-        add_variant(raw_size, raw_price, attrs.get("data-currency") or "EUR", None,
+        add_variant(raw_size, raw_price, attrs.get("data-currency") or None, None,
                     attrs.get("data-sku"), attrs.get("data-url"), variant_id=attrs.get("data-id-product-attribute"))
 
     price = (
