@@ -197,3 +197,99 @@ def test_eight_hour_collection_refreshes_known_active_offers_not_discovery(tmp_p
         }]
     finally:
         engine.dispose()
+
+
+
+def test_discovery_task_persists_original_page_bytes_and_links_them_to_staged_offer(
+    tmp_path, monkeypatch
+):
+    import hashlib
+    from datetime import datetime, timezone
+    from decimal import Decimal
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+
+    from app.connectors.base import OfferRecord
+    from app.models import Base, IngestionArtifact, IngestionRaw, IngestionRun, Store
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'discovery-evidence.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        session.add(Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"))
+        session.commit()
+
+    html = b"<html><body>original fixture source bytes</body></html>"
+    record = OfferRecord(
+        store="bplatz",
+        external_product_id="fixture-product-100",
+        brand="Dior",
+        fragrance="Sauvage",
+        concentration="edp",
+        size_ml=100,
+        gtin=None,
+        title="Dior Sauvage Eau de Parfum 100 ml",
+        url="https://en.bplatz.de/products/fixture-product-100",
+        price=Decimal("89.90"),
+        currency="EUR",
+        availability="in_stock",
+        captured_at=datetime.now(timezone.utc).isoformat(),
+        source="fixture",
+    )
+
+    class FixtureConnector:
+        store_key = "bplatz"
+        _raw_artifacts = [{
+            "format": "html",
+            "data": html,
+            "content_type": "text/html",
+            "source_url": record.url,
+            "metadata": {"capture": "page_loader_body"},
+        }]
+
+        async def discover_products(self):
+            return [{
+                "externalProductId": record.external_product_id,
+                "url": record.url,
+                "title": record.title,
+            }]
+
+        async def fetch_offers(self, _product_key):
+            return (record,)
+
+    connector = FixtureConnector()
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(ingestion_tasks, "get_connector", lambda _store: connector)
+    queued = []
+    monkeypatch.setattr(
+        ingestion_tasks.normalize_offer,
+        "apply_async",
+        lambda **kwargs: queued.append(kwargs),
+    )
+
+    try:
+        result = ingestion_tasks.discover_store_products.run("bplatz")
+        assert result["discovered"] == 1
+        assert result["offers_staged"] == 1
+        assert len(result["raw_ids"]) == 1
+        assert len(queued) == 1
+
+        with factory() as session:
+            artifact = session.scalar(select(IngestionArtifact))
+            raw = session.get(IngestionRaw, result["raw_ids"][0])
+            run = session.get(IngestionRun, artifact.ingestion_run_id)
+
+            assert artifact.raw_data == html
+            assert artifact.sha256 == hashlib.sha256(html).hexdigest()
+            assert artifact.size_bytes == len(html)
+            assert artifact.source_url == record.url
+            assert artifact.artifact_format == "html"
+            assert run is not None and run.status == "completed"
+            assert raw is not None
+            evidence = raw.raw_payload["_raw_evidence"]["discovery"]
+            assert str(artifact.id) in evidence["raw_artifact_ids"]
+            assert raw.raw_payload["externalProductId"] == record.external_product_id
+    finally:
+        engine.dispose()
