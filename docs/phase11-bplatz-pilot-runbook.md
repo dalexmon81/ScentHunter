@@ -29,6 +29,8 @@ The captured response is historical evidence only. Its price and stock must not 
 - **New Bplatz-specific artifact-linkage test passed:** PR #343 commit `99c2842287df681d8cd5c5abece4aeef97c9068f`, workflow run [`41967935150`](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150). The test loads the committed Liquid Brun fixture offline, runs the Bplatz parser/connector through Celery discovery, and verifies original HTML bytes, SHA-256, artifact-to-ingestion-run linkage and the raw-evidence artifact reference. Both `ingestion-pipeline` and `runtime-integration` jobs passed.
 - This is fixture-only CI evidence in disposable test infrastructure. It does not establish live source access, a current offer, persistent staging or a real retailer refresh.
 - No live Bplatz request, Phase 5 Bplatz offer write, Celery refresh of a real offer, or search/no-retailer-call proof has been performed.
+- Draft PR [#360](https://github.com/dalexmon81/ScentHunter/pull/360) adds a manual-only Celery task for one exact Liquid Brun EDP 100 ml product URL. It does not run discovery; it captures the page artifact, stages the record and queues the existing validation/matching/promotion path. It is restricted to the Bplatz product path and requires a non-empty authorization reference. The task has not been deployed or invoked.
+- Offline regression tests for the bounded fetch and canonical-key match are included in PR #360. GitHub Actions run [42073836383](https://github.com/dalexmon81/ScentHunter/actions/runs/42073836383) is queued; earlier runs exposed a CI setup issue (pytest installed after unittest discovery), which has been corrected in the latest commit.
 - **Persistent staging is now verified:** run [42042272812](https://github.com/dalexmon81/ScentHunter/actions/runs/42042272812) completed successfully. It applied Alembic `0007_ingestion_dead_letters`, seeded 60 brands / 1,389 fragrances / 512 variants, verified one non-root Celery worker and zero Beat machines, received `pong`, and executed a queued smoke task (`ok: True`). The seed intentionally left `stores=0` and `offers=0`.
 
 ## Gate B1 — fixture and source review
@@ -72,7 +74,7 @@ The site's `/robots.txt` could not be retrieved in this review. Its contents and
 
 ## Gate B2 — one-offer Phase 5 staging proof
 
-**Current staging status:** infrastructure and canonical seed PASS; retailer store/offer setup NOT DONE. The generic Celery smoke task is not evidence of a real offer refresh. The deployed worker is intentionally isolated with one app worker and no Beat scheduler.
+**Current staging status:** infrastructure and canonical seed PASS; retailer store/offer setup NOT DONE. The generic Celery smoke task is not evidence of a real offer refresh. The deployed worker is intentionally isolated with one app worker and no Beat scheduler. PR #360 prepares a manual, exact-URL Bplatz ingestion task but does not activate it.
 
 Only after B1 and source-access approval:
 
