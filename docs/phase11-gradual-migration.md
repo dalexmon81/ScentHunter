@@ -19,6 +19,17 @@ Introdurre la nuova architettura in modo progressivo e reversibile, senza interr
 - Di conseguenza, i livelli 5% / 20% / 50% / 100% sono **obiettivi futuri**, non percentuali autorizzate o già attive.
 - Il commit Phase 10 indicato in precedenza (`7dcc67d...`) non è stato possibile verificare come ref accessibile durante la preparazione. Prima di usare le sue funzionalità come prerequisito, verificare il commit/branch corretto e la relativa CI.
 
+## Evidenze aggiornate — 2026-11-05
+
+Le seguenti verifiche automatiche sono passate sui rispettivi commit:
+
+- PR #343, commit `b609eaa353355fe03a6540035fb028ef87f86a83`: [CI Phase 5 run 41968439231](https://github.com/dalexmon81/ScentHunter/actions/runs/41968439231) — `ingestion-pipeline` e `runtime-integration` PASS. Include test offline Bplatz per timeout/retry/quarantena isolata, rifiuto della variante 50 ml rispetto alla 100 ml e GTIN duplicato inviato a revisione senza match automatico.
+- Commit Phase 11 `d7fe53605bb9d1a83035914c843faaa4dc345197`: [Next Engine Shadow](https://github.com/dalexmon81/ScentHunter/actions/runs/41969069271), [backend parser regression](https://github.com/dalexmon81/ScentHunter/actions/runs/41969069250) e [hydration regression](https://github.com/dalexmon81/ScentHunter/actions/runs/41969069242) — tutti PASS.
+
+Queste prove sono CI automatica, fixture/stub-based o ambienti effimeri. **Non** dimostrano staging persistente, accesso Bplatz autorizzato, offerte reali, refresh persistente o ricerca utente senza chiamate retailer. Perciò non chiudono Gate 0.
+
+La run [fly-pilot 41969066841](https://github.com/dalexmon81/ScentHunter/actions/runs/41969066841) è terminata con failure e zero job creati. Il workflow è configurato per avvio manuale con conferma esplicita `deploy`; la run osservata è arrivata da un evento `push`. Nessun deploy risulta eseguito. Non rilanciare il workflow senza approvazione esplicita e verifica separata di costi, target, secrets e autorizzazione.
+
 ## Regole di sicurezza non negoziabili
 
 1. Il percorso legacy resta il percorso predefinito fino al completamento dei gate.
@@ -40,7 +51,7 @@ Introdurre la nuova architettura in modo progressivo e reversibile, senza interr
 - [ ] Eseguire vertical slice Bplatz — French Avenue Liquid Brun EDP 100 ml su un solo connector/store, solo dopo review dei termini e conferma del metodo di accesso consentito.
 - [ ] Dimostrare API → database → indice → frontend in staging con timestamp visibile.
 - [ ] Dimostrare refresh Celery con task realmente consumato, aggiornamento persistito e nessuna chiamata retailer durante una normale search.
-- [ ] Eseguire test di isolamento: un connector fallito/quarantinato non blocca gli altri.
+- [ ] Eseguire test di isolamento in staging: un connector fallito/quarantinato non blocca gli altri. **CI offline PASS** per Bplatz timeout/quarantena (PR #343 run 41968439231); prova su staging persistente ancora da eseguire.
 - [ ] Verificare backup, restore testato e piano di rollback.
 
 **Uscita Gate 0:** checklist completa, CI verde sui commit finali, report di smoke/E2E allegato alla PR. Fino ad allora resta vietato inviare traffico utente al nuovo percorso.
