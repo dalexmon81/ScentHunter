@@ -36,10 +36,29 @@ Further Bplatz-specific negative-path tests passed in PR #343 workflow run [`419
 
 These are fixture/stub-based tests in offline, disposable CI only. They are not live ingestion, a current retailer offer, or persistent staging proof.
 
+### Live staging worker evidence — 2026-11-04 (PR #344)
+
+Workflow run [41911919350](https://github.com/dalexmon81/ScentHunter/actions/runs/41911919350) reached the actual Fly.io staging environment. Its completed steps confirm:
+
+- The isolated worker image was deployed and the process groups were scaled to one `app` worker and zero `beat` machines.
+- PostgreSQL identity matched the guarded staging fingerprint for database `neondb`, schema `public`, via `SCENTHUNTER_CATALOG_DATABASE_URL`.
+- Alembic migration completed and the database reported revision `0007_ingestion_dead_letters`, with all required catalog/ingestion tables present.
+- The pre-seed audit reported zero store rows.
+- The Celery worker loaded the ingestion tasks/queues, connected to Redis over TLS, and logged `ready`. Beat remained intentionally disabled.
+
+**The run then failed during canonical catalog seeding.** The seed attempted to insert a second brand with slug `viktor-rolf`: an existing brand row had a different `normalized_name` from the current normalizer. PostgreSQL rejected the duplicate under `uq_brands_slug`. This is a real staging blocker, not a CI-only test failure.
+
+The seed was run inside a database transaction and failed before the subsequent count assertion; that seed transaction should have rolled back. However, the preceding brand-alias normalization was a separate committed step and reported one row updated. Do a read-only count/identity audit before retrying the seed. Do not assume the post-failure staging counts without checking them.
+
+The workflow did **not** reach the later Celery broker-ping or queued-task smoke-test steps. The supplied machine logs also show SIGINT shutdown/restart events; they do not prove sustained worker uptime or successful task execution. The workflow failure is therefore **partial staging infrastructure PASS, seed BLOCKED, task execution NOT VERIFIED**.
+
+A follow-up fix is proposed in draft PR [#348](https://github.com/dalexmon81/ScentHunter/pull/348): resolve an existing brand by stable slug as well as normalized name, and stop for manual review if those identifiers point to different rows. It has not been merged or deployed.
+
 ### Source access and infrastructure
 
 - Current Bplatz terms and the permitted automated access method: **NOT VERIFIED**.
-- Persistent isolated PostgreSQL/Redis staging: **NOT VERIFIED**.
+- Persistent isolated PostgreSQL staging identity: **VERIFIED for the guarded Neon fingerprint in PR #344 run 41911919350**; sustained availability/backup-restore still NOT VERIFIED.
+- Redis TLS connectivity from the staging worker: **VERIFIED by startup logs**; dedicated Redis isolation/retention configuration still NOT VERIFIED.
 - Real Bplatz offer persisted through Phase 5: **NOT RUN**.
 - Celery refresh of a real Bplatz offer: **NOT RUN**.
 - Catalog search proven to avoid synchronous retailer requests: **NOT RUN**.
@@ -55,7 +74,10 @@ These are fixture/stub-based tests in offline, disposable CI only. They are not 
 | Bplatz fixture artifact/run linkage | PASS — PR #343 run 41967935150, offline only |
 | Retry/quarantine and wrong-size/ambiguous-match coverage | PASS — PR #343 run 41968439231, offline fixture/stub tests only |
 | Bplatz automated access permission/method | NOT VERIFIED |
-| Isolated persistent staging resources | NOT VERIFIED |
+| PostgreSQL staging identity and schema/migrations | PASS — PR #344 run 41911919350; uptime/restore still unverified |
+| Redis TLS broker connectivity | PASS — worker startup log; dedicated-instance isolation not independently verified |
+| Canonical staging seed | BLOCKED — duplicate brand slug `viktor-rolf`; draft fix PR #348 |
+| Celery queued task execution | NOT VERIFIED — workflow failed before ping/smoke steps |
 | Real offer in Phase 5 PostgreSQL | NOT RUN |
 | Real Celery refresh and price history | NOT RUN |
 | Search with zero synchronous Bplatz requests | NOT RUN |
@@ -64,9 +86,11 @@ These are fixture/stub-based tests in offline, disposable CI only. They are not 
 ## Required next steps
 
 1. Review Bplatz's current terms and confirm the exact permitted access method before any live request. If permission is unclear, stop.
-2. Verify isolated staging PostgreSQL and Redis without exposing secrets or using production resources.
-3. Only after explicit source-access approval and staging verification, run one bounded pilot for the exact Liquid Brun EDP 100 ml variant.
-4. Verify persistence, one Celery refresh, price history, and catalog search with no synchronous retailer request.
+2. Resolve the duplicate-brand seed defect in draft PR #348; run unit/regression CI without triggering a staging deployment.
+3. Perform a read-only staging count/identity audit after the failed seed, accounting for the separately committed one-row brand-alias normalization.
+4. Only after review, explicitly approve a controlled seed retry; then verify expected canonical counts and zero stores/offers.
+5. Verify the worker remains up, answers Celery ping, and executes the side-effect-free queued smoke task. Keep Beat disabled.
+6. Separately verify Bplatz source-access permission before any retailer request. Only then consider a bounded Liquid Brun EDP 100 ml pilot.
 
 Do not create a synthetic published offer, substitute another product, scrape around a block, deploy a persistent worker without cost approval, or enable shadow/canary traffic.
 
