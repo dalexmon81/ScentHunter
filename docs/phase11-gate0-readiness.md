@@ -53,6 +53,15 @@ The fix reads an explicit price from the selected Schema.org `priceSpecification
 
 The latest Gmail check found no new Bplatz permission response and no Notino advertiser approval/feed entitlement. The CJ network welcome email is not advertiser approval. Therefore these results do not change any Gate 0 authorization or real-offer requirements.
 
+## Additional affiliate-feed route: Awin (research only)
+
+A new research shortlist is documented in [phase11-affiliate-feed-alternatives.md](phase11-affiliate-feed-alternatives.md). Public merchant profiles indicate:
+- Perfume Market UK (Awin merchant 124168): daily automated product feed advertised.
+- Perfumetrader DE (Awin merchant 11672): product data advertised.
+- The Fragrance Shop (Rakuten merchant 43488): automated daily feed advertised.
+
+These public descriptions do not prove publisher acceptance, feed entitlement, price-comparison permission, required fields, or shipping coverage for ScentHunter's target countries. No application result or feed download has been verified. Do not implement a live downloader or activate any of these merchants until the publisher account shows access and the program terms permit the intended use.
+
 ## Offline quality evidence
 
 - PR #347 adds the Bplatz offline fixture validation matrix.
