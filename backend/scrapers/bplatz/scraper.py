@@ -67,6 +67,10 @@ def parse_price(value):
     if value is None or value == "":
         return None
     text = clean(value).replace("€", "").replace("EUR", "").strip()
+    # Reject negative values before extracting digits; otherwise "-12.50"
+    # could be misread as a positive 12.50 offer.
+    if re.search(r"(^|[^\\d])-\\s*\\d", text):
+        return None
     m = re.search(r"\d{1,3}(?:[.,]\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?", text)
     if not m:
         return None
