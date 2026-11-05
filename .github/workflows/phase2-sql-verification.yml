@@ -200,3 +200,190 @@ jobs:
             raw_id="$(sed -nE 's/.*ingestion_raw_id=([^ ]+).*/\1/p' <<< "$line")"
             printf 'WORKER_LOG time=07:43:12 product=%s offer_id=%s ingestion_raw_id=%s\n' "${product:-NOT_FOUND}" "${offer_id:-NOT_FOUND}" "${raw_id:-NOT_FOUND}"
           done <<< "$matches"
+
+
+  export-canonical-db:
+    name: Export consistent canonical SQLite snapshot (read-only source)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create a consistent snapshot without writing to the source database
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${FLY_API_TOKEN:-}" ]]; then
+            echo "Required Fly.io access secret is unavailable."
+            exit 1
+          fi
+
+          cat > create_readonly_snapshot.py <<'PY'
+          import hashlib
+          import json
+          import os
+          import sqlite3
+          from pathlib import Path
+          from urllib.parse import quote
+
+          def configured_url():
+              return (
+                  os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL")
+                  or os.environ.get("SCENTHUNTER_DATABASE_URL")
+                  or "sqlite:////data/catalog/catalog.sqlite3"
+              ).strip()
+
+          url = configured_url()
+          if not url.startswith("sqlite:"):
+              raise SystemExit("REFUSED: canonical database URL is not SQLite")
+
+          raw = url.removeprefix("sqlite:///")
+          if not raw or raw == ":memory:":
+              raise SystemExit("REFUSED: canonical database is not a persistent file")
+
+          source_path = (
+              Path("/" + raw.lstrip("/"))
+              if url.startswith("sqlite:////")
+              else Path(raw)
+          ).expanduser().resolve()
+
+          if not source_path.is_file():
+              print(json.dumps({
+                  "snapshot_created": False,
+                  "reason": "canonical_database_file_not_found",
+                  "configuration_source": (
+                      "SCENTHUNTER_CATALOG_DATABASE_URL"
+                      if os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL")
+                      else "SCENTHUNTER_DATABASE_URL"
+                      if os.environ.get("SCENTHUNTER_DATABASE_URL")
+                      else "application_default"
+                  )
+              }))
+              raise SystemExit(2)
+
+          destination_path = Path("/tmp/scenthunter-phase2-canonical-snapshot.sqlite3")
+          source = sqlite3.connect(
+              "file:" + quote(str(source_path), safe="/") + "?mode=ro",
+              uri=True,
+              timeout=30
+          )
+          source.execute("PRAGMA query_only=ON")
+          if source.execute("PRAGMA query_only").fetchone()[0] != 1:
+              raise SystemExit("REFUSED: source connection is not query-only")
+
+          try:
+              check = source.execute("PRAGMA quick_check").fetchone()[0]
+              if check != "ok":
+                  raise SystemExit("REFUSED: source database integrity check failed")
+
+              tables = {
+                  row[0] for row in source.execute(
+                      "SELECT name FROM sqlite_master WHERE type='table'"
+                  )
+              }
+              required = {
+                  "brands", "fragrances", "product_variants", "stores",
+                  "offers", "price_history", "match_audit", "ingestion_runs"
+              }
+              missing = sorted(required - tables)
+              if missing:
+                  raise SystemExit(
+                      "REFUSED: database does not contain the complete Phase 2 schema"
+                  )
+
+              if destination_path.exists():
+                  destination_path.unlink()
+              destination = sqlite3.connect(str(destination_path))
+              try:
+                  source.backup(destination)
+                  destination.execute("PRAGMA quick_check")
+                  destination.commit()
+              finally:
+                  destination.close()
+          finally:
+              source.close()
+
+          digest = hashlib.sha256(destination_path.read_bytes()).hexdigest()
+          print(json.dumps({
+              "snapshot_created": True,
+              "source_path": "<masked>/catalog.sqlite3",
+              "source_open_mode": "read-only",
+              "source_query_only": True,
+              "sqlite_backup_api_used": True,
+              "integrity_check": "ok",
+              "required_phase2_tables_present": True,
+              "snapshot_size_bytes": destination_path.stat().st_size,
+              "snapshot_sha256": digest
+          }, sort_keys=True))
+          PY
+
+          encoded_script="$(base64 -w 0 create_readonly_snapshot.py)"
+          remote_command="/bin/sh -lc 'echo ${encoded_script} | base64 -d | /app/.venv/bin/python -'"
+          if ! flyctl ssh console --app scenthunter --select=false -C "$remote_command" > snapshot-metadata.json 2> fly-snapshot-error.txt; then
+            echo "SNAPSHOT_CREATION_FAILED; source database was not modified."
+            exit 1
+          fi
+          cat snapshot-metadata.json
+          grep -q '"snapshot_created": true' snapshot-metadata.json
+
+      - name: Download the temporary snapshot from the machine
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl sftp get /tmp/scenthunter-phase2-canonical-snapshot.sqlite3 catalog.sqlite3 --app scenthunter --select=false
+
+      - name: Verify downloaded snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import sqlite3
+          from pathlib import Path
+
+          path = Path("catalog.sqlite3")
+          if not path.is_file() or path.stat().st_size == 0:
+              raise SystemExit("Downloaded snapshot is missing or empty")
+          conn = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
+          try:
+              check = conn.execute("PRAGMA quick_check").fetchone()[0]
+              tables = sorted(
+                  row[0] for row in conn.execute(
+                      "SELECT name FROM sqlite_master WHERE type='table'"
+                  )
+              )
+              if check != "ok":
+                  raise SystemExit("Downloaded snapshot failed SQLite quick_check")
+              print(json.dumps({
+                  "downloaded_file": path.name,
+                  "size_bytes": path.stat().st_size,
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  "integrity_check": check,
+                  "tables": tables
+              }, indent=2))
+          finally:
+              conn.close()
+          PY
+
+      - name: Upload database snapshot as a short-lived private workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenthunter-phase2-canonical-sqlite-snapshot
+          path: catalog.sqlite3
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove temporary snapshot from the Fly machine
+        if: always()
+        continue-on-error: true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          flyctl ssh console --app scenthunter --select=false -C "rm -f /tmp/scenthunter-phase2-canonical-snapshot.sqlite3" >/dev/null 2>&1 || true
