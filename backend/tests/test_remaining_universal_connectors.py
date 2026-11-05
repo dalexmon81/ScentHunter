@@ -33,8 +33,8 @@ def row(store):
         "size_ml": 100,
         "concentration": "Eau de Parfum",
         "identity": {
-            "sku": {"value": f"{store}-sauvage-100", "source": "fixture"},
-            "gtin": {"value": "3348901250146", "source": "fixture"},
+            "sku": None,
+            "gtin": None,
         },
         "source": {
             "source_name": "Dior Sauvage Eau de Parfum 100 ml",
@@ -57,7 +57,8 @@ def test_missing_store_maps_fixture_row_to_universal_offer(store, connector_type
     assert offer.price == Decimal("89.9")
     assert offer.currency == "EUR"
     assert offer.availability == "in_stock"
-    assert offer.external_product_id == f"{store}-sauvage-100"
+    assert offer.external_product_id == URLS[store]  # URL fallback; no invented SKU/GTIN.
+    assert offer.gtin is None
     assert connector.validate_offer(offer)[0]
 
 
