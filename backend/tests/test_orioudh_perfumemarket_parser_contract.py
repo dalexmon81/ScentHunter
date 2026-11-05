@@ -229,3 +229,67 @@ def test_perfumemarket_missing_currency_and_stock_evidence_stay_unknown():
         "currency": None,
         "availability": "unknown",
     }
+
+
+
+def test_orioudh_catalog_adapter_returns_variant_level_contract():
+    session = _JsonSession({
+        "id": 12345,
+        "title": "Liquid Brun Eau de Parfum",
+        "vendor": "French Avenue",
+        "featured_image": "//cdn.example.test/liquid-brun.jpg",
+        "variants": [{
+            "id": 501,
+            "title": "100 ml",
+            "sku": "FA-LB-100",
+            "barcode": "6290360599999",
+            "price": 3185,
+            "available": True,
+        }],
+    })
+
+    rows = orioudh.extract_product_page(
+        session,
+        "https://orioudh.com/products/liquid-brun",
+        "Liquid Brun",
+        html="<html><body>ignored because Shopify JSON is authoritative</body></html>",
+    )
+
+    assert session.urls == ["https://orioudh.com/products/liquid-brun.js"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["identity"]["store_product_id"]["value"] == 12345
+    assert row["identity"]["store_variant_id"]["value"] == 501
+    assert row["identity"]["gtin"]["value"] == "6290360599999"
+    assert row["attributes"]["size_ml"]["value"] == 100
+    assert row["attributes"]["concentration"]["value"] == "Eau de Parfum"
+    assert row["offer"] == {
+        "price": 31.85,
+        "currency": None,
+        "availability": "in_stock",
+    }
+
+
+def test_orioudh_catalog_adapter_preserves_unknown_stock_and_currency():
+    session = _JsonSession({
+        "id": 12345,
+        "title": "Liquid Brun Eau de Parfum",
+        "vendor": "French Avenue",
+        "variants": [{
+            "id": 503,
+            "title": "100 ml",
+            "sku": "FA-LB-100",
+            "price": 3185,
+        }],
+    })
+
+    rows = orioudh.extract_product_page(
+        session,
+        "https://orioudh.com/products/liquid-brun",
+        "Liquid Brun",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["offer"]["currency"] is None
+    assert rows[0]["offer"]["availability"] == "unknown"
+    assert rows[0]["available"] is None
