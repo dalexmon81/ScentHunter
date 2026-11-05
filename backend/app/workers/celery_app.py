@@ -2,11 +2,37 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from celery import Celery
 from kombu import Queue
 
-BROKER_URL = os.environ.get("SCENTHUNTER_REDIS_URL", "redis://localhost:6379/0")
-RESULT_BACKEND = os.environ.get("SCENTHUNTER_CELERY_RESULT_BACKEND", BROKER_URL)
+_broker_url = os.environ.get("SCENTHUNTER_REDIS_URL", "").strip()
+if not _broker_url:
+    if os.environ.get("FLY_APP_NAME"):
+        raise RuntimeError(
+            "SCENTHUNTER_REDIS_URL is missing or empty in the Fly runtime; "
+            "check the staging app secret and redeploy."
+        )
+    _broker_url = "redis://localhost:6379/0"
+
+def _ensure_redis_tls_options(url: str) -> str:
+    """Kombu requires an explicit TLS certificate policy for rediss URLs."""
+    parts = urlsplit(url)
+    if parts.scheme != "rediss":
+        return url
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.setdefault("ssl_cert_reqs", "required")
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
+
+
+BROKER_URL = _ensure_redis_tls_options(_broker_url)
+_result_backend_url = (
+    os.environ.get("SCENTHUNTER_CELERY_RESULT_BACKEND", "").strip()
+    or BROKER_URL
+)
+RESULT_BACKEND = _ensure_redis_tls_options(_result_backend_url)
 
 QUEUES = (
     Queue("discovery"),
