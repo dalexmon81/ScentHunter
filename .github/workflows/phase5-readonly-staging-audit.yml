@@ -1,0 +1,171 @@
+name: Phase 5 read-only Neon staging audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_read_only:
+        description: "Run SELECT-only inspection against the isolated staging database"
+        required: true
+        type: choice
+        options:
+          - no
+          - yes
+        default: no
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: ${{ inputs.confirm_read_only == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly access and locate an already-running staging worker
+        id: machine
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${FLY_API_TOKEN:-}" || { echo "::error::Missing FLY_API_TOKEN"; exit 1; }
+          machines="$(flyctl machines list --app scenthunter-staging-workers --json)"
+          machine_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id // empty')"
+          if [[ -z "$machine_id" ]]; then
+            echo "::error::No already-running staging worker found. This audit will not start or restart machines."
+            exit 1
+          fi
+          echo "machine_id=$machine_id" >> "$GITHUB_OUTPUT"
+          echo "Found an already-running staging worker; no lifecycle changes requested."
+
+      - name: Run SELECT-only database identity and row-count audit
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          MACHINE_ID: ${{ steps.machine.outputs.machine_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > readonly_audit.py <<'PY'
+          import hashlib
+          import json
+          from sqlalchemy import inspect, text
+          from app.db import make_engine
+          from app.db_runtime_identity import configuration_source
+
+          expected_fingerprint = "8b2f015a4746cccc"
+          engine = make_engine()
+          try:
+              with engine.connect() as conn:
+                  # First SQL statement establishes a read-only PostgreSQL transaction.
+                  conn.exec_driver_sql("SET TRANSACTION READ ONLY")
+                  identity = conn.execute(text(
+                      "SELECT current_database(), current_schema()"
+                  )).one()
+                  database, schema = str(identity[0]), str(identity[1])
+                  fingerprint = hashlib.sha256(
+                      (engine.dialect.name + "\\0" + database + "\\0" + schema).encode()
+                  ).hexdigest()[:16]
+                  source = configuration_source()
+
+                  if not (
+                      engine.dialect.name == "postgresql"
+                      and database == "neondb"
+                      and schema == "public"
+                      and fingerprint == expected_fingerprint
+                      and source == "SCENTHUNTER_CATALOG_DATABASE_URL"
+                  ):
+                      raise SystemExit(json.dumps({
+                          "status": "REFUSED_WRONG_DATABASE",
+                          "dialect": engine.dialect.name,
+                          "database": database,
+                          "schema": schema,
+                          "fingerprint": fingerprint,
+                          "configuration_source": source,
+                          "queries_after_identity": 0
+                      }, indent=2))
+
+                  inspector = inspect(conn)
+                  tables = set(inspector.get_table_names())
+                  expected_tables = [
+                      "brands", "fragrances", "product_variants", "stores",
+                      "offers", "price_history", "match_audit", "ingestion_runs",
+                      "ingestion_raw", "ingestion_artifacts", "ingestion_dead_letters",
+                      "legacy_product_id_map", "legacy_variant_id_map"
+                  ]
+                  counts = {}
+                  for table in expected_tables:
+                      if table in tables:
+                          counts[table] = int(conn.execute(
+                              text('SELECT COUNT(*) FROM "' + table + '"')
+                          ).scalar_one())
+                      else:
+                          counts[table] = None
+
+                  revisions = []
+                  if "alembic_version" in tables:
+                      revisions = list(conn.execute(
+                          text("SELECT version_num FROM alembic_version ORDER BY version_num")
+                      ).scalars())
+
+                  viktor_rows = []
+                  if "brands" in tables:
+                      viktor_rows = [
+                          dict(row._mapping) for row in conn.execute(text(
+                              "SELECT name, slug, normalized_name "
+                              "FROM brands WHERE slug = 'viktor-rolf' "
+                              "OR normalized_name IN ('viktor rolf', 'viktor and rolf') "
+                              "ORDER BY slug, normalized_name"
+                          ))
+                      ]
+
+                  store_rows = []
+                  if "stores" in tables:
+                      columns = {c["name"] for c in inspector.get_columns("stores")}
+                      selected = ["slug"]
+                      if "status" in columns:
+                          selected.append("status")
+                      store_rows = [
+                          dict(row._mapping) for row in conn.execute(text(
+                              "SELECT " + ", ".join(selected) + " FROM stores ORDER BY slug"
+                          ))
+                      ]
+
+                  offer_status_counts = {}
+                  if "offers" in tables:
+                      columns = {c["name"] for c in inspector.get_columns("offers")}
+                      if "status" in columns:
+                          offer_status_counts = {
+                              str(row[0]): int(row[1]) for row in conn.execute(text(
+                                  "SELECT status, COUNT(*) FROM offers GROUP BY status ORDER BY status"
+                              ))
+                          }
+
+                  output = {
+                      "status": "READ_ONLY_AUDIT_COMPLETE",
+                      "database": database,
+                      "schema": schema,
+                      "fingerprint": fingerprint,
+                      "configuration_source": source,
+                      "transaction_mode": "READ ONLY",
+                      "alembic_revisions": revisions,
+                      "required_tables_missing": sorted(set(expected_tables) - tables),
+                      "row_counts": counts,
+                      "offer_status_counts": offer_status_counts,
+                      "stores": store_rows,
+                      "viktor_rolf_brand_rows": viktor_rows,
+                      "database_written": False,
+                      "seed_executed": False,
+                      "machines_started_or_stopped": False
+                  }
+                  print(json.dumps(output, indent=2, sort_keys=True, default=str))
+                  conn.rollback()
+          finally:
+              engine.dispose()
+          PY
+
+          encoded="$(base64 -w 0 readonly_audit.py)"
+          remote_command="python -c 'import base64; exec(base64.b64decode(\"$encoded\"))'"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$MACHINE_ID" --command "$remote_command"
