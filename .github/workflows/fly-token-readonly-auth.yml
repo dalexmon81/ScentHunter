@@ -12,25 +12,24 @@ permissions:
 
 jobs:
   verify-fly-auth:
-    name: Verify Fly app-scoped token (read-only)
+    name: Verify Fly token scope (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Verify token identity, app access, and volume access
+      - name: Identify token scope and app visibility
         env:
           FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "STEP 1: Does Fly recognize the token?"
+          echo "STEP 1: Fly recognizes the configured token"
           flyctl auth whoami
-          echo "FLY_TOKEN_IDENTITY_CHECK=PASS"
-          echo "STEP 2: Can the token read app scenthunter?"
+          echo "STEP 2: Apps visible to this token in organization Personal"
+          flyctl apps list --org personal --json | jq -r '.[] | (.Name // .name // "unknown")'
+          echo "STEP 3: Direct visibility of app scenthunter"
           flyctl status --app scenthunter --json
-          echo "FLY_APP_READ_CHECK=PASS"
-          echo "STEP 3: Can the token list app volumes?"
+          echo "STEP 4: Volume visibility"
           flyctl volumes list --app scenthunter --json
-          echo "FLY_VOLUME_READ_CHECK=PASS"
