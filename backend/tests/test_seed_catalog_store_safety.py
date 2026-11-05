@@ -40,3 +40,17 @@ def test_bplatz_activation_requires_explicit_opt_in():
     assert [store["slug"] for store in report["stores_to_seed"]] == ["bplatz"]
     assert report["database_written"] is False
     assert report["source_modified"] is False
+
+
+def test_dior_pilot_dry_run_is_scoped_and_does_not_activate_a_store():
+    report = run_seed("--product-id", "SH-AUTO-0178")
+    assert report["status"] == "validated"
+    assert report["product_filter"] == ["SH-AUTO-0178"]
+    assert report["brands"] == 1
+    assert report["fragrances"] == 1
+    assert report["variants"] == 1
+    assert report["products_without_variants"] == 0
+    assert report["stores_to_seed"] == []
+    assert report["offers_imported"] == 0
+    assert report["database_written"] is False
+    assert report["source_modified"] is False

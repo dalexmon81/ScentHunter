@@ -162,10 +162,49 @@ def main() -> int:
         action="store_true",
         help="explicitly create or activate the Bplatz store row for the dedicated Bplatz integration test",
     )
+    parser.add_argument(
+        "--product-id",
+        action="append",
+        default=[],
+        help="limit the seed to this legacy product ID; may be repeated",
+    )
     args = parser.parse_args()
 
     with Path(args.catalog).open(encoding="utf-8") as handle:
         raw = json.load(handle)
+
+    selected_ids = sorted({str(value).strip() for value in args.product_id if str(value).strip()})
+    if selected_ids:
+        all_products = raw.get("products")
+        if not isinstance(all_products, list):
+            raise SystemExit("STOP: catalog must contain products[]")
+        available_ids = {
+            str(row.get("product_id") or "").strip()
+            for row in all_products if isinstance(row, dict)
+        }
+        missing_ids = sorted(set(selected_ids) - available_ids)
+        if missing_ids:
+            print(json.dumps({
+                "status": "blocked",
+                "blocked_count": len(missing_ids),
+                "examples": [f"unknown product_id: {value}" for value in missing_ids],
+                "product_filter": selected_ids,
+                "source_modified": False,
+                "database_written": False,
+            }, ensure_ascii=False, indent=2))
+            return 2
+        selected_set = set(selected_ids)
+        raw = {
+            **raw,
+            "products": [
+                row for row in all_products
+                if isinstance(row, dict) and str(row.get("product_id") or "").strip() in selected_set
+            ],
+            "variants": [
+                row for row in (raw.get("variants") or [])
+                if isinstance(row, dict) and str(row.get("product_id") or "").strip() in selected_set
+            ],
+        }
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
@@ -194,6 +233,7 @@ def main() -> int:
     source_brands = raw.get("brands") if isinstance(raw.get("brands"), list) else []
     report = {
         "status": "validated",
+        "product_filter": selected_ids,
         "source_brand_records": len(source_brands),
         "brands": len(names),
         "fragrances": len(products),

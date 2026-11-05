@@ -1,0 +1,41 @@
+name: Dior pilot staging identity audit
+
+on:
+  push:
+    branches:
+      - phase5/dior-pilot-scoped-seed
+    paths:
+      - ".github/workflows/dior-pilot-staging-identity-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  staging-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Verify Fly token is available
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::Missing repository secret FLY_API_TOKEN"
+            exit 1
+          fi
+      - name: Read-only audit of Dior identity and retailer tables
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started staging app worker found."
+            exit 1
+          fi
+          audit="python -c 'import json; from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); q=text(\"SELECT b.normalized_name, f.slug, pv.canonical_key, lpm.legacy_product_id, lvm.legacy_variant_id FROM legacy_product_id_map lpm JOIN fragrances f ON f.id=lpm.fragrance_id JOIN brands b ON b.id=f.brand_id JOIN legacy_variant_id_map lvm ON lvm.legacy_variant_id=:variant_id JOIN product_variants pv ON pv.id=lvm.product_variant_id AND pv.fragrance_id=f.id WHERE lpm.legacy_product_id=:product_id\"); rows=[dict(r._mapping) for r in c.execute(q,{\"product_id\":\"SH-AUTO-0178\",\"variant_id\":\"VAR-9e1f0d0b8a3c6e42\"})]; counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in (\"stores\",\"offers\")}; print(json.dumps({\"dior_identity_rows\":rows,\"retailer_counts\":counts})); c.close(); e.dispose()'"
+          output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "$audit")"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | python -c 'import json,sys; lines=[x for x in sys.stdin.read().splitlines() if x.strip().startswith("{")]; r=json.loads(lines[-1]); expected={"normalized_name":"christian dior","slug":"sauvage","canonical_key":"christian-dior|sauvage|edp|100|standard","legacy_product_id":"SH-AUTO-0178","legacy_variant_id":"VAR-9e1f0d0b8a3c6e42"}; assert r["dior_identity_rows"]==[expected], r; assert r["retailer_counts"]=={"stores":0,"offers":0}, r; print("Dior identity already present exactly once; no import required. Retailer tables remain empty.")'
