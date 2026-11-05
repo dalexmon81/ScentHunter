@@ -22,20 +22,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$FLY_API_TOKEN" == fm2_* ]]; then
-            auth_header="Authorization: FlyV1 ${FLY_API_TOKEN}"
-          else
-            auth_header="Authorization: Bearer ${FLY_API_TOKEN}"
-          fi
-          for endpoint in \
-            "https://api.machines.dev/v1/apps/scenthunter" \
-            "https://api.machines.dev/v1/apps/scenthunter/volumes"; do
-            echo "Checking endpoint: ${endpoint##*/}"
-            code=$(curl --silent --show-error \
-              -H "$auth_header" \
-              -H "Accept: application/json" \
-              -o /tmp/fly-response.json \
-              -w "%{http_code}" "$endpoint")
-            echo "HTTP_STATUS=$code"
-            jq -c . /tmp/fly-response.json 2>/dev/null || sed -n '1,8p' /tmp/fly-response.json
+          for auth_scheme in "FlyV1" "Bearer"; do
+            if [[ "$auth_scheme" == "FlyV1" ]]; then
+              auth_value="FlyV1 ${FLY_API_TOKEN}"
+            else
+              auth_value="Bearer ${FLY_API_TOKEN}"
+            fi
+            echo "Testing authorization scheme: ${auth_scheme}"
+            for endpoint in \
+              "https://api.machines.dev/v1/apps/scenthunter" \
+              "https://api.machines.dev/v1/apps/scenthunter/volumes"; do
+              echo "Checking endpoint: ${endpoint##*/}"
+              code=$(curl --silent --show-error \
+                -H "Authorization: ${auth_value}" \
+                -H "Accept: application/json" \
+                -o /tmp/fly-response.json \
+                -w "%{http_code}" "$endpoint")
+              echo "HTTP_STATUS=$code"
+              jq -c . /tmp/fly-response.json 2>/dev/null || sed -n '1,8p' /tmp/fly-response.json
+            done
           done
