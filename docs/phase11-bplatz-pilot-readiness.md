@@ -67,9 +67,10 @@ The shared adapter:
 
 **Partial PASS — core Bplatz fixture path and refresh regression are covered by CI; the full checklist below is not yet proven.**
 
-Evidence on Phase 5 branch commit `a845f3aab4cc23cc216a221c0444b7b4af67caa8`:
-- Phase 4 connector contract: **99 passed** (run `41964236213`), including the new Bplatz parser-quality test module.
-- Phase 5 ingestion tests: **51 passed** and runtime integration succeeded (run `41964236186`); the runtime job confirms Redis broker, Celery worker consumption, PostgreSQL task query, durable dead-letter write, canonical seed, and `SAFE_NO_RETAILER_NETWORK_CALLS=PASS`.
+Evidence on Phase 5 branch commit `b853faa41514952aeab3a996c396725c64d0493b`:
+- Phase 4 connector contract: **111 passed** (run `41965059287`), including expanded Bplatz price, size/concentration and variant-conflict tests.
+- Phase 5 ingestion tests: **53 passed** (run `41965059301`); runtime integration succeeded, confirming Redis broker, Celery worker consumption, PostgreSQL task query, durable dead-letter write, canonical seed, and `SAFE_NO_RETAILER_NETWORK_CALLS=PASS`.
+- Added a store-isolated quarantine test and a local page-loader raw-HTML capture assertion. These are fixture/unit tests, not live retailer evidence.
 - The negative-price guard rejects a leading minus sign before numeric extraction; parser tests cover valid EUR formats, zero/negative/out-of-range prices, size/concentration parsing, explicit in-stock/out-of-stock, and conservative handling of preorder/unknown.
 - The Bplatz synthetic HTML fixture has no fabricated SKU or GTIN; absent identifiers remain absent and the product URL is used only as the external ID fallback.
 - The local end-to-end fixture test exercises `run_connector_once`, exact Dior Sauvage EDP 100 ml canonical matching, promotion in an in-memory SQLite test database, active-offer readback, EUR price, stock, PriceHistory and MatchAudit. This is a test fixture, not retailer evidence or persistent staging.
