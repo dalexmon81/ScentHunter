@@ -1,4 +1,6 @@
 import asyncio
+
+import pytest
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -317,3 +319,18 @@ def test_bplatz_bounded_product_fetch_uses_exact_url_without_discovery():
             assert decision.product_variant_id == variant.id
     finally:
         engine.dispose()
+
+
+def test_bplatz_manual_task_requires_access_reference_and_exact_product_url():
+    from app.workers.ingestion_tasks import ingest_bounded_bplatz_product_url
+
+    with pytest.raises(ValueError, match="authorization_reference_required"):
+        ingest_bounded_bplatz_product_url.run(
+            "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml",
+            "",
+        )
+    with pytest.raises(ValueError, match="exact_liquid_brun_100ml"):
+        ingest_bounded_bplatz_product_url.run(
+            "https://bplatz.de/products/another-fragrance",
+            "Bplatz automated-access approval recorded",
+        )
