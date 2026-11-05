@@ -1,0 +1,39 @@
+name: Bplatz Gate B1 fixture matrix
+
+on:
+  push:
+    branches:
+      - phase5/bplatz-b1-fixture-matrix
+    paths:
+      - "tests/test_bplatz_gate_b1_matrix.py"
+      - "tests/fixtures/bplatz/**"
+      - "backend/scrapers/bplatz/scraper.py"
+      - ".github/workflows/bplatz-gate-b1-matrix.yml"
+  pull_request:
+    branches:
+      - phase5/redis-celery-ingestion-pipeline
+    paths:
+      - "tests/test_bplatz_gate_b1_matrix.py"
+      - "tests/fixtures/bplatz/**"
+      - "backend/scrapers/bplatz/scraper.py"
+      - ".github/workflows/bplatz-gate-b1-matrix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install offline parser test dependencies
+        run: python -m pip install pytest requests beautifulsoup4
+      - name: Run Bplatz Gate B1 matrix without retailer network access
+        run: python -m pytest -q tests/test_bplatz_gate_b1_matrix.py
