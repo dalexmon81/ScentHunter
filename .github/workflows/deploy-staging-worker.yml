@@ -17,6 +17,9 @@ jobs:
     if: inputs.confirm_staging_deploy == 'yes'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # flyctl reads FLY_API_TOKEN; keep the staging-scoped secret isolated from production.
+      FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
