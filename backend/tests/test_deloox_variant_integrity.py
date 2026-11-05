@@ -180,5 +180,70 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertIsNone(scraper._product(url, html, "Liquid Brun Limited Edition 100 ml"))
 
 
+    def test_deloox_does_not_invent_eur_when_selected_offer_omits_currency(self):
+        html = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "French Avenue Liquid Brun Eau de Parfum 100 ml",
+          "brand": {"@type": "Brand", "name": "French Avenue"},
+          "offers": {"@type": "Offer", "price": "32.99"}
+        }
+        </script></head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
+        """
+        result = scraper._product(
+            "https://www.deloox.be/produit/123/liquid-brun-eau-de-parfum-100-ml",
+            html,
+            "Liquid Brun Eau de Parfum 100 ml",
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["offer"]["price"], 32.99)
+        self.assertIsNone(result["offer"]["currency"])
+        self.assertIsNone(result["currency"])
+
+    def test_deloox_preserves_explicit_iso_currency_from_price_specification(self):
+        html = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "French Avenue Liquid Brun Eau de Parfum 100 ml",
+          "brand": {"@type": "Brand", "name": "French Avenue"},
+          "offers": {"@type": "Offer", "priceSpecification": {
+            "@type": "UnitPriceSpecification", "price": "32.99", "priceCurrency": "EUR"
+          }}
+        }
+        </script></head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
+        """
+        result = scraper._product(
+            "https://www.deloox.be/produit/123/liquid-brun-eau-de-parfum-100-ml",
+            html,
+            "Liquid Brun Eau de Parfum 100 ml",
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["offer"]["currency"], "EUR")
+
+    def test_deloox_rejects_malformed_currency_code(self):
+        html = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "French Avenue Liquid Brun Eau de Parfum 100 ml",
+          "brand": {"@type": "Brand", "name": "French Avenue"},
+          "offers": {"@type": "Offer", "price": "32.99", "priceCurrency": "EURO"}
+        }
+        </script></head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
+        """
+        result = scraper._product(
+            "https://www.deloox.be/produit/123/liquid-brun-eau-de-parfum-100-ml",
+            html,
+            "Liquid Brun Eau de Parfum 100 ml",
+        )
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["offer"]["currency"])
+
+
 if __name__ == "__main__":
     unittest.main()
