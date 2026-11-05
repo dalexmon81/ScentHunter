@@ -376,3 +376,49 @@ def test_bplatz_page_loader_retains_raw_html_evidence_without_network():
     assert artifact["format"] == "html"
     assert artifact["data"] == html
     assert artifact["source_url"] == "https://en.bplatz.de/products/fixture"
+
+
+def test_bplatz_connector_timeout_is_retried_and_quarantined_without_affecting_other_stores():
+    from app.connectors import BplatzConnector
+
+    factory = make_session_factory()
+    with factory() as session:
+        session.add(Store(
+            name="Bplatz", slug="bplatz", currency="EUR", status="active"
+        ))
+        session.add(Store(
+            name="Other Store", slug="other-store", currency="EUR", status="active"
+        ))
+        session.commit()
+
+    calls = []
+
+    def blocked_or_timed_out_search(_query):
+        calls.append("attempt")
+        raise TimeoutError("synthetic Bplatz transport timeout")
+
+    # Real Bplatz adapter, deterministic failing transport. No network request.
+    connector = BplatzConnector(
+        discovery_terms=("French Avenue Liquid Brun",),
+        search_func=blocked_or_timed_out_search,
+    )
+
+    first = run_connector_once(connector, factory, quarantine_after=2)
+    second = run_connector_once(connector, factory, quarantine_after=2)
+    third = run_connector_once(connector, factory, quarantine_after=2)
+
+    with factory() as session:
+        bplatz = session.scalar(select(Store).where(Store.slug == "bplatz"))
+        other = session.scalar(select(Store).where(Store.slug == "other-store"))
+        runs = session.scalars(
+            select(IngestionRun).where(IngestionRun.store_id == bplatz.id)
+            .order_by(IngestionRun.started_at.asc())
+        ).all()
+
+    assert first["status"] == "failed"
+    assert second["status"] == "quarantined"
+    assert third == {"store": "bplatz", "status": "quarantined", "staged": 0}
+    assert calls == ["attempt", "attempt"]
+    assert [run.status for run in runs] == ["failed", "failed"]
+    assert bplatz.status == "quarantined"
+    assert other.status == "active"
