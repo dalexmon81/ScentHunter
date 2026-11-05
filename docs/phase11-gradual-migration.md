@@ -26,9 +26,9 @@ Le seguenti verifiche automatiche sono passate sui rispettivi commit:
 - PR #343, commit `b609eaa353355fe03a6540035fb028ef87f86a83`: [CI Phase 5 run 41968439231](https://github.com/dalexmon81/ScentHunter/actions/runs/41968439231) — `ingestion-pipeline` e `runtime-integration` PASS. Include test offline Bplatz per timeout/retry/quarantena isolata, rifiuto della variante 50 ml rispetto alla 100 ml e GTIN duplicato inviato a revisione senza match automatico.
 - Commit Phase 11 `d7fe53605bb9d1a83035914c843faaa4dc345197`: [Next Engine Shadow](https://github.com/dalexmon81/ScentHunter/actions/runs/41969069271), [backend parser regression](https://github.com/dalexmon81/ScentHunter/actions/runs/41969069250) e [hydration regression](https://github.com/dalexmon81/ScentHunter/actions/runs/41969069242) — tutti PASS.
 
-Queste prove sono CI automatica, fixture/stub-based o ambienti effimeri. **Non** dimostrano staging persistente, accesso Bplatz autorizzato, offerte reali, refresh persistente o ricerca utente senza chiamate retailer. Perciò non chiudono Gate 0.
+Le prove CI offline restano fixture/stub-based. La run #42042272812 aggiunge ora una prova staging persistente per deploy, schema PostgreSQL, seed, ping Celery e task in coda. **Non** dimostra ancora accesso Bplatz autorizzato, offerta reale, refresh di un'offerta persistita o ricerca utente senza chiamate retailer. Gate 0 resta quindi aperto.
 
-La run [fly-pilot 41969066841](https://github.com/dalexmon81/ScentHunter/actions/runs/41969066841) è terminata con failure e zero job creati. Il workflow è configurato per avvio manuale con conferma esplicita `deploy`; la run osservata è arrivata da un evento `push`. Nessun deploy risulta eseguito. Non rilanciare il workflow senza approvazione esplicita e verifica separata di costi, target, secrets e autorizzazione.
+La run manuale [Deploy staging worker #42042272812](https://github.com/dalexmon81/ScentHunter/actions/runs/42042272812) è terminata con successo. Il workflow ha mantenuto un solo worker `app` e zero macchine `beat`; il seed ha importato solo identità canoniche, senza attivare retailer. Nessun deploy di produzione, nessuna modifica al routing e nessun traffico shadow/canary sono stati eseguiti.
 
 ## Regole di sicurezza non negoziabili
 
