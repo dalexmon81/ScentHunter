@@ -22,7 +22,6 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
-from app.services.product_normalization import normalize_brand
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -42,6 +41,15 @@ def norm(value: str) -> str:
     value = unicodedata.normalize("NFKD", value)
     value = "".join(ch for ch in value if not unicodedata.combining(ch)).lower()
     return re.sub(r"[^a-z0-9]+", " ", value).strip()
+
+
+def normalize_brand(value: str) -> str:
+    """Normalize brand names consistently without depending on optional app modules."""
+    normalized = norm(str(value).replace("&", " and "))
+    return {"dior": "christian dior", "christian dior": "christian dior",
+            "nishane": "nishane istanbul", "nishane istanbul": "nishane istanbul"}.get(
+                normalized, normalized
+            )
 
 
 def slugify(value: str) -> str:
