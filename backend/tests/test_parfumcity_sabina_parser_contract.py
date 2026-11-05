@@ -107,3 +107,26 @@ def test_sabina_structured_offer_keeps_explicit_currency_and_stock():
     row = sabina.extract_product_page(None, url, "Liquid Brun", html=html)
     assert row["offer"]["currency"] == "EUR"
     assert row["offer"]["availability"] == "in_stock"
+
+
+def test_sabina_variant_without_currency_keeps_currency_unknown():
+    url = "https://www.sabina.com/es/perfumes/123-liquid-brun.html"
+    payload = {
+        "@type": "Product",
+        "name": "French Avenue Liquid Brun Eau de Parfum",
+        "offers": {
+            "@type": "Offer",
+            "url": url,
+            "price": "31.85",
+        },
+    }
+    html = (
+        "<html><head><script type='application/ld+json'>"
+        + json.dumps(payload)
+        + "</script></head><body><h1>"
+        + payload["name"]
+        + "</h1><div data-size='100 ml' data-price='31.85'></div></body></html>"
+    )
+    row = sabina.extract_product_page(None, url, "Liquid Brun", html=html)
+    assert row["variants"]
+    assert row["variants"][0]["currency"] is None
