@@ -327,3 +327,52 @@ def test_bplatz_saved_fixture_stages_matches_and_promotes_exact_offer():
             MatchAudit.offer_id == offer_id
         )))) == 1
     engine.dispose()
+
+
+
+def test_bplatz_source_failure_quarantines_only_bplatz_after_threshold():
+    factory = make_session_factory()
+    with factory() as session:
+        session.add(Store(name="Other Store", slug="other-store", currency="EUR", status="active"))
+        session.commit()
+
+    class BplatzFailingConnector(FakeConnector):
+        store_key = "bplatz"
+
+    # Store-scoped failure accounting: repeated Bplatz failures must not
+    # quarantine an unrelated retailer.
+    with factory() as session:
+        session.add(Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"))
+        session.commit()
+
+    connector = BplatzFailingConnector(fail=True)
+    run_connector_once(connector, factory, quarantine_after=2)
+    result = run_connector_once(connector, factory, quarantine_after=2)
+
+    with factory() as session:
+        bplatz = session.scalar(select(Store).where(Store.slug == "bplatz"))
+        other = session.scalar(select(Store).where(Store.slug == "other-store"))
+    assert result["status"] == "quarantined"
+    assert bplatz.status == "quarantined"
+    assert other.status == "active"
+
+
+def test_bplatz_page_loader_retains_raw_html_evidence_without_network():
+    from app.connectors import BplatzConnector
+
+    html = "<html><body>fixture page bytes</body></html>"
+
+    def page_loader(_url, _query):
+        return html
+
+    connector = BplatzConnector(page_loader=page_loader)
+    loaded = asyncio.run(connector.fetch_product(
+        "https://en.bplatz.de/products/fixture"
+    ))
+
+    assert loaded is None  # Fixture is intentionally not a parsed product mapping.
+    assert len(connector._raw_artifacts) == 1
+    artifact = connector._raw_artifacts[0]
+    assert artifact["format"] == "html"
+    assert artifact["data"] == html
+    assert artifact["source_url"] == "https://en.bplatz.de/products/fixture"

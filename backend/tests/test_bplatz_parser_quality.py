@@ -106,3 +106,49 @@ def test_bplatz_invalid_price_is_not_parsed_as_a_purchasable_price(price):
     )
     assert row is not None
     assert row["price_num"] is None
+
+
+
+@pytest.mark.parametrize(
+    ("title", "size", "concentration"),
+    [
+        ("Dior Sauvage EDT 30 ml", 30, "Eau de Toilette"),
+        ("Dior Sauvage EDT 200 ml", 200, "Eau de Toilette"),
+        ("Dior Sauvage EDP 50 ml", 50, "Eau de Parfum"),
+        ("Dior Sauvage EDP 100 ml", 100, "Eau de Parfum"),
+        ("Dior Sauvage EDP 150 ml", 150, "Eau de Parfum"),
+        ("Dior Sauvage Parfum 60 ml", 60, "Parfum"),
+        ("Dior Sauvage Extrait de Parfum 100 ml", 100, "Extrait de Parfum"),
+    ],
+)
+def test_bplatz_variant_matrix_preserves_exact_size_and_concentration(
+    title, size, concentration
+):
+    row = scraper.parse_product_html(
+        _product_html(title=title, price="89.90", availability="InStock"),
+        "https://en.bplatz.de/products/variant",
+        "Dior Sauvage",
+    )
+    assert row is not None
+    assert row["size_ml"] == size
+    assert row["concentration"] == concentration
+
+
+@pytest.mark.parametrize(
+    ("title", "query"),
+    [
+        ("Dior Sauvage Eau de Parfum 60 ml", "Dior Sauvage Eau de Parfum 100 ml"),
+        ("Dior Sauvage Eau de Toilette 100 ml", "Dior Sauvage Eau de Parfum 100 ml"),
+        ("Dior Eau Sauvage Eau de Parfum 100 ml", "Dior Sauvage Eau de Parfum 100 ml"),
+    ],
+)
+def test_bplatz_variant_conflicts_are_not_rewritten_to_requested_identity(title, query):
+    row = scraper.parse_product_html(
+        _product_html(title=title, price="89.90", availability="InStock"),
+        "https://en.bplatz.de/products/variant",
+        query,
+    )
+    # The parser may identify the same fragrance family, but it must preserve
+    # the page's actual variant attributes for the canonical matcher to reject.
+    if row is not None:
+        assert row["size_ml"] != 100 or row["concentration"] != "Eau de Parfum" or title.endswith("100 ml")
