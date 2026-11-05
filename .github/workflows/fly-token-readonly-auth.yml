@@ -1,0 +1,63 @@
+name: Fly token read-only authentication check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fly-token-readonly-auth.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-fly-auth:
+    name: Diagnose Fly app token authorization (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Capture direct Fly API authorization response
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw_token="$FLY_API_TOKEN"
+          if [[ "$raw_token" == "FlyV1 "* ]]; then
+            raw_token="${raw_token#FlyV1 }"
+            echo "TOKEN_FORMAT=already_FlyV1_prefixed"
+          elif [[ "$raw_token" == fm2_* ]]; then
+            echo "TOKEN_FORMAT=raw_fm2"
+          else
+            echo "TOKEN_FORMAT=other"
+          fi
+          echo "TOKEN_LENGTH=${#raw_token}"
+          # Ask Fly to identify this macaroon directly. This is read-only and
+          # distinguishes an invalid token from a valid token scoped elsewhere.
+          # This workflow performs identity and app/volume GET requests only.
+          for auth_value in "FlyV1 ${raw_token}" "Bearer ${raw_token}"; do
+            scheme="${auth_value%% *}"
+            code=$(curl --silent --show-error \
+              -H "Authorization: ${auth_value}" \
+              -H "Accept: application/json" \
+              -o /tmp/fly-token-current.json \
+              -w "%{http_code}" "https://api.machines.dev/v1/tokens/current")
+            echo "TOKEN_IDENTITY_HTTP_STATUS=${code} auth=${scheme}"
+            jq -c . /tmp/fly-token-current.json 2>/dev/null || sed -n '1,4p' /tmp/fly-token-current.json
+          done
+          for auth_value in "$FLY_API_TOKEN" "FlyV1 ${raw_token}" "Bearer ${raw_token}"; do
+            scheme="${auth_value%% *}"
+            echo "Testing authorization value form: ${scheme}"
+            for endpoint in \
+              "https://api.machines.dev/v1/apps/scenthunter" \
+              "https://api.machines.dev/v1/apps/scenthunter/machines" \
+              "https://api.machines.dev/v1/apps/scenthunter/volumes"; do
+              code=$(curl --silent --show-error \
+                -H "Authorization: ${auth_value}" \
+                -H "Accept: application/json" \
+                -o /tmp/fly-response.json \
+                -w "%{http_code}" "$endpoint")
+              echo "HTTP_STATUS=$code endpoint=${endpoint##*/}"
+              jq -c . /tmp/fly-response.json 2>/dev/null || sed -n '1,4p' /tmp/fly-response.json
+            done
+          done
