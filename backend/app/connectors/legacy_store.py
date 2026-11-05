@@ -208,6 +208,21 @@ class LegacyStoreConnector:
         match = self._offers.get(key) or next((x for x in records if x.url == key), None)
         return match.to_dict() if match else None
 
+    async def fetch_product_url(self, product_url: str, query: str):
+        """Fetch exactly one supplied product URL; never run retailer discovery."""
+        url = str(product_url or "").strip()
+        term = str(query or "").strip()
+        if not url or not term:
+            raise ValueError("product_url_and_query_required")
+        await self._limiter.acquire()
+        loaded = await self._load_page(url, term)
+        if not loaded:
+            return ()
+        records = self.parse_raw(loaded)
+        for record in records:
+            self._offers[record.external_product_id] = record
+        return tuple(records)
+
     async def fetch_offers(self, product_key: str):
         if not self._offers and self.discovery_terms:
             await self.discover_products()
