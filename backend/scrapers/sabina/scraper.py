@@ -1348,7 +1348,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             price = next((v for v in price_values if money_to_float(v) is not None), None)
             effective_size = local_size if local_size is not None else (current_variant or {}).get("size")
             if effective_size is not None and price is not None:
-                currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
+                currency = obj.get("priceCurrency") or obj.get("currency")
                 raw_availability = clean(
                     obj.get("availability") or obj.get("stock_status")
                     or obj.get("availability_status")
@@ -1730,7 +1730,7 @@ def _fallback_extract_product_page(session, url, query, authoritative_search=Fal
         "source": {"url": final_url, "name": title, "brand": None, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": None, "store_product_id": {"value": product_id_from_url(final_url), "source": "product_url"}, "store_variant_id": None},
         "attributes": {"size_ml": {"value": size, "source": "product_page"} if size is not None else None, "concentration": {"value": extract_concentration(title, page_text)[0], "source": "product_text"} if extract_concentration(title, page_text)[0] else None, "gender": {"value": "unknown", "source": "default"}, "packaging_type": {"value": "product", "source": "default"}},
-        "offer": {"price": price, "currency": "EUR", "availability": availability},
+        "offer": {"price": price, "currency": None, "availability": availability},
         "provenance": {"name": "sabina_html_fallback", "price": "visible_product_page", "availability": "visible_product_page", "size_ml": "visible_product_page"},
         "raw_data": {"product_url": final_url, "status_code": 200},
         "name": title,
