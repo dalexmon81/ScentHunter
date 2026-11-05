@@ -72,6 +72,12 @@ def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
 
+def explicit_iso_currency(value):
+    """Return a currency only when the selected structured offer states it."""
+    code = clean(value).upper()
+    return code if re.fullmatch(r"[A-Z]{3}", code) else None
+
+
 def norm(v):
     # Normalize accented product names (e.g. Giò -> Gio) before token matching.
     text = unicodedata.normalize("NFKD", clean(v).lower())
@@ -537,7 +543,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         },
         "offer": {
             "price": price,
-            "currency": "EUR",
+            "currency": explicit_iso_currency(offer.get("priceCurrency") or offer.get("priceSpecification", {}).get("priceCurrency") if isinstance(offer.get("priceSpecification"), dict) else offer.get("priceCurrency")),
             "availability": avail,
         },
         "provenance": {
