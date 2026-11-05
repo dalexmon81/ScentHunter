@@ -19,15 +19,18 @@ jobs:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Verify token identity and read-only volume access
+      - name: Verify token identity, app access, and volume access
         env:
           FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Checking whether Fly recognizes the configured token..."
+          echo "STEP 1: Does Fly recognize the token?"
           flyctl auth whoami
           echo "FLY_TOKEN_IDENTITY_CHECK=PASS"
-          echo "Checking read-only volume access for app scenthunter..."
+          echo "STEP 2: Can the token read app scenthunter?"
+          flyctl status --app scenthunter --json
+          echo "FLY_APP_READ_CHECK=PASS"
+          echo "STEP 3: Can the token list app volumes?"
           flyctl volumes list --app scenthunter --json
-          echo "FLY_READ_ONLY_AUTH_CHECK=PASS"
+          echo "FLY_VOLUME_READ_CHECK=PASS"
