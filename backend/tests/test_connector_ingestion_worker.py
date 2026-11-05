@@ -1,4 +1,6 @@
 import asyncio
+
+import pytest
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -235,3 +237,100 @@ def test_notino_live_preflight_requires_exact_and_explicitly_available_candidate
     unmatched = module.summarize_candidates([wrong_concentration])
     assert unmatched["status"] == "no_exact_product"
     assert unmatched["exact_candidate_count"] == 0
+
+
+def test_bplatz_bounded_product_fetch_uses_exact_url_without_discovery():
+    import json
+    from pathlib import Path
+    from app.connectors.bplatz import BplatzConnector
+    from app.services.product_normalization import normalize_product
+    from app.matching.offer_matcher import match_staged_offer
+    from app.models import Brand, Fragrance, ProductVariant
+
+    root = Path(__file__).resolve().parents[2]
+    fixture = root / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
+    meta = json.loads(
+        (root / "tests/fixtures/bplatz/liquid-brun-54015243419916.meta.json").read_text()
+    )
+    from scrapers.bplatz.scraper import parse_product_html
+    parsed = parse_product_html(
+        fixture.read_text(encoding="utf-8"), meta["url_final"], "Liquid Brun"
+    )
+    assert parsed is not None
+    calls = []
+
+    def page_loader(url, query):
+        calls.append((url, query))
+        return parsed
+
+    connector = BplatzConnector(page_loader=page_loader)
+    records = asyncio.run(connector.fetch_product_url(meta["url_final"], "Liquid Brun"))
+    assert len(records) == 1
+    assert calls == [(meta["url_final"], "Liquid Brun")]
+    record = records[0]
+    assert record.brand == "French Avenue"
+    assert record.fragrance == "liquid brun"
+    assert record.concentration == "edp"
+    assert record.size_ml == 100
+    assert record.gtin == "6290360375694"
+    assert record.price is not None and record.price > 0
+    assert record.availability == "in_stock"
+
+    identity = normalize_product(
+        "French Avenue", "French Avenue Liquid Brun Eau de Parfum 100 ml"
+    )
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    try:
+        with factory() as session:
+            brand = Brand(
+                name="French Avenue", slug="french-avenue",
+                normalized_name="french avenue",
+            )
+            session.add(brand)
+            session.flush()
+            fragrance = Fragrance(
+                brand_id=brand.id, name="Liquid Brun", slug="liquid-brun",
+            )
+            session.add(fragrance)
+            session.flush()
+            variant = ProductVariant(
+                fragrance_id=fragrance.id, concentration="edp",
+                size_ml=100, canonical_key=identity.canonical_key,
+            )
+            store = Store(
+                name="Bplatz", slug="bplatz", domain="bplatz.de",
+                country="DE", currency="EUR", status="active",
+            )
+            session.add_all([variant, store])
+            session.flush()
+            raw = IngestionRaw(
+                store_id=store.id,
+                external_product_id=record.external_product_id,
+                raw_payload=record.to_dict(),
+                status="pending",
+            )
+            session.add(raw)
+            session.commit()
+            decision = match_staged_offer(session, raw.id)
+            assert decision.status == "matched"
+            assert decision.method == "canonical_key_exact"
+            assert decision.product_variant_id == variant.id
+    finally:
+        engine.dispose()
+
+
+def test_bplatz_manual_task_requires_access_reference_and_exact_product_url():
+    from app.workers.ingestion_tasks import ingest_bounded_bplatz_product_url
+
+    with pytest.raises(ValueError, match="authorization_reference_required"):
+        ingest_bounded_bplatz_product_url.run(
+            "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml",
+            "",
+        )
+    with pytest.raises(ValueError, match="exact_liquid_brun_100ml"):
+        ingest_bounded_bplatz_product_url.run(
+            "https://bplatz.de/products/another-fragrance",
+            "Bplatz automated-access approval recorded",
+        )

@@ -12,6 +12,7 @@ import json
 import logging
 import hashlib
 from uuid import UUID
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -194,6 +195,117 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
             return str(raw_id)
     finally:
         factory.kw["bind"].dispose()
+
+@celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.ingest_bounded_bplatz_product_url")
+def ingest_bounded_bplatz_product_url(self, product_url: str, authorization_reference: str):
+    """Ingest one explicitly supplied Bplatz product URL without discovery.
+
+    This task is intentionally manual-only: it performs one bounded product
+    page fetch, stores the captured source artifact, then hands the record to
+    the normal validation/matching/promotion queues. It never searches Bplatz.
+    """
+    store_key = "bplatz"
+    authorization_reference = str(authorization_reference or "").strip()
+    if not authorization_reference or len(authorization_reference) > 200:
+        raise ValueError("bplatz_automated_access_authorization_reference_required")
+    parsed = urlparse(str(product_url or "").strip())
+    allowed_hosts = {"bplatz.de", "www.bplatz.de", "en.bplatz.de"}
+    expected_path = "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() not in allowed_hosts
+        or parsed.path.rstrip("/") != expected_path
+    ):
+        raise ValueError("bplatz_pilot_url_must_be_the_exact_liquid_brun_100ml_product_page")
+
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_key))
+            if store is None:
+                raise ValueError("connector_store_not_configured:bplatz")
+            if store.status != "active":
+                return {"store": store_key, "status": "inactive", "staged": 0}
+            run = IngestionRun(store_id=store.id, status="running", errors=[])
+            session.add(run)
+            session.flush()
+            run_id = str(run.id)
+            session.commit()
+    finally:
+        factory.kw["bind"].dispose()
+
+    def finish_run(status: str, *, discovered: int = 0, errors: list | None = None):
+        finish_factory = make_session_factory()
+        try:
+            with finish_factory() as session:
+                run = session.get(IngestionRun, UUID(run_id))
+                if run is not None:
+                    run.status = status
+                    run.products_discovered = discovered
+                    run.finished_at = datetime.now(timezone.utc)
+                    run.errors = errors or []
+                    session.commit()
+        finally:
+            finish_factory.kw["bind"].dispose()
+
+    try:
+        connector = get_connector(store_key)
+        fetch_one = getattr(connector, "fetch_product_url", None)
+        if not callable(fetch_one):
+            raise RuntimeError("bplatz_connector_missing_bounded_product_fetch")
+        records = _run(fetch_one(str(product_url), "Liquid Brun"))
+        artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
+        if not artifacts:
+            raise RuntimeError("bplatz_product_page_source_artifact_missing")
+        artifact_ids = _persist_raw_artifacts(store_key, run_id, artifacts)
+
+        if len(records) != 1:
+            finish_run(
+                "completed",
+                discovered=len(records),
+                errors=[{"code": "expected_exactly_one_product_record", "record_count": len(records)}],
+            )
+            return {
+                "store": store_key, "status": "no_single_product_record",
+                "discovered": len(records), "staged": 0,
+                "raw_artifact_ids": artifact_ids,
+            }
+
+        record = records[0]
+        final_url = urlparse(str(record.url or ""))
+        if (
+            final_url.scheme != "https"
+            or (final_url.hostname or "").lower() not in allowed_hosts
+            or final_url.path.rstrip("/") != expected_path
+        ):
+            raise ValueError("bplatz_final_product_url_did_not_match_the_approved_product_page")
+
+        raw_id = _stage_record(
+            store_key,
+            record,
+            {
+                "ingestion_run_id": run_id,
+                "ingestion_mode": "bounded_single_product_url",
+                "requested_url": str(product_url),
+                "authorization_reference": authorization_reference,
+                "raw_artifact_ids": artifact_ids,
+            },
+        )
+        normalize_offer.apply_async(args=[raw_id], queue="validation")
+        finish_run("completed", discovered=1)
+        return {
+            "store": store_key, "status": "staged",
+            "ingestion_run_id": run_id, "raw_id": raw_id,
+            "raw_artifact_ids": artifact_ids,
+        }
+    except Exception as exc:
+        finish_run(
+            "failed",
+            errors=[{"task": "ingest_bounded_bplatz_product_url",
+                     "error": f"{type(exc).__name__}: {str(exc)[:500]}"}],
+        )
+        raise
+
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.discover_store_products")
 def discover_store_products(self, store_key: str):
