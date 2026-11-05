@@ -291,9 +291,9 @@ def make_item(product, variant, url, query):
     return {
         "store": STORE,
         "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
-        "identity": {"gtin": None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
+        "identity": {"gtin": {"value": re.sub(r"\\D", "", str(variant.get("barcode"))) , "source": "shopify_barcode"} if variant.get("barcode") and re.sub(r"\\D", "", str(variant.get("barcode"))) else None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
         "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": "product_title"} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
-        "offer": {"price": p, "currency": "EUR", "availability": stock},
+        "offer": {"price": p, "currency": None, "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": {"product": product, "variant": variant},
         "name": name, "brand": clean(product.get("vendor")), "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
