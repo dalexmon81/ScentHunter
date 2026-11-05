@@ -35,7 +35,7 @@ jobs:
 
       - name: Ensure catalog volume exists
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         run: |
           if flyctl volumes list --app scenthunter | grep -q 'scenthunter_data'; then
             echo "Volume scenthunter_data already exists."
@@ -51,7 +51,7 @@ jobs:
 
       - name: Inspect Fly machines and volume attachments before deployment
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -64,7 +64,7 @@ jobs:
 
       - name: Deploy ScentHunter
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -uo pipefail
@@ -90,7 +90,7 @@ jobs:
 
       - name: Initialize and verify isolated Phase 2 SQLite catalog
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         timeout-minutes: 4
         shell: bash
         run: |
@@ -161,7 +161,7 @@ jobs:
       - name: Force-refresh and verify the affected Deloox offer directly on Fly
         if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition') }}
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         timeout-minutes: 4
         shell: bash
         run: |
@@ -267,7 +267,7 @@ jobs:
       - name: Force-refresh and verify Valentino Born in Roma Donna 50 ml on the Luxembourg storefront
         if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') }}
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         timeout-minutes: 4
         shell: bash
         run: |
@@ -333,7 +333,7 @@ jobs:
       - name: Capture Fly logs if the targeted Deloox refresh fails
         if: ${{ failure() && (contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition')) }}
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           timeout 25s flyctl logs --app scenthunter --no-tail || true
