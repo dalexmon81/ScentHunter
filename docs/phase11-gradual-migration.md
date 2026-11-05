@@ -7,6 +7,8 @@ Introdurre la nuova architettura in modo progressivo e reversibile, senza interr
 **Branch:** `phase11/gradual-migration`  
 **Base iniziale:** `main` al commit `54c90b2f9a031e0b4a671bf9acce34c45331ccba`  
 **Ambiente target iniziale:** staging isolato.  
+**Pilot selezionato:** Bplatz — French Avenue Liquid Brun Eau de Parfum 100 ml (catalogo legacy `SH-0030`, variante `VAR-f87146c82d167f4c`). La fixture storica contiene SKU/GTIN `6290360375694` e Shopify variant ID `54015243419916`; questi identificatori sono evidenza della cattura, non prova di disponibilità attuale. Notino è rinviato.
+
 **Produzione:** nessun deploy, merge, modifica di secrets, migrazione o cambio traffico implicito in questa fase di preparazione.
 
 ## Stato di partenza verificato
@@ -35,7 +37,7 @@ Introdurre la nuova architettura in modo progressivo e reversibile, senza interr
 - [ ] Applicare migrazioni in staging e verificare che siano ripetibili e non distruttive.
 - [ ] Seed canonico completato e conteggiati brands, fragrances, variants, stores.
 - [ ] Importare o acquisire offerte reali per il pilot, senza inventare record; confermare che `offers_imported > 0`.
-- [ ] Eseguire vertical slice Dior Sauvage EDP 100 ml su un solo connector/store già autorizzato e stabile.
+- [ ] Eseguire vertical slice Bplatz — French Avenue Liquid Brun EDP 100 ml su un solo connector/store, solo dopo review dei termini e conferma del metodo di accesso consentito.
 - [ ] Dimostrare API → database → indice → frontend in staging con timestamp visibile.
 - [ ] Dimostrare refresh Celery con task realmente consumato, aggiornamento persistito e nessuna chiamata retailer durante una normale search.
 - [ ] Eseguire test di isolamento: un connector fallito/quarantinato non blocca gli altri.
