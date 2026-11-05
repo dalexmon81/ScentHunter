@@ -59,7 +59,7 @@ def run_seed(catalog_path: Path, database_url: str, *args: str) -> subprocess.Co
 def test_seed_dry_run_keeps_products_without_inventing_variants(tmp_path):
     catalog_path = tmp_path / "catalog.json"
     catalog_path.write_text(json.dumps(sample_catalog()), encoding="utf-8")
-    result = run_seed(catalog_path, f"sqlite:///{tmp_path / 'unused.sqlite3'}")
+    result = run_seed(catalog_path, f"sqlite:///{tmp_path / 'unused.sqlite3'}", "--seed-bplatz-store")
 
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
@@ -296,9 +296,9 @@ def test_bplatz_store_seed_is_idempotent_and_leaves_other_eight_stores_untouched
             }
         assert set(before) == {row[0] for row in other_stores}
 
-        first = run_seed(catalog_path, database_url, "--apply")
+        first = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert first.returncode == 0, first.stderr
-        second = run_seed(catalog_path, database_url, "--apply")
+        second = run_seed(catalog_path, database_url, "--apply", "--seed-bplatz-store")
         assert second.returncode == 0, second.stderr
 
         with Session(engine) as session:
