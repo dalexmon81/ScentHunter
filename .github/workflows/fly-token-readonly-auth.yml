@@ -1,0 +1,30 @@
+name: Fly token read-only authentication check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fly-token-readonly-auth.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-fly-auth:
+    name: Verify Fly app-scoped token (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: List production app volumes without changing resources
+        env:
+          FLY_API_TOKEN: ${{ startsWith(secrets.FLY_API_TOKEN, 'fm2_') && format('FlyV1 {0}', secrets.FLY_API_TOKEN) || secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Checking Fly.io authentication and read-only volume access for app scenthunter..."
+          flyctl volumes list --app scenthunter --json
+          echo "FLY_READ_ONLY_AUTH_CHECK=PASS"
