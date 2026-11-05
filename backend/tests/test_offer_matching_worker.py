@@ -223,7 +223,7 @@ def test_bplatz_liquid_brun_wrong_size_is_not_matched_to_100ml_variant():
             raw = session.get(IngestionRaw, raw_id)
             payload = dict(raw.raw_payload)
             payload["sizeMl"] = 50
-            payload["title"] = payload["title"].replace("100 ml", "50 ml")
+            payload["title"] = "French Avenue Liquid Brun Eau de Parfum 50 ml"
             raw.raw_payload = payload
             session.commit()
 
