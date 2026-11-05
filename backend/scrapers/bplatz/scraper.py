@@ -71,7 +71,7 @@ def parse_price(value):
     # could be misread as a positive 12.50 offer.
     if re.search(r"(^|[^\d])-\s*\d", text):
         return None
-    m = re.search(r"\d{1,3}(?:[.,]\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?", text)
+    m = re.search(r"\d[\d.,]*", text)
     if not m:
         return None
     raw = m.group(0)
@@ -379,6 +379,10 @@ def parse_product_html(html, final_url, query):
     offers = offer_list(data)
     price = None
     availability = None
+    foreign_currency_seen = any(
+        clean(offer.get("priceCurrency") or "").upper() not in ("", "EUR")
+        for offer in offers
+    )
     for offer in offers:
         currency = clean(offer.get("priceCurrency") or "").upper()
         # This connector currently publishes EUR only. Never label a foreign
@@ -402,7 +406,7 @@ def parse_product_html(html, final_url, query):
     if availability is None:
         availability = availability_from_text(page_text)
 
-    if price is None:
+    if price is None and not foreign_currency_seen:
         price_patterns = [
             r"retail\s+price\s*€\s*([0-9][0-9.,]*)",
             r"price\s*€\s*([0-9][0-9.,]*)",
