@@ -567,13 +567,13 @@ def _extract_brand(product_json: Dict[str, Any]) -> str:
 
 def _extract_offer_data(
     product_json: Dict[str, Any],
-) -> Tuple[Optional[float], str, str]:
+) -> Tuple[Optional[float], Optional[str], str]:
     offers = product_json.get("offers")
 
     if isinstance(offers, dict):
         return (
             _price_to_float(offers.get("price")),
-            _clean(offers.get("priceCurrency")) or "EUR",
+            _explicit_iso_currency(offers.get("priceCurrency")),
             _clean(offers.get("availability")),
         )
 
@@ -583,13 +583,19 @@ def _extract_offer_data(
                 continue
 
             price = _price_to_float(offer.get("price"))
-            currency = _clean(offer.get("priceCurrency")) or "EUR"
+            currency = _explicit_iso_currency(offer.get("priceCurrency"))
             availability = _clean(offer.get("availability"))
 
             if price is not None or availability:
                 return price, currency, availability
 
-    return None, "EUR", ""
+    return None, None, ""
+
+
+def _explicit_iso_currency(value: Any) -> Optional[str]:
+    """Accept only an explicit three-letter currency code from structured data."""
+    currency = _clean(value).upper()
+    return currency if re.fullmatch(r"[A-Z]{3}", currency) else None
 
 
 def _availability_from_page(text: str) -> Tuple[Optional[bool], str]:
@@ -1095,7 +1101,7 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     name = ""
     brand = ""
     price: Optional[float] = None
-    currency = "EUR"
+    currency: Optional[str] = None
     availability = ""
     image = ""
 
@@ -1204,7 +1210,7 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         "name": name,
         "price": f"{price:.2f} €" if price is not None else None,
         "price_num": price,
-        "currency": currency or "EUR",
+        "currency": currency,
         "available": available,
         "availability": availability,
         "image": image,
