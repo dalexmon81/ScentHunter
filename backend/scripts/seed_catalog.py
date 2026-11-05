@@ -52,6 +52,44 @@ def stable_id(kind: str, source_id: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"{kind}:{source_id}")
 
 
+def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Brand:
+    """Resolve an existing brand by either canonical name or unique slug.
+
+    Legacy seed data can contain a display-name normalization that differs
+    from the current normalizer while retaining the same stable slug. Reuse
+    that row instead of attempting a second insert that violates uq_brands_slug.
+    If the two identifiers point to different rows, stop for manual review.
+    """
+    normalized_match = session.scalar(
+        select(Brand).where(Brand.normalized_name == normalized_name)
+    )
+    slug_match = session.scalar(
+        select(Brand).where(Brand.slug == slugify(name))
+    )
+    if (
+        normalized_match is not None
+        and slug_match is not None
+        and normalized_match.id != slug_match.id
+    ):
+        raise RuntimeError(
+            f"Brand identity conflict for {name!r}: normalized name and slug "
+            "resolve to different existing rows."
+        )
+
+    existing = normalized_match or slug_match
+    if existing is not None:
+        return existing
+
+    brand = Brand(
+        id=stable_id("brand", normalized_name),
+        name=name,
+        slug=slugify(name),
+        normalized_name=normalized_name,
+    )
+    session.add(brand)
+    return brand
+
+
 def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list[str]]:
     products = raw.get("products")
     variants = raw.get("variants")
@@ -175,16 +213,7 @@ def main() -> int:
         with Session(engine) as session, session.begin():
             brand_rows = {}
             for key, name in names.items():
-                brand = session.scalar(select(Brand).where(Brand.normalized_name == key))
-                if brand is None:
-                    brand = Brand(
-                        id=stable_id("brand", key),
-                        name=name,
-                        slug=slugify(name),
-                        normalized_name=key,
-                    )
-                    session.add(brand)
-                brand_rows[key] = brand
+                brand_rows[key] = get_or_create_brand(session, key, name)
             session.flush()
 
             for product in products:
