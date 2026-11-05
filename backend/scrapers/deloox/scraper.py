@@ -78,6 +78,18 @@ def explicit_iso_currency(value):
     return code if re.fullmatch(r"[A-Z]{3}", code) else None
 
 
+def offer_currency(offer):
+    """Read currency from the selected Offer or its priceSpecification."""
+    if not isinstance(offer, dict):
+        return None
+    specification = offer.get("priceSpecification")
+    if isinstance(specification, list):
+        specification = next((item for item in specification if isinstance(item, dict) and item.get("priceCurrency")), {})
+    if not isinstance(specification, dict):
+        specification = {}
+    return explicit_iso_currency(offer.get("priceCurrency") or specification.get("priceCurrency"))
+
+
 def norm(v):
     # Normalize accented product names (e.g. Giò -> Gio) before token matching.
     text = unicodedata.normalize("NFKD", clean(v).lower())
@@ -543,7 +555,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         },
         "offer": {
             "price": price,
-            "currency": explicit_iso_currency(offer.get("priceCurrency") or offer.get("priceSpecification", {}).get("priceCurrency") if isinstance(offer.get("priceSpecification"), dict) else offer.get("priceCurrency")),
+            "currency": offer_currency(offer),
             "availability": avail,
         },
         "provenance": {
@@ -563,7 +575,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         "concentration": concentration(name) or None,
         "gender": "unknown",
         "price_num": price,
-        "currency": "EUR",
+        "currency": offer_currency(offer),
         "availability": avail,
         "fetched_at": time.time(),
         "name": name,
