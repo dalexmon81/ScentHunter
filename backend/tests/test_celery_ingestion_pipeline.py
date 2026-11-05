@@ -294,3 +294,106 @@ def test_discovery_task_persists_original_page_bytes_and_links_them_to_staged_of
             assert raw.raw_payload["externalProductId"] == record.external_product_id
     finally:
         engine.dispose()
+
+
+def test_bplatz_connector_fixture_html_is_persisted_and_linked_by_celery_discovery(
+    tmp_path, monkeypatch
+):
+    """Exercise Bplatz parser + universal connector + Celery artifact persistence offline."""
+    import asyncio
+    import hashlib
+    from pathlib import Path
+    from uuid import UUID
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+
+    from app.connectors import BplatzConnector
+    from app.models import Base, IngestionArtifact, IngestionRaw, IngestionRun, Store
+    from app.workers import ingestion_tasks
+    from scrapers.bplatz import scraper
+
+    fixture = (
+        Path(__file__).resolve().parent
+        / "fixtures"
+        / "connectors"
+        / "bplatz-dior-sauvage-edp-100.html"
+    )
+    html = fixture.read_bytes()
+    url = "https://en.bplatz.de/products/dior-sauvage-eau-de-parfum"
+    query = "Dior Sauvage"
+
+    # Use the real Bplatz production parser and connector mapper; only the
+    # transport is replaced with the saved, immutable fixture.
+    connector = BplatzConnector(page_loader=lambda _url, _query: html)
+    loaded = asyncio.run(connector._load_page(url, query))
+    assert loaded == html
+    parsed = scraper.parse_product_html(loaded.decode("utf-8"), url, query)
+    assert parsed is not None
+    records = connector.parse_raw(parsed)
+    assert len(records) == 1
+    record = records[0]
+    assert record.brand == "Dior"
+    assert record.fragrance == "sauvage"
+    assert record.concentration == "edp"
+    assert record.size_ml == 100
+    assert record.price is not None and record.price > 0
+    assert record.currency == "EUR"
+    assert record.availability == "in_stock"
+
+    async def discover_products():
+        return ({
+            "externalProductId": record.external_product_id,
+            "url": record.url,
+            "title": record.title,
+        },)
+
+    async def fetch_offers(_product_key):
+        return (record,)
+
+    connector.discover_products = discover_products
+    connector.fetch_offers = fetch_offers
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'bplatz-celery-artifacts.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        session.add(Store(
+            name="Bplatz", slug="bplatz", domain="en.bplatz.de",
+            country="DE", currency="EUR", status="active",
+        ))
+        session.commit()
+
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(ingestion_tasks, "get_connector", lambda _store: connector)
+    queued = []
+    monkeypatch.setattr(
+        ingestion_tasks.normalize_offer,
+        "apply_async",
+        lambda **kwargs: queued.append(kwargs),
+    )
+
+    try:
+        result = ingestion_tasks.discover_store_products.run("bplatz")
+        assert result["discovered"] == 1
+        assert result["offers_staged"] == 1
+        assert len(queued) == 1
+
+        with factory() as session:
+            artifact = session.scalar(select(IngestionArtifact))
+            raw = session.get(IngestionRaw, UUID(result["raw_ids"][0]))
+            assert artifact is not None
+            run = session.get(IngestionRun, artifact.ingestion_run_id)
+
+            assert artifact.raw_data == html
+            assert artifact.sha256 == hashlib.sha256(html).hexdigest()
+            assert artifact.size_bytes == len(html)
+            assert artifact.source_url == url
+            assert artifact.artifact_format == "html"
+            assert run is not None and run.status == "completed"
+            assert raw is not None and raw.status == "pending"
+            evidence = raw.raw_payload["_raw_evidence"]["discovery"]
+            assert str(artifact.id) in evidence["raw_artifact_ids"]
+            assert raw.raw_payload["externalProductId"] == record.external_product_id
+    finally:
+        engine.dispose()
