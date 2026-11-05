@@ -89,6 +89,7 @@ jobs:
           done
 
       - name: Initialize and verify isolated Phase 2 SQLite catalog
+        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         timeout-minutes: 4
@@ -456,6 +457,7 @@ jobs:
         run: python -m unittest tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_deadline_skips_initial_fanout_when_expired tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_budget_rotates_query_and_limits_each_run tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_budget_reserves_time_for_frontier tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_discovery_graph_reports_search_then_frontier_progress tests.test_deloox_out_of_stock.DelooxRegionalOfferPriorityTests tests.test_phase0_baseline_jobs -v
 
       - name: Exercise real production searches and offer data
+        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         timeout-minutes: 4
         shell: bash
         run: |
@@ -877,6 +879,7 @@ jobs:
           PY
 
       - name: Read-only persisted-vs-live price diagnostic
+        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         continue-on-error: true
         timeout-minutes: 3
         shell: bash
@@ -896,6 +899,7 @@ jobs:
           PY
 
       - name: Recover Easycosmetic catalog when its index is empty
+        if: ${{ contains(github.event.head_commit.message, 'trigger Easycosmetic catalog recovery') }}
         continue-on-error: true
         timeout-minutes: 6
         shell: bash
