@@ -4,9 +4,9 @@
 
 **STATUS: BLOCKED — do not start shadow traffic or the 5% canary.**
 
-The selected pilot remains **Bplatz — French Avenue Liquid Brun Eau de Parfum 100 ml**. Notino/Dior references in older planning material are superseded and are not the active pilot.
+The selected pilot remains **Bplatz — French Avenue Liquid Brun Eau de Parfum 100 ml**. Notino is now a documented alternative affiliate-feed path, but its application is still pending and it is not yet an active pilot.
 
-This audit distinguishes CI fixtures, staging infrastructure, retailer authorization, and live offer evidence. Passing one category does not imply another.
+This audit distinguishes CI fixtures, staging infrastructure, retailer authorization, affiliate-program approval, and live offer evidence. Passing one category does not imply another.
 
 ## Current verified evidence
 
@@ -32,6 +32,16 @@ A permission request was sent to **orders@bplatz.de** on 2026-11-05. It asks for
 
 Do not invoke the task until a permitted access method is confirmed and the authorization reference records the actual approval.
 
+### Notino.fr affiliate program — application pending
+
+The user supplied a screenshot from the CJ publisher account showing advertiser **4912189 — NOTINO.fr**, category **Fragrance**, under the filter **Status: Pending Applications**. The advertiser row is therefore present in the user's pending applications.
+
+The screenshot also shows serviceable area **FRANCE**, supported currency **EUR**, and the program's displayed commission information (default 4–6%; other rates vary by partner type/content). This is evidence of a pending application only — **not approval, active advertiser status, feed entitlement, or permission to scrape Notino's website**.
+
+CJ/VIVnetworks previously confirmed by email that a Notino.fr XML product feed is available to approved publishers and includes product names, EAN/GTIN, direct URLs, current prices, currency, availability, and images, with daily updates. CJ also stated that publisher approval by Notino is required and that Notino makes the final partner decision. The user's CJ network account welcome email confirms network-account activation, not approval to the Notino.fr program.
+
+Next action: wait for the NOTINO.fr application to change from **Pending Applications** to an active/approved status, or for a direct decision from the program. After approval, inspect the program terms and feed access instructions in CJ, confirm the feed's permitted use and technical format, then implement a dedicated feed connector. Until then, do not attempt to fetch the feed or treat Notino as an authorized source.
+
 ### Offline quality evidence
 
 - PR #347 adds the Bplatz offline fixture validation matrix.
@@ -52,6 +62,8 @@ These are offline fixture/stub or CI checks. They are not evidence of a current 
 | Isolated staging deploy, migrations, canonical seed | PASS — run 42085586218 |
 | Staging worker non-root, Celery ping and queued smoke task | PASS — run 42085586218 |
 | Bplatz automated access permission/method | BLOCKED — email sent; awaiting reply |
+| Notino.fr CJ publisher application | PENDING — screenshot confirms Pending Applications |
+| Notino.fr affiliate-feed entitlement | BLOCKED — requires advertiser approval and feed terms review |
 | Retailer activated in staging | NOT RUN — stores=0 |
 | Real offer persisted through Phase 5 PostgreSQL | NOT RUN — offers=0 |
 | Real Celery price/stock refresh and price history | NOT RUN |
@@ -62,10 +74,11 @@ These are offline fixture/stub or CI checks. They are not evidence of a current 
 ## Required next steps
 
 1. Await Bplatz's response. If it confirms an approved API/feed or grants written permission, record the exact scope and approval reference before any live request.
-2. In parallel, evaluate alternative retailers that provide a documented API, product feed, or affiliate feed with terms permitting the intended use. Do not assume that an affiliate account alone authorizes scraping or feed reuse.
-3. For the first retailer with a confirmed permitted method, configure it explicitly in isolated staging and run a narrowly bounded pilot. Keep the Bplatz task dormant unless Bplatz approval arrives.
-4. Verify one genuine offer is persisted, validated, refreshed by Celery, represented in price history, and returned by catalog-first search without a synchronous retailer request.
-5. Complete rollback, monitoring, and readiness checks before considering shadow traffic. Start with shadow only after Gate 0 approval; consider 5% canary only after shadow evidence is acceptable.
+2. Monitor the NOTINO.fr application in CJ. Once approved, inspect the program terms and obtain the official feed access instructions; confirm permitted use before connecting it.
+3. In parallel, evaluate alternative retailers that provide a documented API, product feed, or affiliate feed with terms permitting the intended use. Do not assume that an affiliate account alone authorizes scraping or feed reuse.
+4. For the first retailer with a confirmed permitted method, configure it explicitly in isolated staging and run a narrowly bounded pilot. Keep the Bplatz task dormant unless Bplatz approval arrives.
+5. Verify one genuine offer is persisted, validated, refreshed by Celery, represented in price history, and returned by catalog-first search without a synchronous retailer request.
+6. Complete rollback, monitoring, and readiness checks before considering shadow traffic. Start with shadow only after Gate 0 approval; consider 5% canary only after shadow evidence is acceptable.
 
 Do not create a synthetic published offer, scrape around a block, activate a retailer without a permitted access method, or enable shadow/canary traffic while the gate is blocked.
 
