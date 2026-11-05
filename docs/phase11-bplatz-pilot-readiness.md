@@ -75,6 +75,7 @@ Evidence on Phase 5 branch commit `b853faa41514952aeab3a996c396725c64d0493b`:
 - The Bplatz synthetic HTML fixture has no fabricated SKU or GTIN; absent identifiers remain absent and the product URL is used only as the external ID fallback.
 - The local end-to-end fixture test exercises `run_connector_once`, exact Dior Sauvage EDP 100 ml canonical matching, promotion in an in-memory SQLite test database, active-offer readback, EUR price, stock, PriceHistory and MatchAudit. This is a test fixture, not retailer evidence or persistent staging.
 - Refresh regression tests cover Bplatz alongside PerfumeMarket, ParfumCity and Orioudh, verifying that a fresh page observation updates the same offer identity rather than retaining the stale price.
+- Phase 5 commit `4e91f35e2ef9ef3bc5372985863a12173983200f` adds an ingestion-task integration test proving original HTML bytes are persisted in `ingestion_artifacts`, SHA-256 and byte length are recorded, the artifact is linked to its `ingestion_run`, and the staged offer references that artifact ID. Phase 4 passed; Phase 5 pipeline and runtime-integration jobs both passed (run `41966249659`). This remains a synthetic fixture test using SQLite; it is not a live Bplatz fetch or a persistent staging offer.
 
 Remaining B1 checks (do not infer they passed from the aggregate CI totals):
 - [ ] Separate positive-stock, sold-out and unknown-stock Bplatz fixture matrix.
