@@ -50,6 +50,7 @@ jobs:
             echo "Testing authorization value form: ${scheme}"
             for endpoint in \
               "https://api.machines.dev/v1/apps/scenthunter" \
+              "https://api.machines.dev/v1/apps/scenthunter/machines" \
               "https://api.machines.dev/v1/apps/scenthunter/volumes"; do
               code=$(curl --silent --show-error \
                 -H "Authorization: ${auth_value}" \
