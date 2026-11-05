@@ -30,7 +30,9 @@ These are fixture identifiers, not current stock, price, authorization, or Phase
 
 PR #347 adds an offline fixture validation matrix. Its push and pull-request Actions runs passed. Coverage includes stock states, invalid prices, currency handling, size/concentration parsing, and absent SKU/GTIN handling.
 
-The tests do not contact Bplatz and do not prove live source access, a real offer, or persistent staging readiness.
+A Bplatz-specific test was added in PR #343 commit `99c2842287df681d8cd5c5abece4aeef97c9068f`. Workflow run [`41967935150`](https://github.com/dalexmon81/ScentHunter/actions/runs/41967935150) completed successfully: both `ingestion-pipeline` and `runtime-integration` jobs passed. The test runs the committed historical Liquid Brun HTML fixture through the Bplatz parser/connector and Celery discovery task, then verifies the unchanged HTML bytes and SHA-256, artifact-to-ingestion-run linkage, and raw-evidence artifact reference.
+
+This proves the Bplatz fixture artifact path in offline, disposable CI only. It is not a live ingestion, current retailer offer, or persistent staging proof.
 
 ### Source access and infrastructure
 
@@ -48,6 +50,8 @@ The tests do not contact Bplatz and do not prove live source access, a real offe
 | Disposable PostgreSQL/Redis/Celery CI integration | PASS — synthetic CI only |
 | Bplatz Liquid Brun historical fixture | PASS — historical evidence only |
 | Offline Bplatz B1 validation matrix | PASS — PR #347 |
+| Bplatz fixture artifact/run linkage | PASS — PR #343 run 41967935150, offline only |
+| Retry/quarantine and wrong-size/ambiguous-match coverage | OPEN |
 | Bplatz automated access permission/method | NOT VERIFIED |
 | Isolated persistent staging resources | NOT VERIFIED |
 | Real offer in Phase 5 PostgreSQL | NOT RUN |
@@ -57,7 +61,7 @@ The tests do not contact Bplatz and do not prove live source access, a real offe
 
 ## Required next steps
 
-1. Complete the remaining Bplatz-specific B1 checks in the Bplatz pilot runbook: artifact linkage, retry/quarantine isolation, and wrong-size/ambiguous-match rejection. Reuse existing generic Phase 5 tests where they already cover the behavior; avoid duplicate tests.
+1. Complete Bplatz-specific retry/quarantine isolation and wrong-size/ambiguous-match rejection tests, reusing generic Phase 5 tests where they already cover the behavior.
 2. Review Bplatz's current terms and confirm the exact permitted access method before any live request. If permission is unclear, stop.
 3. Verify isolated staging PostgreSQL and Redis without exposing secrets or using production resources.
 4. Only after explicit source-access approval and staging verification, run one bounded pilot for the exact Liquid Brun EDP 100 ml variant.
