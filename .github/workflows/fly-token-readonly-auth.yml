@@ -34,6 +34,7 @@ jobs:
           echo "TOKEN_LENGTH=${#raw_token}"
           # Ask Fly to identify this macaroon directly. This is read-only and
           # distinguishes an invalid token from a valid token scoped elsewhere.
+          # This workflow performs identity and app/volume GET requests only.
           for auth_value in "FlyV1 ${raw_token}" "Bearer ${raw_token}"; do
             scheme="${auth_value%% *}"
             code=$(curl --silent --show-error \
