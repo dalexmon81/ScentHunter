@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.matching.offer_matcher import match_staged_offer
 from app.models import Base, Brand, CanonicalIdentityReview, Fragrance, IngestionRaw, ProductVariant, Store
@@ -12,7 +13,11 @@ from app.workers.matching_worker import match_pending_offers
 
 
 def setup_db():
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
