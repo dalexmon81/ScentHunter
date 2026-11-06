@@ -72,6 +72,8 @@ on:
       - "backend/tests/test_phase2_bplatz_postgres.py"
       - "tests/test_bplatz_persistence_service.py"
       - "backend/app/api/catalog_search.py"
+      - "backend/app/api/admin_catalog.py"
+      - "backend/tests/test_catalog_admin_metrics.py"
       - "backend/scripts/notino_pilot_preflight.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
