@@ -1,4 +1,7 @@
-from app.services.offer_identity import offer_concentration_token
+from app.services.offer_identity import (
+    is_dior_line_url_mismatch,
+    offer_concentration_token,
+)
 
 
 def test_concentration_parser_prefers_intense_edp_and_edt():
@@ -31,3 +34,33 @@ def test_concentration_parser_handles_empty_and_non_string_values():
 def test_concentration_parser_does_not_match_partial_words():
     assert offer_concentration_token("EDPextra") == ""
     assert offer_concentration_token("parfumery") == ""
+
+
+def test_dior_line_guard_rejects_sauvage_title_linked_to_eau_sauvage():
+    assert is_dior_line_url_mismatch({
+        "name": "Dior Sauvage Eau de Toilette",
+        "url": "https://shop.example/dior-eau-sauvage-edt",
+    }) is True
+
+
+def test_dior_line_guard_rejects_eau_sauvage_title_linked_to_sauvage():
+    assert is_dior_line_url_mismatch({
+        "name": "Dior Eau Sauvage Eau de Toilette",
+        "url": "https://shop.example/dior-sauvage-edt",
+    }) is True
+
+
+def test_dior_line_guard_accepts_matching_product_line():
+    assert is_dior_line_url_mismatch({
+        "name": "Dior Eau Sauvage Eau de Toilette",
+        "url": "https://shop.example/dior-eau-sauvage-edt",
+    }) is False
+    assert is_dior_line_url_mismatch({
+        "name": "Dior Sauvage Eau de Toilette",
+        "url": "https://shop.example/dior-sauvage-edt",
+    }) is False
+
+
+def test_dior_line_guard_ignores_non_dictionary_values():
+    assert is_dior_line_url_mismatch(None) is False
+    assert is_dior_line_url_mismatch("Dior Sauvage") is False
