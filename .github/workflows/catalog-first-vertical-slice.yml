@@ -46,6 +46,7 @@ on:
       - phase2/catalog-first-vertical-slice
       - phase10/ops-phase11-integrated
     paths:
+      - "backend/scripts/verify_postgres_backup_restore.sh"
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/connectors/notino.py"
       - "backend/app/matching/**"
