@@ -13,6 +13,12 @@ Find a permitted product-data source for the first genuine catalog-first offer w
 | Awin / Perfumetrader DE (merchant 11672) | Public Awin merchant profile advertises product data. | Publisher acceptance, feed visibility/download entitlement, exact fields, shipping destinations, and permission for price-comparison use. |
 | Rakuten / The Fragrance Shop (merchant 43488) | Retailer affiliate page advertises a fully automated daily product feed. | Publisher acceptance, feed access, exact fields, shipping to target countries, and whether its UK-only catalog is useful to ScentHunter. |
 
+## Awin account verification — 2026-11-06
+
+The ScentHunter publisher account (publisher ID 3021971) was checked in **Toolbox → Create-a-Feed → Select advertiser**. The search for `Perfumemarket` returned “No results found” with the France region filter removed. A second search for `Perfumetrader` also returned no results (user-confirmed). Therefore neither candidate is currently selectable in this account's Create-a-Feed advertiser picker. This does not prove the advertisers do not exist on Awin globally; it means the previously identified public merchant leads are not usable through this account's current feed picker.
+
+Do not spend further time retrying these two names in this picker unless account/program status changes. Do not generate an API token solely to resolve this: the current evidence is advertiser visibility, not an API authentication failure.
+
 ## Awin feed access notes
 
 Awin's publisher documentation describes:
