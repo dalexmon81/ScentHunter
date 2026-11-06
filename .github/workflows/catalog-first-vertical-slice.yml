@@ -68,6 +68,7 @@ on:
       - "backend/tests/test_store_connector_contract.py"
       - "backend/tests/test_store_connector_contract.py"
       - "backend/tests/test_connector_ingestion_worker.py"
+      - "backend/tests/test_offer_matching_worker.py"
       - "backend/tests/test_offer_promotion_worker.py"
       - "backend/tests/test_phase2_bplatz_postgres.py"
       - "tests/test_bplatz_persistence_service.py"
