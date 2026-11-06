@@ -21,6 +21,7 @@ from sqlalchemy import select
 
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
+from app.connectors.base import is_currency_code
 from app.models import IngestionArtifact, IngestionDeadLetter, IngestionRaw, IngestionRun, Offer, Store
 from app.matching.offer_matcher import match_staged_offer
 from app.services.product_normalization import normalize_product
@@ -421,15 +422,15 @@ def validate_offer(self, raw_id: str):
                     errors.append("invalid_price")
             except (InvalidOperation, TypeError, ValueError):
                 errors.append("invalid_price")
-            if not isinstance(payload.get("currency"), str) or len(payload["currency"]) != 3 or payload["currency"] != payload["currency"].upper():
-                errors.append("invalid_currency")
+            if not is_currency_code(payload.get("currency")):
+                errors.append("invalid_currency_code")
             try:
                 captured = datetime.fromisoformat(str(payload.get("capturedAt", "")).replace("Z", "+00:00"))
                 if captured.tzinfo is None:
                     errors.append("captured_at_timezone_required")
             except (TypeError, ValueError):
                 errors.append("invalid_captured_at")
-            if payload.get("availability") not in {"in_stock", "out_of_stock", "preorder", "unknown"}:
+            if payload.get("availability") not in {"in_stock", "out_of_stock", "preorder"}:
                 errors.append("invalid_availability")
             if errors:
                 raw.status = "rejected"
