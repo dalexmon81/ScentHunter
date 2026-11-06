@@ -83,3 +83,13 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - The fractional-size migration is explicitly dialect-aware: SQLite uses Alembic table recreation, PostgreSQL uses `ALTER COLUMN ... TYPE NUMERIC(10,4)`. Disposable CI exposed the SQLite incompatibility in the first implementation; the corrected migration is awaiting a fresh full run.
 - Connector payload validation retains `unknown` stock as evidence but blocks it from entering the match/promotion path; the Notino preflight keeps such a candidate in an availability-review state.
 - `is_currency_code` currently validates the normalized three-letter shape only. It does not prove that a code is assigned in ISO 4217; a shared supported-currency registry remains a required follow-up before enabling additional markets.
+
+
+### Ingestion concurrency and publication-policy follow-up (2026-11-06)
+
+- Added a partial unique index on `(store_id, external_product_id)` for live raw-ingestion states (`pending`, `unmatched`, `matched`). Promoted/rejected evidence remains historical and is not blocked by this guard.
+- The staging path now catches the concurrent-insert uniqueness race, reloads the winning live row and merges the new observation into its bounded refresh history instead of creating a duplicate or failing the connector batch.
+- Discovery completion is tied to the exact `IngestionRun.id` created by that task. Validation also compares payload store identity to the owning database store.
+- Publication policy is intentionally conservative: `unknown` stock is retained as evidence for review; `preorder` is retained but not published until the publication contract and downstream search/UI explicitly support it. Only `in_stock` and `out_of_stock` currently pass promotion.
+- Migration `0009_live_ingestion_uniqueness` adds the database-level concurrency guard. It has not been applied to staging or production. Existing duplicate live rows, if any, must be reconciled before that migration can safely be applied to a persistent database.
+- The separate `run_connector_once` worker still stages through an alternate path and is not yet proven to share the same normalize/validate/match/promote lifecycle. This remains open work; no phase acceptance is implied.
