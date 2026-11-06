@@ -201,13 +201,21 @@ class Phase0PersistentJobTests(unittest.TestCase):
         engine = make_engine()
         self.assertEqual(engine.dialect.name, "postgresql")
         suffix = uuid.uuid4().hex[:12]
-        brand = fragrance = variant = offer = None
+        brand = fragrance = variant = offer = store = None
         chunk = self.root / "postgres-export.csv"
         result_queue = queue.Queue()
         try:
             with Session(engine) as session:
-                store = session.scalar(select(Store).where(Store.slug == "notino"))
-                self.assertIsNotNone(store, "CI seed must include the Notino store")
+                store = Store(
+                    name=f"Phase 0 Test Store {suffix}",
+                    slug=f"phase0-test-{suffix}",
+                    domain="phase0-test.invalid",
+                    country="FR",
+                    currency="EUR",
+                    status="active",
+                )
+                session.add(store)
+                session.flush()
                 brand = Brand(
                     name=f"Baseline Test {suffix}",
                     slug=f"baseline-test-{suffix}",
@@ -248,7 +256,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
                 session.commit()
                 expected_offer_id = offer.id
 
-            _export_store_chunk("notino", str(chunk), result_queue)
+            _export_store_chunk(store.slug, str(chunk), result_queue)
             result = result_queue.get(timeout=5)
             self.assertTrue(result["ok"], result)
             self.assertEqual(result["offers_read"], 1)
@@ -256,7 +264,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
                 rows = list(csv.DictReader(handle))
             self.assertEqual(len(rows), 1)
             row = rows[0]
-            self.assertEqual(row["store"], "notino")
+            self.assertEqual(row["store"], store.slug)
             self.assertEqual(row["external_product_id"], f"phase0-export-{suffix}")
             self.assertEqual(row["canonical_product_id"], str(fragrance.id))
             self.assertEqual(row["brand"], brand.name)
@@ -274,6 +282,10 @@ class Phase0PersistentJobTests(unittest.TestCase):
             with Session(engine) as session:
                 if offer is not None:
                     persisted = session.get(Offer, offer.id)
+                    if persisted is not None:
+                        session.delete(persisted)
+                if store is not None:
+                    persisted = session.get(Store, store.id)
                     if persisted is not None:
                         session.delete(persisted)
                 if variant is not None:
