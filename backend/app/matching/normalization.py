@@ -18,8 +18,10 @@ _BRAND_ALIASES = {
 }
 _CONCENTRATIONS = (
     ("eau de parfum intense", "edp_intense"),
+    ("edp intense", "edp_intense"),
     ("intense eau de parfum", "edp_intense"),
     ("eau de toilette intense", "edt_intense"),
+    ("edt intense", "edt_intense"),
     ("intense eau de toilette", "edt_intense"),
     ("parfum intense", "parfum_intense"),
     ("intense parfum", "parfum_intense"),
@@ -75,6 +77,9 @@ def extract_size_ml(*values: object) -> int | None:
         amount *= 1000
     elif unit in {"oz", "floz"}:
         amount *= Decimal("29.5735")
+    nearest_five = (amount / Decimal("5")).quantize(Decimal("1")) * Decimal("5")
+    if abs(amount - nearest_five) <= Decimal("0.6"):
+        amount = nearest_five
     result = int(amount.quantize(Decimal("1")))
     return result if result > 0 else None
 
