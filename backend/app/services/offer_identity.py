@@ -98,3 +98,28 @@ def is_concentration_mismatch_offer(item: object) -> bool:
             if candidate != brand_norm and candidate in url_identity and brand_norm in known_brands:
                 return True
     return False
+
+
+def offer_url_identity(value: object) -> str:
+    """Normalize a retailer listing URL while retaining commercial selectors."""
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    try:
+        parsed = urlsplit(str(value or "").strip())
+        host = parsed.netloc.lower()
+        if host.startswith("www."):
+            host = host[4:]
+        path = parsed.path.rstrip("/").lower()
+        selectors = {
+            "variant", "variant_id", "id_product_attribute",
+            "combination_id", "sku", "size", "size_ml", "attribute",
+        }
+        query = [
+            (key.lower(), val)
+            for key, val in parse_qsl(parsed.query, keep_blank_values=False)
+            if key.lower() in selectors
+        ]
+        fragment = parsed.fragment.lower()
+        return urlunsplit((parsed.scheme.lower(), host, path, urlencode(sorted(query)), fragment))
+    except Exception:
+        return str(value or "").strip().lower()
