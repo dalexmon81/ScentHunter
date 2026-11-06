@@ -251,6 +251,9 @@ jobs:
           pytest -q backend/tests/test_frontend_offer_transparency_contract.py
 
 
+      - name: Validate Phase 1 production diagnostic isolation
+        run: pytest -q backend/tests/test_production_diagnostics_are_opt_in.py
+
       - name: Validate Phase 0 baseline worker and PostgreSQL-only source
         run: pytest -q backend/tests/test_phase0_baseline_jobs.py backend/tests/test_phase0_baseline_validation.py
 
