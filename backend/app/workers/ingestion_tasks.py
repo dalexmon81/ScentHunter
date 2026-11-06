@@ -417,6 +417,11 @@ def validate_offer(self, raw_id: str):
             payload = raw.raw_payload or {}
             _valid, validation_errors = validate_offer_payload(payload)
             errors = list(validation_errors)
+            store = session.get(Store, raw.store_id)
+            payload_store = str(payload.get("store") or "").strip().lower()
+            expected_store = str(store.slug if store is not None else "").strip().lower()
+            if not expected_store or payload_store != expected_store:
+                errors.append("store_attribution_mismatch")
             if errors:
                 raw.status = "rejected"
                 raw.rejection_reason = ",".join(errors)
