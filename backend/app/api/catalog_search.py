@@ -5,6 +5,7 @@ This endpoint never calls retailer connectors or performs live store searches.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import and_, or_, select
 
@@ -77,6 +78,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     and_(
                         Offer.product_variant_id == ProductVariant.id,
                         Offer.status == "active",
+                        or_(Offer.valid_until.is_(None), Offer.valid_until >= datetime.now(timezone.utc)),
                     ),
                 )
                 .outerjoin(
