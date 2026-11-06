@@ -99,3 +99,62 @@ def test_shadow_comparison_reports_product_and_offer_overlap():
     assert comparison["catalog_only_offer_count"] == 1
     assert comparison["product_overlap_ratio"] == 1.0
     assert comparison["offer_overlap_ratio"] == 0.3333
+
+
+def test_search_start_routes_full_canary_to_catalog_without_starting_legacy_job(monkeypatch):
+    import main
+
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_ENABLED", "1")
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT", "100")
+    called = []
+    monkeypatch.setattr(
+        main,
+        "phase7_search_catalog_for_frontend",
+        lambda query: {"query": query, "results": [], "count": 0},
+    )
+    monkeypatch.setattr(main, "_new_job", lambda query: called.append(query))
+
+    response = main.search_start("Sauvage", None)
+
+    assert response["catalog_rollout"]["mode"] == "catalog"
+    assert response["catalog_rollout"]["traffic_percent"] == 100
+    assert called == []
+
+
+def test_search_start_shadow_reads_catalog_but_serves_legacy_snapshot(monkeypatch):
+    import main
+
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_ENABLED", "0")
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_SHADOW", "1")
+    monkeypatch.setenv("SEARCH_START_WAIT_SECONDS", "0")
+    monkeypatch.setattr(main, "_CATALOG_BOOTSTRAP_RUNNING", False)
+    monkeypatch.setattr(main, "_CATALOG_BOOTSTRAP_DONE", True)
+    monkeypatch.setattr(main, "_CATALOG_BOOTSTRAP_ERROR", None)
+    monkeypatch.setattr(main, "_cancel_active_jobs", lambda **kwargs: True)
+    monkeypatch.setattr(
+        main,
+        "phase7_search_catalog_for_frontend",
+        lambda query: {
+            "query": query,
+            "results": [{"brand": "Dior", "fragrance": "Sauvage", "offers": []}],
+            "count": 1,
+        },
+    )
+
+    class NoStartThread:
+        def __init__(self, *args, **kwargs):
+            self.kwargs = kwargs
+
+        def start(self):
+            return None
+
+    monkeypatch.setattr(main.threading, "Thread", NoStartThread)
+    response = main.search_start("Sauvage", "stable-session-1")
+    job_id = response["job_id"]
+    try:
+        assert response["catalog_rollout"]["mode"] == "shadow"
+        assert main.JOBS[job_id]["catalog_shadow_result"]["count"] == 1
+        assert response["results"] == []
+    finally:
+        with main.JOBS_LOCK:
+            main.JOBS.pop(job_id, None)
