@@ -10,6 +10,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 import uuid
 from pathlib import Path
 
@@ -275,9 +276,9 @@ def main() -> int:
                         norm(name),
                         norm(str(concentration or "")),
                         str(size or ""),
-                        str(bool(variant.get("is_tester", False))),
-                        str(bool(variant.get("is_refill", False))),
-                        str(bool(variant.get("is_gift_set", False))),
+                        str(bool(is_tester)),
+                        str(bool(is_refill)),
+                        str(bool(is_gift_set)),
                         source_id,
                     ))
                     variant_id = stable_id("variant", source_id)
