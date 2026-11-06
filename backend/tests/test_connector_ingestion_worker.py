@@ -94,7 +94,7 @@ def test_worker_keeps_invalid_evidence_rejected():
         raw = session.scalar(select(IngestionRaw))
     assert result["rejected"] == 1
     assert raw.status == "rejected"
-    assert raw.rejection_reason == "fixture_invalid"
+    assert raw.rejection_reason == "availability_requires_review"
 
 
 def test_worker_quarantines_only_after_repeated_store_failures():
