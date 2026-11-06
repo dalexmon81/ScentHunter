@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 import app.api.admin_catalog as admin_catalog
@@ -15,7 +15,6 @@ from app.models import (
     IngestionRaw,
     IngestionRun,
     MatchAudit,
-    Store,
     Offer,
     Store,
 )
@@ -174,7 +173,7 @@ def test_admin_can_configure_store_offer_ttl(monkeypatch, tmp_path):
         assert response.json()["offer_ttl_minutes"] == 180
         with factory() as session:
             store = session.scalar(
-                __import__("sqlalchemy").select(Store).where(Store.slug == "ttl-store")
+                select(Store).where(Store.slug == "ttl-store")
             )
             assert store.offer_ttl_minutes == 180
 
