@@ -1,4 +1,5 @@
 """PostgreSQL integration tests for the catalog-only search API."""
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import FastAPI
@@ -82,7 +83,13 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                 currency="EUR",
                 status="inactive",
             )
-            session.add_all([active_store, inactive_store])
+            expired_store = Store(
+                name="Fixture Expired Offer Store",
+                slug="catalog-search-expired-fixture",
+                currency="EUR",
+                status="active",
+            )
+            session.add_all([active_store, inactive_store, expired_store])
             session.flush()
 
             session.add_all([
@@ -106,6 +113,17 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                     source="catalog_search_test_fixture",
                     status="active",
                 ),
+                Offer(
+                    store_id=expired_store.id,
+                    product_variant_id=variant.id,
+                    url="https://fixture.example/expired-offer",
+                    price=Decimal("69.90"),
+                    currency="EUR",
+                    availability="in_stock",
+                    source="catalog_search_test_fixture",
+                    status="active",
+                    valid_until=datetime.now(timezone.utc) - timedelta(minutes=1),
+                ),
             ])
             session.commit()
 
@@ -127,6 +145,7 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
         assert fixture_offers[0]["ranking"]["shipping_cost_known"] is False
         assert fixture_offers[0]["ranking"]["price_basis"] == "product_price_only"
         assert all(offer["store"] != "catalog-search-inactive-fixture" for offer in variant_result["offers"])
+        assert all(offer["store"] != "catalog-search-expired-fixture" for offer in variant_result["offers"])
 
         # A caller-owned session factory remains usable after the search.
         with factory() as session:
