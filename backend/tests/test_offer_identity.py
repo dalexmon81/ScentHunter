@@ -100,3 +100,36 @@ def test_concentration_mismatch_guard_ignores_non_dictionary_values():
 
     assert is_concentration_mismatch_offer(None) is False
     assert is_concentration_mismatch_offer("Dior Sauvage") is False
+
+
+def test_offer_url_identity_ignores_tracking_and_www_noise():
+    from app.services.offer_identity import offer_url_identity
+
+    assert offer_url_identity(
+        "HTTPS://WWW.Shop.Example/Product/?utm_source=newsletter&gclid=abc"
+    ) == "https://shop.example/product"
+
+
+def test_offer_url_identity_preserves_variant_selectors():
+    from app.services.offer_identity import offer_url_identity
+
+    first = offer_url_identity("https://shop.example/item?variant=100&color=blue")
+    second = offer_url_identity("https://shop.example/item?variant=200&color=blue")
+    assert first == "https://shop.example/item?variant=100"
+    assert second == "https://shop.example/item?variant=200"
+    assert first != second
+
+
+def test_offer_url_identity_preserves_selector_fragments():
+    from app.services.offer_identity import offer_url_identity
+
+    assert offer_url_identity("https://shop.example/item#size-100ml") == (
+        "https://shop.example/item#size-100ml"
+    )
+
+
+def test_offer_url_identity_handles_empty_and_malformed_values():
+    from app.services.offer_identity import offer_url_identity
+
+    assert offer_url_identity(None) == ""
+    assert offer_url_identity("") == ""
