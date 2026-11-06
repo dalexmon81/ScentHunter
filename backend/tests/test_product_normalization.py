@@ -63,3 +63,10 @@ def test_gtin_check_digit_and_deduplication():
         left_gtin="4006381333931", right_gtin="5901234123457",
         left_key="same", right_key="same")
     assert decision == "review" and conflict is not None
+
+
+def test_size_rejects_boolean_nan_and_infinity():
+    import pytest
+    for invalid_size in (True, float("nan"), float("inf"), float("-inf"), 0, -1):
+        with pytest.raises(ValueError, match="size_ml_must_be_positive_finite_number"):
+            normalize_product("Dior", "Sauvage EDP", size_ml=invalid_size)
