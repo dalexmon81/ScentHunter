@@ -177,3 +177,50 @@ def test_public_offer_url_handles_empty_url():
     from app.services.public_offer_url import public_offer_url
 
     assert public_offer_url({"store": "sabina", "url": ""}) == ""
+
+
+def test_public_offer_projection_prefers_canonical_identity_and_preserves_availability():
+    from app.services.public_offer import public_offer
+
+    item = {
+        "canonical_name": "Sauvage",
+        "name": "Retailer Sauvage EDP",
+        "canonical_brand": "Dior",
+        "brand": "Retailer Brand",
+        "store": "deloox",
+        "price": "€99",
+        "available": False,
+        "availability": "OutOfStock",
+        "stock_status": "out_of_stock",
+        "_raw_name": "Retailer Sauvage EDP",
+        "_raw_brand": "Retailer Brand",
+    }
+    result = public_offer(item, lambda value: "https://shop.example/canonical")
+    assert result["name"] == "Sauvage"
+    assert result["brand"] == "Dior"
+    assert result["url"] == "https://shop.example/canonical"
+    assert result["available"] is False
+    assert result["availability"] == "OutOfStock"
+    assert result["stock_status"] == "out_of_stock"
+    assert result["raw_brand"] == "Retailer Brand"
+
+
+def test_public_offer_projection_uses_name_and_manufacturer_fallbacks():
+    from app.services.public_offer import public_offer
+
+    result = public_offer(
+        {"name": "Perfume", "manufacturer": "Brand", "image_url": "image"},
+        lambda item: item.get("url"),
+    )
+    assert result["name"] == "Perfume"
+    assert result["brand"] == "Brand"
+    assert result["retailer_image"] == "image"
+
+
+def test_public_offer_projection_does_not_mutate_source_item():
+    from app.services.public_offer import public_offer
+
+    item = {"name": "Perfume", "brand": "Brand"}
+    original = dict(item)
+    public_offer(item, lambda value: None)
+    assert item == original
