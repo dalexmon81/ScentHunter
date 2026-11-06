@@ -6,9 +6,15 @@ on:
       - phase2/staging-postgresql-guard
       - phase7/catalog-search-api
       - phase7/catalog-first-operational-e2e
+      - phase8/offer-quality-ranking-integrated
+      - phase10/ops-phase11-integrated
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
+      - "backend/app/api/admin_catalog.py"
+      - "backend/main.py"
+      - "backend/app/services/catalog_rollout.py"
+      - "frontend/index.html"
       - "backend/app/services/**"
       - "backend/app/workers/**"
       - "backend/app/connectors/**"
@@ -20,6 +26,11 @@ on:
       - "tests/test_next_engine_service.py"
       - "tests/test_phase2_schema_contract.py"
       - "backend/app/connectors/notino.py"
+      - "backend/app/api/admin_catalog.py"
+      - "backend/app/services/catalog_rollout.py"
+      - "backend/main.py"
+      - "backend/tests/test_catalog_admin_metrics.py"
+      - "backend/tests/test_catalog_rollout.py"
       - "backend/app/matching/**"
       - "backend/app/models/**"
       - "backend/app/services/ingestion_persistence.py"
@@ -32,6 +43,7 @@ on:
   push:
     branches:
       - phase2/catalog-first-vertical-slice
+      - phase10/ops-phase11-integrated
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/connectors/notino.py"
@@ -184,6 +196,12 @@ jobs:
 
       - name: Run PostgreSQL catalog-first search API tests
         run: pytest -q backend/tests/test_catalog_search_api.py
+
+      - name: Validate authenticated catalog admin metrics and queues
+        run: pytest -q backend/tests/test_catalog_admin_metrics.py
+
+      - name: Validate catalog canary, shadow comparison and legacy routing
+        run: pytest -q backend/tests/test_catalog_rollout.py
 
       - name: Assert live retailer feed credentials are not configured
         run: |
