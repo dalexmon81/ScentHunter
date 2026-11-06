@@ -54,6 +54,7 @@ class Store(Base):
     __table_args__ = (
         CheckConstraint("reliability_score IS NULL OR (reliability_score >= 0 AND reliability_score <= 1)", name="reliability_score_range"),
         CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
+        CheckConstraint("offer_ttl_minutes IS NULL OR offer_ttl_minutes > 0", name="offer_ttl_positive"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
@@ -61,6 +62,8 @@ class Store(Base):
     domain: Mapped[str | None] = mapped_column(String(255))
     country: Mapped[str | None] = mapped_column(String(2))
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR", server_default="EUR")
+    # Publication is blocked until an operator configures an explicit freshness TTL.
+    offer_ttl_minutes: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="active", server_default="active")
     reliability_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
