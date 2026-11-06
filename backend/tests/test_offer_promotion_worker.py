@@ -12,7 +12,7 @@ from app.services.product_normalization import normalize_product
 from app.workers.offer_promotion import promote_matched_offers
 
 
-def setup_db(availability="in_stock"):
+def setup_db(availability="in_stock", captured_at="2025-01-02T03:04:05+00:00"):
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
@@ -41,7 +41,7 @@ def setup_db(availability="in_stock"):
                 "concentration": "edp", "sizeMl": 100, "gtin": None,
                 "url": "https://shop.example/item/sku-100",
                 "price": 90.50, "currency": "EUR", "availability": availability,
-                "capturedAt": datetime.now(timezone.utc).isoformat(),
+                "capturedAt": captured_at,
                 "source": "fixture",
             },
             status="matched", product_variant_id=variant.id,
@@ -65,6 +65,9 @@ def test_promotion_creates_offer_history_and_audit():
         assert len(offers) == len(history) == len(audits) == 1
         assert offers[0].price == Decimal("90.50")
         assert offers[0].status == "active"
+        expected_capture = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        assert offers[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
+        assert history[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
         assert history[0].price == Decimal("90.50")
         assert audits[0].method == "canonical_key_exact"
         assert raw.status == "promoted"
@@ -189,3 +192,16 @@ def test_http_offer_url_is_blocked_by_publication_gate():
         raw = session.get(IngestionRaw, raw_id)
         assert raw.status == "matched"
         assert raw.rejection_reason.startswith("promotion_blocked:")
+
+
+
+def test_invalid_explicit_source_capture_timestamp_blocks_publication():
+    factory, raw_id = setup_db(captured_at="not-a-timestamp")
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "capturedAt must be a valid ISO-8601 timestamp" in raw.rejection_reason
