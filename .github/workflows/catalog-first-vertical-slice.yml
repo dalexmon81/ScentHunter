@@ -33,6 +33,7 @@ on:
       - "backend/app/services/catalog_rollout.py"
       - "backend/main.py"
       - "backend/tests/test_catalog_admin_metrics.py"
+      - "backend/tests/test_catalog_search_fail_closed.py"
       - "backend/tests/test_catalog_rollout.py"
       - "backend/app/matching/**"
       - "backend/app/models/**"
