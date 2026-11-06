@@ -51,6 +51,12 @@ app.include_router(phase5_offer_refresh_router)
 from app.api.legacy_catalog import router as phase5_legacy_catalog_router
 app.include_router(phase5_legacy_catalog_router)
 
+# Phase 7: PostgreSQL-backed catalog search. This adds a read-only route and
+# does not replace the legacy /search handler until frontend compatibility is
+# verified in a separate migration step.
+from app.api.catalog_search import router as phase7_catalog_search_router
+app.include_router(phase7_catalog_search_router)
+
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
 # present in this deployment, keep the legacy application available instead of
