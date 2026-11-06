@@ -51,6 +51,7 @@ on:
     paths:
       - "backend/scripts/verify_postgres_backup_restore.sh"
       - "backend/app/api/legacy_catalog.py"
+      - "backend/catalog_engine.py"
       - "backend/app/connectors/notino.py"
       - "backend/app/connectors/base.py"
       - "backend/app/workers/ingestion_tasks.py"
