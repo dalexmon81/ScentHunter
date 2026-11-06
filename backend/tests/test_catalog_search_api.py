@@ -158,6 +158,7 @@ def test_catalog_search_router_is_mounted_in_the_real_fastapi_application():
 
 def test_existing_frontend_search_route_can_opt_into_postgres_catalog(monkeypatch):
     monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_ENABLED", "1")
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT", "100")
     from main import app as scenthunter_app
 
     client = TestClient(scenthunter_app)
