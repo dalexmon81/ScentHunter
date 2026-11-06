@@ -100,10 +100,13 @@ market policy, connector contract, representative data and acceptance evidence p
 
 ## Current status
 
-**Not accepted.** The repository already has a shared connector contract, ingestion
-workers, per-store status/metrics, offer freshness policy and offline fixtures. The
-acceptance evidence above is not yet complete: real source authorization, populated
-multi-market staging data, supported-currency policy, measured real-catalog matching
-quality, load testing and operational recovery evidence remain outstanding.
+**Not accepted.** The repository has a shared connector contract, ingestion workers,
+per-store status/metrics, offer freshness policy and offline fixtures. A central
+supported-currency policy is now implemented with EUR as the only enabled code for
+the initial euro-area markets; publication and the isolated next-engine offer model
+reject other currencies until a market/FX policy is explicitly approved. This is a
+conservative first policy, not multi-currency support. The remaining acceptance
+evidence is incomplete: real source authorization, populated multi-market staging
+data, measured real-catalog matching quality, load testing and operational recovery.
 
 This document defines the gate; it does not claim that the gate has been met.
