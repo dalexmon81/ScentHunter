@@ -1,0 +1,62 @@
+name: Catalog-first search API
+
+on:
+  pull_request:
+    branches:
+      - phase2/staging-postgresql-guard
+    paths:
+      - "backend/app/api/catalog_search.py"
+      - "backend/app/models/**"
+      - "backend/app/db.py"
+      - "backend/tests/test_catalog_search_api.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/alembic/**"
+      - ".github/workflows/catalog-first-search-api.yml"
+  push:
+    branches:
+      - phase7/catalog-search-api
+    paths:
+      - "backend/app/api/catalog_search.py"
+      - "backend/app/models/**"
+      - "backend/app/db.py"
+      - "backend/tests/test_catalog_search_api.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/alembic/**"
+      - ".github/workflows/catalog-first-search-api.yml"
+
+jobs:
+  postgres-search-api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: search_api
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: search_api_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U search_api -d search_api_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://search_api:ci_only_password@127.0.0.1:5432/search_api_test
+      SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Apply schema migrations
+        run: alembic -c backend/alembic.ini upgrade head
+      - name: Seed canonical catalog
+        run: python backend/scripts/seed_catalog.py --apply
+      - name: Test catalog-first search API
+        run: pytest -q backend/tests/test_catalog_search_api.py
