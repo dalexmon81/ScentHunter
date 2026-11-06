@@ -86,7 +86,11 @@ def test_catalog_refresh_preserves_existing_price_when_new_parse_has_no_price():
     from pathlib import Path
 
     source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
-    assert "price=COALESCE(excluded.price,store_products.price)" in source
+    # The current UPSERT deliberately clears price for out-of-stock rows,
+    # replaces it only with an explicit parsed price, and otherwise preserves
+    # the last known-good value.
+    assert "WHEN excluded.price IS NOT NULL THEN excluded.price" in source
+    assert "ELSE store_products.price" in source
     assert "currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END" in source
 
 
