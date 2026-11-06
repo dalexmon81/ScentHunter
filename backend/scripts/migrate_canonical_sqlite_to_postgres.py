@@ -16,6 +16,8 @@ from pathlib import Path
 from decimal import Decimal
 from uuid import UUID
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import String, Uuid, cast, create_engine, func, inspect, select, text
 from sqlalchemy.engine import URL, make_url
 
@@ -30,7 +32,20 @@ TABLE_ORDER = (
     "legacy_product_id_map", "legacy_variant_id_map", "ingestion_raw",
     "offers", "price_history", "match_audit", "ingestion_runs",
 )
-EXPECTED_REVISION = "0003_store_domain"
+def _expected_alembic_revision():
+    """Resolve the repository single current Alembic head, not a stale ID."""
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    script = ScriptDirectory.from_config(config)
+    heads = script.get_heads()
+    if len(heads) != 1:
+        raise RuntimeError(
+            "Canonical SQLite/PostgreSQL import requires exactly one Alembic head; "
+            f"found {heads}."
+        )
+    return heads[0]
+
+
+EXPECTED_REVISION = _expected_alembic_revision()
 
 
 def open_source_read_only(source_path: Path):
