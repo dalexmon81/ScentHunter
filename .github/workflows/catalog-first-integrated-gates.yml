@@ -1,0 +1,111 @@
+name: Catalog-first integrated PostgreSQL gates
+
+on:
+  pull_request:
+    branches:
+      - phase7/catalog-first-operational-e2e
+    paths:
+      - "backend/app/**"
+      - "backend/alembic/**"
+      - "backend/main.py"
+      - "backend/tests/**"
+      - "backend/requirements.txt"
+      - "backend/scripts/seed_catalog.py"
+      - "tests/test_next_engine_service.py"
+      - "tests/test_phase2_schema_contract.py"
+      - "tests/test_phase2_seed_catalog.py"
+      - ".github/workflows/catalog-first-integrated-gates.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrated-postgres-redis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scenthunter
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: scenthunter_integrated
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scenthunter -d scenthunter_integrated"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_integrated
+      SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_integrated
+      SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_integrated
+      SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
+      SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
+      SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
+      SCENTHUNTER_DISCOVERY_TERMS_JSON: "{}"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend, worker and test dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt "celery[redis]==5.5.3" pytest
+      - name: Apply all PostgreSQL migrations twice
+        working-directory: backend
+        run: |
+          alembic upgrade head
+          alembic upgrade head
+      - name: Seed canonical identities and variants
+        run: python backend/scripts/seed_catalog.py --apply
+      - name: Compile integrated backend components
+        run: >-
+          python -m compileall -q
+          backend/app
+          backend/main.py
+          backend/tests
+      - name: Run database, identity, connector, matching, worker, API and offer-history gates
+        run: |
+          python -m pytest -q
+          tests/test_phase2_seed_catalog.py
+          tests/test_phase2_schema_contract.py
+          tests/test_next_engine_service.py
+          backend/tests/test_phase2_database_backends.py
+          backend/tests/test_phase2_postgres_schema.py
+          backend/tests/test_phase2_runtime_db_identity.py
+          backend/tests/test_canonical_identity_persistence.py
+          backend/tests/test_canonical_identity_writer.py
+          backend/tests/test_canonical_identity_review_queue.py
+          backend/tests/test_canonical_identity_backfill.py
+          backend/tests/test_product_normalization.py
+          backend/tests/test_store_connector_contract.py
+          backend/tests/test_notino_connector_fixture.py
+          backend/tests/test_notino_universal_connector.py
+          backend/tests/test_deloox_universal_connector.py
+          backend/tests/test_easycosmetic_universal_connector.py
+          backend/tests/test_sabina_universal_connector.py
+          backend/tests/test_parfumzentrum_universal_connector.py
+          backend/tests/test_remaining_universal_connectors.py
+          backend/tests/test_connector_ingestion_worker.py
+          backend/tests/test_connector_ingestion_session_defaults.py
+          backend/tests/test_offer_matching_worker.py
+          backend/tests/test_offer_promotion_worker.py
+          backend/tests/test_celery_ingestion_pipeline.py
+          backend/tests/test_catalog_search_api.py
+          backend/tests/test_catalog_first_vertical_slice.py
+          backend/tests/test_catalog_price_freshness_diagnostic.py
+          backend/tests/test_offer_detail_refresh_api.py
