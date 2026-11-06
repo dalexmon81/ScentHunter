@@ -66,7 +66,6 @@ jobs:
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_integrated
       SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_integrated
       SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_integrated
-      SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
       SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
       SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
       SCENTHUNTER_DISCOVERY_TERMS_JSON: "{}"
