@@ -4064,7 +4064,16 @@ def _maybe_persist_bplatz_phase2(item, url):
             "legacy_product_id_map", "legacy_variant_id_map",
         }
         missing = sorted(required_tables - tables)
-        if revision not in {"0002_ingestion_raw", "0003_store_domain"} or missing:
+        supported_revisions = {
+            "0002_ingestion_raw",
+            "0003_store_domain",
+            "0003_variant_mini_packaging",
+            "0004_merge_store_domain_and_variant_mini",
+            "0005_canonical_identity_reviews",
+            "0006_ingestion_artifacts",
+            "0007_ingestion_dead_letters",
+        }
+        if revision not in supported_revisions or missing:
             print(
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
                 f"revision={revision!r} missing_tables={missing}", flush=True,
