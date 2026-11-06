@@ -43,8 +43,8 @@ def test_admin_api_rejects_invalid_token(monkeypatch):
     assert response.json()["detail"] == "invalid_admin_token"
 
 
-def test_admin_metrics_and_review_queues_report_persisted_state(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+def test_admin_metrics_and_review_queues_report_persisted_state(monkeypatch, tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'catalog-admin.db'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
