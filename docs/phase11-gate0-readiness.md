@@ -181,3 +181,40 @@ These are offline fixture/stub or CI checks. They are not evidence of a current 
 Do not create a synthetic published offer, scrape around a block, activate a retailer without a permitted access method, or enable shadow/canary traffic while the gate is blocked.
 
 **Gate 0 remains BLOCKED; shadow/canary remain 0%.**
+
+
+### Follow-up legal classification research — Luxembourg official guidance, 2026-11-06
+
+This section records an official-source review prompted by the owner's confirmation that ScentHunter is currently operated by an individual and no company has been formed.
+
+**Important distinction: no company does not mean no business formalities.** Guichet.lu describes a sole proprietorship as an activity carried out by a natural person in their own name; no separate legal entity needs to be incorporated. Depending on the actual activity, however, the individual may still need the relevant business permit, registrations and social-security affiliation. A sole proprietor trading as a merchant may also have RCS registration obligations. See [Sole proprietorship (self-employed persons)](https://guichet.public.lu/en/entreprises/creation-developpement/forme-juridique/entreprise-individuelle-societe-personnes/entreprise-individuelle.html).
+
+Guichet.lu states that, as a general rule, an economic activity carried out habitually is subject to prior establishment authorisation, including commercial activities and certain services, whether performed independently or through a company. The precise classification of this particular perfume-comparison/affiliate activity has **not** been determined by the administration. See [Initial application for an establishment permit](https://guichet.public.lu/en/entreprises/creation-developpement/autorisation-etablissement/autorisation-honorabilite/autorisation-etablissement.html) and [Commercial activities and services](https://guichet.public.lu/en/entreprises/creation-developpement/autorisation-etablissement/commerce/commerce.html).
+
+**Preliminary application to ScentHunter (not a legal ruling):**
+- The project is operated by an individual; incorporation of a SARL is not automatically a prerequisite to operating in one's own name.
+- If the site regularly promotes retailers and earns affiliate commissions, that recurring revenue-generating activity may be treated as an economic/commercial service. The fact that consumers do not pay ScentHunter directly does not by itself settle the classification.
+- Do not assume that a hobby/personal-project label, low revenue, or a free-to-use website creates an exemption. Ask the competent Ministry of the Economy / House of Entrepreneurship to classify the exact activity and confirm whether an establishment permit is required before activating affiliate monetisation.
+- If the activity is carried on as a sole proprietorship and requires an establishment permit, Guichet.lu describes subsequent steps including CCSS self-employed affiliation and VAT registration. CCSS says self-employed persons must affiliate within 8 days after starting their activity; where a specific authorisation is required, it must be held before starting the professional activity.
+- The Luxembourg VAT small-business exemption threshold is EUR 50,000 annual turnover excluding VAT (with a 10% tolerance under the stated conditions). This is a VAT regime threshold, **not** a blanket exemption from business permits, income tax, social-security obligations, or all VAT identification/filing duties. Cross-border EU services can create additional VAT questions. See [VAT registration](https://guichet.public.lu/en/entreprises/creation-developpement/obligations-fiscales-sociales/impots/inscription-tva.html), [SME VAT exemption scheme](https://pfi.public.lu/fr/professionnel/tva/sme.html), and [CCSS affiliation](https://ccss.public.lu/en/independants/commencer-arreter-activite/affilier.html).
+
+**Recommended next action — obtain a written classification before monetisation:**
+Contact the House of Entrepreneurship / Ministry of the Economy and describe the actual model accurately: an individual resident/established in Luxembourg operating an online perfume price-comparison website; no consumer charge; retailer outbound links; potential affiliate commissions from approved partner programmes; no sale or possession of perfumes; no employees (unless this changes). Ask:
+1. Does this exact activity require an autorisation d'établissement, and under which activity category?
+2. Can it be carried on as an entreprise individuelle in the operator's own name, and what RCS registration is required?
+3. What establishment/address conditions apply to a home-based online activity?
+4. When must CCSS self-employed affiliation begin?
+5. How should affiliate commissions from EU and non-EU networks be treated for Luxembourg VAT, including the small-business exemption and cross-border services?
+6. Which details must appear in the site's legal notice before the first affiliate link/commission?
+
+Do not start or represent the activity as formally compliant based solely on this preliminary desk review. Do not apply for an arbitrary permit category or publish private address details until the competent authority has confirmed the applicable requirements.
+
+**Official source links reviewed (6 November 2026):**
+- [Guichet.lu — Sole proprietorship](https://guichet.public.lu/en/entreprises/creation-developpement/forme-juridique/entreprise-individuelle-societe-personnes/entreprise-individuelle.html)
+- [Guichet.lu — Commercial activities and services](https://guichet.public.lu/en/entreprises/creation-developpement/autorisation-etablissement/commerce/commerce.html)
+- [Guichet.lu — Establishment permit](https://guichet.public.lu/en/entreprises/creation-developpement/autorisation-etablissement/autorisation-honorabilite/autorisation-etablissement.html)
+- [CCSS — Self-employed affiliation](https://ccss.public.lu/en/independants/commencer-arreter-activite/affilier.html)
+- [Guichet.lu — VAT registration](https://guichet.public.lu/en/entreprises/creation-developpement/obligations-fiscales-sociales/impots/inscription-tva.html)
+- [AED — Small-business VAT exemption scheme](https://pfi.public.lu/fr/professionnel/tva/sme.html)
+
+The review is informational and does not replace a written administrative decision or advice from a Luxembourg accountant/legal professional.
