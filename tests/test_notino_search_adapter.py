@@ -287,3 +287,30 @@ def test_product_parser_does_not_borrow_related_product_price_or_size():
         html,
         "Dior Sauvage",
     ) is None
+
+
+
+def test_diagnostic_reads_authorized_feed_cache_without_public_http(monkeypatch):
+    from backend.scrapers.notino import affiliate_feed
+
+    expected = {
+        "status": "success",
+        "verified": True,
+        "results": [],
+        "error": None,
+        "details": {"source": "cj_viv_authorized_xml"},
+    }
+    monkeypatch.setattr(affiliate_feed, "search_feed", lambda query: expected)
+    monkeypatch.setattr(
+        scraper,
+        "_discover",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("Notino diagnostic must not run public discovery")
+        ),
+    )
+
+    report = scraper.diagnose("Dior Sauvage")
+
+    assert report["diagnostic"] is True
+    assert report["source"] == "cj_viv_authorized_xml"
+    assert report["feed_report"] == expected
