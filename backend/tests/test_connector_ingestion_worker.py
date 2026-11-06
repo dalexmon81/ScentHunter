@@ -376,3 +376,16 @@ def test_discovery_failure_marks_its_own_run_without_touching_another_running_ru
     assert sum(run.status == "failed" for run in runs) == 1
     assert sum(run.status == "running" for run in runs) == 1
     engine.dispose()
+
+
+
+def test_legacy_sync_runner_is_not_part_of_the_production_celery_worker():
+    from app.workers.celery_app import celery_app
+
+    # The sync adapter exists for isolated fixtures and backwards-compatible
+    # callers only. Production workers load and route the canonical task module.
+    assert celery_app.conf.include == ["app.workers.ingestion_tasks"]
+    assert all(
+        "connector_ingestion" not in task_name
+        for task_name in celery_app.conf.task_routes
+    )
