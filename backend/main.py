@@ -4715,7 +4715,6 @@ def diagnose_hawas_ice_offers_read_only():
     return out
 
 
-@app.get('/search-start')
 def _run_catalog_shadow(job_id, query):
     """Run a non-serving catalog read without delaying the legacy search start."""
     try:
@@ -4750,6 +4749,7 @@ def _run_catalog_shadow(job_id, query):
             job["catalog_shadow_comparison"] = comparison
 
 
+@app.get('/search-start')
 def search_start(
     q: str,
     x_catalog_rollout_key: str | None = Header(default=None, alias="X-Catalog-Rollout-Key"),
