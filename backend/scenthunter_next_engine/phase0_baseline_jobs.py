@@ -510,9 +510,10 @@ def _export_store_chunk(store_slug: str, chunk_path: str, result_queue: Any) -> 
                     captured = offer.captured_at
                     if captured and captured.tzinfo is None:
                         captured = captured.replace(tzinfo=timezone.utc)
-                    fresh = offer.valid_until is None or (
-                        offer.valid_until.replace(tzinfo=timezone.utc)
-                        if offer.valid_until.tzinfo is None else offer.valid_until
+                    valid_until = offer.valid_until
+                    fresh = bool(valid_until) and (
+                        valid_until.replace(tzinfo=timezone.utc)
+                        if valid_until.tzinfo is None else valid_until
                     ) > now
                     url = str(offer.url or "").strip()
                     valid_url = url.startswith("https://")
@@ -526,6 +527,8 @@ def _export_store_chunk(store_slug: str, chunk_path: str, result_queue: Any) -> 
                         and price is not None and price > 0
                         and len(currency) == 3 and currency.isalpha()
                         and availability in VALID_STOCK
+                        and bool(offer.external_product_id)
+                        and bool(variant.concentration if variant else None)
                         and confidence is not None
                         and 0 <= float(confidence) <= 1
                     )
