@@ -25,7 +25,7 @@ class BrokenMatcher:
 
 
 def test_matcher_failure_fails_closed():
-    assert identity_scope("Dior", BrokenMatcher(), logger=lambda message, **kwargs: None) == []
+    assert identity_scope("Dior", BrokenMatcher(), logger=lambda message: None) == []
 
 
 def test_missing_matcher_returns_empty_scope():
