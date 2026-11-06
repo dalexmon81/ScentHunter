@@ -154,9 +154,13 @@ def test_search_start_shadow_reads_catalog_but_serves_legacy_snapshot(monkeypatc
         },
     )
 
+    threads = []
+
     class NoStartThread:
         def __init__(self, *args, **kwargs):
-            self.kwargs = kwargs
+            self.target = kwargs.get("target") or (args[0] if args else None)
+            self.args = kwargs.get("args", ())
+            threads.append(self)
 
         def start(self):
             return None
@@ -166,6 +170,11 @@ def test_search_start_shadow_reads_catalog_but_serves_legacy_snapshot(monkeypatc
     job_id = response["job_id"]
     try:
         assert response["catalog_rollout"]["mode"] == "shadow"
+        # The catalog lookup must not run inline and delay the legacy response.
+        assert called == []
+        shadow_threads = [thread for thread in threads if thread.target == main._run_catalog_shadow]
+        assert len(shadow_threads) == 1
+        shadow_threads[0].target(*shadow_threads[0].args)
         assert main.JOBS[job_id]["catalog_shadow_result"]["count"] == 1
         assert response["results"] == []
     finally:
