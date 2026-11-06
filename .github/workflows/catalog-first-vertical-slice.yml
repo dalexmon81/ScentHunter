@@ -38,6 +38,7 @@ on:
       - "backend/app/services/product_normalization.py"
       - "backend/app/workers/connector_ingestion.py"
       - "backend/tests/test_catalog_first_vertical_slice.py"
+      - "backend/tests/test_catalog_contract_alignment.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
       - ".github/workflows/catalog-first-vertical-slice.yml"
@@ -142,6 +143,7 @@ jobs:
         run: >-
           pytest -q
           backend/tests/test_store_connector_contract.py
+          backend/tests/test_catalog_contract_alignment.py
           backend/tests/test_notino_connector_fixture.py
           backend/tests/test_notino_universal_connector.py
           backend/tests/test_deloox_universal_connector.py
