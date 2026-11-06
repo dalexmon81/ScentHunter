@@ -30,3 +30,11 @@ def test_matcher_failure_fails_closed():
 
 def test_missing_matcher_returns_empty_scope():
     assert identity_scope("Dior", None) == []
+
+
+
+def test_logger_failure_does_not_break_fail_closed_identity_scope():
+    def broken_logger(message):
+        raise RuntimeError("logger unavailable")
+
+    assert identity_scope("Dior", BrokenMatcher(), logger=broken_logger) == []
