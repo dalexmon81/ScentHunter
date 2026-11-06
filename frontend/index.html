@@ -994,9 +994,10 @@ async function hydratePhase2OfferIds(g){
 
 function renderOffersHtml(g,img,offers,saved){
   const singleCurrencyComparison=new Set((offers||[]).map(o=>String(o&&o.currency||"EUR").toUpperCase())).size===1;
+  const allOffersPriceComparable=(offers||[]).every(o=>!o||!o.ranking||o.ranking.price_comparable===true);
   return (offers||[]).map((o,n)=>{
     const out=isOfferOutOfStock(o);
-    const isBestOffer=!out&&n===0&&singleCurrencyComparison;
+    const isBestOffer=!out&&n===0&&singleCurrencyComparison&&allOffersPriceComparable;
     const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
     const refreshId=String(o.phase2_offer_id||"");
