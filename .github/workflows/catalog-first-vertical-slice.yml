@@ -119,6 +119,7 @@ jobs:
       PYTHONPATH: backend:.
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
       SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
+      SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
       SCENTHUNTER_BACKUP_RESTORE_TARGET_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/ci_restore_catalog
       SCENTHUNTER_BACKUP_RESTORE_CONFIRM: DISPOSABLE_CI_ONLY
       SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"

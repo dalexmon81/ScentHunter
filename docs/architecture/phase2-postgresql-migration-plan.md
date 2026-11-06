@@ -1,20 +1,16 @@
 # Phase 2 PostgreSQL Migration Plan
 
-Status: preparation only — no production database was contacted or modified.
+Status (2026-11-06): PostgreSQL support, staging fail-closed policy, and the dry-run-first importer are implemented and verified in disposable CI. No production database was contacted or modified; actual staging runtime identity and cutover remain unverified.
 
 ## 1. Current state and decision
 
-The canonical Phase 2 catalog is currently configured by `backend/app/db.py` to use the isolated SQLite file `/data/catalog/catalog.sqlite3` by default. The legacy retailer catalog is a separate SQLite database (currently configured by `SCENTHUNTER_CATALOG_DB` in the Fly app configuration). Do not point the canonical SQLAlchemy models at the legacy retailer database.
+The canonical Phase 2 catalog database factory in `backend/app/db.py` now accepts SQLite and PostgreSQL URLs. Its application default remains the isolated SQLite file `/data/catalog/catalog.sqlite3`; URL precedence is `SCENTHUNTER_CATALOG_DATABASE_URL`, then `SCENTHUNTER_DATABASE_URL`, then that default. The legacy retailer catalog remains a separate SQLite database (configured independently through `SCENTHUNTER_CATALOG_DB`). Never point canonical SQLAlchemy models at the legacy retailer database.
 
-The repository already contains three Alembic revisions:
+The Alembic chain now includes the initial catalog schema, raw ingestion and legacy ID maps, store-domain and variant metadata branches, their merge revision, identity/audit and ingestion-artifact/dead-letter additions, variant-size precision, ingestion uniqueness, offer TTL, and PostgreSQL catalog-search indexes. The repository's current migration graph has one head, resolved by the importer rather than hard-coded to an obsolete revision.
 
-- `0001_initial_catalog`: brands, fragrances, product variants, stores, offers, price history, match audit and ingestion runs.
-- `0002_ingestion_raw`: raw ingestion staging, legacy ID maps and the offer-to-raw relationship.
-- `0003_store_domain`: retailer domain on stores.
+PostgreSQL support is implemented in the engine and exercised against disposable PostgreSQL 16 in CI. The isolated staging worker configuration sets `SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL=1`; it refuses to start without an explicit PostgreSQL URL. This is a fail-closed configuration guard, not proof that staging is deployed or running on that database.
 
-The current application database factory explicitly rejects non-SQLite URLs. PostgreSQL support in model/migration definitions and the installed `psycopg[binary]` dependency are not, by themselves, proof that the application can safely run on PostgreSQL.
-
-**Decision:** PostgreSQL is the intended durable backend for the canonical catalog. SQLite remains the current production backend until the readiness gates below pass. The legacy retailer catalog and its writer coordination remain separate and are not part of this migration.
+**Decision:** PostgreSQL is the intended durable backend for the canonical catalog. SQLite remains the local/test default and compatibility fallback; the isolated staging worker requires PostgreSQL. Actual staging runtime identity, data import, and any production cutover remain separate acceptance gates. The legacy retailer catalog and its writer coordination remain separate and are not part of this migration.
 
 ## 2. Non-negotiable safety boundaries
 
@@ -30,8 +26,8 @@ The current application database factory explicitly rejects non-SQLite URLs. Pos
 
 ### A. Database URL and engine support
 
-- Extend `backend/app/db.py` to accept SQLite and PostgreSQL URLs.
-- Preserve the existing SQLite default and current environment-variable precedence until an explicit cutover is approved.
+- Implemented: `backend/app/db.py` accepts SQLite and PostgreSQL URLs.
+- Implemented: preserve SQLite default and environment-variable precedence; staging workers require PostgreSQL through `SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL=1`.
 - Normalize supported PostgreSQL URLs to the installed psycopg 3 driver without logging the URL.
 - Apply SQLite PRAGMAs and SQLite-only connection arguments only to SQLite engines.
 - Keep PostgreSQL pool health checks enabled and use bounded connection/pool settings appropriate to the Fly machine count.
@@ -39,22 +35,20 @@ The current application database factory explicitly rejects non-SQLite URLs. Pos
 
 ### B. Runtime identity and observability
 
-- Generalize `backend/app/db_runtime_identity.py`: retain the current same-connection SQLite identity check; for PostgreSQL report only dialect, server/database identity fields that are safe, process, service, configuration source and timestamp.
+- Implemented: `backend/app/db_runtime_identity.py` reports masked identity for the caller's existing SQLite or PostgreSQL connection, including dialect, safe database identity, process/service, configuration source and timestamp.
 - Never log hostname credentials, full DSNs, query parameters, or passwords.
 - Runtime proof must be emitted from the exact SQLAlchemy connection used by the persistence operation, not a separately-created diagnostic connection.
 - Ensure logging failures cannot silently redirect writes to another database.
 
 ### C. Alembic and schema parity
 
-- Run all existing revisions against disposable PostgreSQL in CI, from an empty database.
-- Verify `alembic upgrade head`, Alembic head, model metadata parity, constraints, indexes, UUID and JSON behavior.
-- Verify a second `upgrade head` is a no-op.
+- Verified in disposable PostgreSQL CI: run all existing revisions from an empty database, check schema/model parity, constraints, indexes, UUID/JSON behavior, and verify a second `upgrade head` is a no-op. The integrated importer test also executes dry-run, apply, checksum and idempotent repeat.
 - Do not use `Base.metadata.create_all()` as a substitute for versioned migrations.
 - Add explicit tests for transaction rollback and foreign-key behavior.
 
 ### D. Data migration
 
-- Build a repeatable, resumable, dry-run-first importer for the canonical SQLite database only.
+- Implemented: `backend/scripts/migrate_canonical_sqlite_to_postgres.py` is a dry-run-first importer for the canonical SQLite database only. It resolves the current single Alembic head dynamically and fails closed if the migration graph has multiple heads.
 - Preserve UUID primary keys and foreign keys; import in dependency order: brands, fragrances, variants, stores, legacy ID maps, ingestion raw, offers, price history, match audit, ingestion runs.
 - Preserve nullable values, timestamps, status values, JSON payloads, and exact currency/price precision.
 - Use deterministic ordering and idempotent upserts; never invent missing variants or match relationships.
