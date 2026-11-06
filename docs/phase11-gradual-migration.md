@@ -152,3 +152,34 @@ Non eseguire downgrade distruttivi del database durante un rollback del traffico
 - [ ] Nessun incidente critico aperto.
 - [ ] 100% GET/search servito dal nuovo catalogo per la finestra di stabilizzazione approvata.
 - [ ] Il vecchio percorso non viene rimosso automaticamente: la sua dismissione richiede una PR separata.
+
+
+## Priorità di lavoro aggiornata — product readiness prima della commercializzazione (2026-11-06)
+
+The owner's explicit priority is to finish, test, and demonstrate ScentHunter as a working product **before** spending time on company formation, legal publication details, advertiser approvals, or live retailer onboarding. This changes work sequencing, not the safety requirements for external data access or monetised launch.
+
+### Track A — build and prove the product (work now)
+1. **Frontend audit and functional inventory:** inspect all routes/components and identify broken, placeholder, disconnected, or incomplete user journeys. Verify search, product detail, filters, sorting, comparison/wishlist, retailer-link behavior, loading/empty/error states, and mobile layout.
+2. **Backend/API audit:** map the actual running endpoints and data sources; identify legacy/live-scrape paths that must not run during normal user search. Separate user-facing catalog reads from ingestion and refresh jobs.
+3. **Deterministic demo dataset:** create clearly labelled, non-production fixtures with synthetic retailer identities or historical snapshots. Never present fixture prices/stock as current live offers. Ensure demo mode cannot leak into production or affiliate links.
+4. **Catalog-first vertical slice:** use a known canonical fragrance + variant and fixture offers to prove API → PostgreSQL → search/index → frontend. Show price, currency, stock state, retailer/source label, and captured/last-checked time, clearly marked as test data.
+5. **Automated quality gates:** unit tests for normalization/matching/validation; API integration tests against disposable PostgreSQL; worker/queue tests with Redis/Celery; frontend component/e2e tests for core journeys; regression tests for malformed, missing, stale, ambiguous, and out-of-stock data.
+6. **Operational readiness in staging:** repeatable migrations/seed, health checks, structured sanitized logs, metrics, backup/restore rehearsal, worker retry/quarantine, and documented reset procedure.
+7. **Acceptance report:** publish a concise checklist with test commands, workflow links, screenshots or recorded evidence, known defects, and explicit PASS/FAIL/NOT TESTED per user journey.
+
+### Track B — commercial and external launch (defer until Track A is accepted)
+- Confirm Luxembourg legal/business/tax classification and any applicable authorisation.
+- Complete public legal pages and operator contact details.
+- Obtain retailer/affiliate approvals and permitted API/feed access.
+- Ingest genuine retailer offers, verify price/stock refresh and affiliate attribution.
+- Only then consider production traffic, shadow comparisons, canary, and public monetisation.
+
+### Guardrails during Track A
+- Do not send unauthorised retailer requests or bypass 403/anti-bot controls.
+- Do not fabricate live offers, prices, availability, reviews, timestamps, or retailer approvals.
+- Do not publish test fixtures as real offers or send users to fake affiliate links.
+- Do not enable production shadow/canary or change production routing merely because local/staging tests pass.
+- A technical demo can be fully usable with explicitly labelled test data; a live price-comparison service requires permitted real sources.
+
+### Immediate next engineering task
+Start with a repository-wide frontend/backend route and test-coverage audit. Produce a prioritized defect list and a core user-journey acceptance matrix before making broad UI changes. Then fix and verify one complete catalog-first search journey end-to-end in staging. Legal/affiliate readiness remains a separate launch track and must not block local/offline product engineering.
