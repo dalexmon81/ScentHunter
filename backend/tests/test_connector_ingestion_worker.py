@@ -334,3 +334,38 @@ def test_bplatz_manual_task_requires_access_reference_and_exact_product_url():
             "https://bplatz.de/products/another-fragrance",
             "Bplatz automated-access approval recorded",
         )
+
+
+def test_discovery_failure_marks_its_own_run_without_touching_another_running_run(monkeypatch):
+    from app.workers import ingestion_tasks
+
+    factory = make_session_factory()
+    with factory() as session:
+        store = session.scalar(select(Store).where(Store.slug == "fake-store"))
+        other_run = IngestionRun(store_id=store.id, status="running", errors=[])
+        session.add(other_run)
+        session.commit()
+        other_run_id = other_run.id
+
+    class FailingConnector(FakeConnector):
+        pass
+
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(ingestion_tasks, "get_connector", lambda _store_key: FailingConnector())
+    monkeypatch.setattr(
+        ingestion_tasks, "_run",
+        lambda _coroutine: (_ for _ in ()).throw(TimeoutError("discovery timeout")),
+    )
+
+    with pytest.raises(TimeoutError, match="discovery timeout"):
+        ingestion_tasks.discover_store_products.run("fake-store")
+
+    with factory() as session:
+        runs = list(session.scalars(
+            select(IngestionRun).where(IngestionRun.store_id == store.id)
+        ))
+        untouched = session.get(IngestionRun, other_run_id)
+
+    assert untouched.status == "running"
+    assert sum(run.status == "failed" for run in runs) == 1
+    assert sum(run.status == "running" for run in runs) == 1
