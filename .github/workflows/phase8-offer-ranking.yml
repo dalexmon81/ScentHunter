@@ -8,6 +8,7 @@ on:
       - "backend/app/services/offer_ranking.py"
       - "backend/app/api/catalog_search.py"
       - "backend/tests/test_offer_ranking.py"
+      - "backend/tests/test_catalog_search_api.py"
       - ".github/workflows/phase8-offer-ranking.yml"
   workflow_dispatch:
 
