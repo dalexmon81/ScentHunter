@@ -16,9 +16,9 @@ _NON_FRAGRANCE_CATEGORY_RE = re.compile(
     r"accessor|accessori|jewell|joyer|watch|reloj|bag|bolso|"
     r"toiletr|wallet|cartera|brush|pennello|sponge|esponja|"
     r"deodorant|desodorante|aftershave|rasage|soap|jabon|"
-    r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face\\s*wash|"
-    r"facial\\s*cleanser|toner|tonique|gesichtswasser|shaving|"
-    r"gel\\s*de\\s*afeitado|gel\\s*de\\s*rasage)(?:[^a-z0-9]|$)",
+    r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face\s*wash|"
+    r"facial\s*cleanser|toner|tonique|gesichtswasser|shaving|"
+    r"gel\s*de\\s*afeitado|gel\s*de\\s*rasage)(?:[^a-z0-9]|$)",
     re.I,
 )
 
