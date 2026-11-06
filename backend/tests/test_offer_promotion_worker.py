@@ -12,7 +12,7 @@ from app.services.product_normalization import normalize_product
 from app.workers.offer_promotion import promote_matched_offers
 
 
-def setup_db(availability="in_stock", captured_at="2025-01-02T03:04:05+00:00"):
+def setup_db(availability="in_stock", captured_at="2025-01-02T03:04:05+00:00", offer_ttl_minutes=1440):
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
@@ -29,7 +29,7 @@ def setup_db(availability="in_stock", captured_at="2025-01-02T03:04:05+00:00"):
             fragrance_id=fragrance.id, concentration="edp", size_ml=100,
             canonical_key=identity.canonical_key,
         )
-        store = Store(name="Test Shop", slug="test-shop", currency="EUR", offer_ttl_minutes=1440, status="active")
+        store = Store(name="Test Shop", slug="test-shop", currency="EUR", offer_ttl_minutes=offer_ttl_minutes, status="active")
         session.add_all([variant, store])
         session.flush()
         raw = IngestionRaw(
@@ -67,6 +67,7 @@ def test_promotion_creates_offer_history_and_audit():
         assert offers[0].status == "active"
         expected_capture = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
         assert offers[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
+        assert offers[0].valid_until.replace(tzinfo=timezone.utc) == expected_capture.replace(day=3)
         assert history[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
         assert history[0].price == Decimal("90.50")
         assert audits[0].method == "canonical_key_exact"
@@ -205,3 +206,16 @@ def test_invalid_explicit_source_capture_timestamp_blocks_publication():
         raw = session.get(IngestionRaw, raw_id)
         assert raw.status == "matched"
         assert "capturedAt must be a valid ISO-8601 timestamp" in raw.rejection_reason
+
+
+
+def test_promotion_is_blocked_until_store_freshness_ttl_is_configured():
+    factory, raw_id = setup_db(offer_ttl_minutes=None)
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "store_offer_ttl_not_configured" in raw.rejection_reason
