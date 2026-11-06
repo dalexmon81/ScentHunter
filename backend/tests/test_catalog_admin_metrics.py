@@ -158,8 +158,21 @@ def test_admin_can_configure_store_offer_ttl(monkeypatch, tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'catalog-ttl-admin.db'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
+    captured_at = datetime.now(timezone.utc) - timedelta(minutes=30)
     with factory.begin() as session:
-        session.add(Store(name="TTL Store", slug="ttl-store", status="active"))
+        store = Store(name="TTL Store", slug="ttl-store", status="active")
+        session.add(store)
+        session.flush()
+        session.add(Offer(
+            store_id=store.id,
+            url="https://example.invalid/ttl-store-offer",
+            price=Decimal("20.00"),
+            currency="EUR",
+            availability="in_stock",
+            source="ttl_admin_fixture",
+            captured_at=captured_at,
+            status="active",
+        ))
 
     monkeypatch.setattr(admin_catalog, "make_session_factory", lambda: factory)
     monkeypatch.setenv("SCENTHUNTER_ADMIN_TOKEN", "ci-admin-secret")
@@ -176,6 +189,9 @@ def test_admin_can_configure_store_offer_ttl(monkeypatch, tmp_path):
                 select(Store).where(Store.slug == "ttl-store")
             )
             assert store.offer_ttl_minutes == 180
+            offer = session.scalar(select(Offer).where(Offer.store_id == store.id))
+            expected_expiry = captured_at + timedelta(minutes=180)
+            assert offer.valid_until.replace(tzinfo=timezone.utc) == expected_expiry
 
         missing = _client().put(
             "/catalog/admin/stores/not-configured/freshness-policy",
