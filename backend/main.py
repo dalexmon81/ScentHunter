@@ -54,7 +54,10 @@ app.include_router(phase5_legacy_catalog_router)
 # Phase 7: PostgreSQL-backed catalog search. This adds a read-only route and
 # does not replace the legacy /search handler until frontend compatibility is
 # verified in a separate migration step.
-from app.api.catalog_search import router as phase7_catalog_search_router
+from app.api.catalog_search import (
+    router as phase7_catalog_search_router,
+    search_catalog_for_frontend as phase7_search_catalog_for_frontend,
+)
 app.include_router(phase7_catalog_search_router)
 
 # Optional isolated next engine. It is deliberately opt-in and uses a database
@@ -4693,6 +4696,36 @@ def diagnose_hawas_ice_offers_read_only():
 @app.get('/search-start')
 def search_start(q: str):
     query = str(q or '').strip()
+    # Opt-in bridge: the existing frontend already calls /search-start and
+    # understands this response contract. Keep the legacy worker path as the
+    # default until the PostgreSQL catalog is populated and operationally
+    # approved; enabling this flag makes the UI search persisted PostgreSQL
+    # records only, without retailer discovery or live connector calls.
+    catalog_search_enabled = str(
+        os.environ.get('SCENTHUNTER_CATALOG_SEARCH_ENABLED', '0')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    if catalog_search_enabled:
+        try:
+            return phase7_search_catalog_for_frontend(query)
+        except Exception as exc:
+            print(
+                f'POSTGRES_CATALOG_SEARCH_ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+            return {
+                'query': query,
+                'count': 0,
+                'offer_count': 0,
+                'results': [],
+                'unresolved_offers': [],
+                'identity_scope': [],
+                'errors': {'catalog_search': 'catalog_search_unavailable'},
+                'stores': {},
+                'dedupe_diagnostics': [],
+                'completed': True,
+                'status': 'error',
+            }
+
     if not query:
         return {
             'job_id': '',
