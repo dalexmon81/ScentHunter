@@ -28,11 +28,10 @@ def catalog_rollout_decision(query, rollout_key=None, *, environ=None):
     enabled = _enabled(env.get("SCENTHUNTER_CATALOG_SEARCH_ENABLED"))
     shadow_enabled = _enabled(env.get("SCENTHUNTER_CATALOG_SEARCH_SHADOW"))
 
+    # The master switch alone never sends traffic to the new path.
+    # An explicit percentage is required for every canary stage.
     raw_percent = env.get("SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT")
-    if raw_percent is None:
-        traffic_percent = 100 if enabled else 0
-    else:
-        traffic_percent = _percent(raw_percent, default=0)
+    traffic_percent = _percent(raw_percent, default=0)
     if not enabled:
         traffic_percent = 0
 
