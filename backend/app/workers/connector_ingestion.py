@@ -1,7 +1,9 @@
-""""Store-scoped ingestion runner.
+"""Legacy synchronous ingestion compatibility runner.
 
-This worker only stages raw connector evidence. It never matches or publishes
-offers; canonical matching and promotion remain separate, explicit steps.
+Production ingestion is owned by ingestion_tasks.discover_store_products,
+which stages raw evidence and queues the canonical normalize/validate/match/
+promote pipeline. This adapter remains for isolated fixtures and compatibility;
+it must not be scheduled as a production ingestion worker.
 """
 from __future__ import annotations
 
@@ -10,7 +12,7 @@ from typing import Callable
 
 from sqlalchemy import select
 
-from app.connectors.base import StoreConnector
+from app.connectors.base import StoreConnector, validate_offer_payload
 from app.models import IngestionRaw, IngestionRun, Store
 
 
@@ -75,17 +77,21 @@ def run_connector_once(
             staged = rejected = 0
             for record in records:
                 payload = record.to_dict()
-                valid, errors = connector.validate_offer(record)
+                valid, errors = validate_offer_payload(payload)
+                errors = list(errors)
+                payload_store = str(payload.get("store") or "").strip().lower()
+                if payload_store != str(store.slug or "").strip().lower():
+                    errors.append("store_attribution_mismatch")
                 raw = IngestionRaw(
                     store_id=store.id,
                     raw_payload=payload,
                     external_product_id=record.external_product_id,
-                    status="pending" if valid else "rejected",
-                    rejection_reason=None if valid else ",".join(errors),
+                    status="pending" if valid and not errors else "rejected",
+                    rejection_reason=None if valid and not errors else ",".join(errors),
                 )
                 session.add(raw)
                 staged += 1
-                rejected += int(not valid)
+                rejected += int(not valid or bool(errors))
             run.products_discovered = discovered_count
             run.offers_created = 0
             run.offers_updated = 0
