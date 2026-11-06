@@ -78,8 +78,19 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
     finally:
         engine.dispose()
 
-def test_database_url_rejects_postgresql_for_current_phase(monkeypatch):
-    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "postgresql://example.invalid/catalog")
+def test_database_url_accepts_postgresql(monkeypatch):
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "postgresql+psycopg://localhost/catalog_test")
+    from app.db import database_url, make_engine
+    assert database_url().startswith("postgresql+psycopg://")
+    engine = make_engine()
+    try:
+        assert engine.dialect.name == "postgresql"
+    finally:
+        engine.dispose()
+
+
+def test_database_url_rejects_unsupported_backend(monkeypatch):
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "mysql+pymysql://localhost/catalog")
     from app.db import database_url
-    with pytest.raises(RuntimeError, match="SQLite only"):
+    with pytest.raises(RuntimeError, match="Unsupported catalog database backend"):
         database_url()
