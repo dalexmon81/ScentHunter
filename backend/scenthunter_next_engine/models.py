@@ -10,6 +10,8 @@ from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Any, Mapping
 
+from app.services.currency_policy import is_supported_currency_code
+
 
 class MatchStatus(str, Enum):
     """Outcome of resolving a retailer offer against the canonical catalog."""
@@ -88,8 +90,8 @@ class RetailerOffer:
             raise ValueError("size_ml must be positive when provided")
         if self.price is not None and self.price < Decimal("0"):
             raise ValueError("price must not be negative")
-        if len(self.currency.strip()) != 3:
-            raise ValueError("currency must be a 3-letter code")
+        if not is_supported_currency_code(self.currency):
+            raise ValueError("currency is not enabled by the supported-currency policy")
 
 
 @dataclass(frozen=True, slots=True)
