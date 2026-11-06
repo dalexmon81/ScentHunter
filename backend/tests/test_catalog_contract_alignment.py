@@ -56,3 +56,13 @@ def test_persisted_payload_uses_the_same_validation_contract():
     valid, errors = validate_offer_payload(payload)
     assert not valid
     assert "invalid_https_url" in errors
+
+
+def test_ingestion_raw_has_partial_unique_guard_for_live_store_products():
+    indexes = {index.name: index for index in __import__("app.models", fromlist=["IngestionRaw"]).IngestionRaw.__table__.indexes}
+    guard = indexes["uq_ingestion_raw_live_store_external"]
+    assert guard.unique is True
+    assert {column.name for column in guard.columns} == {"store_id", "external_product_id"}
+    predicate = str(guard.dialect_options["sqlite"]["where"])
+    assert "pending" in predicate and "unmatched" in predicate and "matched" in predicate
+    assert "promoted" not in predicate
