@@ -1,0 +1,24 @@
+# Python bytecode and cache directories
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local databases and generated exports
+*.sqlite
+*.sqlite3
+*.db

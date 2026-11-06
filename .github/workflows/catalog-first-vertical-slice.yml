@@ -21,6 +21,7 @@ on:
       - "backend/app/connectors/**"
       - "backend/app/matching/**"
       - "backend/tests/**"
+      - "tests/test_parfumzentrum_hawas_diagnostic.py"
       - "backend/scenthunter_next_engine/phase0_baseline_jobs.py"
       - "tests/test_canonical_matcher.py"
       - "tests/test_catalog_offer_price_selection.py"
@@ -250,6 +251,9 @@ jobs:
           PY
           pytest -q backend/tests/test_frontend_offer_transparency_contract.py
 
+
+      - name: Validate Phase 1 production diagnostic isolation
+        run: pytest -q backend/tests/test_production_diagnostics_are_opt_in.py
 
       - name: Validate Phase 0 baseline worker and PostgreSQL-only source
         run: pytest -q backend/tests/test_phase0_baseline_jobs.py backend/tests/test_phase0_baseline_validation.py
