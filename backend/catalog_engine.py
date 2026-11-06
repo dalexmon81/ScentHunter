@@ -108,6 +108,8 @@ ACTIVE_STORES = tuple(STORES)
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
 # catalog discovery, not product-specific logic.
+FEED_ONLY_STORES = frozenset({"notino"})
+
 DISCOVERY_BASES = {
     'easycosmetic': (
         # ScentHunter uses the German market: discover German URLs only.
@@ -121,10 +123,6 @@ DISCOVERY_BASES = {
         'https://www.deloox.nl',
         'https://www.deloox.lu',
         'https://www.deloox.es',
-    ),
-    'notino': (
-        # France only: never index or return Notino Germany for this store.
-        'https://www.notino.fr',
     ),
 }
 
@@ -205,11 +203,6 @@ HTML_DISCOVERY_SEEDS = {
     'deloox': (
         'https://www.deloox.be/',
         'https://www.deloox.com/en/search?q=perfume',
-    ),
-    'notino': (
-        # Keep discovery strictly on the French storefront.
-        'https://www.notino.fr/',
-        'https://www.notino.fr/parfums/',
     ),
 }
 
@@ -959,6 +952,8 @@ def catalog_price_freshness_snapshot(conn, now=None):
 
 
 def _discovery_bases(store):
+    if store in FEED_ONLY_STORES:
+        return ()
     return tuple(dict.fromkeys(DISCOVERY_BASES.get(store, (STORES[store],))))
 
 
@@ -983,9 +978,10 @@ def _standard_sitemap_roots(base):
 def _seed_sitemaps(store, progress_callback=None):
     """Collect sitemap roots while exposing progress for each robots.txt request.
 
-    A store must never remain indefinitely at the generic discovery_started
-    marker: persist which host is being checked and the result of each request.
+    Feed-only stores are deliberately excluded from public sitemap discovery.
     """
+    if store in FEED_ONLY_STORES:
+        return [], ["authorized_feed_only"]
     roots = []
     robots_diagnostics = []
     bases = _discovery_bases(store)
@@ -3314,15 +3310,23 @@ def discover_store(store):
             notino_feed_error = 'notino_feed_empty'
         except Exception as exc:
             notino_feed_error = str(exc)
-            if not notino_feed_error.startswith('notino_feed_'):
+            if notino_feed_error.startswith('notino_feed_') is False:
                 notino_feed_error = f'notino_feed_import_error:{type(exc).__name__}'
-        # Do not invent prices or bypass access controls. If the authorized feed
-        # is not configured, continue with ordinary public catalog discovery;
-        # individual product refreshes must still return HTTP 200 and valid offers.
-        print(
-            f'NOTINO_FEED_UNAVAILABLE fallback=public_catalog reason={notino_feed_error}',
-            flush=True,
+        # Notino is feed-only. Missing entitlement, an empty feed, or any feed
+        # error is a hard stop: do not probe robots.txt, sitemaps, HTML listings,
+        # product pages, or any alternative public transport.
+        detail = f'authorized_feed_required:{notino_feed_error}'
+        _set_sync_state(
+            store, 'DISCOVERY_BLOCKED', started_at=started_at,
+            finished_at=time.time(), discovered_count=0, fetched_count=0,
+            error=detail,
         )
+        return {
+            'status': 'DISCOVERY_BLOCKED',
+            'count': 0,
+            'source': 'cj_viv_authorized_xml',
+            'error': detail,
+        }
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):
