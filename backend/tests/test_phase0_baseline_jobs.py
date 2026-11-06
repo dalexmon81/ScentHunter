@@ -205,7 +205,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
         chunk = self.root / "postgres-export.csv"
         result_queue = queue.Queue()
         try:
-            with Session(engine) as session:
+            with Session(engine, expire_on_commit=False) as session:
                 store = Store(
                     name=f"Phase 0 Test Store {suffix}",
                     slug=f"phase0-test-{suffix}",
