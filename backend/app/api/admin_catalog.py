@@ -159,6 +159,14 @@ def set_store_freshness_policy(
             if store is None:
                 raise HTTPException(status_code=404, detail="catalog_store_not_found")
             store.offer_ttl_minutes = offer_ttl_minutes
+            # Recompute existing active-offer expiry from each original source
+            # observation so a policy change takes effect immediately.
+            offers = session.scalars(select(Offer).where(
+                Offer.store_id == store.id,
+                Offer.status == "active",
+            )).all()
+            for offer in offers:
+                offer.valid_until = offer.captured_at + timedelta(minutes=offer_ttl_minutes)
             session.commit()
             return {
                 "store": store.slug,
