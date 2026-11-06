@@ -29,7 +29,7 @@ This is a separate release-readiness checklist. It must be completed only after 
 
 ## Retailer scope and Notino policy
 
-The nine-store scope is fixed for the baseline inventory. Notino.fr is restricted to the authorized CJ/VIV affiliate feed after publisher entitlement and feed access are confirmed. There is no HTML/product-page fallback for this project while that entitlement is pending. A connector being present or a public page being reachable does not grant permission. HTTP 401/403/429, challenges, timeouts, redirects outside the approved feed host, or incomplete feed records are hard failures; never bypass controls, switch transport to evade a denial, or invent offers.
+The nine-store scope is fixed for the baseline inventory. Notino.fr is restricted to the authorized CJ/VIV affiliate feed after publisher entitlement and feed access are confirmed. There is no HTML/product-page fallback for this project while that entitlement is pending. A connector being present or a public page being reachable does not grant permission. HTTP 401/403/429, challenges, timeouts, non-HTTPS or credential-bearing redirect destinations, or incomplete feed records are hard failures; never bypass controls, switch transport to evade a denial, or invent offers.
 
 Notino's real-offer requirement belongs to the operational acceptance gate above. Its pending authorization must not block architecture work or fixture-based CI.
 
