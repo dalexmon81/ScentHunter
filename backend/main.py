@@ -1,6 +1,6 @@
 # Phase 0 baseline endpoint is read-only and reports the configured production catalog.
 # Keep this route available in the active Fly release for the post-deploy baseline workflow.
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import csv, importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
@@ -59,6 +59,10 @@ from app.api.catalog_search import (
     search_catalog_for_frontend as phase7_search_catalog_for_frontend,
 )
 app.include_router(phase7_catalog_search_router)
+from app.services.catalog_rollout import (
+    catalog_rollout_decision,
+    compare_search_payloads,
+)
 
 # Phase 10: authenticated, read-only catalog operations visibility.
 from app.api.admin_catalog import router as phase10_catalog_admin_router
@@ -2785,6 +2789,8 @@ def _snapshot(job_id):
         stores = dict(job.get("stores", {}))
         dedupe_diagnostics = list(job.get("dedupe_diagnostics", []))
         identity_scope = list(job.get("identity_scope", []))
+        catalog_shadow_comparison = job.get("catalog_shadow_comparison")
+        catalog_rollout = dict(job.get("catalog_rollout") or {})
         collect_elapsed = job.get("collect_elapsed")
         dedupe_elapsed = job.get("dedupe_elapsed")
         aggregate_elapsed = job.get("aggregate_elapsed")
@@ -2811,6 +2817,8 @@ def _snapshot(job_id):
         "dedupe_elapsed": dedupe_elapsed,
         "aggregate_elapsed": aggregate_elapsed,
         "dedupe_diagnostics": dedupe_diagnostics,
+        "catalog_shadow_comparison": catalog_shadow_comparison,
+        "catalog_rollout": catalog_rollout,
     }
 
 def _publish_result(job_id, row):
@@ -3006,6 +3014,26 @@ def _run_job(job_id, query):
             grouped, unresolved = _aggregate_identity_results(deduped)
             aggregate_elapsed = round(time.monotonic() - aggregate_started, 3)
 
+            shadow_payload = None
+            with JOBS_LOCK:
+                current_for_shadow = JOBS.get(job_id)
+                if current_for_shadow is not None:
+                    shadow_payload = current_for_shadow.get("catalog_shadow_result")
+            shadow_comparison = None
+            if shadow_payload is not None:
+                try:
+                    if shadow_payload.get("status") == "error":
+                        shadow_comparison = {"status": "shadow_error"}
+                    else:
+                        shadow_comparison = compare_search_payloads(
+                            grouped, shadow_payload
+                        )
+                except Exception as shadow_exc:
+                    shadow_comparison = {
+                        "status": "comparison_error",
+                        "error_type": type(shadow_exc).__name__,
+                    }
+
             elapsed = round(time.monotonic() - started, 3)
 
             with JOBS_LOCK:
@@ -3014,6 +3042,9 @@ def _run_job(job_id, query):
                     current_job["offers"] = deduped
                     current_job["results"] = grouped
                     current_job["unresolved_offers"] = unresolved
+                    if shadow_comparison is not None:
+                        current_job["catalog_shadow_comparison"] = shadow_comparison
+                    current_job.pop("catalog_shadow_result", None)
                     current_job["completed"] = True
 
                     # A completed job can still contain stores that were not
@@ -4698,19 +4729,31 @@ def diagnose_hawas_ice_offers_read_only():
 
 
 @app.get('/search-start')
-def search_start(q: str):
+def search_start(
+    q: str,
+    x_catalog_rollout_key: str | None = Header(default=None, alias="X-Catalog-Rollout-Key"),
+):
     query = str(q or '').strip()
-    # Opt-in bridge: the existing frontend already calls /search-start and
-    # understands this response contract. Keep the legacy worker path as the
-    # default until the PostgreSQL catalog is populated and operationally
-    # approved; enabling this flag makes the UI search persisted PostgreSQL
-    # records only, without retailer discovery or live connector calls.
-    catalog_search_enabled = str(
-        os.environ.get('SCENTHUNTER_CATALOG_SEARCH_ENABLED', '0')
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
-    if catalog_search_enabled:
+    rollout = catalog_rollout_decision(
+        query,
+        x_catalog_rollout_key,
+        environ=os.environ,
+    )
+    shadow_result = None
+
+    # A canary cohort is routed to the PostgreSQL catalog. The stable cohort
+    # key comes from X-Catalog-Rollout-Key; when absent, the query itself is
+    # used so repeated requests remain in the same cohort.
+    if query and rollout["use_catalog"]:
         try:
-            return phase7_search_catalog_for_frontend(query)
+            response = phase7_search_catalog_for_frontend(query)
+            if isinstance(response, dict):
+                response["catalog_rollout"] = {
+                    "mode": "catalog",
+                    "traffic_percent": rollout["traffic_percent"],
+                    "bucket": rollout["bucket"],
+                }
+            return response
         except Exception as exc:
             print(
                 f'POSTGRES_CATALOG_SEARCH_ERROR: {type(exc).__name__}: {exc}',
@@ -4728,7 +4771,25 @@ def search_start(q: str):
                 'dedupe_diagnostics': [],
                 'completed': True,
                 'status': 'error',
+                'catalog_rollout': {
+                    "mode": "catalog_error",
+                    "traffic_percent": rollout["traffic_percent"],
+                    "bucket": rollout["bucket"],
+                },
             }
+
+    # Shadow mode performs a read-only PostgreSQL catalog search but continues
+    # to serve the legacy result. The comparison is attached to the completed
+    # /search-status snapshot; the shadow result itself is never served.
+    if query and rollout["run_shadow"]:
+        try:
+            shadow_result = phase7_search_catalog_for_frontend(query)
+        except Exception as exc:
+            print(
+                f'CATALOG_SEARCH_SHADOW_ERROR: {type(exc).__name__}',
+                flush=True,
+            )
+            shadow_result = {"status": "error", "results": []}
 
     if not query:
         return {
@@ -4814,6 +4875,17 @@ def search_start(q: str):
         }
 
     job_id = _new_job(query)
+    with JOBS_LOCK:
+        current_job = JOBS.get(job_id)
+        if current_job is not None:
+            current_job["catalog_rollout"] = {
+                "mode": "shadow" if rollout["run_shadow"] else "legacy",
+                "traffic_percent": rollout["traffic_percent"],
+                "bucket": rollout["bucket"],
+                "shadow_requested": bool(rollout["run_shadow"]),
+            }
+            if shadow_result is not None:
+                current_job["catalog_shadow_result"] = shadow_result
     threading.Thread(
         target=_run_job,
         args=(job_id, query),
