@@ -60,6 +60,10 @@ from app.api.catalog_search import (
 )
 app.include_router(phase7_catalog_search_router)
 
+# Phase 10: read-only, token-protected catalog operations overview.
+from app.api.catalog_admin import router as phase10_catalog_admin_router
+app.include_router(phase10_catalog_admin_router)
+
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
 # present in this deployment, keep the legacy application available instead of
