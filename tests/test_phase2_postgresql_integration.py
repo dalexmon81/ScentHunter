@@ -104,6 +104,19 @@ def test_postgresql_catalog_seed_is_idempotent_and_never_imports_offers(tmp_path
     from app.db import make_engine
     from app.models import Brand, Fragrance, ProductVariant, Offer, LegacyProductIdMap, LegacyVariantIdMap
 
+    # The preceding integration test persists its own offer. Reset only this
+    # disposable CI database before asserting the seed never imports offers.
+    engine = make_engine()
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "TRUNCATE TABLE ingestion_raw, offers, price_history, match_audit, "
+                "ingestion_runs, legacy_variant_id_map, legacy_product_id_map, "
+                "product_variants, fragrances, brands, stores RESTART IDENTITY CASCADE"
+            )
+    finally:
+        engine.dispose()
+
     catalog_path = tmp_path / "catalog-fixture.json"
     catalog_path.write_text(json.dumps({
         "brands": [{"brand_id": "CI-BRAND", "brand_name": "Postgres CI Brand"}],
