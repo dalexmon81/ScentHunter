@@ -54,11 +54,13 @@ def compare_search_results(
         catalog_by_key.setdefault(_key(row), []).append(row)
 
     price_checks = 0
+    price_comparisons = 0
     price_mismatches = 0
     for key in legacy_by_key.keys() & catalog_by_key.keys():
         old_rows = legacy_by_key[key]
         new_rows = catalog_by_key[key]
         for old, new in zip(old_rows, new_rows):
+            price_comparisons += 1
             old_price = _price(old.get("price"))
             new_price = _price(new.get("price"))
             if old_price is None or new_price is None:
@@ -76,9 +78,10 @@ def compare_search_results(
         "additional_in_catalog": additional,
         "result_mismatch_rate": round(mismatches / denominator, 6),
         "price_checks": price_checks,
+        "price_comparisons": price_comparisons,
         "price_mismatches": price_mismatches,
         "price_mismatch_rate": round(
-            price_mismatches / max(price_checks + price_mismatches, 1), 6
+            price_mismatches / max(price_comparisons, 1), 6
         ),
         "currency_isolation": True,
     }
