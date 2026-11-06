@@ -35,7 +35,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                 # align with the GIN indexes added in migration 0011.
                 tokens = re.findall(r"[^\W_]+", term, flags=re.UNICODE)
                 if not tokens:
-                    raise HTTPException(status_code=400, detail="invalid_search_query")
+                    raise ValueError("invalid_search_query")
                 token_conditions = []
                 for token in tokens:
                     tsquery = func.plainto_tsquery("simple", token)
