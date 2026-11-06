@@ -315,7 +315,7 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
 
 
     def test_endpoint_uses_read_only_database_connection(self):
-        source = Path("main.py").read_text(encoding="utf-8")
+        source = (Path(__file__).resolve().parents[1] / "main.py").read_text(encoding="utf-8")
         route = source.split(
             "def diagnose_catalog_price_freshness_read_only():", 1
         )[1].split("@app.get('/diagnose-catalog-live-parse')", 1)[0]
