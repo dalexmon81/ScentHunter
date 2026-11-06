@@ -136,7 +136,8 @@ def record_legacy_match(
 
 def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
                   currency: str, url: str, availability: str, source: str,
-                  confidence: Decimal | None = None) -> UUID:
+                  confidence: Decimal | None = None,
+                  captured_at: datetime | None = None) -> UUID:
     """Idempotently create/update one store offer and append price history."""
     row = session.get(IngestionRaw, ingestion_raw_id)
     if row is None:
@@ -161,6 +162,13 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected("source is required")
     if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
         raise PromotionRejected("confidence must be between 0 and 1")
+    if captured_at is not None and (
+        not isinstance(captured_at, datetime)
+        or captured_at.tzinfo is None
+        or captured_at.utcoffset() is None
+    ):
+        raise PromotionRejected("captured_at must be a timezone-aware datetime")
+    observation_time = captured_at or datetime.now(timezone.utc)
 
     # Retailer identity is the idempotency key. Never reuse an unrelated
     # listing merely because it maps to the same canonical variant: a shop may
@@ -190,19 +198,22 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
             external_product_id=row.external_product_id, url=url, price=price,
             currency=currency, availability=availability, source=source,
             confidence=confidence if confidence is not None else row.match_confidence,
+            captured_at=observation_time,
             status="active",
         )
         session.add(offer)
         session.flush()
-        session.add(PriceHistory(offer_id=offer.id, price=price,
-                                 currency=currency, availability=availability))
+        session.add(PriceHistory(
+            offer_id=offer.id, price=price, currency=currency,
+            availability=availability, captured_at=observation_time,
+        ))
         offer_id = offer.id
     else:
         existing.ingestion_raw_id = row.id
         existing.external_product_id = row.external_product_id or existing.external_product_id
         existing.product_variant_id = row.product_variant_id
         existing.url = url
-        existing.captured_at = datetime.now(timezone.utc)
+        existing.captured_at = observation_time
         existing.price = price
         existing.currency = currency
         existing.availability = availability
@@ -215,6 +226,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         session.add(PriceHistory(
             offer_id=existing.id, price=price,
             currency=currency, availability=availability,
+            captured_at=observation_time,
         ))
         offer_id = existing.id
         session.flush()
