@@ -17,9 +17,9 @@ def upgrade():
         "product_variants",
         "size_ml",
         existing_type=sa.Integer(),
-        type_=sa.Numeric(8, 2),
+        type_=sa.Numeric(10, 4),
         existing_nullable=True,
-        postgresql_using="size_ml::numeric(8,2)",
+        postgresql_using="size_ml::numeric(10,4)",
     )
 
 
