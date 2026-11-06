@@ -134,3 +134,28 @@ def test_invalid_supplied_gtin_is_sent_to_review_not_canonical_auto_match():
         assert raw.status == "unmatched"
         assert len(reviews) == 1
         assert reviews[0].reason == "invalid_gtin_review"
+
+
+
+def test_normalization_conflict_is_persisted_for_review_without_worker_failure(monkeypatch):
+    import app.workers.ingestion_tasks as ingestion_tasks
+
+    factory, _variant_id, raw_id = setup_db()
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        payload = dict(raw.raw_payload)
+        payload["concentration"] = "edt"
+        raw.raw_payload = payload
+        session.commit()
+
+    result = ingestion_tasks.normalize_offer.run(str(raw_id))
+    assert result["status"] == "review_required"
+    assert "conflicting_concentrations" in result["reason"]
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "unmatched"
+        assert raw.match_method == "normalization_review"
+        assert raw.product_variant_id is None
+        assert raw.rejection_reason.startswith("normalization_review:")
+        assert raw.raw_payload["_normalization"]["status"] == "review_required"
