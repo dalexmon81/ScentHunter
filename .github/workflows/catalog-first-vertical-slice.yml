@@ -21,6 +21,7 @@ on:
       - "backend/app/connectors/**"
       - "backend/app/matching/**"
       - "backend/tests/**"
+      - "tests/test_parfumzentrum_hawas_diagnostic.py"
       - "backend/scenthunter_next_engine/phase0_baseline_jobs.py"
       - "tests/test_canonical_matcher.py"
       - "tests/test_catalog_offer_price_selection.py"
