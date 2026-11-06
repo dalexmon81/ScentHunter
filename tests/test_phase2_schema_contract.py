@@ -31,6 +31,11 @@ def test_variant_attributes_and_fixed_precision_prices():
     assert str(PriceHistory.__table__.c.price.type) == "NUMERIC(12, 2)"
     assert any(isinstance(fk, ForeignKey) for fk in MatchAudit.__table__.c.offer_id.foreign_keys)
 
+def test_active_offers_require_positive_price():
+    constraints = {constraint.name for constraint in Offer.__table__.constraints}
+    assert "active_offer_positive_price" in constraints
+
+
 def test_required_offer_and_catalog_indexes_exist():
     indexes = {index.name for table in Base.metadata.tables.values() for index in table.indexes}
     assert {
