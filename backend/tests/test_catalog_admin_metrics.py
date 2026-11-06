@@ -141,6 +141,7 @@ def test_admin_metrics_and_review_queues_report_persisted_state(monkeypatch, tmp
         assert totals["offers_missing_expiry"] == 1
         assert totals["offers_without_canonical_variant"] == 1
         assert totals["pending_raw_records"] == 1
+        assert totals["normalization_reviews_pending"] == 1
         assert totals["pending_identity_reviews"] == 1
         assert totals["pending_match_reviews"] == 1
         assert totals["open_dead_letters"] == 1
