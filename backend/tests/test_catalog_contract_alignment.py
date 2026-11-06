@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from app.connectors.base import OfferRecord, validate_offer
+from app.connectors.base import OfferRecord, validate_offer, validate_offer_payload
 from app.models import ProductVariant
 from app.services.ingestion_persistence import _ALLOWED_AVAILABILITY
 
@@ -41,3 +41,15 @@ def test_variant_size_schema_preserves_fractional_millilitres():
     assert isinstance(column.type, __import__("sqlalchemy").Numeric)
     assert column.type.precision == 10
     assert column.type.scale == 4
+
+
+
+def test_persisted_payload_uses_the_same_validation_contract():
+    payload = _offer("CHF", "preorder").to_dict()
+    valid, errors = validate_offer_payload(payload)
+    assert valid, errors
+
+    payload["url"] = "https://"
+    valid, errors = validate_offer_payload(payload)
+    assert not valid
+    assert "invalid_https_url" in errors
