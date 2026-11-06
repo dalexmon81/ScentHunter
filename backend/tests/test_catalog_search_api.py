@@ -215,3 +215,22 @@ def test_existing_frontend_search_route_can_opt_into_postgres_catalog(monkeypatc
         and offer["size_ml"] == 100
         for offer in product["offers"]
     )
+
+
+def test_catalog_search_full_text_matches_tokens_across_brand_and_fragrance():
+    engine = make_engine()
+    assert engine.dialect.name == "postgresql"
+    try:
+        combined = search_catalog("Dior Sauvage")
+        assert combined["count"] >= 1
+        assert any(
+            row["brand"].lower() == "dior"
+            and row["fragrance"].lower() == "sauvage"
+            for row in combined["results"]
+        )
+
+        incomplete = search_catalog("Dior NotARealFragrance")
+        assert incomplete["count"] == 0
+        assert incomplete["results"] == []
+    finally:
+        engine.dispose()
