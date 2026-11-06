@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+import math
 import unicodedata
 
 _SPACE = re.compile(r"\s+")
@@ -136,8 +137,13 @@ def normalize_product(brand: str, title: str, *, concentration: str | None = Non
         elif unit == "oz":
             number *= 29.5735
         sizes.append(number)
-    if size_ml is not None and (not isinstance(size_ml, (int, float)) or size_ml <= 0):
-        raise ValueError("size_ml_must_be_positive")
+    if size_ml is not None and (
+        isinstance(size_ml, bool)
+        or not isinstance(size_ml, (int, float))
+        or not math.isfinite(float(size_ml))
+        or size_ml <= 0
+    ):
+        raise ValueError("size_ml_must_be_positive_finite_number")
     if size_ml is not None and sizes and any(abs(v - size_ml) > 0.01 for v in sizes):
         raise ValueError("conflicting_sizes_require_review")
     if size_ml is None:
@@ -188,6 +194,12 @@ def deduplication_decision(*, left_gtin: object, right_gtin: object,
                             left_key: str, right_key: str) -> tuple[str, IdentityConflict | None]:
     """Return same/different/review; mismatched verified GTINs are never merged."""
     a, b = normalize_gtin(left_gtin), normalize_gtin(right_gtin)
+    left_supplied = left_gtin is not None and bool(str(left_gtin).strip())
+    right_supplied = right_gtin is not None and bool(str(right_gtin).strip())
+    if (left_supplied and a is None) or (right_supplied and b is None):
+        return "review", IdentityConflict(
+            "invalid_gtin", "A supplied GTIN failed length or check-digit validation."
+        )
     if a and b and a != b:
         return "review", IdentityConflict("gtin_conflict", "Different valid GTINs cannot be auto-merged.")
     if a and b:

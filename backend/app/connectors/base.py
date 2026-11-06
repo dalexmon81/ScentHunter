@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlparse
+import re
 
 
 class ConnectorError(RuntimeError):
@@ -78,6 +79,12 @@ class StoreConnector(Protocol):
 
 _REQUIRED_TEXT = ("store", "external_product_id", "brand", "fragrance", "title", "url", "availability", "captured_at", "source")
 _ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock", "preorder", "unknown"}
+_CURRENCY_CODE = re.compile(r"^[A-Z]{3}$")
+
+
+def is_currency_code(value: object) -> bool:
+    """Accept a normalized three-letter currency code; store policy validates support."""
+    return isinstance(value, str) and _CURRENCY_CODE.fullmatch(value) is not None
 
 
 def validate_offer(offer: OfferRecord) -> tuple[bool, tuple[str, ...]]:
@@ -100,8 +107,8 @@ def validate_offer(offer: OfferRecord) -> tuple[bool, tuple[str, ...]]:
                 errors.append("invalid_price")
         except (InvalidOperation, TypeError, ValueError):
             errors.append("invalid_price")
-    if offer.currency != "EUR":
-        errors.append("unsupported_or_missing_currency")
+    if not is_currency_code(offer.currency):
+        errors.append("invalid_currency_code")
     try:
         timestamp = datetime.fromisoformat(offer.captured_at.replace("Z", "+00:00"))
         if timestamp.tzinfo is None:
@@ -109,6 +116,38 @@ def validate_offer(offer: OfferRecord) -> tuple[bool, tuple[str, ...]]:
     except (AttributeError, TypeError, ValueError):
         errors.append("invalid_captured_at")
     return not errors, tuple(errors)
+
+
+def validate_offer_payload(payload: Mapping[str, Any]) -> tuple[bool, tuple[str, ...]]:
+    """Validate the shared persisted camelCase payload with the connector contract."""
+    if not isinstance(payload, Mapping):
+        return False, ("invalid_payload",)
+    try:
+        offer = OfferRecord(
+            store=str(payload.get("store") or ""),
+            external_product_id=str(payload.get("externalProductId") or ""),
+            brand=str(payload.get("brand") or ""),
+            fragrance=str(payload.get("fragrance") or ""),
+            concentration=payload.get("concentration"),
+            size_ml=payload.get("sizeMl"),
+            gtin=payload.get("gtin"),
+            title=str(payload.get("title") or ""),
+            url=str(payload.get("url") or ""),
+            price=payload.get("price"),
+            currency=payload.get("currency"),
+            availability=str(payload.get("availability") or ""),
+            captured_at=str(payload.get("capturedAt") or ""),
+            source=str(payload.get("source") or ""),
+            external_offer_id=payload.get("externalOfferId"),
+        )
+    except (TypeError, ValueError):
+        return False, ("invalid_payload",)
+    valid, errors = validate_offer(offer)
+    # Unknown stock is valid captured evidence, but it cannot enter the
+    # matching/promotion path until availability has been resolved.
+    if offer.availability == "unknown":
+        return False, tuple((*errors, "availability_requires_review"))
+    return valid, errors
 
 
 @dataclass(frozen=True)

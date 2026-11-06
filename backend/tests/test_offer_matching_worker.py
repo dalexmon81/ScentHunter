@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.matching.offer_matcher import match_staged_offer
 from app.models import Base, Brand, CanonicalIdentityReview, Fragrance, IngestionRaw, ProductVariant, Store
@@ -11,8 +12,11 @@ from app.services.product_normalization import normalize_product
 from app.workers.matching_worker import match_pending_offers
 
 
-def setup_db():
-    engine = create_engine("sqlite:///:memory:")
+def setup_db(database_url="sqlite://"):
+    engine_options = {"connect_args": {"check_same_thread": False}}
+    if database_url == "sqlite://":
+        engine_options["poolclass"] = StaticPool
+    engine = create_engine(database_url, **engine_options)
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
@@ -134,3 +138,28 @@ def test_invalid_supplied_gtin_is_sent_to_review_not_canonical_auto_match():
         assert raw.status == "unmatched"
         assert len(reviews) == 1
         assert reviews[0].reason == "invalid_gtin_review"
+
+
+
+def test_normalization_conflict_is_persisted_for_review_without_worker_failure(monkeypatch, tmp_path):
+    import app.workers.ingestion_tasks as ingestion_tasks
+
+    factory, _variant_id, raw_id = setup_db(f"sqlite:///{tmp_path / 'normalization-review.db'}")
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        payload = dict(raw.raw_payload)
+        payload["concentration"] = "edt"
+        raw.raw_payload = payload
+        session.commit()
+
+    result = ingestion_tasks.normalize_offer.run(str(raw_id))
+    assert result["status"] == "review_required"
+    assert "conflicting_concentrations" in result["reason"]
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "unmatched"
+        assert raw.match_method == "normalization_review"
+        assert raw.product_variant_id is None
+        assert raw.rejection_reason.startswith("normalization_review:")
+        assert raw.raw_payload["_normalization"]["status"] == "review_required"

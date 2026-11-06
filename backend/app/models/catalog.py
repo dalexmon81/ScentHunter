@@ -39,7 +39,7 @@ class ProductVariant(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fragrance_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False, index=True)
     concentration: Mapped[str | None] = mapped_column(String(60))
-    size_ml: Mapped[int | None] = mapped_column(Integer)
+    size_ml: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
     is_tester: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_refill: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_gift_set: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -54,6 +54,7 @@ class Store(Base):
     __table_args__ = (
         CheckConstraint("reliability_score IS NULL OR (reliability_score >= 0 AND reliability_score <= 1)", name="reliability_score_range"),
         CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
+        CheckConstraint("offer_ttl_minutes IS NULL OR offer_ttl_minutes > 0", name="offer_ttl_positive"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
@@ -61,6 +62,8 @@ class Store(Base):
     domain: Mapped[str | None] = mapped_column(String(255))
     country: Mapped[str | None] = mapped_column(String(2))
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR", server_default="EUR")
+    # Publication is blocked until an operator configures an explicit freshness TTL.
+    offer_ttl_minutes: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="active", server_default="active")
     reliability_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -80,7 +83,16 @@ class LegacyVariantIdMap(Base):
 
 class IngestionRaw(Base):
     __tablename__ = "ingestion_raw"
-    __table_args__ = (Index("ix_ingestion_raw_store_status", "store_id", "status"), CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"))
+    __table_args__ = (
+        Index("ix_ingestion_raw_store_status", "store_id", "status"),
+        Index(
+            "uq_ingestion_raw_live_store_external",
+            "store_id", "external_product_id", unique=True,
+            sqlite_where=text("external_product_id IS NOT NULL AND status IN ('pending','unmatched','matched')"),
+            postgresql_where=text("external_product_id IS NOT NULL AND status IN ('pending','unmatched','matched')"),
+        ),
+        CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"),
+    )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)

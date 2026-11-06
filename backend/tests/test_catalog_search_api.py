@@ -1,4 +1,5 @@
 """PostgreSQL integration tests for the catalog-only search API."""
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import FastAPI
@@ -74,6 +75,7 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                 name="Fixture Active Store",
                 slug="catalog-search-active-fixture",
                 currency="EUR",
+                offer_ttl_minutes=1440,
                 status="active",
             )
             inactive_store = Store(
@@ -82,7 +84,13 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                 currency="EUR",
                 status="inactive",
             )
-            session.add_all([active_store, inactive_store])
+            expired_store = Store(
+                name="Fixture Expired Offer Store",
+                slug="catalog-search-expired-fixture",
+                currency="EUR",
+                status="active",
+            )
+            session.add_all([active_store, inactive_store, expired_store])
             session.flush()
 
             session.add_all([
@@ -91,6 +99,17 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                     product_variant_id=variant.id,
                     url="https://fixture.example/active-offer",
                     price=Decimal("89.90"),
+                    currency="EUR",
+                    availability="in_stock",
+                    source="catalog_search_test_fixture",
+                    status="active",
+                    valid_until=datetime.now(timezone.utc) + timedelta(hours=24),
+                ),
+                Offer(
+                    store_id=active_store.id,
+                    product_variant_id=variant.id,
+                    url="https://fixture.example/missing-expiry-offer",
+                    price=Decimal("88.90"),
                     currency="EUR",
                     availability="in_stock",
                     source="catalog_search_test_fixture",
@@ -105,6 +124,17 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                     availability="in_stock",
                     source="catalog_search_test_fixture",
                     status="active",
+                ),
+                Offer(
+                    store_id=expired_store.id,
+                    product_variant_id=variant.id,
+                    url="https://fixture.example/expired-offer",
+                    price=Decimal("69.90"),
+                    currency="EUR",
+                    availability="in_stock",
+                    source="catalog_search_test_fixture",
+                    status="active",
+                    valid_until=datetime.now(timezone.utc) - timedelta(minutes=1),
                 ),
             ])
             session.commit()
@@ -127,6 +157,8 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
         assert fixture_offers[0]["ranking"]["shipping_cost_known"] is False
         assert fixture_offers[0]["ranking"]["price_basis"] == "product_price_only"
         assert all(offer["store"] != "catalog-search-inactive-fixture" for offer in variant_result["offers"])
+        assert all(offer["store"] != "catalog-search-expired-fixture" for offer in variant_result["offers"])
+        assert all(offer["url"] != "https://fixture.example/missing-expiry-offer" for offer in variant_result["offers"])
 
         # A caller-owned session factory remains usable after the search.
         with factory() as session:
@@ -158,6 +190,7 @@ def test_catalog_search_router_is_mounted_in_the_real_fastapi_application():
 
 def test_existing_frontend_search_route_can_opt_into_postgres_catalog(monkeypatch):
     monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_ENABLED", "1")
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT", "100")
     from main import app as scenthunter_app
 
     client = TestClient(scenthunter_app)
@@ -182,3 +215,22 @@ def test_existing_frontend_search_route_can_opt_into_postgres_catalog(monkeypatc
         and offer["size_ml"] == 100
         for offer in product["offers"]
     )
+
+
+def test_catalog_search_full_text_matches_tokens_across_brand_and_fragrance():
+    engine = make_engine()
+    assert engine.dialect.name == "postgresql"
+    try:
+        combined = search_catalog("Dior Sauvage")
+        assert combined["count"] >= 1
+        assert any(
+            row["brand"].lower() == "dior"
+            and row["fragrance"].lower() == "sauvage"
+            for row in combined["results"]
+        )
+
+        incomplete = search_catalog("Dior NotARealFragrance")
+        assert incomplete["count"] == 0
+        assert incomplete["results"] == []
+    finally:
+        engine.dispose()

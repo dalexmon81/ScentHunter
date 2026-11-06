@@ -55,7 +55,7 @@ def summarize_candidates(records: list[OfferRecord]) -> dict:
         status = "no_exact_product"
     elif len(exact) > 1:
         status = "multiple_exact_candidates_review"
-    elif not exact[0]["valid_offer_evidence"]:
+    elif not exact[0]["valid_offer_evidence"] and set(exact[0]["validation_errors"]) != {"invalid_availability"}:
         status = "candidate_invalid"
     elif not exact[0]["explicit_publishable_availability"]:
         status = "candidate_requires_availability_review"

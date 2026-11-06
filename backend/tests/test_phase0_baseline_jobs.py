@@ -175,59 +175,133 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual([row["store"] for row in rows], list(STORES))
         self.assertFalse({"amazon_de", "amazon_fr"} & {row["store"] for row in rows})
 
-    def test_csv_is_written_to_volume_path_and_published_atomically(self):
-        conn = connect()
-        try:
-            conn.execute(
-                """INSERT INTO store_products
-                   (store,url,name,brand,sku,gtin,size_ml,concentration,price,
-                    currency,availability,fetched_at)
-                   VALUES('bplatz','https://shop.test/p','Fragrance 100 ml',
-                          'Brand','SKU-1','',100,'Eau de Parfum',80,'EUR',
-                          'in_stock',1793538000)"""
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        catalog_path = self.root / "product_catalog.json"
-        catalog_path.write_text(json.dumps({
-            "products": [{
-                "product_id": "product-1",
-                "brand_name": "Brand",
-                "canonical_name": "Fragrance",
-                "concentration": "Eau de Parfum",
-            }],
-            "variants": [{
-                "variant_id": "variant-1",
-                "product_id": "product-1",
-                "size_ml": 100,
-                "aliases": ["100 ml"],
-            }],
-        }), encoding="utf-8")
+    def test_baseline_refuses_legacy_sqlite_catalog(self):
         output = self.root / "phase0" / "baseline" / "job-1.csv"
         job = {"id": "job-1", "output_path": str(output)}
-        with patch.dict(os.environ, {"PHASE0_PRODUCT_CATALOG": str(catalog_path)}):
-            result = generate_csv(job, "test-worker")
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_CATALOG_DATABASE_URL": "sqlite:///" + str(self.db_path),
+            "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "1",
+        }):
+            with self.assertRaisesRegex(RuntimeError, "requires a PostgreSQL catalog URL"):
+                generate_csv(job, "test-worker")
+        self.assertFalse(output.exists())
 
-        self.assertEqual(result["rows_written"], 1)
-        self.assertTrue(output.is_file())
-        self.assertFalse(output.with_suffix(".csv.tmp").exists())
-        with output.open(encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle)
-            self.assertEqual(reader.fieldnames, list(COLUMNS))
-            rows = list(reader)
-        offer_rows = [row for row in rows if row.get("source")]
-        status_rows = {row["store"]: row["store_status"] for row in rows}
-        self.assertEqual(len(offer_rows), 1)
-        self.assertEqual(offer_rows[0]["store"], "bplatz")
-        self.assertEqual(offer_rows[0]["canonical_product_id"], "product-1")
-        self.assertEqual(offer_rows[0]["match_status"], "matched")
-        self.assertEqual(offer_rows[0]["catalog_product_count"], "1")
-        self.assertEqual(offer_rows[0]["is_valid_offer"], "true")
-        self.assertEqual(len(STORES), 9)
-        self.assertEqual(set(status_rows), set(STORES))
-        self.assertTrue(all(status == "completed" for status in status_rows.values()))
+
+    def test_postgres_export_writes_a_real_canonical_offer_row(self):
+        import queue
+        import uuid
+        from datetime import datetime, timedelta, timezone
+        from decimal import Decimal
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+        from app.db import make_engine
+        from app.models import Brand, Fragrance, Offer, ProductVariant, Store
+        from scenthunter_next_engine.phase0_baseline_jobs import _export_store_chunk
+
+        engine = make_engine()
+        self.assertEqual(engine.dialect.name, "postgresql")
+        suffix = uuid.uuid4().hex[:12]
+        brand = fragrance = variant = offer = store = None
+        chunk = self.root / "postgres-export.csv"
+        result_queue = queue.Queue()
+        try:
+            with Session(engine, expire_on_commit=False) as session:
+                store = Store(
+                    name=f"Phase 0 Test Store {suffix}",
+                    slug=f"phase0-test-{suffix}",
+                    domain="phase0-test.invalid",
+                    country="FR",
+                    currency="EUR",
+                    status="active",
+                )
+                session.add(store)
+                session.flush()
+                brand = Brand(
+                    name=f"Baseline Test {suffix}",
+                    slug=f"baseline-test-{suffix}",
+                    normalized_name=f"baseline test {suffix}",
+                )
+                session.add(brand)
+                session.flush()
+                fragrance = Fragrance(
+                    brand_id=brand.id,
+                    name=f"Export Test Fragrance {suffix}",
+                    slug=f"export-test-{suffix}",
+                )
+                session.add(fragrance)
+                session.flush()
+                variant = ProductVariant(
+                    fragrance_id=fragrance.id,
+                    concentration="EDP",
+                    size_ml=Decimal("100"),
+                    canonical_key=f"baseline-test|{suffix}|edp|100|standard",
+                )
+                session.add(variant)
+                session.flush()
+                offer = Offer(
+                    store_id=store.id,
+                    product_variant_id=variant.id,
+                    external_product_id=f"phase0-export-{suffix}",
+                    url="https://www.notino.fr/test/phase0-export/",
+                    price=Decimal("42.50"),
+                    currency="EUR",
+                    availability="in_stock",
+                    source="ci_fixture",
+                    confidence=Decimal("0.990"),
+                    captured_at=datetime.now(timezone.utc),
+                    valid_until=datetime.now(timezone.utc) + timedelta(hours=1),
+                    status="active",
+                )
+                session.add(offer)
+                session.commit()
+                expected_offer_id = offer.id
+
+            _export_store_chunk(store.slug, str(chunk), result_queue)
+            result = result_queue.get(timeout=5)
+            self.assertTrue(result["ok"], result)
+            self.assertEqual(result["offers_read"], 1)
+            with chunk.open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertEqual(row["store"], store.slug)
+            self.assertEqual(row["external_product_id"], f"phase0-export-{suffix}")
+            self.assertEqual(row["canonical_product_id"], str(fragrance.id))
+            self.assertEqual(row["brand"], brand.name)
+            self.assertEqual(row["fragrance"], fragrance.name)
+            self.assertEqual(row["concentration"], "EDP")
+            self.assertEqual(row["size_ml"], "100.0000")
+            self.assertEqual(row["offer_url"], "https://www.notino.fr/test/phase0-export/")
+            self.assertEqual(row["price"], "42.50")
+            self.assertEqual(row["currency"], "EUR")
+            self.assertEqual(row["availability"], "in_stock")
+            self.assertEqual(row["match_status"], "matched")
+            self.assertEqual(row["is_valid_offer"], "true")
+            self.assertEqual(row["source"], "ci_fixture")
+        finally:
+            with Session(engine) as session:
+                if offer is not None:
+                    persisted = session.get(Offer, offer.id)
+                    if persisted is not None:
+                        session.delete(persisted)
+                if store is not None:
+                    persisted = session.get(Store, store.id)
+                    if persisted is not None:
+                        session.delete(persisted)
+                if variant is not None:
+                    persisted = session.get(ProductVariant, variant.id)
+                    if persisted is not None:
+                        session.delete(persisted)
+                if fragrance is not None:
+                    persisted = session.get(Fragrance, fragrance.id)
+                    if persisted is not None:
+                        session.delete(persisted)
+                if brand is not None:
+                    persisted = session.get(Brand, brand.id)
+                    if persisted is not None:
+                        session.delete(persisted)
+                session.commit()
+            engine.dispose()
 
 
 if __name__ == "__main__":

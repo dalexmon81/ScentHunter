@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
+import pytest
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
@@ -12,7 +14,7 @@ from app.services.product_normalization import normalize_product
 from app.workers.offer_promotion import promote_matched_offers
 
 
-def setup_db(availability="in_stock"):
+def setup_db(availability="in_stock", captured_at="2025-01-02T03:04:05+00:00", offer_ttl_minutes=1440):
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
@@ -29,7 +31,7 @@ def setup_db(availability="in_stock"):
             fragrance_id=fragrance.id, concentration="edp", size_ml=100,
             canonical_key=identity.canonical_key,
         )
-        store = Store(name="Test Shop", slug="test-shop", currency="EUR", status="active")
+        store = Store(name="Test Shop", slug="test-shop", currency="EUR", offer_ttl_minutes=offer_ttl_minutes, status="active")
         session.add_all([variant, store])
         session.flush()
         raw = IngestionRaw(
@@ -41,7 +43,7 @@ def setup_db(availability="in_stock"):
                 "concentration": "edp", "sizeMl": 100, "gtin": None,
                 "url": "https://shop.example/item/sku-100",
                 "price": 90.50, "currency": "EUR", "availability": availability,
-                "capturedAt": datetime.now(timezone.utc).isoformat(),
+                "capturedAt": captured_at,
                 "source": "fixture",
             },
             status="matched", product_variant_id=variant.id,
@@ -65,21 +67,29 @@ def test_promotion_creates_offer_history_and_audit():
         assert len(offers) == len(history) == len(audits) == 1
         assert offers[0].price == Decimal("90.50")
         assert offers[0].status == "active"
+        expected_capture = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        assert offers[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
+        assert offers[0].valid_until.replace(tzinfo=timezone.utc) == expected_capture.replace(day=3)
+        assert history[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
+        assert offers[0].valid_until.replace(tzinfo=timezone.utc) == datetime(
+            2025, 1, 3, 3, 4, 5, tzinfo=timezone.utc
+        )
         assert history[0].price == Decimal("90.50")
         assert audits[0].method == "canonical_key_exact"
         assert raw.status == "promoted"
 
 
-def test_unsupported_availability_is_blocked_without_publication():
+def test_preorder_is_retained_but_not_published_until_policy_is_enabled():
     factory, raw_id = setup_db("preorder")
     assert promote_matched_offers(factory) == {
         "processed": 1, "published": 0, "blocked": 1,
     }
     with factory() as session:
-        assert session.scalar(select(Offer)) is None
-        assert session.scalar(select(PriceHistory)) is None
+        offer = session.scalar(select(Offer))
         raw = session.get(IngestionRaw, raw_id)
+        assert offer is None
         assert raw.status == "matched"
+        assert raw.rejection_reason.startswith("promotion_blocked:")
 
 
 def test_worker_ignores_unmatched_rows():
@@ -98,7 +108,7 @@ def test_worker_ignores_unmatched_rows():
 
 
 def test_blocked_old_row_does_not_starve_later_promotion_batch():
-    factory, blocked_id = setup_db("preorder")
+    factory, blocked_id = setup_db("unknown")
     with factory() as session:
         blocked = session.get(IngestionRaw, blocked_id)
         later = IngestionRaw(
@@ -188,3 +198,118 @@ def test_http_offer_url_is_blocked_by_publication_gate():
         raw = session.get(IngestionRaw, raw_id)
         assert raw.status == "matched"
         assert raw.rejection_reason.startswith("promotion_blocked:")
+
+
+
+def test_invalid_explicit_source_capture_timestamp_blocks_publication():
+    factory, raw_id = setup_db(captured_at="not-a-timestamp")
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "capturedAt must be a valid ISO-8601 timestamp" in raw.rejection_reason
+
+
+
+def test_promotion_is_blocked_until_store_freshness_ttl_is_configured():
+    factory, raw_id = setup_db(offer_ttl_minutes=None)
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "store_offer_ttl_not_configured" in raw.rejection_reason
+
+
+
+def test_missing_store_ttl_blocks_publication_instead_of_creating_non_expiring_offer():
+    factory, raw_id = setup_db(offer_ttl_minutes=None)
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "store_offer_ttl_not_configured" in raw.rejection_reason
+
+
+def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
+    factory, raw_id = setup_db()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.status = "matched"
+        raw.rejection_reason = None
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "capturedAt": "2025-02-01T10:30:00+00:00",
+            "price": "88.00",
+        }
+        session.commit()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+    with factory() as session:
+        offer = session.scalar(select(Offer))
+        assert offer.price == Decimal("88.00")
+        assert offer.captured_at.replace(tzinfo=timezone.utc) == datetime(
+            2025, 2, 1, 10, 30, tzinfo=timezone.utc
+        )
+        assert offer.valid_until.replace(tzinfo=timezone.utc) == datetime(
+            2025, 2, 2, 10, 30, tzinfo=timezone.utc
+        )
+
+
+
+def test_unexpected_error_rolls_back_entire_offer_promotion_batch(monkeypatch):
+    factory, first_raw_id = setup_db()
+    with factory() as session:
+        first = session.get(IngestionRaw, first_raw_id)
+        second = IngestionRaw(
+            store_id=first.store_id,
+            external_product_id="sku-rollback-2",
+            raw_payload={
+                **first.raw_payload,
+                "externalProductId": "sku-rollback-2",
+                "url": "https://shop.example/item/sku-rollback-2",
+                "price": "88.00",
+            },
+            status="matched",
+            product_variant_id=first.product_variant_id,
+            match_method=first.match_method,
+            match_confidence=first.match_confidence,
+        )
+        session.add(second)
+        session.commit()
+        second_raw_id = second.id
+
+    import app.workers.offer_promotion as worker
+
+    original_promote = worker.promote_offer
+    calls = 0
+
+    def fail_second_promotion(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("injected_promotion_write_failure")
+        return original_promote(*args, **kwargs)
+
+    monkeypatch.setattr(worker, "promote_offer", fail_second_promotion)
+    with pytest.raises(RuntimeError, match="injected_promotion_write_failure"):
+        worker.promote_matched_offers(factory)
+
+    with factory() as session:
+        assert session.scalars(select(Offer)).all() == []
+        assert session.scalars(select(PriceHistory)).all() == []
+        assert session.scalars(select(MatchAudit)).all() == []
+        assert session.get(IngestionRaw, first_raw_id).status == "matched"
+        assert session.get(IngestionRaw, second_raw_id).status == "matched"

@@ -6,41 +6,81 @@ on:
       - phase2/staging-postgresql-guard
       - phase7/catalog-search-api
       - phase7/catalog-first-operational-e2e
+      - phase8/offer-quality-ranking-integrated
+      - phase10/ops-phase11-integrated
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
+      - "backend/scripts/verify_postgres_backup_restore.sh"
+      - "backend/app/api/admin_catalog.py"
+      - "backend/main.py"
+      - "backend/app/services/catalog_rollout.py"
+      - "frontend/index.html"
       - "backend/app/services/**"
       - "backend/app/workers/**"
       - "backend/app/connectors/**"
       - "backend/app/matching/**"
       - "backend/tests/**"
+      - "tests/test_parfumzentrum_hawas_diagnostic.py"
+      - "backend/scenthunter_next_engine/phase0_baseline_jobs.py"
       - "tests/test_canonical_matcher.py"
       - "tests/test_catalog_offer_price_selection.py"
       - "tests/test_offer_aggregator.py"
       - "tests/test_next_engine_service.py"
       - "tests/test_phase2_schema_contract.py"
       - "backend/app/connectors/notino.py"
+      - "backend/app/connectors/base.py"
+      - "backend/app/workers/ingestion_tasks.py"
+      - "backend/app/api/admin_catalog.py"
+      - "backend/app/services/catalog_rollout.py"
+      - "backend/main.py"
+      - "backend/tests/test_catalog_admin_metrics.py"
+      - "backend/tests/test_catalog_search_fail_closed.py"
+      - "backend/tests/test_catalog_rollout.py"
       - "backend/app/matching/**"
       - "backend/app/models/**"
       - "backend/app/services/ingestion_persistence.py"
       - "backend/app/services/product_normalization.py"
       - "backend/app/workers/connector_ingestion.py"
       - "backend/tests/test_catalog_first_vertical_slice.py"
+      - "backend/tests/test_catalog_contract_alignment.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
       - ".github/workflows/catalog-first-vertical-slice.yml"
   push:
     branches:
       - phase2/catalog-first-vertical-slice
+      - phase10/ops-phase11-integrated
     paths:
+      - "backend/scripts/verify_postgres_backup_restore.sh"
       - "backend/app/api/legacy_catalog.py"
+      - "backend/catalog_engine.py"
       - "backend/app/connectors/notino.py"
+      - "backend/app/connectors/base.py"
+      - "backend/app/workers/ingestion_tasks.py"
+      - "backend/app/workers/offer_promotion.py"
       - "backend/app/matching/**"
       - "backend/app/models/**"
       - "backend/app/services/ingestion_persistence.py"
+      - "backend/alembic/versions/**"
+      - "backend/app/models/catalog.py"
       - "backend/app/services/product_normalization.py"
       - "backend/app/workers/connector_ingestion.py"
       - "backend/tests/test_catalog_first_vertical_slice.py"
+      - "backend/tests/test_catalog_contract_alignment.py"
+      - "backend/tests/test_store_connector_contract.py"
+      - "backend/tests/test_store_connector_contract.py"
+      - "backend/tests/test_connector_ingestion_worker.py"
+      - "backend/tests/test_offer_matching_worker.py"
+      - "backend/tests/test_offer_promotion_worker.py"
+      - "backend/tests/test_phase2_bplatz_postgres.py"
+      - "tests/test_bplatz_persistence_service.py"
+      - "backend/app/api/catalog_search.py"
+      - "backend/app/api/admin_catalog.py"
+      - "backend/tests/test_catalog_admin_metrics.py"
+      - "backend/tests/test_catalog_search_api.py"
+      - "backend/tests/test_product_normalization.py"
+      - "backend/scripts/notino_pilot_preflight.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
       - ".github/workflows/catalog-first-vertical-slice.yml"
@@ -79,6 +119,8 @@ jobs:
       PYTHONPATH: backend:.
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
       SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
+      SCENTHUNTER_BACKUP_RESTORE_TARGET_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/ci_restore_catalog
+      SCENTHUNTER_BACKUP_RESTORE_CONFIRM: DISPOSABLE_CI_ONLY
       SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
       SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
       SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
@@ -95,6 +137,12 @@ jobs:
         run: alembic upgrade head
       - name: Seed canonical catalog identities and variants
         run: python backend/scripts/seed_catalog.py --apply
+      - name: Rehearse PostgreSQL backup and restore on disposable CI database
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+          bash backend/scripts/verify_postgres_backup_restore.sh
+
       - name: Validate PostgreSQL policy, schema and migration compatibility
         run: >-
           pytest -q
@@ -120,8 +168,13 @@ jobs:
         run: >-
           pytest -q
           backend/tests/test_store_connector_contract.py
+          backend/tests/test_catalog_contract_alignment.py
           backend/tests/test_notino_connector_fixture.py
+          backend/tests/test_notino_affiliate_feed.py
           backend/tests/test_notino_universal_connector.py
+          tests/test_catalog_notino_discovery.py
+          tests/test_notino_search_adapter.py
+          tests/test_notino_legacy_public.py
           backend/tests/test_deloox_universal_connector.py
           backend/tests/test_easycosmetic_universal_connector.py
           backend/tests/test_sabina_universal_connector.py
@@ -182,8 +235,32 @@ jobs:
           (cd backend && alembic upgrade head)
           python backend/scripts/seed_catalog.py --apply
 
-      - name: Run PostgreSQL catalog-first search API tests
-        run: pytest -q backend/tests/test_catalog_search_api.py
+      - name: Run PostgreSQL catalog-first search API and fail-closed tests
+        run: pytest -q backend/tests/test_catalog_search_api.py backend/tests/test_catalog_search_fail_closed.py
+
+      - name: Validate authenticated catalog admin metrics and queues
+        run: pytest -q backend/tests/test_catalog_admin_metrics.py
+
+      - name: Validate catalog canary, shadow comparison and legacy routing
+        run: pytest -q backend/tests/test_catalog_rollout.py
+
+      - name: Verify frontend sends a stable canary cohort key
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("frontend/index.html").read_text()
+          assert "scenthunter_catalog_rollout_key" in source
+          assert '"X-Catalog-Rollout-Key":catalogRolloutKey()' in source
+          print("FRONTEND_COHORT_HEADER=PASS")
+          PY
+          pytest -q backend/tests/test_frontend_offer_transparency_contract.py
+
+
+      - name: Validate Phase 1 production diagnostic isolation
+        run: pytest -q backend/tests/test_production_diagnostics_are_opt_in.py
+
+      - name: Validate Phase 0 baseline worker and PostgreSQL-only source
+        run: pytest -q backend/tests/test_phase0_baseline_jobs.py backend/tests/test_phase0_baseline_validation.py
 
       - name: Assert live retailer feed credentials are not configured
         run: |

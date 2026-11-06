@@ -73,3 +73,38 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
             with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing") as raised:
                 feed.import_configured_feed()
         self.assertNotIn("secret-canary-value", str(raised.exception))
+
+
+    def test_authorized_feed_http_403_and_429_fail_closed_and_close_response(self):
+        class FakeResponse:
+            def __init__(self, status_code):
+                self.status_code = status_code
+                self.url = "https://feed.example.test/export.xml"
+                self.headers = {"Content-Type": "application/xml"}
+                self.closed = False
+
+            def close(self):
+                self.closed = True
+
+            def iter_content(self, chunk_size):
+                yield b"<rss/>"
+
+        env = {
+            "NOTINO_CJ_FEED_URL": "https://feed.example.test/export.xml",
+            "NOTINO_CJ_FEED_USERNAME": "publisher",
+            "NOTINO_CJ_FEED_PASSWORD": "feed-secret",
+        }
+        for status_code, expected in (
+            (401, "notino_feed_auth_denied"),
+            (403, "notino_feed_auth_denied"),
+            (429, "notino_feed_http_429"),
+        ):
+            with self.subTest(status_code=status_code):
+                response = FakeResponse(status_code)
+                with patch.dict(os.environ, env, clear=False):
+                    with patch.object(feed.requests, "get", return_value=response):
+                        with self.assertRaisesRegex(feed.FeedImportError, expected) as raised:
+                            feed._fetch_feed()
+                self.assertTrue(response.closed)
+                self.assertNotIn("feed-secret", str(raised.exception))
+                self.assertNotIn("publisher", str(raised.exception))

@@ -1,3 +1,5 @@
+import sqlite3
+
 """Regression tests for market-specific catalog discovery rules."""
 
 from backend import catalog_engine as catalog
@@ -7,7 +9,8 @@ def test_notino_is_configured_for_france_only():
     assert catalog.STORES["notino"] == "https://www.notino.fr"
     assert catalog._discovery_bases("notino") == ("https://www.notino.fr",)
     assert catalog.STORE_LABELS["notino"] == "Notino"
-    assert all("notino.de" not in url for url in catalog.HTML_DISCOVERY_SEEDS["notino"])
+    assert "notino" in catalog.FEED_ONLY_STORES
+    assert "notino" not in catalog.HTML_DISCOVERY_SEEDS
 
 
 def test_notino_slug_product_urls_keep_french_host_and_drop_tracking_query():
@@ -34,22 +37,102 @@ def test_notino_rejects_non_product_and_foreign_host_urls():
     ) is None
 
 
-def test_notino_catalog_seeds_are_french_fragrance_navigation_pages():
-    seeds = catalog.HTML_DISCOVERY_SEEDS["notino"]
-    assert "https://www.notino.fr/parfums/" in seeds
-    assert all("notino.de" not in url for url in seeds)
-    assert all("p-" not in url for url in seeds)
+def test_notino_is_excluded_from_public_html_discovery():
+    assert "notino" not in catalog.HTML_DISCOVERY_SEEDS
+    assert catalog._discovery_bases("notino") == ("https://www.notino.fr",)
+    assert catalog._seed_sitemaps("notino") == ([], ["authorized_feed_only"])
 
 
-def test_notino_listing_admission_only_accepts_catalog_navigation():
-    assert catalog._html_listing_url(
-        "notino", "https://www.notino.fr/parfums/", "https://www.notino.fr/"
-    ) == "https://www.notino.fr/parfums/"
-    assert catalog._html_listing_url(
-        "notino", "https://www.notino.fr/brand/fragrance/p-123456/", "https://www.notino.fr/"
-    ) is None
+def test_queued_legacy_notino_refresh_is_marked_dead_without_retry(monkeypatch, tmp_path):
+    database = tmp_path / "notino-queue.sqlite3"
+    setup = sqlite3.connect(database)
+    setup.execute(
+        """CREATE TABLE hydration_queue (
+            store TEXT, url TEXT, lease_token TEXT, state TEXT, attempts INTEGER,
+            available_at REAL, leased_until REAL, last_finished_at REAL,
+            last_error TEXT, last_http_status INTEGER
+        )"""
+    )
+    url = "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/"
+    setup.execute(
+        """INSERT INTO hydration_queue
+           (store,url,lease_token,state,attempts,available_at)
+           VALUES(?,?,?,?,?,?)""",
+        ("notino", url, "lease-1", "PROCESSING", 1, 0),
+    )
+    setup.commit()
+    setup.close()
+
+    def connect():
+        connection = sqlite3.connect(database)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    monkeypatch.setattr(catalog, "db", connect)
+    catalog._queue_mark_error(
+        {
+            "store": "notino",
+            "url": url,
+            "lease_token": "lease-1",
+            "attempts": 1,
+        },
+        "notino_feed_only_public_refresh_disabled",
+    )
+
+    check = connect()
+    row = check.execute(
+        "SELECT state,last_error FROM hydration_queue WHERE store='notino' AND url=?",
+        (url,),
+    ).fetchone()
+    check.close()
+    assert row["state"] == "DEAD"
+    assert row["last_error"] == "notino_feed_only_public_refresh_disabled"
 
 
+def test_notino_product_refresh_is_blocked_before_any_public_http_request(monkeypatch):
+    def forbidden_http(*args, **kwargs):
+        raise AssertionError("Notino product-page HTTP must remain disabled")
+
+    monkeypatch.setattr(catalog, "http_get", forbidden_http)
+    url = "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/"
+    with catalog._LAST_REFRESH_ERRORS_LOCK:
+        catalog._LAST_REFRESH_ERRORS.pop(("notino", url), None)
+
+    assert catalog.refresh_url("notino", url) is None
+    with catalog._LAST_REFRESH_ERRORS_LOCK:
+        assert catalog._LAST_REFRESH_ERRORS[("notino", url)] == (
+            "notino_feed_only_public_refresh_disabled"
+        )
+
+
+def test_notino_discovery_blocks_without_feed_and_never_probes_public_pages(monkeypatch):
+    states = []
+
+    class Feed:
+        @staticmethod
+        def import_configured_feed():
+            raise RuntimeError("notino_feed_credentials_missing")
+
+    monkeypatch.setattr(catalog.importlib, "import_module", lambda _name: Feed)
+    monkeypatch.setattr(
+        catalog,
+        "_set_sync_state",
+        lambda store, state, **kwargs: states.append((store, state, kwargs)),
+    )
+
+    def forbidden_public_discovery(*args, **kwargs):
+        raise AssertionError("Notino must not probe public sitemap or HTML pages")
+
+    monkeypatch.setattr(catalog, "_seed_sitemaps", forbidden_public_discovery)
+    monkeypatch.setattr(catalog, "_discover_html_catalog", forbidden_public_discovery)
+
+    report = catalog.discover_store("notino")
+
+    assert report["status"] == "DISCOVERY_BLOCKED"
+    assert report["count"] == 0
+    assert report["source"] == "cj_viv_authorized_xml"
+    assert "notino_feed_credentials_missing" in report["error"]
+    assert states[0][1] == "DISCOVERY_BLOCKED"
 
 
 

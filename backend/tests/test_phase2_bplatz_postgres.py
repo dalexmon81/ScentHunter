@@ -27,6 +27,14 @@ from app.services.ingestion_persistence import PromotionRejected  # noqa: E402
 DATABASE_URL = os.environ.get("SCENTHUNTER_TEST_POSTGRES_URL", "")
 
 
+def _configure_fixture_store_ttl(engine):
+    # Test-only policy fixture. Production store TTLs remain operator-configured.
+    with Session(engine) as session, session.begin():
+        store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+        assert store is not None
+        store.offer_ttl_minutes = 1440
+
+
 @unittest.skipUnless(DATABASE_URL, "requires disposable PostgreSQL service")
 def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
     from scrapers.bplatz.scraper import parse_product_html
@@ -57,6 +65,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
         assert seed_report["database_written"] is True
         assert seed_report["database_counts"]["legacy_product_id_map"] > 0
         assert seed_report["database_counts"]["legacy_variant_id_map"] > 0
+        _configure_fixture_store_ttl(engine)
 
         fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
         meta = json.loads(
@@ -189,6 +198,7 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
             cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
         )
         assert seeded.returncode == 0, seeded.stdout + "\\n" + seeded.stderr
+        _configure_fixture_store_ttl(engine)
 
         fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
         meta = json.loads(

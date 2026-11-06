@@ -94,7 +94,7 @@ def test_worker_keeps_invalid_evidence_rejected():
         raw = session.scalar(select(IngestionRaw))
     assert result["rejected"] == 1
     assert raw.status == "rejected"
-    assert raw.rejection_reason == "fixture_invalid"
+    assert raw.rejection_reason == "availability_requires_review"
 
 
 def test_worker_quarantines_only_after_repeated_store_failures():
@@ -144,7 +144,7 @@ def test_notino_fixture_matches_and_promotes_exact_dior_sauvage_edp_100ml():
         session.add(variant)
         session.add(Store(
             name="Notino", slug="notino", domain="notino.fr",
-            country="FR", currency="EUR", status="active",
+            country="FR", currency="EUR", offer_ttl_minutes=1440, status="active",
         ))
         session.commit()
 
@@ -334,3 +334,58 @@ def test_bplatz_manual_task_requires_access_reference_and_exact_product_url():
             "https://bplatz.de/products/another-fragrance",
             "Bplatz automated-access approval recorded",
         )
+
+
+def test_discovery_failure_marks_its_own_run_without_touching_another_running_run(monkeypatch, tmp_path):
+    from sqlalchemy.orm import sessionmaker
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'discovery-failure.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        session.add(Store(name="Fake Store", slug="fake-store", currency="EUR", status="active"))
+        session.commit()
+    with factory() as session:
+        store = session.scalar(select(Store).where(Store.slug == "fake-store"))
+        other_run = IngestionRun(store_id=store.id, status="running", errors=[])
+        session.add(other_run)
+        session.commit()
+        other_run_id = other_run.id
+
+    class FailingConnector(FakeConnector):
+        pass
+
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(ingestion_tasks, "get_connector", lambda _store_key: FailingConnector())
+    monkeypatch.setattr(
+        ingestion_tasks, "_run",
+        lambda _coroutine: (_ for _ in ()).throw(TimeoutError("discovery timeout")),
+    )
+
+    with pytest.raises(TimeoutError, match="discovery timeout"):
+        ingestion_tasks.discover_store_products.run("fake-store")
+
+    with factory() as session:
+        runs = list(session.scalars(
+            select(IngestionRun).where(IngestionRun.store_id == store.id)
+        ))
+        untouched = session.get(IngestionRun, other_run_id)
+
+    assert untouched.status == "running"
+    assert sum(run.status == "failed" for run in runs) == 1
+    assert sum(run.status == "running" for run in runs) == 1
+    engine.dispose()
+
+
+
+def test_legacy_sync_runner_is_not_part_of_the_production_celery_worker():
+    from app.workers.celery_app import celery_app
+
+    # The sync adapter exists for isolated fixtures and backwards-compatible
+    # callers only. Production workers load and route the canonical task module.
+    assert celery_app.conf.include == ["app.workers.ingestion_tasks"]
+    assert all(
+        "connector_ingestion" not in task_name
+        for task_name in celery_app.conf.task_routes
+    )

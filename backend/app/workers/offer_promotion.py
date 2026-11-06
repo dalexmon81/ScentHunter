@@ -1,12 +1,30 @@
 """"Controlled publication worker for already matched, validated offer evidence."""
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import select
 
 from app.models import IngestionRaw
 from app.services.ingestion_persistence import PromotionRejected, promote_offer
+
+
+def _source_capture_time(payload: dict) -> datetime | None:
+    """Parse a retailer capture timestamp without silently accepting local time."""
+    value = payload.get("capturedAt")
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("capturedAt must be a valid ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("capturedAt must include a timezone offset")
+    return parsed
 
 
 def promote_matched_offers(session_factory, *, limit: int = 100) -> dict:
@@ -46,6 +64,7 @@ def promote_matched_offers(session_factory, *, limit: int = 100) -> dict:
                     availability=str(payload.get("availability") or ""),
                     source=str(payload.get("source") or ""),
                     confidence=raw.match_confidence,
+                    captured_at=_source_capture_time(payload),
                 )
             except (PromotionRejected, InvalidOperation, TypeError, ValueError) as exc:
                 raw.rejection_reason = f"promotion_blocked:{str(exc)[:450]}"

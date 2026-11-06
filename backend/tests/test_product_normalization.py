@@ -58,8 +58,29 @@ def test_gtin_check_digit_and_deduplication():
     decision, conflict = deduplication_decision(
         left_gtin="4006381333931", right_gtin="4006381333932",
         left_key="same", right_key="same")
-    assert decision == "same" and conflict is None
+    assert decision == "review"
+    assert conflict is not None and conflict.code == "invalid_gtin"
     decision, conflict = deduplication_decision(
         left_gtin="4006381333931", right_gtin="5901234123457",
         left_key="same", right_key="same")
     assert decision == "review" and conflict is not None
+
+
+def test_size_rejects_boolean_nan_and_infinity():
+    import pytest
+    for invalid_size in (True, float("nan"), float("inf"), float("-inf"), 0, -1):
+        with pytest.raises(ValueError, match="size_ml_must_be_positive_finite_number"):
+            normalize_product("Dior", "Sauvage EDP", size_ml=invalid_size)
+
+
+
+def test_invalid_supplied_gtin_never_auto_deduplicates_by_canonical_key():
+    decision, conflict = deduplication_decision(
+        left_gtin=None,
+        right_gtin="4006381333932",
+        left_key="identical-canonical-key",
+        right_key="identical-canonical-key",
+    )
+    assert decision == "review"
+    assert conflict is not None
+    assert conflict.code == "invalid_gtin"

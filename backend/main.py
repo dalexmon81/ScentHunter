@@ -1,6 +1,6 @@
 # Phase 0 baseline endpoint is read-only and reports the configured production catalog.
 # Keep this route available in the active Fly release for the post-deploy baseline workflow.
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import csv, importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
@@ -10,6 +10,9 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
+
+from app.services.store_identity import normalize_store_key as _normalise_store
+from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
@@ -59,6 +62,10 @@ from app.api.catalog_search import (
     search_catalog_for_frontend as phase7_search_catalog_for_frontend,
 )
 app.include_router(phase7_catalog_search_router)
+
+from app.api.admin_catalog import router as phase10_catalog_admin_router
+app.include_router(phase10_catalog_admin_router)
+from app.services.catalog_rollout import catalog_rollout_decision, compare_search_payloads
 
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
@@ -393,23 +400,11 @@ def catalog_resync_deloox_status_endpoint(job_id: str = ''):
 
 
 def _catalog_is_ready():
-    """Return whether any persistent catalog data exists.
-
-    This is a global existence check only. Store coverage is checked separately
-    by _stores_missing_catalog(), so one populated retailer cannot hide a
-    missing retailer such as Easycosmetic Belgium.
-    """
+    """Return whether any persistent catalog data exists."""
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
         return False
     try:
-        statuses = catalog_store_status() or {}
-        return any(
-            int((statuses.get(store) or {}).get(
-                'valid_indexed_urls',
-                (statuses.get(store) or {}).get('indexed_urls', 0),
-            ) or 0) > 0
-            for store in STORES
-        )
+        return catalog_has_indexed_store(catalog_store_status() or {}, STORES)
     except Exception as exc:
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
@@ -420,18 +415,7 @@ def _stores_missing_catalog():
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
         return []
     try:
-        statuses = catalog_store_status() or {}
-        missing = []
-        for store in STORES:
-            state = statuses.get(store) or {}
-            indexed = state.get('valid_indexed_urls', state.get('indexed_urls', 0))
-            try:
-                indexed = int(indexed or 0)
-            except (TypeError, ValueError):
-                indexed = 0
-            if indexed <= 0:
-                missing.append(store)
-        return missing
+        return stores_missing_indexed_catalog(catalog_store_status() or {}, STORES)
     except Exception as exc:
         print(f'CATALOG STORE COVERAGE ERROR: {type(exc).__name__}: {exc}', flush=True)
         return []
@@ -679,56 +663,8 @@ def _start_catalog_bootstrap():
         name='scenthunter-catalog-bootstrap',
     ).start()
 
-# Read-only scraper diagnostics. This module does not participate in normal search.
-try:
-    from diagnose_two_scrapers import router as diagnose_two_scrapers_router
-    app.include_router(diagnose_two_scrapers_router)
-    from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
-    app.include_router(diagnose_deloox_scraper_router)
-    from diagnose_sabina_legacy_crawl import router as diagnose_sabina_legacy_crawl_router
-    app.include_router(diagnose_sabina_legacy_crawl_router)
-    from diagnose_sabina_real_seeds import router as diagnose_sabina_real_seeds_router
-    app.include_router(diagnose_sabina_real_seeds_router)
-    from diagnose_sabina_legacy_sparam import router as diagnose_sabina_legacy_sparam_router
-    app.include_router(diagnose_sabina_legacy_sparam_router)
-    from diagnose_deloox_frontier_path import router as diagnose_deloox_frontier_path_router
-    app.include_router(diagnose_deloox_frontier_path_router)
-    from diagnose_sabina_search import router as diagnose_sabina_search_router
-    app.include_router(diagnose_sabina_search_router)
-    from diagnose_sabina_search_stream import router as diagnose_sabina_search_stream_router
-    app.include_router(diagnose_sabina_search_stream_router)
-    from diagnose_easycosmetic_variants_readonly import router as diagnose_easycosmetic_variants_readonly_router
-    app.include_router(diagnose_easycosmetic_variants_readonly_router)
-    from diagnose_easycosmetic_variant_discovery import router as diagnose_easycosmetic_variant_discovery_router
-    app.include_router(diagnose_easycosmetic_variant_discovery_router)
-    from diagnose_easycosmetic_de_variants_readonly import (
-    router as diagnose_easycosmetic_de_variants_readonly_router,
-    )
-    app.include_router(diagnose_easycosmetic_de_variants_readonly_router)
-    from diagnose_parfumzentrum_hawas_gap import router as diagnose_parfumzentrum_hawas_gap_router
-    app.include_router(diagnose_parfumzentrum_hawas_gap_router) 
-    from diagnose_sabina_variants_readonly import router as diagnose_sabina_variants_readonly_router
-    app.include_router(diagnose_sabina_variants_readonly_router)
-    from diagnose_sabina_catalog_variants_read_only import router as diagnose_sabina_catalog_variants_read_only_router
-    app.include_router(diagnose_sabina_catalog_variants_read_only_router)
-    from diagnose_sabina_variant_queue_read_only import (
-        router as diagnose_sabina_variant_queue_read_only_router,
-    )
-    app.include_router(diagnose_sabina_variant_queue_read_only_router)
-    from diagnose_sabina_refresh_parser_read_only import (
-        router as diagnose_sabina_refresh_parser_read_only_router,
-    )
-    app.include_router(diagnose_sabina_refresh_parser_read_only_router)
-    from diagnose_sabina_variant_runtime_read_only import (
-        router as diagnose_sabina_variant_runtime_read_only_router,
-    )
-    app.include_router(diagnose_sabina_variant_runtime_read_only_router)
-    from backend.diagnose_sabina_persistence_path_read_only import router as sabina_persistence_path_read_only_router
-    app.include_router(sabina_persistence_path_read_only_router)
-    from backend.diagnose_sabina_variant_callpath_read_only import router as sabina_variant_callpath_read_only_router
-    app.include_router(sabina_variant_callpath_read_only_router)
-except Exception as exc:
-    print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
+# Diagnostic helpers are kept under tools/diagnostics/ and tools/debug/.
+# They are intentionally not imported or mounted by the production API.
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic','notino']
@@ -754,75 +690,30 @@ LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
 BROWSER_SEMAPHORE = threading.Semaphore(BROWSER_WORKERS)
 
-def _safe_float(value):
-    try:
-        if value is None or value == '': return None
-        return float(value)
-    except (TypeError, ValueError): return None
+from app.services.safe_parsers import safe_float as _safe_float
 
-def _normalise_store(value, fallback):
-    text = str(value or fallback).strip().lower()
-    return {'bplatz.de':'bplatz','parfum city':'parfumcity','parfum zentrum':'parfumzentrum','parfum-zentrum':'parfumzentrum','perfume market':'perfumemarket','orioudh.com':'orioudh'}.get(text, text)
+
+from app.services.offer_identity import offer_concentration_token as _offer_concentration_token
+from app.services.offer_identity import is_dior_line_url_mismatch as _is_dior_line_url_mismatch
+from app.services.offer_identity import is_concentration_mismatch_offer as _is_concentration_mismatch_offer
+from app.services.offer_identity import offer_url_identity as _offer_url_identity
+from app.services.catalog_search_terms import catalog_search_terms as _expand_catalog_search_terms
+from app.services.public_offer_url import public_offer_url as _normalize_public_offer_url
+from app.services.public_offer import public_offer as _serialize_public_offer
+from app.services.result_identity import result_key as _result_identity_key
+from app.services.product_matcher_bootstrap import load_product_matcher
+
 
 def _load_product_matcher():
-    if ProductMatcher is None:
-        return None
-
-    try:
-        with open(PRODUCT_CATALOG_PATH, 'r', encoding='utf-8') as handle:
-            payload = json.load(handle)
-
-        if isinstance(payload, dict):
-            catalog = payload
-            product_count = len(payload.get("products") or [])
-        elif isinstance(payload, list):
-            catalog = payload
-            product_count = len(payload)
-        else:
-            catalog = []
-            product_count = 0
-
-        if not product_count:
-            print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
-            return None
-
-        # product_catalog.json remains the primary identity source.
-        # family_registry.json only supplements registered legacy families.
-        family_registry = None
-        if FAMILY_REGISTRY_PATH.exists():
-            with open(FAMILY_REGISTRY_PATH, 'r', encoding='utf-8') as handle:
-                family_registry = json.load(handle)
-
-        return ProductMatcher(
-            catalog=catalog,
-            family_registry=family_registry,
-        )
-    except Exception as exc:
-        print(
-            f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return None
+    return load_product_matcher(ProductMatcher, PRODUCT_CATALOG_PATH, FAMILY_REGISTRY_PATH)
 
 PRODUCT_MATCHER = _load_product_matcher()
 
+from app.services.identity_scope import identity_scope as _build_identity_scope
+
+
 def _identity_scope(query):
-    if PRODUCT_MATCHER is None:
-        return []
-    try:
-        method = getattr(PRODUCT_MATCHER, "build_identity_scope", None)
-        if callable(method):
-            return method(str(query or "").strip())
-        method = getattr(PRODUCT_MATCHER, "build_query_scope", None)
-        if callable(method):
-            return method(str(query or "").strip())
-        return []
-    except Exception as exc:
-        print(
-            f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return []
+    return _build_identity_scope(query, PRODUCT_MATCHER)
 
 def _resolve_offer_identity(result, query):
     """Resolve one raw retailer offer through the central ProductMatcher.
@@ -975,192 +866,11 @@ def _resolve_offer_identity(result, query):
     output["match_confidence"] = output.get("confidence")
     return output
 
-_NON_FRAGRANCE_TITLE_RE = re.compile(
-    r"(?:^|[^a-z0-9])(?:gift\s*set|set\s*regalo|coffret|cofre|estuche|"
-    r"discovery\s*set|sample(?:s)?|sample\s*set|mystery\s*box|beauty\s*box|"
-    r"gift\s*box|bundle|pack\s*regalo|duo|trio|kit|case|set|"
-    r"decant(?:s)?|tester(?:s)?|testeur(?:s)?|probe(?:s)?|proben|proef(?:je|jes)?|pröbchen|échantillon(?:s)?|muestra(?:s)?)(?:[^a-z0-9]|$)",
-    re.I,
+from app.services.offer_filtering import (
+    _NON_FRAGRANCE_CATEGORY_RE,
+    _NON_FRAGRANCE_TITLE_RE,
+    is_non_fragrance_offer as _is_non_fragrance_offer,
 )
-
-_NON_FRAGRANCE_CATEGORY_RE = re.compile(
-    r"(?:cosmetic|cosmetics|make[- ]?up|maquill|skincare|skin\s*care|"
-    r"hair\s*care|shampoo|conditioner|body\s*care|bath|shower|"
-    r"cream|crema|lotion|serum|mascara|lipstick|candle|vela|home|"
-    r"accessor|accessori|jewell|joyer|watch|reloj|bag|bolso|"
-    r"toiletr|wallet|cartera|brush|pennello|sponge|esponja|"
-    r"deodorant|desodorante|aftershave|rasage|soap|jabon|"
-    r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face\\s*wash|"
-    r"facial\\s*cleanser|toner|tonique|gesichtswasser|shaving|"
-    r"gel\\s*de\\s*afeitado|gel\\s*de\\s*rasage)(?:[^a-z0-9]|$)",
-    re.I,
-)
-
-
-def _offer_concentration_token(value):
-    """Extract an explicit fragrance concentration from title or URL text."""
-    text = str(value or "").lower()
-    text = re.sub(r"[^a-z0-9]+", " ", text)
-    for pattern, token in (
-        (r"\b(?:eau de parfum intense|edp intense|intense edp)\b", "edp_intense"),
-        (r"\b(?:eau de toilette intense|edt intense|intense edt)\b", "edt_intense"),
-        (r"\b(?:extrait de parfum|extrait)\b", "extrait"),
-        (r"\b(?:eau de parfum|edp)\b", "edp"),
-        (r"\b(?:eau de toilette|edt)\b", "edt"),
-        (r"\b(?:eau de cologne|edc)\b", "edc"),
-        # Elixir product URLs often include "parfum" as a descriptor; Elixir
-        # is the more specific concentration identity and must win.
-        (r"\belixir\b", "elixir"),
-        (r"\bparfum\b", "parfum"),
-    ):
-        if re.search(pattern, text):
-            return token
-    return ""
-
-
-def _is_dior_line_url_mismatch(item):
-    """Reject cross-line Dior Eau Sauvage / Dior Sauvage title-to-URL conflicts.
-
-    Use the displayed product title and primary offer URL first. Secondary/raw
-    metadata can contain stale canonical labels and must not override a clear
-    conflict between what the user sees and the destination they open.
-    """
-    if not isinstance(item, dict):
-        return False
-
-    title = next(
-        (str(item.get(key) or "").strip() for key in
-         ("name", "title", "product_name", "canonical_name", "raw_name", "_raw_name")
-         if str(item.get(key) or "").strip()),
-        "",
-    )
-    url = next(
-        (str(item.get(key) or "").strip() for key in
-         ("url", "product_url", "link", "product_page", "source_url", "_raw_url")
-         if str(item.get(key) or "").strip()),
-        "",
-    )
-    normalize = lambda value: re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
-    title_norm = normalize(title)
-    url_norm = normalize(url)
-
-    title_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", title_norm))
-    url_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", url_norm))
-    title_is_sauvage = bool(re.search(r"\bsauvage\b", title_norm))
-    url_is_sauvage = bool(re.search(r"\bsauvage\b", url_norm))
-
-    if url_is_eau_sauvage and title_is_sauvage and not title_is_eau_sauvage:
-        return True
-    if title_is_eau_sauvage and url_is_sauvage and not url_is_eau_sauvage:
-        return True
-    return False
-
-
-def _is_concentration_mismatch_offer(item):
-    """Reject decisive product-title / destination identity conflicts.
-
-    The offer's displayed title must describe the product at its destination.
-    Retailer URL slugs often contain the actual brand and product line, so
-    reject explicit conflicts rather than publishing a misleading price link.
-    """
-    if not isinstance(item, dict):
-        return False
-
-    title = " ".join(str(item.get(key) or "") for key in
-                     ("name", "title", "product_name", "raw_name", "_raw_name")).strip()
-    url = " ".join(str(item.get(key) or "") for key in
-                   ("url", "product_url", "source_url", "product_page", "link", "_raw_url")).strip()
-    title_norm = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
-    url_norm = re.sub(r"[^a-z0-9]+", " ", url.lower()).strip()
-
-    # Preserve the existing hard concentration and Dior-line checks.
-    title_token = _offer_concentration_token(title)
-    url_token = _offer_concentration_token(url)
-    hard_tokens = {"edt", "edp", "edc", "edt_intense", "edp_intense"}
-    if title_token in hard_tokens and url_token in hard_tokens and title_token != url_token:
-        return True
-    if _is_dior_line_url_mismatch(item):
-        return True
-
-    # Detect a different explicit brand in the destination. This is especially
-    # important for offers like "French Avenue Chaos" linking to "Vertus Chaos".
-    brand = str(item.get("canonical_brand") or item.get("brand") or item.get("manufacturer") or "").strip()
-    brand_norm = re.sub(r"[^a-z0-9]+", " ", brand.lower()).strip()
-    if brand_norm and len(brand_norm) >= 3 and brand_norm not in {"unknown", "perfume"}:
-        url_path = urllib.parse.urlparse(url.split()[0] if url else "").path
-        url_identity = re.sub(r"[^a-z0-9]+", " ", url_path.lower()).strip()
-        known_brands = {
-            "vertus", "french avenue", "rasasi", "dior", "afnan", "lattafa",
-            "armaf", "maison alhambra", "parfums de marly", "xerjoff",
-            "initio", "creed", "chanel", "versace", "gucci", "prada",
-            "yves saint laurent", "givenchy", "valentino", "burberry",
-            "hugo boss", "dolce gabbana", "montale", "mancera", "nishane",
-        }
-        for candidate in known_brands:
-            if candidate != brand_norm and candidate in url_identity and brand_norm in known_brands:
-                return True
-
-    return False
-
-def _is_non_fragrance_offer(item):
-    """Reject generic non-perfume commercial items before matching/publication.
-
-    This is intentionally category-based, never product-specific. Bundles,
-    gift sets, mystery boxes and clearly non-fragrance categories are not
-    individual perfume offers, so they must not enter either the matcher or
-    the unresolved-offers UI.
-    """
-    if not isinstance(item, dict):
-        return True
-
-    for key in ("is_fragrance", "is_perfume"):
-        if key in item and item.get(key) is False:
-            return True
-
-    category_values = []
-    for key in (
-        "product_type", "productType", "category", "category_name",
-        "categoryName", "department", "type", "product_category",
-        "productCategory",
-    ):
-        value = item.get(key)
-        if value not in (None, ""):
-            category_values.append(str(value))
-
-    category_text = " ".join(category_values)
-    if category_text and _NON_FRAGRANCE_CATEGORY_RE.search(category_text):
-        return True
-
-    title_parts = []
-    for key in ("name", "title", "raw_name", "_raw_name", "canonical_name"):
-        value = item.get(key)
-        if value not in (None, ""):
-            title_parts.append(str(value))
-    title_text = " ".join(title_parts)
-
-    # A retailer title can be mislabeled, so inspect URL slugs too, but
-    # use a narrow URL-only vocabulary: broad category words such as "home"
-    # can occur in unrelated URL fragments and suppress valid perfume offers.
-    url_parts = []
-    for key in ("url", "product_url", "link", "product_page", "source_url", "_raw_url", "retailer_url"):
-        value = item.get(key)
-        if value not in (None, ""):
-            url_parts.append(str(value))
-    url_text = " ".join(url_parts).lower()
-    non_fragrance_url_re = re.compile(
-        r"(?:^|[/_?&=-])(?:cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|"
-        r"face[-_ ]?wash|facial[-_ ]?cleanser|gesichtswasser|"
-        r"toner|tonique|shampoo|conditioner|moisturizer|moisturiser|"
-        r"carbon[-_ ]negro[-_ ]y[-_ ]cactus)(?:$|[/_?&=.-])",
-        re.I,
-    )
-
-    return bool(
-        _NON_FRAGRANCE_TITLE_RE.search(title_text)
-        or _NON_FRAGRANCE_CATEGORY_RE.search(title_text)
-        or non_fragrance_url_re.search(url_text)
-    )
-
 
 def clean_result(item, store):
     """
@@ -1328,81 +1038,7 @@ def clean_result(item, store):
     return result
 
 def result_key(item):
-    """Return a retailer-offer identity without collapsing distinct variants.
-
-    The canonical catalog ID identifies the fragrance, not necessarily the
-    retailer's sellable variant. Size is the strongest generic discriminator;
-    when size is missing, preserve any explicit variant identity supplied by
-    the catalog/scraper, then fall back to a variant selector in the URL.
-    """
-    store = _normalise_store(item.get('store') or item.get('shop'), '')
-    catalog_id = str(item.get('catalog_id') or '').strip().lower()
-    raw_url = str(item.get('url') or item.get('variant_url') or item.get('product_url') or '').strip()
-    product_url = str(item.get('product_url') or item.get('url') or '').strip()
-    url = raw_url.lower()
-
-    def _offer_url_identity(value):
-        # Ignore tracking/locale query noise when identifying the same listing,
-        # but retain explicit commercial variant selectors and fragments.
-        from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-        try:
-            parsed = urlsplit(str(value or '').strip())
-            host = parsed.netloc.lower()
-            if host.startswith('www.'):
-                host = host[4:]
-            path = parsed.path.rstrip('/').lower()
-            selectors = {
-                'variant', 'variant_id', 'id_product_attribute',
-                'combination_id', 'sku', 'size', 'size_ml', 'attribute',
-            }
-            query = [
-                (key.lower(), val)
-                for key, val in parse_qsl(parsed.query, keep_blank_values=False)
-                if key.lower() in selectors
-            ]
-            fragment = parsed.fragment.lower()
-            return urlunsplit((parsed.scheme.lower(), host, path, urlencode(sorted(query)), fragment))
-        except Exception:
-            return str(value or '').strip().lower()
-    product_id = str(item.get('store_product_id') or item.get('product_id') or '').strip().lower()
-    sku = str(item.get('sku') or '').strip().lower()
-    name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
-    size = _safe_float(item.get('size_ml'))
-    # A retailer product URL is the strongest cross-catalog identity for the same offer.
-    # Catalog IDs can differ when the same retailer listing is linked to duplicate
-    # canonical records. Explicit size and variant selectors below still keep
-    # genuinely distinct sellable variants separate.
-    identity_key = _offer_url_identity(product_url) or catalog_id or product_id or sku or name
-
-    # Preserve commercial variant identity even when size is known. Size alone
-    # is not sufficient: retailers can expose multiple sellable combinations
-    # with the same volume, and their selector URLs must not be merged.
-    variant_identity = next((str(item.get(field) or '').strip().lower()
-                             for field in ('variant_key', 'variant_id', 'variant_sku')
-                             if str(item.get(field) or '').strip()), '')
-    if not variant_identity and url:
-        # Keep explicit query selectors and selector-like fragments, while
-        # ignoring ordinary page anchors and unrelated tracking parameters.
-        query_match = re.search(
-            r'(?:[?&])(?:variant|variant_id|id_product_attribute|combination_id)=([^&#]+)',
-            url, flags=re.I,
-        )
-        fragment = url.split('#', 1)[1] if '#' in url else ''
-        fragment = fragment.strip('/')
-        if query_match:
-            variant_identity = f'url-selector:{query_match.group(1)}'
-        elif fragment and re.search(
-            r'\d+.*(?:size|tama|ml|variant|attribute|combination)|'
-            r'(?:size|tama|ml|variant|attribute|combination).*\d+',
-            fragment, re.I,
-        ):
-            variant_identity = f'url-fragment:{fragment}'
-    if not variant_identity and size is None and sku:
-        variant_identity = f'sku:{sku}'
-    if variant_identity:
-        identity_key = f'{identity_key}|{variant_identity}'
-
-    return (store, identity_key, round(size, 3) if size is not None else '')
+    return _result_identity_key(item, _normalise_store, _safe_float, _offer_url_identity)
 
 def dedupe_results(results, diagnostics=None):
     """Deduplicate repeated retailer offers across canonical catalog records.
@@ -1485,152 +1121,10 @@ def dedupe_results(results, diagnostics=None):
     return output
 
 def _public_offer_url(item):
-    """Return a Sabina URL that opens the Spanish storefront and the offer's
-    actual size variant.
-
-    Sabina product pages encode the selected size in the URL fragment. The
-    catalog may contain Italian canonical URLs or stale fragments in another
-    locale. Sabina's Spanish page does not honour those fragments, so it would
-    fall back to its default variant. Always normalize the URL to /es/ and
-    regenerate the Spanish fragment from the offer's size.
-    """
-    raw_url = item.get("variant_url") or item.get("url") or item.get("product_url")
-    url = str(raw_url or "").strip()
-    if not url:
-        return raw_url
-
-    store = str(item.get("store") or item.get("shop") or "").strip().lower()
-    host = ""
-    try:
-        from urllib.parse import urlsplit, urlunsplit
-        parsed = urlsplit(url)
-        host = (parsed.hostname or "").lower()
-    except Exception:
-        return url
-
-    # Deloox links in the catalog can be stored from a different locale
-    # (including .es URLs returned by redirects). ScentHunter serves the
-    # Luxembourg/Benelux storefront through Deloox Belgium; keep the original
-    # product path and query, but normalize the host to the supported .be
-    # storefront so the public offer never opens the Spanish shop.
-    if store in {"deloox", "deloox.be", "deloox.nl", "deloox.es", "deloox.com"} or host.endswith("deloox.es") or host.endswith("deloox.nl") or host.endswith("deloox.com") or host.endswith("deloox.be"):
-        from urllib.parse import urlsplit, urlunsplit
-        if host.endswith("deloox.es") or host.endswith("deloox.nl") or host.endswith("deloox.com") or host.endswith("deloox.be"):
-            parsed = parsed._replace(netloc="www.deloox.be")
-            return urlunsplit((parsed.scheme or "https", parsed.netloc, parsed.path, parsed.query, parsed.fragment))
-        return url
-
-    if store not in {"sabina", "sabina.com"} and not host.endswith("sabina.com"):
-        return url
-
-    # Prefer the explicit displayed format when it contains a recognized
-    # volume. Some catalog rows have stale/mismatched size_ml values.
-    format_value = item.get("format")
-    format_match = re.search(
-        r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?\b",
-        str(format_value or ""),
-        re.I,
-    )
-    size = format_value if format_match else item.get("size_ml")
-    if size is None or str(size).strip() == "":
-        size = format_value
-    match = re.search(r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?", str(size or ""), re.I)
-    if not match:
-        try:
-            numeric_size = float(size)
-            if numeric_size not in {30, 50, 75, 100, 150, 200}:
-                return url
-            size_ml = int(numeric_size)
-        except (TypeError, ValueError):
-            return url
-    else:
-        size_ml = int(match.group(1))
-
-    # Always open the Spanish storefront. Replace only the locale segment;
-    # Sabina resolves the canonical Spanish product path from the product ID.
-    if "/es/" not in parsed.path.lower():
-        parsed = parsed._replace(
-            path=re.sub(
-                r"^/(?:it|fr|en|de|nl|pt|tw|da|pl)/",
-                "/es/",
-                parsed.path,
-                count=1,
-            )
-        )
-
-    # Do not invent a fragment from size alone. Preserve Sabina's actual
-    # combination ID only when the volume encoded in that selector agrees with
-    # the offer's resolved volume. A stale/mismatched fragment silently opens
-    # another size (often the default 30 ml), so strip it rather than mislabel it.
-    fragment_match = re.search(
-        r"(?:^|/)\d+-tama_o-(\d+(?:_\d+)?)_ml$",
-        parsed.fragment, re.I,
-    )
-    if not fragment_match:
-        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
-    try:
-        fragment_size = float(fragment_match.group(1).replace("_", "."))
-    except (TypeError, ValueError):
-        fragment_size = None
-    if fragment_size is None or abs(fragment_size - size_ml) >= 0.01:
-        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
-
-    return urlunsplit(
-        (parsed.scheme, parsed.netloc, parsed.path, parsed.query, parsed.fragment)
-    )
+    return _normalize_public_offer_url(item)
 
 def _public_offer(item):
-    """
-    Return only commercial retailer data.
-    """
-    canonical_name = item.get("canonical_name") or item.get("name") or item.get("title")
-    # Canonical identity must win over retailer/source brand metadata.
-    # The matcher resolves canonical_brand separately from the retailer's
-    # raw brand; using item["brand"] first caused inconsistent display.
-    canonical_brand = (
-        item.get("canonical_brand")
-        or item.get("brand")
-        or item.get("manufacturer")
-    )
-
-    return {
-        # Canonical identity is deliberately repeated on every public offer.
-        # The frontend can therefore flatten offers without losing the product
-        # identity that the central matcher already resolved.
-        "catalog_id": item.get("catalog_id"),
-        "brand": canonical_brand,
-        "name": canonical_name,
-        "canonical_name": item.get("canonical_name") or canonical_name,
-        "family": item.get("family"),
-        "variant": item.get("variant"),
-        "store": item.get("store"),
-        "shop": item.get("shop"),
-        "price": item.get("price"),
-        "price_num": item.get("price_num"),
-        "format": item.get("format"),
-        "size_ml": item.get("size_ml"),
-        "variant_id": item.get("variant_id"),
-        "url": _public_offer_url(item),
-        "retailer_image": item.get("image") or item.get("image_url"),
-        # Preserve the scraper's explicit availability signal in the public
-        # offer contract. Previously only `available` survived aggregation,
-        # so structured values such as `OutOfStock` could be lost before the
-        # frontend rendered the offer. No retailer-specific rule is applied.
-        "available": item.get("available"),
-        "availability": item.get("availability"),
-        "stock": item.get("stock"),
-        "stock_status": item.get("stock_status"),
-        "availability_status": item.get("availability_status"),
-        "in_stock": item.get("in_stock"),
-        "inStock": item.get("inStock"),
-        "status": item.get("status"),
-        "raw_name": item.get("_raw_name")
-            or item.get("name")
-            or item.get("title"),
-        "raw_brand": item.get("_raw_brand")
-            or item.get("brand")
-            or item.get("manufacturer"),
-    }
+    return _serialize_public_offer(item, _public_offer_url)
 
 def _aggregate_identity_results(offers):
     """
@@ -2046,122 +1540,17 @@ def _catalog_indexed_flags(stores):
 
 
 def _catalog_search_terms(query):
-    """Return bounded persistent-catalog search terms.
+    return _expand_catalog_search_terms(query, PRODUCT_MATCHER)
 
-    Keep the original query first, then include a wider set of family-aware
-    canonical names and aliases. Broad queries such as "Hawas" must be able to
-    retrieve distinct variants whose retailer titles omit the family word
-    (for example, "Kobra For Him"). ProductMatcher remains solely responsible
-    for deciding final product identity.
-    """
-    text = str(query or "").strip()
-    if not text:
-        return []
-
-    terms = [text]
-    if PRODUCT_MATCHER is None:
-        return terms
-
-    try:
-        method = getattr(PRODUCT_MATCHER, "catalog_search_terms", None)
-        if not callable(method):
-            return terms
-        expanded = method(text)
-        if not isinstance(expanded, (list, tuple)):
-            return terms
-
-        def tokens(value):
-            return {
-                token for token in re.findall(r"[a-z0-9]+", str(value or "").lower())
-                if len(token) >= 3
-            }
-
-        query_tokens = tokens(text)
-        if not query_tokens:
-            return terms
-
-        candidates = []
-        seen = {text.casefold()}
-        for item in expanded:
-            candidate = str(item or "").strip()
-            key = candidate.casefold()
-            if not candidate or key in seen:
-                continue
-            candidate_tokens = tokens(candidate)
-            seen.add(key)
-            overlap = candidate_tokens & query_tokens
-            # A single-token family query (for example "Hawas") may have
-            # legitimate catalog aliases whose retailer titles contain none
-            # of the family token. Keep those aliases in the matcher's order;
-            # ProductMatcher remains responsible for rejecting unrelated
-            # products. Multi-token queries still require lexical overlap so
-            # expansion does not flood the search with unrelated candidates.
-            if not overlap and len(query_tokens) > 1:
-                continue
-            candidates.append((candidate, overlap))
-
-        token_frequency = {
-            token: sum(1 for _, overlap in candidates if token in overlap)
-            for token in query_tokens
-        }
-        candidates.sort(
-            key=lambda item: (
-                sum(1.0 / token_frequency[token] for token in item[1]),
-                len(item[1]),
-                -len(item[0]),
-            ),
-            reverse=True,
-        )
-
-        # Single-token family queries (for example "Hawas") need the full
-        # registry vocabulary because valid variant titles may omit the family
-        # token. Multi-token queries already constrain candidates lexically;
-        # running dozens of near-duplicate aliases adds repeated SQLite FTS
-        # work without materially improving recall. Keep the original query
-        # plus a ranked, bounded set for these queries.
-        # Broad one-token family searches must cover the registered variant vocabulary.
-        # Eight terms truncated families with more aliases (e.g. Hawas), hiding valid
-        # variants even when the catalog already contains them. catalog_engine bounds
-        # the per-store candidate pool, so allow the full bounded registry expansion.
-        # Multi-token family searches also need room for separately
-        # registered variants (e.g. Liquid Brun Limited Edition). Four terms
-        # truncated these related aliases before catalog lookup could see them.
-        max_terms = 32 if len(query_tokens) <= 1 else 4
-        token_order = sorted(
-            query_tokens,
-            key=lambda token: (token_frequency.get(token, 0), token),
-        )
-        selected = set()
-        for token in token_order:
-            for candidate, overlap in candidates:
-                if token in overlap and candidate.casefold() not in selected:
-                    terms.append(candidate)
-                    selected.add(candidate.casefold())
-                    break
-            if len(terms) >= max_terms:
-                return terms[:max_terms]
-
-        for candidate, _ in candidates:
-            if len(terms) >= max_terms:
-                break
-            if candidate.casefold() not in selected:
-                terms.append(candidate)
-                selected.add(candidate.casefold())
-        return terms[:max_terms]
-    except Exception as exc:
-        print(
-            f"CATALOG_SEARCH_TERM_EXPANSION_ERROR: {type(exc).__name__}: {exc}",
-            flush=True,
-        )
-        return terms
-
-
-def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
+def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=False):
     """Primary catalog-first search path.
 
     Discovery is performed by catalog_engine, not by retailer search endpoints.
     ProductMatcher remains the only component allowed to decide identity.
     """
+    # User-initiated search is strictly read-only: never fetch retailer pages,
+    # even if an old environment flag or caller requests a live fallback.
+    allow_live_fallback = False
     started = time.monotonic()
     reports_by_store = {}
     catalog_search_elapsed = 0.0
@@ -2258,9 +1647,9 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                             f'updated={prioritized}',
                             flush=True,
                         )
-                foreground_refresh_enabled = str(
-                    os.environ.get('CATALOG_FOREGROUND_REFRESH_ENABLED', '')
-                ).strip().lower() in {'1', 'true', 'yes', 'on'}
+                # Foreground search must not fetch retailer product pages.
+                # The background hydrator exclusively owns offer refresh.
+                foreground_refresh_enabled = False
                 if foreground_refresh_enabled:
                     refreshed = catalog_refresh_candidates(
                         requested,
@@ -2525,75 +1914,43 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     return [reports_by_store[s] for s in stores if s in reports_by_store]
 
 
-def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
+def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=False):
+    """Collect search results from the persistent catalog only.
+
+    The legacy allow_live_fallback argument is retained for call compatibility
+    but deliberately ignored. A missing catalog engine is an operational error,
+    never permission to invoke retailer search adapters from a user request.
+    """
     requested = list(stores)
     if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
         try:
-            return _collect_catalog_reports_isolated(query, requested, on_report=on_report, on_result=on_result, cancel_event=cancel_event, job_id=job_id, allow_live_fallback=allow_live_fallback)
+            return _collect_catalog_reports_isolated(
+                query,
+                requested,
+                on_report=on_report,
+                on_result=on_result,
+                cancel_event=cancel_event,
+                job_id=job_id,
+                allow_live_fallback=False,
+            )
         except Exception as exc:
-            # Normal search is catalog-only. Never fall back to the legacy live
-            # scraper here: that path is what caused one slow search to occupy
-            # the global job for minutes and block subsequent searches.
             print(f'CATALOG PRIMARY PATH ERROR: {type(exc).__name__}: {exc}', flush=True)
             error = f'catalog_search_error:{type(exc).__name__}:{exc}'
-            reports = []
-            for store in requested:
-                report = _empty_report(store, status='error', elapsed=0.0, error=error) | {
-                    'verified': False,
-                    'details': {'source': 'persistent_catalog', 'authoritative': True},
-                }
-                reports.append(report)
-                if callable(on_report):
-                    on_report(report)
-            return reports
-    reports = {}
-    lock = threading.Lock()
-    threads = []
+    else:
+        error = 'catalog_engine_unavailable'
 
-    def publish(report):
-        with lock:
-            reports[report['store']] = report
+    # Fail closed. Never start _run_controlled_store() here: it launches
+    # retailer adapters and would turn a catalog outage into live scraping.
+    reports = []
+    for store in requested:
+        report = _empty_report(store, status='error', elapsed=0.0, error=error) | {
+            'verified': False,
+            'details': {'source': 'persistent_catalog', 'authoritative': False},
+        }
+        reports.append(report)
         if callable(on_report):
             on_report(report)
-
-    for store in requested:
-        t = threading.Thread(
-            target=_run_controlled_store,
-            args=(store, query, publish, on_result, cancel_event),
-            daemon=True,
-            name=f'scenthunter-store-{store}'
-        )
-        t.start()
-        threads.append(t)
-
-    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
-    for t in threads:
-        t.join(timeout=max(0.0, deadline - time.monotonic()))
-
-    unfinished = [
-        t.name.rsplit('scenthunter-store-', 1)[-1]
-        for t in threads
-        if t.is_alive()
-    ]
-
-    if unfinished:
-        print(f'SEARCH SUPERVISORS CANCELLING stores={unfinished}', flush=True)
-        if cancel_event is not None:
-            cancel_event.set()
-        cancel_deadline = time.monotonic() + 3.0
-        for t in threads:
-            if t.is_alive():
-                t.join(timeout=max(0.0, cancel_deadline - time.monotonic()))
-
-    with lock:
-        for store in unfinished:
-            reports.setdefault(
-                store,
-                _empty_report(store, elapsed=JOB_TIMEOUT_SECONDS, error='job_timeout')
-            )
-
-    return [reports[s] for s in requested if s in reports]
-
+    return reports
 
 JOBS={}; JOBS_LOCK=threading.Lock()
 
@@ -2781,6 +2138,8 @@ def _snapshot(job_id):
         stores = dict(job.get("stores", {}))
         dedupe_diagnostics = list(job.get("dedupe_diagnostics", []))
         identity_scope = list(job.get("identity_scope", []))
+        catalog_shadow_comparison = job.get("catalog_shadow_comparison")
+        catalog_rollout = dict(job.get("catalog_rollout") or {})
         collect_elapsed = job.get("collect_elapsed")
         dedupe_elapsed = job.get("dedupe_elapsed")
         aggregate_elapsed = job.get("aggregate_elapsed")
@@ -2807,6 +2166,8 @@ def _snapshot(job_id):
         "dedupe_elapsed": dedupe_elapsed,
         "aggregate_elapsed": aggregate_elapsed,
         "dedupe_diagnostics": dedupe_diagnostics,
+        "catalog_shadow_comparison": catalog_shadow_comparison,
+        "catalog_rollout": catalog_rollout,
     }
 
 def _publish_result(job_id, row):
@@ -2946,6 +2307,7 @@ def _run_job(job_id, query):
             on_result=on_result,
             cancel_event=cancel_event,
             job_id=job_id,
+            allow_live_fallback=False,
         )
         collect_elapsed = round(time.monotonic() - collect_started, 3)
         with JOBS_LOCK:
@@ -3010,6 +2372,20 @@ def _run_job(job_id, query):
                     current_job["offers"] = deduped
                     current_job["results"] = grouped
                     current_job["unresolved_offers"] = unresolved
+                    shadow_payload = current_job.pop("catalog_shadow_result", None)
+                    if shadow_payload is not None:
+                        try:
+                            if shadow_payload.get("status") == "error":
+                                current_job["catalog_shadow_comparison"] = {"status": "shadow_error"}
+                            else:
+                                current_job["catalog_shadow_comparison"] = compare_search_payloads(
+                                    grouped, shadow_payload
+                                )
+                        except Exception as shadow_exc:
+                            current_job["catalog_shadow_comparison"] = {
+                                "status": "comparison_error",
+                                "error_type": type(shadow_exc).__name__,
+                            }
                     current_job["completed"] = True
 
                     # A completed job can still contain stores that were not
@@ -4693,20 +4069,57 @@ def diagnose_hawas_ice_offers_read_only():
     return out
 
 
+def _run_catalog_shadow(job_id, query):
+    """Run a non-serving catalog read without delaying the legacy search start."""
+    try:
+        payload = phase7_search_catalog_for_frontend(query)
+    except Exception as exc:
+        print(f"CATALOG_SEARCH_SHADOW_ERROR: {type(exc).__name__}", flush=True)
+        payload = {"status": "error", "results": []}
+
+    legacy_results = None
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job is None:
+            return
+        if not job.get("completed"):
+            # The legacy collector will compare this payload during finalization.
+            job["catalog_shadow_result"] = payload
+            return
+        legacy_results = list(job.get("results") or [])
+
+    try:
+        comparison = (
+            {"status": "shadow_error"}
+            if payload.get("status") == "error"
+            else compare_search_payloads(legacy_results, payload)
+        )
+    except Exception as exc:
+        comparison = {"status": "comparison_error", "error_type": type(exc).__name__}
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job is not None:
+            job["catalog_shadow_comparison"] = comparison
+
+
 @app.get('/search-start')
-def search_start(q: str):
+def search_start(
+    q: str,
+    x_catalog_rollout_key: str | None = Header(default=None, alias="X-Catalog-Rollout-Key"),
+):
     query = str(q or '').strip()
-    # Opt-in bridge: the existing frontend already calls /search-start and
-    # understands this response contract. Keep the legacy worker path as the
-    # default until the PostgreSQL catalog is populated and operationally
-    # approved; enabling this flag makes the UI search persisted PostgreSQL
-    # records only, without retailer discovery or live connector calls.
-    catalog_search_enabled = str(
-        os.environ.get('SCENTHUNTER_CATALOG_SEARCH_ENABLED', '0')
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
-    if catalog_search_enabled:
+    rollout = catalog_rollout_decision(query, x_catalog_rollout_key, environ=os.environ)
+    if query and rollout["use_catalog"]:
         try:
-            return phase7_search_catalog_for_frontend(query)
+            response = phase7_search_catalog_for_frontend(query)
+            if isinstance(response, dict):
+                response["catalog_rollout"] = {
+                    "mode": "catalog",
+                    "traffic_percent": rollout["traffic_percent"],
+                    "bucket": rollout["bucket"],
+                }
+            return response
         except Exception as exc:
             print(
                 f'POSTGRES_CATALOG_SEARCH_ERROR: {type(exc).__name__}: {exc}',
@@ -4724,6 +4137,11 @@ def search_start(q: str):
                 'dedupe_diagnostics': [],
                 'completed': True,
                 'status': 'error',
+                'catalog_rollout': {
+                    "mode": "catalog_error",
+                    "traffic_percent": rollout["traffic_percent"],
+                    "bucket": rollout["bucket"],
+                },
             }
 
     if not query:
@@ -4810,6 +4228,22 @@ def search_start(q: str):
         }
 
     job_id = _new_job(query)
+    with JOBS_LOCK:
+        current_job = JOBS.get(job_id)
+        if current_job is not None:
+            current_job["catalog_rollout"] = {
+                "mode": "shadow" if rollout["run_shadow"] else "legacy",
+                "traffic_percent": rollout["traffic_percent"],
+                "bucket": rollout["bucket"],
+                "shadow_requested": bool(rollout["run_shadow"]),
+            }
+    if rollout["run_shadow"]:
+        threading.Thread(
+            target=_run_catalog_shadow,
+            args=(job_id, query),
+            daemon=True,
+            name=f"scenthunter-catalog-shadow-{job_id[:8]}",
+        ).start()
     threading.Thread(
         target=_run_job,
         args=(job_id, query),
@@ -5645,3 +5079,12 @@ def phase2_sql_verification(authorization: str = _Phase0Header(default='')):
             engine.dispose()
     return results
 
+# Phase 1 repository hygiene: keep investigative HTTP endpoints out of the
+# production route table unless diagnostics are explicitly enabled.
+if str(os.environ.get('SCENTHUNTER_DIAGNOSTICS_ENABLED', '0')).strip().lower() not in {'1', 'true', 'yes', 'on'}:
+    app.router.routes = [
+        route for route in app.router.routes
+        if not any(token in str(getattr(route, 'path', '')).lower()
+                   for token in ('diagnose', 'diagnostic'))
+        and str(getattr(route, 'path', '')).lower() != '/admin/phase2/sql-verification'
+    ]

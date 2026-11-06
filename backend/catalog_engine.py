@@ -108,6 +108,8 @@ ACTIVE_STORES = tuple(STORES)
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
 # catalog discovery, not product-specific logic.
+FEED_ONLY_STORES = frozenset({"notino"})
+
 DISCOVERY_BASES = {
     'easycosmetic': (
         # ScentHunter uses the German market: discover German URLs only.
@@ -123,7 +125,8 @@ DISCOVERY_BASES = {
         'https://www.deloox.es',
     ),
     'notino': (
-        # France only: never index or return Notino Germany for this store.
+        # URL validation remains restricted to the French market. This is not
+        # a discovery permission; feed-only guards prevent public requests.
         'https://www.notino.fr',
     ),
 }
@@ -205,11 +208,6 @@ HTML_DISCOVERY_SEEDS = {
     'deloox': (
         'https://www.deloox.be/',
         'https://www.deloox.com/en/search?q=perfume',
-    ),
-    'notino': (
-        # Keep discovery strictly on the French storefront.
-        'https://www.notino.fr/',
-        'https://www.notino.fr/parfums/',
     ),
 }
 
@@ -983,9 +981,10 @@ def _standard_sitemap_roots(base):
 def _seed_sitemaps(store, progress_callback=None):
     """Collect sitemap roots while exposing progress for each robots.txt request.
 
-    A store must never remain indefinitely at the generic discovery_started
-    marker: persist which host is being checked and the result of each request.
+    Feed-only stores are deliberately excluded from public sitemap discovery.
     """
+    if store in FEED_ONLY_STORES:
+        return [], ["authorized_feed_only"]
     roots = []
     robots_diagnostics = []
     bases = _discovery_bases(store)
@@ -3316,13 +3315,21 @@ def discover_store(store):
             notino_feed_error = str(exc)
             if not notino_feed_error.startswith('notino_feed_'):
                 notino_feed_error = f'notino_feed_import_error:{type(exc).__name__}'
-        # Do not invent prices or bypass access controls. If the authorized feed
-        # is not configured, continue with ordinary public catalog discovery;
-        # individual product refreshes must still return HTTP 200 and valid offers.
-        print(
-            f'NOTINO_FEED_UNAVAILABLE fallback=public_catalog reason={notino_feed_error}',
-            flush=True,
+        # Notino is feed-only. Missing entitlement, an empty feed, or any feed
+        # error is a hard stop: do not probe robots.txt, sitemaps, HTML listings,
+        # product pages, or any alternative public transport.
+        detail = f'authorized_feed_required:{notino_feed_error}'
+        _set_sync_state(
+            store, 'DISCOVERY_BLOCKED', started_at=started_at,
+            finished_at=time.time(), discovered_count=0, fetched_count=0,
+            error=detail,
         )
+        return {
+            'status': 'DISCOVERY_BLOCKED',
+            'count': 0,
+            'source': 'cj_viv_authorized_xml',
+            'error': detail,
+        }
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):
@@ -3343,7 +3350,7 @@ def discover_store(store):
     # Deloox's sitemap roots repeatedly return errors while its HTML catalog graph is usable.
     # Give sitemap discovery only a short probe window there so it cannot consume
     # most of the bounded run before the persistent HTML frontier gets time.
-    sitemap_budget = 5 if store in ('deloox', 'notino') else SITEMAP_DISCOVERY_BUDGET
+    sitemap_budget = 5 if store == 'deloox' else SITEMAP_DISCOVERY_BUDGET
     sitemap_deadline = min(
         started_at + DISCOVERY_HARD_TIMEOUT,
         started_at + sitemap_budget,
@@ -4072,6 +4079,10 @@ def _maybe_persist_bplatz_phase2(item, url):
             "0005_canonical_identity_reviews",
             "0006_ingestion_artifacts",
             "0007_ingestion_dead_letters",
+            "0008_variant_size_precision",
+            "0009_live_ingestion_uniqueness",
+            "0010_store_offer_ttl",
+            "0011_catalog_search_fts",
         }
         if revision not in supported_revisions or missing:
             print(
@@ -4180,6 +4191,11 @@ def _should_persist_bplatz_phase2(store, item):
 
 
 def refresh_url(store, url):
+    if store in FEED_ONLY_STORES:
+        detail = "notino_feed_only_public_refresh_disabled"
+        with _LAST_REFRESH_ERRORS_LOCK:
+            _LAST_REFRESH_ERRORS[(store, url)] = detail
+        return None
     try:
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
@@ -5952,7 +5968,8 @@ def _queue_mark_error(task, error, http_status=None):
         # the initial attempt budget, at the capped 24-hour backoff interval.
         terminal_http = http_status in (404, 410)
         terminal_placeholder = 'invalid_placeholder_price' in str(error)
-        next_state = 'DEAD' if terminal_http or terminal_placeholder else 'ERROR'
+        terminal_policy = 'notino_feed_only_public_refresh_disabled' in str(error)
+        next_state = 'DEAD' if terminal_http or terminal_placeholder or terminal_policy else 'ERROR'
         if next_state == 'ERROR' and attempts >= HYDRATION_MAX_ATTEMPTS:
             delay = float(HYDRATION_BACKOFF_SECONDS[-1])
             next_time = now + delay + delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))

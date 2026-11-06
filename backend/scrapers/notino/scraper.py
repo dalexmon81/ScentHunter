@@ -1622,53 +1622,37 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
 
 
 def search(query: str) -> Dict[str, Any]:
-    """Return a verified feed-first Notino search report with public fallback."""
+    """Read Notino offers from the authorized CJ/VIV feed cache only.
+
+    This runtime adapter never performs public HTML search or product-page
+    requests. If the authorized feed is unavailable or has no match, it returns
+    the feed status and an empty result set.
+    """
     query = _clean(query)
     if not query:
         return {
             "status": "success", "verified": True, "results": [],
-            "error": None, "details": {"source": "notino", "empty_query": True},
+            "error": None, "details": {"source": "cj_viv_authorized_xml", "empty_query": True},
         }
 
-    from . import affiliate_feed, legacy_public
+    from . import affiliate_feed
 
     feed_report = affiliate_feed.search_feed(query)
-    if isinstance(feed_report, dict) and feed_report.get("results"):
-        return feed_report
-
-    try:
-        public_rows = legacy_public.search(query)
-    except Exception as exc:
-        public_rows = []
-        public_error = f"{type(exc).__name__}:{exc}"
-    else:
-        public_error = None
-
-    if public_rows:
+    if not isinstance(feed_report, dict):
         return {
-            "status": "success", "verified": True,
-            "results": [row for row in public_rows if isinstance(row, dict)],
-            "error": None,
-            "details": {"source": "notino_public_external_discovery"},
+            "status": "unavailable", "verified": False, "results": [],
+            "error": "notino_feed_unavailable",
+            "details": {"source": "cj_viv_authorized_xml"},
         }
 
-    if isinstance(feed_report, dict):
-        report = dict(feed_report)
-        report.setdefault("status", "success")
-        report.setdefault("verified", True)
-        report.setdefault("results", [])
-        details = dict(report.get("details") or {})
-        details.setdefault("source", "cj_viv_authorized_xml")
-        report["details"] = details
-        if public_error:
-            report["details"]["public_fallback_error"] = public_error
-        return report
-
-    return {
-        "status": "unavailable", "verified": False, "results": [],
-        "error": public_error or "notino_search_unavailable",
-        "details": {"source": "notino_public_external_discovery"},
-    }
+    report = dict(feed_report)
+    report.setdefault("status", "unavailable")
+    report.setdefault("verified", False)
+    report.setdefault("results", [])
+    details = dict(report.get("details") or {})
+    details["source"] = "cj_viv_authorized_xml"
+    report["details"] = details
+    return report
 
 
 def scrape(query: str) -> List[Dict[str, Any]]:
@@ -1677,6 +1661,7 @@ def scrape(query: str) -> List[Dict[str, Any]]:
 
 
 def diagnose(query: str) -> Dict[str, Any]:
+    """Report feed-cache status without making public Notino HTTP requests."""
     query = _clean(query)
     if not query:
         return {
@@ -1685,54 +1670,16 @@ def diagnose(query: str) -> Dict[str, Any]:
             "query": "",
             "error": "empty_query",
         }
-
-    session = _new_session()
-    try:
-        candidates, discovery = _discover(query, session)
-        enrichment: List[Dict[str, Any]] = []
-        for candidate in candidates[:MAX_CANDIDATES]:
-            entry = {
-                "url": candidate.get("url"),
-                "product_id": candidate.get("product_id"),
-                "name": candidate.get("name"),
-                "score": candidate.get("score"),
-                "candidate_source": candidate.get("source"),
-                "card_price": candidate.get("price"),
-                "card_size_ml": candidate.get("size_ml"),
-                "card_stock": candidate.get("stock"),
-                "card_attempt": None,
-                "product_page_attempt": None,
-            }
-            try:
-                card = _card_result(candidate, query)
-                entry["card_attempt"] = {"ok": bool(card), "result": card}
-            except Exception as exc:
-                entry["card_attempt"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-            if not entry["card_attempt"].get("ok"):
-                try:
-                    page = _reader_product(session, candidate, query)
-                    entry["product_page_attempt"] = {"ok": bool(page), "result": page}
-                except Exception as exc:
-                    entry["product_page_attempt"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-            enrichment.append(entry)
-    finally:
-        session.close()
-
+    from . import affiliate_feed
+    report = affiliate_feed.search_feed(query)
     return {
         "diagnostic": True,
         "scraper_version": SCRAPER_VERSION,
         "query": query,
-        "normalized_query": _norm(query),
-        "identity_tokens": _query_identity_tokens(query),
-        "discovery": discovery,
-        "candidate_count": len(candidates),
-        "candidates": candidates[:MAX_CANDIDATES],
-        "enrichment": enrichment,
-        "result_count": sum(
-            1 for item in enrichment
-            if item.get("card_attempt", {}).get("ok")
-            or item.get("product_page_attempt", {}).get("ok")
-        ),
+        "source": "cj_viv_authorized_xml",
+        "candidate_count": len(report.get("results") or []) if isinstance(report, dict) else 0,
+        "result_count": len(report.get("results") or []) if isinstance(report, dict) else 0,
+        "feed_report": report,
     }
 
 

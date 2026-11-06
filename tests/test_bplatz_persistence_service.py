@@ -102,7 +102,7 @@ def _create_bplatz_store(session):
     if store is None:
         store = Store(
             name="Bplatz", slug="bplatz", domain="bplatz.de",
-            country="DE", currency="EUR", status="active",
+            country="DE", currency="EUR", offer_ttl_minutes=1440, status="active",
         )
         session.add(store)
         session.flush()
@@ -125,8 +125,8 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         assert "ingestion_raw_id" in offer_columns
         with engine.connect() as connection:
             revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
-        assert revision == "0003_store_domain"
-        print("ALEMBIC_REVISION=0003_store_domain")
+        assert revision == "0010_store_offer_ttl"
+        print("ALEMBIC_REVISION=0010_store_offer_ttl")
         print("MIGRATION_TABLES=OK")
     finally:
         engine.dispose()
@@ -233,6 +233,7 @@ def test_invalid_offer_fields_block_promotion_after_real_legacy_resolution(tmp_p
         invalid_values = [
             {"price": Decimal("0")},
             {"currency": "eur"},
+            {"currency": "USD"},
             {"url": "file:///tmp/not-http"},
             {"availability": "unknown"},
         ]

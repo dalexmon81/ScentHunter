@@ -70,10 +70,13 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
                     domain="notino.fr",
                     country="FR",
                     currency="EUR",
+                    offer_ttl_minutes=1440,
                     status="active",
                 )
                 session.add(store)
                 session.flush()
+            if store.offer_ttl_minutes is None:
+                store.offer_ttl_minutes = 1440
             assert store.status == "active"
             session.commit()
 
