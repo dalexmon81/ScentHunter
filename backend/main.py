@@ -690,11 +690,7 @@ LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
 BROWSER_SEMAPHORE = threading.Semaphore(BROWSER_WORKERS)
 
-def _safe_float(value):
-    try:
-        if value is None or value == '': return None
-        return float(value)
-    except (TypeError, ValueError): return None
+from app.services.safe_parsers import safe_float as _safe_float
 
 
 from app.services.product_matcher_bootstrap import load_product_matcher
