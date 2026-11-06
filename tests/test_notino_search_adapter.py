@@ -1,4 +1,4 @@
-"""Contract tests for the Notino public storefront adapter."""
+"""Contract tests for the feed-only Notino runtime adapter."""
 
 import json
 
@@ -89,7 +89,7 @@ def test_notino_live_search_is_france_only():
     assert all("notino.de" not in base for base, _language in scraper.MARKETS)
 
 
-def test_search_falls_back_to_restored_external_discovery_when_feed_has_no_match(monkeypatch):
+def test_search_does_not_use_public_fallback_when_feed_has_no_match(monkeypatch):
     from backend.scrapers.notino import affiliate_feed, legacy_public
 
     monkeypatch.setattr(
@@ -100,20 +100,49 @@ def test_search_falls_back_to_restored_external_discovery_when_feed_has_no_match
             "error": None, "details": {"source": "cj_viv_authorized_xml"},
         },
     )
-    expected = [{
-        "store": "Notino",
-        "name": "Dior - Sauvage Eau de Parfum",
-        "price": "89,90€",
-        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/",
-    }]
-    monkeypatch.setattr(legacy_public, "search", lambda query: expected)
+    monkeypatch.setattr(
+        legacy_public,
+        "search",
+        lambda query: (_ for _ in ()).throw(
+            AssertionError("Notino runtime must not call public HTML discovery")
+        ),
+    )
 
     report = scraper.search("Dior Sauvage Eau de Parfum")
 
     assert report["status"] == "success"
     assert report["verified"] is True
-    assert report["results"] == expected
-    assert report["details"]["source"] == "notino_public_external_discovery"
+    assert report["results"] == []
+    assert report["details"]["source"] == "cj_viv_authorized_xml"
+
+
+def test_search_preserves_feed_unavailable_without_public_fallback(monkeypatch):
+    from backend.scrapers.notino import affiliate_feed, legacy_public
+
+    monkeypatch.setattr(
+        affiliate_feed,
+        "search_feed",
+        lambda query: {
+            "status": "unavailable", "verified": False, "results": [],
+            "error": "notino_feed_catalog_read_error",
+            "details": {"source": "cj_viv_authorized_xml"},
+        },
+    )
+    monkeypatch.setattr(
+        legacy_public,
+        "search",
+        lambda query: (_ for _ in ()).throw(
+            AssertionError("Notino runtime must not call public HTML discovery")
+        ),
+    )
+
+    report = scraper.search("Dior Sauvage Eau de Parfum")
+
+    assert report["status"] == "unavailable"
+    assert report["verified"] is False
+    assert report["results"] == []
+    assert report["error"] == "notino_feed_catalog_read_error"
+    assert report["details"]["source"] == "cj_viv_authorized_xml"
 
 
 def test_search_does_not_fallback_when_feed_has_fresh_matching_offer(monkeypatch):
