@@ -1,6 +1,15 @@
-from backend.app.matching.normalization import (
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+BACKEND = Path(__file__).resolve().parents[1] / "backend"
+sys.path.insert(0, str(BACKEND))
+
+from app.matching.normalization import (
     extract_size_ml, normalize_brand, normalize_concentration, normalize_fragrance,
 )
+
 
 
 def test_brand_aliases_are_stable():
