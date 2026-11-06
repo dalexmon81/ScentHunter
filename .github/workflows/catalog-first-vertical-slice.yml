@@ -1,0 +1,73 @@
+name: Catalog-first PostgreSQL vertical slice
+
+on:
+  pull_request:
+    branches:
+      - phase2/staging-postgresql-guard
+    paths:
+      - "backend/app/api/legacy_catalog.py"
+      - "backend/app/connectors/notino.py"
+      - "backend/app/matching/**"
+      - "backend/app/models/**"
+      - "backend/app/services/ingestion_persistence.py"
+      - "backend/app/services/product_normalization.py"
+      - "backend/app/workers/connector_ingestion.py"
+      - "backend/tests/test_catalog_first_vertical_slice.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/alembic/**"
+      - ".github/workflows/catalog-first-vertical-slice.yml"
+  push:
+    branches:
+      - phase2/catalog-first-vertical-slice
+    paths:
+      - "backend/app/api/legacy_catalog.py"
+      - "backend/app/connectors/notino.py"
+      - "backend/app/matching/**"
+      - "backend/app/models/**"
+      - "backend/app/services/ingestion_persistence.py"
+      - "backend/app/services/product_normalization.py"
+      - "backend/app/workers/connector_ingestion.py"
+      - "backend/tests/test_catalog_first_vertical_slice.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/alembic/**"
+      - ".github/workflows/catalog-first-vertical-slice.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-vertical-slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vertical_slice
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: vertical_slice_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vertical_slice -d vertical_slice_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
+      SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt pytest
+      - name: Apply schema migrations to disposable PostgreSQL
+        working-directory: backend
+        run: alembic upgrade head
+      - name: Seed canonical catalog identities and variants
+        run: python backend/scripts/seed_catalog.py --apply
+      - name: Run fixture-backed ingestion, matching, promotion and API test
+        run: pytest -q -s backend/tests/test_catalog_first_vertical_slice.py
