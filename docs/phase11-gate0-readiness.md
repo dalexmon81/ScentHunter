@@ -53,6 +53,23 @@ The fix reads an explicit price from the selected Schema.org `priceSpecification
 
 The latest Gmail check found no new Bplatz permission response and no Notino advertiser approval/feed entitlement. The CJ network welcome email is not advertiser approval. Therefore these results do not change any Gate 0 authorization or real-offer requirements.
 
+## Awin advertiser application outcomes — verified from Gmail, 2026-11-06
+
+A Gmail search of messages from `no-reply@awin.com` found two advertiser rejection notices dated 2026-08-06 for publisher ScentHunter (PID 3021971):
+
+| Advertiser | Advertiser ID | Recorded rejection reason |
+|---|---:|---|
+| Fragrance Click UK | 124166 | “Site does not complement advertiser brand” |
+| Perfume Click | 6561 | “URL is irrelevant to advertiser brand” |
+
+The same search found the Awin network publisher-account activation email dated 2026-08-05. That account activation is separate from advertiser-program acceptance.
+
+**Scope limitation:** the mailbox search found these two rejection notices; it does not establish that every Awin advertiser application was rejected. The user recalls further applications but no other rejection notices were found in this search. Do not describe all Awin programmes as rejected without additional evidence.
+
+**Interpretation:** both recorded reasons concern perceived site/URL relevance, not API tokens or feed configuration. This suggests improving the public-facing publisher presentation before submitting more applications: clearly explain ScentHunter as a perfume-only search and price-comparison service; show usable perfume category/product pages and genuine, traceable offers; make operator/contact, privacy, terms, affiliate disclosure, data freshness and comparison methodology easy to find. These are recommended readiness checks, not confirmed causes of all advertiser decisions.
+
+Do not reapply to the same advertisers yet. First audit the live public site against those criteria and document the actual pages and current state. No changes to public website or new advertiser applications have been made as part of this audit.
+
 ## Additional affiliate-feed route: Awin (research only)
 
 A new research shortlist is documented in [phase11-affiliate-feed-alternatives.md](phase11-affiliate-feed-alternatives.md). Public merchant profiles indicate:
