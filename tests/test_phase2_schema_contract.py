@@ -33,7 +33,8 @@ def test_variant_attributes_and_fixed_precision_prices():
 
 def test_active_offers_require_positive_price():
     constraints = {constraint.name for constraint in Offer.__table__.constraints}
-    assert "active_offer_positive_price" in constraints
+    # Base.metadata applies ck_<table>_<constraint_name> to CheckConstraints.
+    assert "ck_offers_active_offer_positive_price" in constraints
 
 
 def test_required_offer_and_catalog_indexes_exist():
