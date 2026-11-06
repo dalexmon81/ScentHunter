@@ -1,0 +1,30 @@
+name: Phase 11 shadow rollout guard tests
+
+on:
+  push:
+    branches:
+      - phase11/shadow-rollout-guard
+    paths:
+      - "backend/app/services/catalog_migration_guard.py"
+      - "backend/tests/test_catalog_migration_guard.py"
+      - ".github/workflows/phase11-shadow-rollout-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shadow-rollout-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run shadow comparison and rollout safety tests
+        env:
+          PYTHONPATH: backend
+        run: |
+          python -m pip install --upgrade pip pytest
+          python -m pytest -q backend/tests/test_catalog_migration_guard.py
