@@ -39,5 +39,5 @@ def test_unknown_stock_is_not_publishable():
 def test_variant_size_schema_preserves_fractional_millilitres():
     column = ProductVariant.__table__.c.size_ml
     assert isinstance(column.type, __import__("sqlalchemy").Numeric)
-    assert column.type.precision == 8
-    assert column.type.scale == 2
+    assert column.type.precision == 10
+    assert column.type.scale == 4
