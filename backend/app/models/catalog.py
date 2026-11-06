@@ -80,7 +80,16 @@ class LegacyVariantIdMap(Base):
 
 class IngestionRaw(Base):
     __tablename__ = "ingestion_raw"
-    __table_args__ = (Index("ix_ingestion_raw_store_status", "store_id", "status"), CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"))
+    __table_args__ = (
+        Index("ix_ingestion_raw_store_status", "store_id", "status"),
+        Index(
+            "uq_ingestion_raw_live_store_external",
+            "store_id", "external_product_id", unique=True,
+            sqlite_where=text("external_product_id IS NOT NULL AND status IN ('pending','unmatched','matched')"),
+            postgresql_where=text("external_product_id IS NOT NULL AND status IN ('pending','unmatched','matched')"),
+        ),
+        CheckConstraint("status IN ('pending','unmatched','matched','promoted','rejected')", name="ingestion_raw_status"),
+    )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
