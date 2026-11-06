@@ -1,0 +1,56 @@
+name: Phase 8 offer ranking tests
+
+on:
+  push:
+    branches:
+      - phase8/offer-quality-ranking
+    paths:
+      - "backend/app/services/offer_ranking.py"
+      - "backend/app/api/catalog_search.py"
+      - "backend/tests/test_offer_ranking.py"
+      - "backend/tests/test_catalog_search_api.py"
+      - ".github/workflows/phase8-offer-ranking.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ranking-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scenthunter
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: scenthunter_ranking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scenthunter -d scenthunter_ranking"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_ranking
+      SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_ranking
+      SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://scenthunter:ci_only_password@127.0.0.1:5432/scenthunter_ranking
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt pytest
+      - name: Migrate and seed PostgreSQL
+        working-directory: backend
+        run: |
+          alembic upgrade head
+          python scripts/seed_catalog.py --apply
+      - name: Test ranking logic and catalog search API
+        run: python -m pytest -q backend/tests/test_offer_ranking.py backend/tests/test_catalog_search_api.py
