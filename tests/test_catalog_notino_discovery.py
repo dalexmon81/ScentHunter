@@ -5,7 +5,7 @@ from backend import catalog_engine as catalog
 
 def test_notino_is_configured_for_france_only():
     assert catalog.STORES["notino"] == "https://www.notino.fr"
-    assert catalog._discovery_bases("notino") == ()
+    assert catalog._discovery_bases("notino") == ("https://www.notino.fr",)
     assert catalog.STORE_LABELS["notino"] == "Notino"
     assert "notino" in catalog.FEED_ONLY_STORES
     assert "notino" not in catalog.HTML_DISCOVERY_SEEDS
@@ -37,7 +37,7 @@ def test_notino_rejects_non_product_and_foreign_host_urls():
 
 def test_notino_is_excluded_from_public_html_discovery():
     assert "notino" not in catalog.HTML_DISCOVERY_SEEDS
-    assert catalog._discovery_bases("notino") == ()
+    assert catalog._discovery_bases("notino") == ("https://www.notino.fr",)
     assert catalog._seed_sitemaps("notino") == ([], ["authorized_feed_only"])
 
 
