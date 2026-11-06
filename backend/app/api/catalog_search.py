@@ -78,7 +78,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     and_(
                         Offer.product_variant_id == ProductVariant.id,
                         Offer.status == "active",
-                        or_(Offer.valid_until.is_(None), Offer.valid_until >= datetime.now(timezone.utc)),
+                        Offer.valid_until.is_not(None),\n                        Offer.valid_until >= datetime.now(timezone.utc),
                     ),
                 )
                 .outerjoin(
