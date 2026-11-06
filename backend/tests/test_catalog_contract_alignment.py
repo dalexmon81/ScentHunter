@@ -29,10 +29,13 @@ def test_connector_contract_rejects_malformed_currency_codes():
         assert "invalid_currency_code" in errors
 
 
-def test_unknown_stock_is_not_publishable():
-    valid, errors = validate_offer(_offer("CHF", "unknown"))
+def test_unknown_stock_is_evidence_but_not_publishable():
+    evidence_valid, evidence_errors = validate_offer(_offer("CHF", "unknown"))
+    assert evidence_valid, evidence_errors
+
+    valid, errors = validate_offer_payload(_offer("CHF", "unknown").to_dict())
     assert not valid
-    assert "invalid_availability" in errors
+    assert "availability_requires_review" in errors
     assert _ALLOWED_AVAILABILITY == {"in_stock", "out_of_stock", "preorder"}
 
 
