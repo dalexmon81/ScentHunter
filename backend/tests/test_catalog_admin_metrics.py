@@ -107,3 +107,12 @@ def test_admin_overview_rejects_wrong_token_before_database_access(monkeypatch):
     )
     assert response.status_code == 403
     assert response.json()["detail"] == "forbidden"
+
+
+def test_admin_overview_is_mounted_in_real_application_and_fails_closed(monkeypatch):
+    monkeypatch.delenv("SCENTHUNTER_CATALOG_ADMIN_TOKEN", raising=False)
+    from main import app as scenthunter_app
+
+    response = TestClient(scenthunter_app).get("/catalog/admin/overview")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "catalog_admin_token_not_configured"
