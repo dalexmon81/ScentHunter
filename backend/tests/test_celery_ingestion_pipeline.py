@@ -197,3 +197,58 @@ def test_eight_hour_collection_refreshes_known_active_offers_not_discovery(tmp_p
         }]
     finally:
         engine.dispose()
+
+
+
+def test_reprocess_failed_offers_respects_optional_store_scope(tmp_path, monkeypatch):
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Base, IngestionRaw, Store
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'reprocess-store-scope.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        bplatz = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
+        sabina = Store(name="Sabina", slug="sabina", currency="EUR", status="active")
+        session.add_all([bplatz, sabina])
+        session.flush()
+        bplatz_raw = IngestionRaw(
+            store_id=bplatz.id,
+            external_product_id="bplatz-retry-1",
+            raw_payload={"name": "Retry Bplatz"},
+            status="rejected",
+            rejection_reason="retryable:temporary_timeout",
+        )
+        sabina_raw = IngestionRaw(
+            store_id=sabina.id,
+            external_product_id="sabina-retry-1",
+            raw_payload={"name": "Retry Sabina"},
+            status="rejected",
+            rejection_reason="retryable:temporary_timeout",
+        )
+        session.add_all([bplatz_raw, sabina_raw])
+        session.commit()
+        bplatz_id, sabina_id = str(bplatz_raw.id), str(sabina_raw.id)
+
+    queued = []
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(
+        ingestion_tasks.normalize_offer,
+        "apply_async",
+        lambda *, args, queue: queued.append({"args": args, "queue": queue}),
+    )
+    try:
+        result = ingestion_tasks.reprocess_failed_offers.run(store_key="bplatz")
+        assert result == {"requeued": 1, "raw_ids": [bplatz_id]}
+        assert queued == [{"args": [bplatz_id], "queue": "validation"}]
+        with factory() as session:
+            bplatz_row = session.get(IngestionRaw, bplatz_raw.id)
+            sabina_row = session.get(IngestionRaw, sabina_raw.id)
+            assert bplatz_row.status == "pending"
+            assert bplatz_row.rejection_reason is None
+            assert sabina_row.status == "rejected"
+            assert sabina_row.rejection_reason == "retryable:temporary_timeout"
+    finally:
+        engine.dispose()
