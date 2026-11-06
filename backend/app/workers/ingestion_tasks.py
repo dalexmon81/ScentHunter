@@ -604,7 +604,12 @@ def reprocess_failed_offers(self, store_key: str | None = None, limit: int = 100
             query = select(IngestionRaw).where(
                 IngestionRaw.status == "rejected",
                 IngestionRaw.rejection_reason.like("retryable:%"),
-            ).order_by(IngestionRaw.created_at.asc()).limit(limit)
+            )
+            if store_key:
+                query = query.join(Store, Store.id == IngestionRaw.store_id).where(
+                    Store.slug == store_key
+                )
+            query = query.order_by(IngestionRaw.created_at.asc()).limit(limit)
             rows = session.scalars(query).all()
             queued = []
             for row in rows:
