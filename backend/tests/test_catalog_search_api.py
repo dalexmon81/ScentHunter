@@ -149,3 +149,31 @@ def test_catalog_search_router_is_mounted_in_the_real_fastapi_application():
         and row["fragrance"].lower() == "sauvage"
         for row in payload["results"]
     )
+
+
+def test_existing_frontend_search_route_can_opt_into_postgres_catalog(monkeypatch):
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_ENABLED", "1")
+    from main import app as scenthunter_app
+
+    client = TestClient(scenthunter_app)
+    response = client.get("/search-start", params={"q": "Sauvage"})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["completed"] is True
+    assert payload["status"] == "completed"
+    assert payload["query"] == "Sauvage"
+    assert payload["count"] >= 1
+    assert payload["offer_count"] >= 1
+
+    product = next(
+        row for row in payload["results"]
+        if row["brand"].lower() == "dior"
+        and row["fragrance"].lower() == "sauvage"
+    )
+    assert product["catalog_id"]
+    assert any(
+        offer["store"] == "catalog-search-active-fixture"
+        and offer["phase2_offer_id"]
+        and offer["size_ml"] == 100
+        for offer in product["offers"]
+    )
