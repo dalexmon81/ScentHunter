@@ -693,6 +693,7 @@ BROWSER_SEMAPHORE = threading.Semaphore(BROWSER_WORKERS)
 from app.services.safe_parsers import safe_float as _safe_float
 
 
+from app.services.offer_identity import offer_concentration_token as _offer_concentration_token
 from app.services.product_matcher_bootstrap import load_product_matcher
 
 
@@ -890,27 +891,6 @@ _NON_FRAGRANCE_CATEGORY_RE = re.compile(
     r"gel\\s*de\\s*afeitado|gel\\s*de\\s*rasage)(?:[^a-z0-9]|$)",
     re.I,
 )
-
-
-def _offer_concentration_token(value):
-    """Extract an explicit fragrance concentration from title or URL text."""
-    text = str(value or "").lower()
-    text = re.sub(r"[^a-z0-9]+", " ", text)
-    for pattern, token in (
-        (r"\b(?:eau de parfum intense|edp intense|intense edp)\b", "edp_intense"),
-        (r"\b(?:eau de toilette intense|edt intense|intense edt)\b", "edt_intense"),
-        (r"\b(?:extrait de parfum|extrait)\b", "extrait"),
-        (r"\b(?:eau de parfum|edp)\b", "edp"),
-        (r"\b(?:eau de toilette|edt)\b", "edt"),
-        (r"\b(?:eau de cologne|edc)\b", "edc"),
-        # Elixir product URLs often include "parfum" as a descriptor; Elixir
-        # is the more specific concentration identity and must win.
-        (r"\belixir\b", "elixir"),
-        (r"\bparfum\b", "parfum"),
-    ):
-        if re.search(pattern, text):
-            return token
-    return ""
 
 
 def _is_dior_line_url_mismatch(item):
