@@ -14,7 +14,7 @@ from app.models.catalog import (
     LegacyVariantIdMap, IngestionRaw, Offer, PriceHistory, MatchAudit,
     IngestionRun,
 )
-from scripts.migrate_canonical_sqlite_to_postgres import inspect_and_import
+from scripts.migrate_canonical_sqlite_to_postgres import EXPECTED_REVISION, inspect_and_import
 
 
 @unittest.skipUnless(
@@ -34,11 +34,12 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         Base.metadata.create_all(cls.source)
         with cls.source.begin() as connection:
             connection.execute(text(
-                "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
+                "CREATE TABLE alembic_version (version_num VARCHAR(128) NOT NULL)"
             ))
-            connection.execute(text(
-                "INSERT INTO alembic_version (version_num) VALUES ('0003_store_domain')"
-            ))
+            connection.execute(
+                text("INSERT INTO alembic_version (version_num) VALUES (:revision)"),
+                {"revision": EXPECTED_REVISION},
+            )
 
         cls.brand_id = uuid.uuid4()
         cls.fragrance_id = uuid.uuid4()
