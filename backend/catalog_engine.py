@@ -4074,6 +4074,7 @@ def _maybe_persist_bplatz_phase2(item, url):
             "0007_ingestion_dead_letters",
             "0008_variant_size_precision",
             "0009_live_ingestion_uniqueness",
+            "0010_store_offer_ttl",
         }
         if revision not in supported_revisions or missing:
             print(
