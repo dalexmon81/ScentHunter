@@ -93,3 +93,13 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - Publication policy is intentionally conservative: `unknown` stock is retained as evidence for review; `preorder` is retained but not published until the publication contract and downstream search/UI explicitly support it. Only `in_stock` and `out_of_stock` currently pass promotion.
 - Migration `0009_live_ingestion_uniqueness` adds the database-level concurrency guard. It has not been applied to staging or production. Existing duplicate live rows, if any, must be reconciled before that migration can safely be applied to a persistent database.
 - The separate `run_connector_once` worker still stages through an alternate path and is not yet proven to share the same normalize/validate/match/promote lifecycle. This remains open work; no phase acceptance is implied.
+
+
+### Source timestamp and freshness follow-up (2026-11-06)
+
+- Offer promotion now parses the retailer-provided `capturedAt` value and persists that observation time to both `offers.captured_at` and `price_history.captured_at`. Existing records without a source timestamp continue to use the promotion-time UTC timestamp.
+- An explicitly supplied malformed or timezone-naive `capturedAt` is blocked from publication instead of being silently replaced with the worker clock.
+- Regression coverage verifies timestamp preservation on first publication and rejection of malformed source timestamps. The PostgreSQL vertical-slice workflow passed on commit `dbb1a215ebcf0953ad59fcd4308fbadcd252e3ff` (run [42191109827](https://github.com/dalexmon81/ScentHunter/actions/runs/42191109827)).
+- Offer expiry is still unresolved: `valid_until` remains nullable and catalog search treats a null value as non-expiring. No default TTL has been invented. A store-specific freshness/expiry policy and stale-offer behavior must be designed and tested before operational acceptance.
+- The legacy `run_connector_once` helper remains an alternate staging-only implementation; it is not yet unified with the Celery normalize/validate/match/promote pipeline. This remains open work.
+- The successful CI run uses disposable PostgreSQL/Redis services and offline fixtures only. It does not prove persistent staging/production restore, live retailer coverage, or readiness to enable traffic.
