@@ -22,3 +22,41 @@ def offer_concentration_token(value: object) -> str:
         if re.search(pattern, text):
             return token
     return ""
+
+
+def is_dior_line_url_mismatch(item: object) -> bool:
+    """Reject cross-line Dior Eau Sauvage / Dior Sauvage title-to-URL conflicts.
+
+    Prefer the displayed product title and primary offer URL. Secondary/raw
+    metadata can contain stale canonical labels and must not override a clear
+    conflict between the visible product and its destination.
+    """
+    if not isinstance(item, dict):
+        return False
+
+    title = next(
+        (str(item.get(key) or "").strip() for key in
+         ("name", "title", "product_name", "canonical_name", "raw_name", "_raw_name")
+         if str(item.get(key) or "").strip()),
+        "",
+    )
+    url = next(
+        (str(item.get(key) or "").strip() for key in
+         ("url", "product_url", "link", "product_page", "source_url", "_raw_url")
+         if str(item.get(key) or "").strip()),
+        "",
+    )
+    normalize = lambda value: re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+    title_norm = normalize(title)
+    url_norm = normalize(url)
+
+    title_is_eau_sauvage = bool(re.search(r"\\beau sauvage\\b", title_norm))
+    url_is_eau_sauvage = bool(re.search(r"\\beau sauvage\\b", url_norm))
+    title_is_sauvage = bool(re.search(r"\\bsauvage\\b", title_norm))
+    url_is_sauvage = bool(re.search(r"\\bsauvage\\b", url_norm))
+
+    if url_is_eau_sauvage and title_is_sauvage and not title_is_eau_sauvage:
+        return True
+    if title_is_eau_sauvage and url_is_sauvage and not url_is_eau_sauvage:
+        return True
+    return False
