@@ -764,6 +764,11 @@ function shOfferCompare(a,b){
 
 function shOfferMetaHtml(o){
   const parts=[];
+  const capturedAt=Date.parse(o&&o.captured_at||"");
+  if(Number.isFinite(capturedAt)){
+    const capturedLabel=new Date(capturedAt).toLocaleString("it-IT",{dateStyle:"short",timeStyle:"short"});
+    parts.push("PREZZO RILEVATO IL "+esc(capturedLabel));
+  }
   if(o&&o.price_stale)parts.push("ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO");
   else if(o&&o.ranking&&o.ranking.stale)parts.push("PREZZO DA VERIFICARE · DATI NON AGGIORNATI");
   if(o&&o.ranking){
