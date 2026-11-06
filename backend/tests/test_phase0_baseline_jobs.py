@@ -175,59 +175,16 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual([row["store"] for row in rows], list(STORES))
         self.assertFalse({"amazon_de", "amazon_fr"} & {row["store"] for row in rows})
 
-    def test_csv_is_written_to_volume_path_and_published_atomically(self):
-        conn = connect()
-        try:
-            conn.execute(
-                """INSERT INTO store_products
-                   (store,url,name,brand,sku,gtin,size_ml,concentration,price,
-                    currency,availability,fetched_at)
-                   VALUES('bplatz','https://shop.test/p','Fragrance 100 ml',
-                          'Brand','SKU-1','',100,'Eau de Parfum',80,'EUR',
-                          'in_stock',1793538000)"""
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        catalog_path = self.root / "product_catalog.json"
-        catalog_path.write_text(json.dumps({
-            "products": [{
-                "product_id": "product-1",
-                "brand_name": "Brand",
-                "canonical_name": "Fragrance",
-                "concentration": "Eau de Parfum",
-            }],
-            "variants": [{
-                "variant_id": "variant-1",
-                "product_id": "product-1",
-                "size_ml": 100,
-                "aliases": ["100 ml"],
-            }],
-        }), encoding="utf-8")
+    def test_baseline_refuses_legacy_sqlite_catalog(self):
         output = self.root / "phase0" / "baseline" / "job-1.csv"
         job = {"id": "job-1", "output_path": str(output)}
-        with patch.dict(os.environ, {"PHASE0_PRODUCT_CATALOG": str(catalog_path)}):
-            result = generate_csv(job, "test-worker")
-
-        self.assertEqual(result["rows_written"], 1)
-        self.assertTrue(output.is_file())
-        self.assertFalse(output.with_suffix(".csv.tmp").exists())
-        with output.open(encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle)
-            self.assertEqual(reader.fieldnames, list(COLUMNS))
-            rows = list(reader)
-        offer_rows = [row for row in rows if row.get("source")]
-        status_rows = {row["store"]: row["store_status"] for row in rows}
-        self.assertEqual(len(offer_rows), 1)
-        self.assertEqual(offer_rows[0]["store"], "bplatz")
-        self.assertEqual(offer_rows[0]["canonical_product_id"], "product-1")
-        self.assertEqual(offer_rows[0]["match_status"], "matched")
-        self.assertEqual(offer_rows[0]["catalog_product_count"], "1")
-        self.assertEqual(offer_rows[0]["is_valid_offer"], "true")
-        self.assertEqual(len(STORES), 9)
-        self.assertEqual(set(status_rows), set(STORES))
-        self.assertTrue(all(status == "completed" for status in status_rows.values()))
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_CATALOG_DATABASE_URL": "sqlite:///" + str(self.db_path),
+            "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "1",
+        }):
+            with self.assertRaisesRegex(RuntimeError, "requires PostgreSQL"):
+                generate_csv(job, "test-worker")
+        self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":
