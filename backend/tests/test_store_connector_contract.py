@@ -40,7 +40,7 @@ def test_offer_validation_requires_explicit_timezone_and_valid_currency():
     ))
     assert not ok
     assert "captured_at_timezone_required" in errors
-    assert "unsupported_or_missing_currency" in errors
+    assert "invalid_currency_code" in errors
 
 
 def test_rate_limiter_rejects_invalid_rate():
