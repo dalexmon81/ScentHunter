@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+import math
 import unicodedata
 
 _SPACE = re.compile(r"\s+")
@@ -136,8 +137,13 @@ def normalize_product(brand: str, title: str, *, concentration: str | None = Non
         elif unit == "oz":
             number *= 29.5735
         sizes.append(number)
-    if size_ml is not None and (not isinstance(size_ml, (int, float)) or size_ml <= 0):
-        raise ValueError("size_ml_must_be_positive")
+    if size_ml is not None and (
+        isinstance(size_ml, bool)
+        or not isinstance(size_ml, (int, float))
+        or not math.isfinite(float(size_ml))
+        or size_ml <= 0
+    ):
+        raise ValueError("size_ml_must_be_positive_finite_number")
     if size_ml is not None and sizes and any(abs(v - size_ml) > 0.01 for v in sizes):
         raise ValueError("conflicting_sizes_require_review")
     if size_ml is None:
