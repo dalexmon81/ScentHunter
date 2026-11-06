@@ -5,7 +5,7 @@ on:
     branches:
       - phase2/staging-postgresql-guard
       - phase7/catalog-search-api
-      - phase8/catalog-offer-ranking
+      - phase7/catalog-first-operational-e2e
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
