@@ -1,9 +1,14 @@
 """PostgreSQL integration tests for the catalog-only search API."""
+from decimal import Decimal
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
-from app.api.catalog_search import router as catalog_search_router
+from app.api.catalog_search import router as catalog_search_router, search_catalog
 from app.db import make_engine
+from app.models import Brand, Fragrance, Offer, ProductVariant, Store
 
 
 def test_catalog_search_reads_seeded_identity_without_retailer_search():
