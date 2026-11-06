@@ -459,62 +459,137 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
     }
 
 
-def _export_store_chunk(store: str, db_path: str, catalog_path: str,
-                        chunk_path: str, result_queue: Any) -> None:
-    """Export one retailer in an isolated child process so it can be terminated."""
+def _export_store_chunk(store_slug: str, chunk_path: str, result_queue: Any) -> None:
+    """Export one retailer from the canonical PostgreSQL catalog, read-only."""
+    session = None
     try:
-        from .catalog_repository import CatalogRepository
-        from .canonical_matcher import CanonicalMatcher
+        from sqlalchemy import func, select
+        from sqlalchemy.orm import joinedload
+        from backend.app.db import make_engine
+        from backend.app.models import Brand, Fragrance, Offer, ProductVariant, Store
 
-        catalog = CatalogRepository.from_file(Path(catalog_path))
-        matcher = CanonicalMatcher(catalog)
-        variants_by_id = {
-            variant.variant_id: variant
-            for product in catalog.all_products()
-            for variant in product.variants
-        }
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=45)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA query_only=ON")
-        conn.execute("PRAGMA busy_timeout=45000")
-        tables = {row[0] for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        )}
-        if "store_products" not in tables:
-            raise RuntimeError("SQLite catalog is missing store_products")
-        has_variants = "store_product_variants" in tables
-        expected = _store_count(conn, store, has_variants)
+        engine = make_engine()
+        if engine.dialect.name != "postgresql":
+            raise RuntimeError(
+                "Phase 0 baseline requires the canonical PostgreSQL catalog; "
+                f"configured backend is {engine.dialect.name}"
+            )
+        from sqlalchemy.orm import Session
+        session = Session(engine)
+        session.execute(__import__("sqlalchemy").text("SET TRANSACTION READ ONLY"))
+        catalog_product_count = session.scalar(select(func.count(Fragrance.id))) or 0
+        retailer = session.scalar(select(Store).where(Store.slug == store_slug))
         written = 0
         with Path(chunk_path).open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=COLUMNS)
             writer.writeheader()
-            for row in iter_store_rows(conn, store, has_variants):
-                data = _offer_row(row, matcher, catalog, variants_by_id)
-                data["store_status"] = "completed"
-                writer.writerow(data)
-                written += 1
-            if written == 0:
-                writer.writerow({"store": store, "catalog_product_count": catalog.product_count(),
-                                 "store_status": "completed", "is_valid_offer": "false"})
-        conn.close()
-        if written != expected:
-            raise RuntimeError(
-                f"Store row count mismatch for {store}: expected={expected}, read={written}"
-            )
+            if retailer is None:
+                writer.writerow({
+                    "store": store_slug,
+                    "catalog_product_count": catalog_product_count,
+                    "store_status": "not_configured",
+                    "is_valid_offer": "false",
+                })
+            else:
+                offers = session.scalars(
+                    select(Offer)
+                    .where(Offer.store_id == retailer.id)
+                    .options(
+                        joinedload(Offer.store),
+                        joinedload(Offer.product_variant)
+                        .joinedload(ProductVariant.fragrance)
+                        .joinedload(Fragrance.brand),
+                    )
+                    .order_by(Offer.captured_at, Offer.id)
+                ).unique()
+                now = datetime.now(timezone.utc)
+                for offer in offers:
+                    variant = offer.product_variant
+                    fragrance = variant.fragrance if variant else None
+                    brand = fragrance.brand if fragrance else None
+                    captured = offer.captured_at
+                    if captured and captured.tzinfo is None:
+                        captured = captured.replace(tzinfo=timezone.utc)
+                    valid_until = offer.valid_until
+                    fresh = bool(valid_until) and (
+                        valid_until.replace(tzinfo=timezone.utc)
+                        if valid_until.tzinfo is None else valid_until
+                    ) > now
+                    url = str(offer.url or "").strip()
+                    valid_url = url.startswith("https://")
+                    currency = str(offer.currency or "").upper()
+                    availability = str(offer.availability or "").lower()
+                    price = float(offer.price) if offer.price is not None else None
+                    matched = variant is not None and fragrance is not None and brand is not None
+                    confidence = offer.confidence
+                    valid = bool(
+                        offer.status == "active" and matched and fresh and valid_url
+                        and price is not None and price > 0
+                        and len(currency) == 3 and currency.isalpha()
+                        and availability in VALID_STOCK
+                        and bool(offer.external_product_id)
+                        and bool(variant.concentration if variant else None)
+                        and confidence is not None
+                        and 0 <= float(confidence) <= 1
+                    )
+                    variant_type = "gift_set" if variant and variant.is_gift_set else (
+                        "tester" if variant and variant.is_tester else (
+                            "refill" if variant and variant.is_refill else "standard"
+                        )
+                    )
+                    writer.writerow({
+                        "store": store_slug,
+                        "catalog_product_count": catalog_product_count,
+                        "canonical_product_id": str(fragrance.id) if fragrance else "",
+                        "brand": brand.name if brand else "",
+                        "fragrance": fragrance.name if fragrance else "",
+                        "concentration": variant.concentration if variant else "",
+                        "size_ml": str(variant.size_ml) if variant and variant.size_ml is not None else "",
+                        "variant_type": variant_type if variant else "",
+                        "gtin": variant.gtin if variant else "",
+                        "external_product_id": offer.external_product_id or "",
+                        "offer_url": url,
+                        "price": str(offer.price) if offer.price is not None else "",
+                        "currency": currency,
+                        "availability": availability,
+                        "captured_at": captured.isoformat() if captured else "",
+                        "source": offer.source or "",
+                        "match_status": "matched" if matched else "unresolved",
+                        "match_confidence": str(confidence) if confidence is not None else "",
+                        "is_valid_offer": "true" if valid else "false",
+                        "store_status": retailer.status,
+                    })
+                    written += 1
+                if written == 0:
+                    writer.writerow({
+                        "store": store_slug,
+                        "catalog_product_count": catalog_product_count,
+                        "store_status": retailer.status,
+                        "is_valid_offer": "false",
+                    })
         result_queue.put({"ok": True, "offers_read": written})
     except BaseException as exc:
         result_queue.put({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
         raise
+    finally:
+        if session is not None:
+            session.close()
+        if "engine" in locals():
+            engine.dispose()
 
 
 def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     import multiprocessing
     import threading
-    backend = Path(__file__).resolve().parent.parent
-    catalog_path = Path(os.environ.get("PHASE0_PRODUCT_CATALOG", str(backend / "product_catalog.json"))).expanduser().resolve()
-    from .catalog_repository import CatalogRepository
-    catalog_product_count = CatalogRepository.from_file(catalog_path).product_count()
-    db_path = catalog_database_path()
+    # The canonical PostgreSQL database is the only source of catalog/offers.
+    from backend.app.db import database_url
+    from sqlalchemy.engine import make_url
+    configured_backend = make_url(database_url()).get_backend_name()
+    if configured_backend != "postgresql":
+        raise RuntimeError(
+            "Phase 0 baseline requires PostgreSQL; "
+            f"configured backend is {configured_backend}"
+        )
     output_path = Path(job["output_path"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
@@ -526,18 +601,9 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
 
     print(
         f"PHASE0 WORKER JOB START job={job['id']} worker={worker_id} "
-        f"stores={len(STORES)} db={db_path} output={output_path}",
+        f"stores={len(STORES)} source=postgresql output={output_path}",
         flush=True,
     )
-    print(
-        f"PHASE0 WORKER CATALOG PATH job={job['id']} path={catalog_path} "
-        f"exists={catalog_path.is_file()}",
-        flush=True,
-    )
-    if not catalog_path.is_file():
-        raise FileNotFoundError(f"Phase 0 catalog file not found: {catalog_path}")
-    if not db_path.is_file():
-        raise FileNotFoundError(f"Phase 0 catalog database not found: {db_path}")
 
     def heartbeat_loop() -> None:
         while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
@@ -593,7 +659,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                 result_queue = ctx.Queue()
                 process = ctx.Process(
                     target=_export_store_chunk,
-                    args=(store, str(db_path), str(catalog_path), str(chunk_path), result_queue),
+                    args=(store, str(chunk_path), result_queue),
                     name=f"phase0-{store}",
                 )
                 print(f"PHASE0 WORKER STORE START job={job['id']} store={store}", flush=True)
@@ -628,7 +694,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                     else:
                         chunk_path.unlink(missing_ok=True)
                 if store_status != "completed":
-                    writer.writerow({"store": store, "catalog_product_count": catalog_product_count,
+                    writer.writerow({"store": store, "catalog_product_count": "",
                                      "store_status": store_status, "is_valid_offer": "false"})
                 else:
                     chunk_path.unlink(missing_ok=True)
