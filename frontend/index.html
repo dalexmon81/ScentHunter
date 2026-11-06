@@ -1065,9 +1065,22 @@ function chooseOffer(gi,sizeKey,oi){
   toggleWish(item);
 }
 
-async function fetchJSONWithTimeout(url,ms=90000){
+function catalogRolloutKey(){
+  try{
+    let key=localStorage.getItem("scenthunter_catalog_rollout_key");
+    if(!key){
+      key=(globalThis.crypto&&typeof globalThis.crypto.randomUUID==="function")
+        ?globalThis.crypto.randomUUID()
+        :(Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)+"-"+Math.random().toString(36).slice(2));
+      localStorage.setItem("scenthunter_catalog_rollout_key",key);
+    }
+    return key;
+  }catch(_){return "";}
+}
+
+async function fetchJSONWithTimeout(url,ms=90000,extraHeaders={}){
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),ms);
-  try{const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
+  try{const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json",...extraHeaders}});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
   finally{clearTimeout(timer)}
 }
 
@@ -1137,7 +1150,7 @@ async function searchStoresProgressive(term,onPartial){
   let jobId="";
   try{
     while(Date.now()-startedAt<180000){
-      const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000);
+      const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000,{"X-Catalog-Rollout-Key":catalogRolloutKey()});
       if(start?.status==="busy"){
         lastData=start;
         await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||200)));
