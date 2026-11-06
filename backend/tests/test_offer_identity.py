@@ -133,3 +133,47 @@ def test_offer_url_identity_handles_empty_and_malformed_values():
 
     assert offer_url_identity(None) == ""
     assert offer_url_identity("") == ""
+
+
+def test_public_offer_url_normalizes_deloox_to_belgian_storefront():
+    from app.services.public_offer_url import public_offer_url
+
+    assert public_offer_url({
+        "store": "deloox",
+        "url": "https://www.deloox.es/product/item?variant=7#details",
+    }) == "https://www.deloox.be/product/item?variant=7#details"
+
+
+def test_public_offer_url_keeps_sabina_matching_size_fragment():
+    from app.services.public_offer_url import public_offer_url
+
+    result = public_offer_url({
+        "store": "sabina",
+        "url": "https://www.sabina.com/it/product/item#123-tama_o-100_ml",
+        "size_ml": 100,
+    })
+    assert result == "https://www.sabina.com/es/product/item#123-tama_o-100_ml"
+
+
+def test_public_offer_url_removes_stale_sabina_size_fragment():
+    from app.services.public_offer_url import public_offer_url
+
+    result = public_offer_url({
+        "store": "sabina",
+        "url": "https://www.sabina.com/es/product/item#123-tama_o-30_ml",
+        "size_ml": 100,
+    })
+    assert result == "https://www.sabina.com/es/product/item"
+
+
+def test_public_offer_url_leaves_other_retailers_unchanged():
+    from app.services.public_offer_url import public_offer_url
+
+    url = "https://shop.example/product?variant=100#details"
+    assert public_offer_url({"store": "other", "url": url}) == url
+
+
+def test_public_offer_url_handles_empty_url():
+    from app.services.public_offer_url import public_offer_url
+
+    assert public_offer_url({"store": "sabina", "url": ""}) == ""
