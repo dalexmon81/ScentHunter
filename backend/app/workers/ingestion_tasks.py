@@ -423,12 +423,28 @@ def normalize_offer(self, raw_id: str):
             if raw is None or raw.status not in {"pending", "unmatched"}:
                 return {"raw_id": raw_id, "status": "skipped"}
             payload = raw.raw_payload or {}
-            normalized = normalize_product(
-                str(payload.get("brand") or ""),
-                str(payload.get("title") or ""),
-                concentration=payload.get("concentration"),
-                size_ml=payload.get("sizeMl"),
-            )
+            try:
+                normalized = normalize_product(
+                    str(payload.get("brand") or ""),
+                    str(payload.get("title") or ""),
+                    concentration=payload.get("concentration"),
+                    size_ml=payload.get("sizeMl"),
+                )
+            except (TypeError, ValueError) as exc:
+                raw.status = "unmatched"
+                raw.match_method = "normalization_review"
+                raw.match_confidence = None
+                raw.product_variant_id = None
+                reason = f"normalization_review:{type(exc).__name__}:{exc}"[:500]
+                raw.rejection_reason = reason
+                payload["_normalization"] = {
+                    "status": "review_required",
+                    "reason": reason,
+                    "at": datetime.now(timezone.utc).isoformat(),
+                }
+                raw.raw_payload = payload
+                session.commit()
+                return {"raw_id": raw_id, "status": "review_required", "reason": reason}
             payload["fragrance"] = normalized.fragrance_name
             payload["concentration"] = normalized.concentration
             payload["sizeMl"] = normalized.size_ml
