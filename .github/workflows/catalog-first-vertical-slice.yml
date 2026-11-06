@@ -11,6 +11,7 @@ on:
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
+      - "backend/scripts/verify_postgres_backup_restore.sh"
       - "backend/app/api/admin_catalog.py"
       - "backend/main.py"
       - "backend/app/services/catalog_rollout.py"
@@ -91,6 +92,8 @@ jobs:
       PYTHONPATH: backend:.
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
       SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
+      SCENTHUNTER_BACKUP_RESTORE_TARGET_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/ci_restore_catalog
+      SCENTHUNTER_BACKUP_RESTORE_CONFIRM: DISPOSABLE_CI_ONLY
       SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
       SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
       SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
@@ -107,6 +110,12 @@ jobs:
         run: alembic upgrade head
       - name: Seed canonical catalog identities and variants
         run: python backend/scripts/seed_catalog.py --apply
+      - name: Rehearse PostgreSQL backup and restore on disposable CI database
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+          bash backend/scripts/verify_postgres_backup_restore.sh
+
       - name: Validate PostgreSQL policy, schema and migration compatibility
         run: >-
           pytest -q
