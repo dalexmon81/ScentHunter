@@ -35,7 +35,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                 # Require every query token, while allowing tokens to match
                 # either the brand or fragrance name. The matching expressions
                 # align with the GIN indexes added in migration 0011.
-                tokens = re.findall(r"[^\\W_]+", term, flags=re.UNICODE)
+                tokens = re.findall(r"[^\W_]+", term, flags=re.UNICODE)
                 if not tokens:
                     raise HTTPException(status_code=400, detail="invalid_search_query")
                 token_conditions = []
