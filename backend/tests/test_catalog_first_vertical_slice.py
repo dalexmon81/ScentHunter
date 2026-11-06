@@ -8,7 +8,9 @@ from decimal import Decimal
 
 from sqlalchemy import select
 
-from app.api.legacy_catalog import legacy_product_offers
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from app.api.legacy_catalog import router as legacy_catalog_router
 from app.connectors.notino import NotinoAffiliateFeedConnector
 from app.db import make_engine
 from app.matching.offer_matcher import match_staged_offer
@@ -72,6 +74,7 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
                 session.add(store)
                 session.flush()
             assert store.status == "active"
+            session.commit()
 
         connector = NotinoAffiliateFeedConnector(
             feed_loader=lambda: NOTINO_XML_FIXTURE
@@ -129,12 +132,15 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
                 select(MatchAudit).where(MatchAudit.offer_id == offer_id)
             ))) == 1
 
-        # Exercise the same read helper used by GET
-        # /catalog/legacy-products/{legacy_product_id}/offers.
-        response = legacy_product_offers(
-            LEGACY_PRODUCT_ID,
-            session_factory=factory,
-        )
+        # Exercise the actual HTTP route used by the catalog API.
+        api = FastAPI()
+        api.include_router(legacy_catalog_router)
+        with TestClient(api) as client:
+            http_response = client.get(
+                f"/catalog/legacy-products/{LEGACY_PRODUCT_ID}/offers"
+            )
+        assert http_response.status_code == 200, http_response.text
+        response = http_response.json()
         assert response["legacy_product_id"] == LEGACY_PRODUCT_ID
         assert len(response["offers"]) == 1
         api_offer = response["offers"][0]
