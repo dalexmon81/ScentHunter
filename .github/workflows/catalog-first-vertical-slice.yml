@@ -204,8 +204,8 @@ jobs:
           (cd backend && alembic upgrade head)
           python backend/scripts/seed_catalog.py --apply
 
-      - name: Run PostgreSQL catalog-first search API tests
-        run: pytest -q backend/tests/test_catalog_search_api.py
+      - name: Run PostgreSQL catalog-first search API and fail-closed tests
+        run: pytest -q backend/tests/test_catalog_search_api.py backend/tests/test_catalog_search_fail_closed.py
 
       - name: Validate authenticated catalog admin metrics and queues
         run: pytest -q backend/tests/test_catalog_admin_metrics.py
