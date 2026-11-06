@@ -55,6 +55,7 @@ on:
       - "backend/app/connectors/notino.py"
       - "backend/app/connectors/base.py"
       - "backend/app/workers/ingestion_tasks.py"
+      - "backend/app/workers/offer_promotion.py"
       - "backend/app/matching/**"
       - "backend/app/models/**"
       - "backend/app/services/ingestion_persistence.py"
