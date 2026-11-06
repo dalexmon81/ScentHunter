@@ -29,7 +29,7 @@ def setup_db(availability="in_stock", captured_at="2025-01-02T03:04:05+00:00"):
             fragrance_id=fragrance.id, concentration="edp", size_ml=100,
             canonical_key=identity.canonical_key,
         )
-        store = Store(name="Test Shop", slug="test-shop", currency="EUR", status="active")
+        store = Store(name="Test Shop", slug="test-shop", currency="EUR", offer_ttl_minutes=1440, status="active")
         session.add_all([variant, store])
         session.flush()
         raw = IngestionRaw(
