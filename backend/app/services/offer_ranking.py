@@ -1,7 +1,8 @@
 """Deterministic offer quality ranking for one canonical product variant.
 
-Price is compared only among offers in the same currency. The ranking is
-explainable and never treats an unknown shipping cost as zero delivered cost.
+Prices are compared only when both offers have a known delivered-price basis
+(product price plus shipping) and the same ISO-like currency code. Unknown
+shipping is never treated as zero and cannot win a price comparison.
 """
 from __future__ import annotations
 
@@ -39,13 +40,13 @@ def rank_offers(
     *,
     now: datetime | None = None,
 ) -> list[dict]:
-    """Rank offers for the same variant; currencies remain separate groups.
+    """Rank offers for one variant, keeping currencies and price bases separate.
 
     Score (0-100): availability 25, freshness 25, store reliability 20,
-    match confidence 20, and price 10. Price is normalized against the
-    lowest comparable product+known-shipping total in the same currency.
-    Missing shipping remains explicitly unknown and is not silently presented
-    as a delivered total.
+    match confidence 20, and comparable delivered price 10. The price
+    component is awarded only when shipping is known for that offer and a
+    same-currency comparable delivered total exists. Unknown shipping remains
+    visible as unknown and receives no price-comparison points.
     """
     reference = _datetime(now or datetime.now(timezone.utc))
     if reference is None:
@@ -56,13 +57,14 @@ def rank_offers(
     comparable_totals: list[Decimal | None] = []
 
     for row in rows:
-        currency = str(row.get("currency") or "").upper()
+        currency = str(row.get("currency") or "").strip().upper()
         price = _decimal(row.get("price"), Decimal("-1"))
         shipping = row.get("shipping_cost")
         total = None
-        if price > 0:
-            total = price + _decimal(shipping) if shipping is not None else price
-            if currency and len(currency) == 3:
+        if price > 0 and shipping is not None and len(currency) == 3:
+            shipping_value = _decimal(shipping, Decimal("-1"))
+            if shipping_value >= 0:
+                total = price + shipping_value
                 currency_minimum[currency] = min(
                     currency_minimum.get(currency, total), total
                 )
@@ -70,7 +72,7 @@ def rank_offers(
 
     ranked = []
     for row, total in zip(rows, comparable_totals):
-        currency = str(row.get("currency") or "").upper()
+        currency = str(row.get("currency") or "").strip().upper()
         availability = str(row.get("availability") or "").lower()
         availability_score = Decimal("25") if availability == "in_stock" else Decimal("0")
 
@@ -101,6 +103,7 @@ def rank_offers(
             else Decimal("0")
         )
         score = availability_score + freshness_score + reliability_score + match_score + price_score
+        shipping_known = row.get("shipping_cost") is not None
         row["ranking"] = {
             "score": round(float(score), 2),
             "currency_scope": currency or None,
@@ -112,17 +115,20 @@ def rank_offers(
                 "price": round(float(price_score), 2),
             },
             "stale": age_seconds is None or expired or age_seconds > FRESHNESS_WINDOW.total_seconds(),
-            "shipping_cost_known": row.get("shipping_cost") is not None,
-            "price_basis": "product_plus_shipping" if row.get("shipping_cost") is not None else "product_price_only",
+            "shipping_cost_known": shipping_known,
+            "price_basis": "product_plus_shipping" if shipping_known else "product_price_only",
+            "price_comparable": total is not None and minimum is not None,
         }
         ranked.append(row)
 
-    # Currency is a hard comparison boundary. Never imply EUR and GBP prices
-    # are comparable without an explicit, timestamped FX conversion policy.
+    # Within each currency, known delivered-price offers are scored by price.
+    # Unknown-shipping offers receive no price points and sort after comparable
+    # offers when all preceding quality dimensions are equal.
     ranked.sort(
         key=lambda row: (
-            str(row.get("currency") or "").upper(),
+            str(row.get("currency") or "").strip().upper(),
             -row["ranking"]["score"],
+            not row["ranking"]["price_comparable"],
             _decimal(row.get("price"), Decimal("Infinity")),
             str(row.get("store") or ""),
         )
