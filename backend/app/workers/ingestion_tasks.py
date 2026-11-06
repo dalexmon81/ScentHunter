@@ -18,6 +18,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
@@ -183,15 +184,45 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
                 existing.rejection_reason = None
                 raw_id = existing.id
             else:
+                store_id = store.id
                 raw = IngestionRaw(
-                    store_id=store.id,
+                    store_id=store_id,
                     raw_payload=payload,
                     external_product_id=record.external_product_id,
                     status="pending",
                 )
                 session.add(raw)
-                session.flush()
-                raw_id = raw.id
+                try:
+                    session.flush()
+                    raw_id = raw.id
+                except IntegrityError:
+                    # A concurrent discovery may have inserted the same live
+                    # store/product row after our initial SELECT. The partial
+                    # unique index is the serialization boundary; merge into
+                    # its winner instead of leaking a duplicate or failing
+                    # the entire connector batch.
+                    session.rollback()
+                    existing = session.scalar(select(IngestionRaw).where(
+                        IngestionRaw.store_id == store_id,
+                        IngestionRaw.external_product_id == record.external_product_id,
+                        IngestionRaw.status.in_(("pending", "unmatched", "matched")),
+                    ).order_by(IngestionRaw.created_at.desc()).limit(1))
+                    if existing is None:
+                        raise
+                    evidence = existing.raw_payload or {}
+                    history = evidence.get("_refresh_history", [])
+                    history.append(payload["_raw_evidence"])
+                    evidence["_refresh_history"] = history[-20:]
+                    for key, value in payload.items():
+                        if key != "_raw_evidence":
+                            evidence[key] = value
+                    existing.raw_payload = evidence
+                    existing.status = "pending"
+                    existing.product_variant_id = None
+                    existing.match_method = None
+                    existing.match_confidence = None
+                    existing.rejection_reason = None
+                    raw_id = existing.id
             session.commit()
             return str(raw_id)
     finally:
