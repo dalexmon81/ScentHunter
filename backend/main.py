@@ -3010,24 +3010,6 @@ def _run_job(job_id, query):
             grouped, unresolved = _aggregate_identity_results(deduped)
             aggregate_elapsed = round(time.monotonic() - aggregate_started, 3)
 
-            shadow_payload = None
-            with JOBS_LOCK:
-                current_for_shadow = JOBS.get(job_id)
-                if current_for_shadow is not None:
-                    shadow_payload = current_for_shadow.get("catalog_shadow_result")
-            shadow_comparison = None
-            if shadow_payload is not None:
-                try:
-                    if shadow_payload.get("status") == "error":
-                        shadow_comparison = {"status": "shadow_error"}
-                    else:
-                        shadow_comparison = compare_search_payloads(grouped, shadow_payload)
-                except Exception as shadow_exc:
-                    shadow_comparison = {
-                        "status": "comparison_error",
-                        "error_type": type(shadow_exc).__name__,
-                    }
-
             elapsed = round(time.monotonic() - started, 3)
 
             with JOBS_LOCK:
@@ -3036,9 +3018,20 @@ def _run_job(job_id, query):
                     current_job["offers"] = deduped
                     current_job["results"] = grouped
                     current_job["unresolved_offers"] = unresolved
-                    if shadow_comparison is not None:
-                        current_job["catalog_shadow_comparison"] = shadow_comparison
-                    current_job.pop("catalog_shadow_result", None)
+                    shadow_payload = current_job.pop("catalog_shadow_result", None)
+                    if shadow_payload is not None:
+                        try:
+                            if shadow_payload.get("status") == "error":
+                                current_job["catalog_shadow_comparison"] = {"status": "shadow_error"}
+                            else:
+                                current_job["catalog_shadow_comparison"] = compare_search_payloads(
+                                    grouped, shadow_payload
+                                )
+                        except Exception as shadow_exc:
+                            current_job["catalog_shadow_comparison"] = {
+                                "status": "comparison_error",
+                                "error_type": type(shadow_exc).__name__,
+                            }
                     current_job["completed"] = True
 
                     # A completed job can still contain stores that were not
@@ -4723,13 +4716,46 @@ def diagnose_hawas_ice_offers_read_only():
 
 
 @app.get('/search-start')
+def _run_catalog_shadow(job_id, query):
+    """Run a non-serving catalog read without delaying the legacy search start."""
+    try:
+        payload = phase7_search_catalog_for_frontend(query)
+    except Exception as exc:
+        print(f"CATALOG_SEARCH_SHADOW_ERROR: {type(exc).__name__}", flush=True)
+        payload = {"status": "error", "results": []}
+
+    legacy_results = None
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job is None:
+            return
+        if not job.get("completed"):
+            # The legacy collector will compare this payload during finalization.
+            job["catalog_shadow_result"] = payload
+            return
+        legacy_results = list(job.get("results") or [])
+
+    try:
+        comparison = (
+            {"status": "shadow_error"}
+            if payload.get("status") == "error"
+            else compare_search_payloads(legacy_results, payload)
+        )
+    except Exception as exc:
+        comparison = {"status": "comparison_error", "error_type": type(exc).__name__}
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job is not None:
+            job["catalog_shadow_comparison"] = comparison
+
+
 def search_start(
     q: str,
     x_catalog_rollout_key: str | None = Header(default=None, alias="X-Catalog-Rollout-Key"),
 ):
     query = str(q or '').strip()
     rollout = catalog_rollout_decision(query, x_catalog_rollout_key, environ=os.environ)
-    shadow_result = None
     if query and rollout["use_catalog"]:
         try:
             response = phase7_search_catalog_for_frontend(query)
@@ -4764,14 +4790,7 @@ def search_start(
                 },
             }
 
-    if query and rollout["run_shadow"]:
-        try:
-            shadow_result = phase7_search_catalog_for_frontend(query)
-        except Exception as exc:
-            print(f"CATALOG_SEARCH_SHADOW_ERROR: {type(exc).__name__}", flush=True)
-            shadow_result = {"status": "error", "results": []}
-
-    if not query:
+sync shadow block    if not query:
         return {
             'job_id': '',
             'query': '',
@@ -4864,8 +4883,13 @@ def search_start(
                 "bucket": rollout["bucket"],
                 "shadow_requested": bool(rollout["run_shadow"]),
             }
-            if shadow_result is not None:
-                current_job["catalog_shadow_result"] = shadow_result
+    if rollout["run_shadow"]:
+        threading.Thread(
+            target=_run_catalog_shadow,
+            args=(job_id, query),
+            daemon=True,
+            name=f"scenthunter-catalog-shadow-{job_id[:8]}",
+        ).start()
     threading.Thread(
         target=_run_job,
         args=(job_id, query),
