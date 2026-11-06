@@ -124,6 +124,11 @@ DISCOVERY_BASES = {
         'https://www.deloox.lu',
         'https://www.deloox.es',
     ),
+    'notino': (
+        # URL validation remains restricted to the French market. This is not
+        # a discovery permission; feed-only guards prevent public requests.
+        'https://www.notino.fr',
+    ),
 }
 
 USER_AGENT = 'ScentHunterBot/7.0 (+price-comparison; catalog indexing)'
@@ -952,8 +957,6 @@ def catalog_price_freshness_snapshot(conn, now=None):
 
 
 def _discovery_bases(store):
-    if store in FEED_ONLY_STORES:
-        return ()
     return tuple(dict.fromkeys(DISCOVERY_BASES.get(store, (STORES[store],))))
 
 
