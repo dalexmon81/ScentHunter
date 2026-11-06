@@ -14,7 +14,7 @@ The overall ScentHunter trial remains blocked until every phase below is accepte
 
 | Phase | Acceptance evidence required | Current evidence / remaining blocker | Status |
 |---|---|---|---|
-| 0 – Preparation & safety | Reproducible backup/restore; supported-store inventory; baseline coverage report; documented safe test targets | Existing preparation notes and staging setup evidence; full backup/restore and baseline evidence still needs consolidation | Partial |
+| 0 – Preparation & safety | Reproducible backup/restore; supported-store inventory; baseline coverage report; documented safe test targets | Disposable PostgreSQL backup/restore rehearsal passed in [integrated run 42179338407](https://github.com/dalexmon81/ScentHunter/actions/runs/42179338407). Actual staging/production backup and restore, complete baseline and source inventory still need consolidation | Partial |
 | 1 – Repository cleanup | Clear module boundaries; legacy diagnostics outside production path; dependency/import checks; no accidental runtime coupling | New app/API/services/connectors/workers structure exists, but large legacy modules remain and separation is not fully demonstrated | Partial |
 | 2 – Database & data model | PostgreSQL migrations repeat safely; canonical schema and seed are idempotent; runtime rejects unintended SQLite in staging; backup/restore | PostgreSQL 16/Redis integrated CI passed migrations twice, canonical seed and schema checks in [run 42178701413](https://github.com/dalexmon81/ScentHunter/actions/runs/42178701413). Prior isolated Neon staging worker evidence exists. Production still uses legacy SQLite; backup/restore remains outstanding | Partial |
 | 3 – Canonical identity | Deterministic normalization; variant distinctions; GTIN and canonical-key rules; durable ambiguity review; repeatable backfill | Identity, normalization, review queue and matching suites passed in [integrated run 42178701413](https://github.com/dalexmon81/ScentHunter/actions/runs/42178701413). Real-catalog precision/recall thresholds remain unmeasured | Partial |
@@ -28,6 +28,9 @@ The overall ScentHunter trial remains blocked until every phase below is accepte
 | 11 – Gradual migration | Old/new parallel comparison; measured quality/latency; staged traffic progression; rollback and recovery rehearsal | Stable cohorts, explicit percentage gating, background non-serving shadow reads and comparison tests passed in [run 42178701413](https://github.com/dalexmon81/ScentHunter/actions/runs/42178701413). No real shadow traffic, canary percentage, populated staging comparison or rollback rehearsal has been authorized/performed | Partial |
 
 ## Latest integrated acceptance evidence (2026-11-06)
+
+- The same integrated workflow now includes a guarded `pg_dump`/`pg_restore` rehearsal. It creates and removes only a `ci_restore_*` database on loopback PostgreSQL, compares catalog row counts and Alembic revision, and passed as part of [run 42179338407](https://github.com/dalexmon81/ScentHunter/actions/runs/42179338407). This does not back up or restore staging/production.
+
 
 - The combined PostgreSQL 16/Redis workflow passed migrations, seed, schema, identity, connectors, ingestion, matching, vertical slice, catalog search API, admin metrics/review/dead-letter routes, rollout/shadow tests, frontend cohort-header check, and the offline retailer-credential boundary: [run 42178701413](https://github.com/dalexmon81/ScentHunter/actions/runs/42178701413).
 - The rollout master switch alone is now fail-closed at 0%; a traffic percentage must be explicitly configured before catalog requests can be served.
@@ -43,7 +46,7 @@ The overall ScentHunter trial remains blocked until every phase below is accepte
 
 ## Release blockers
 
-1. A reproducible backup/restore rehearsal and consolidated Phase 0 baseline are still required.
+1. A real staging/production backup and restore rehearsal, plus the consolidated Phase 0 baseline and source inventory, are still required.
 2. A staging API and frontend must be connected to the same populated PostgreSQL catalog.
 3. At least one retailer data source must be explicitly authorized and configured before live operational verification. Until then, use offline fixtures only.
 4. Metrics, alert delivery, quarantine recovery and human review must be exercised operationally.
