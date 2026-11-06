@@ -10,8 +10,8 @@ set -euo pipefail
   exit 2
 }
 
-source_url="${SCENTHUNTER_CATALOG_DATABASE_URL/postgresql+psycopg:/postgresql:/}"
-target_url="${SCENTHUNTER_BACKUP_RESTORE_TARGET_URL/postgresql+psycopg:/postgresql:/}"
+source_url="${SCENTHUNTER_CATALOG_DATABASE_URL/+psycopg/}"
+target_url="${SCENTHUNTER_BACKUP_RESTORE_TARGET_URL/+psycopg/}"
 
 readarray -t db_parts < <(python3 - "$source_url" "$target_url" <<'PY'
 import sys
