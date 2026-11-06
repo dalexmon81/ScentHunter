@@ -118,6 +118,33 @@ def validate_offer(offer: OfferRecord) -> tuple[bool, tuple[str, ...]]:
     return not errors, tuple(errors)
 
 
+def validate_offer_payload(payload: Mapping[str, Any]) -> tuple[bool, tuple[str, ...]]:
+    """Validate the shared persisted camelCase payload with the connector contract."""
+    if not isinstance(payload, Mapping):
+        return False, ("invalid_payload",)
+    try:
+        offer = OfferRecord(
+            store=str(payload.get("store") or ""),
+            external_product_id=str(payload.get("externalProductId") or ""),
+            brand=str(payload.get("brand") or ""),
+            fragrance=str(payload.get("fragrance") or ""),
+            concentration=payload.get("concentration"),
+            size_ml=payload.get("sizeMl"),
+            gtin=payload.get("gtin"),
+            title=str(payload.get("title") or ""),
+            url=str(payload.get("url") or ""),
+            price=payload.get("price"),
+            currency=payload.get("currency"),
+            availability=str(payload.get("availability") or ""),
+            captured_at=str(payload.get("capturedAt") or ""),
+            source=str(payload.get("source") or ""),
+            external_offer_id=payload.get("externalOfferId"),
+        )
+    except (TypeError, ValueError):
+        return False, ("invalid_payload",)
+    return validate_offer(offer)
+
+
 @dataclass(frozen=True)
 class RetryPolicy:
     max_attempts: int = 3
