@@ -336,10 +336,16 @@ def test_bplatz_manual_task_requires_access_reference_and_exact_product_url():
         )
 
 
-def test_discovery_failure_marks_its_own_run_without_touching_another_running_run(monkeypatch):
+def test_discovery_failure_marks_its_own_run_without_touching_another_running_run(monkeypatch, tmp_path):
+    from sqlalchemy.orm import sessionmaker
     from app.workers import ingestion_tasks
 
-    factory = make_session_factory()
+    engine = create_engine(f"sqlite:///{tmp_path / 'discovery-failure.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        session.add(Store(name="Fake Store", slug="fake-store", currency="EUR", status="active"))
+        session.commit()
     with factory() as session:
         store = session.scalar(select(Store).where(Store.slug == "fake-store"))
         other_run = IngestionRun(store_id=store.id, status="running", errors=[])
@@ -369,3 +375,4 @@ def test_discovery_failure_marks_its_own_run_without_touching_another_running_ru
     assert untouched.status == "running"
     assert sum(run.status == "failed" for run in runs) == 1
     assert sum(run.status == "running" for run in runs) == 1
+    engine.dispose()
