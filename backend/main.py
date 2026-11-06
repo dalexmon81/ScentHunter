@@ -11,6 +11,8 @@ except Exception as exc:
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
 
+from app.services.store_identity import normalize_store_key as _normalise_store
+
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
 # catalog. Product-page hydration is a separate durable background queue.
@@ -716,9 +718,6 @@ def _safe_float(value):
         return float(value)
     except (TypeError, ValueError): return None
 
-def _normalise_store(value, fallback):
-    text = str(value or fallback).strip().lower()
-    return {'bplatz.de':'bplatz','parfum city':'parfumcity','parfum zentrum':'parfumzentrum','parfum-zentrum':'parfumzentrum','perfume market':'perfumemarket','orioudh.com':'orioudh'}.get(text, text)
 
 def _load_product_matcher():
     if ProductMatcher is None:
