@@ -130,3 +130,22 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
             )) is not None
     finally:
         engine.dispose()
+
+
+
+def test_catalog_search_router_is_mounted_in_the_real_fastapi_application():
+    # Import the deployed application module, not a temporary FastAPI instance.
+    # Do not enter TestClient's lifespan context: that would start legacy
+    # background catalog workers, which this route-registration test does not need.
+    from main import app as scenthunter_app
+
+    client = TestClient(scenthunter_app)
+    response = client.get("/catalog/search", params={"q": "Sauvage"})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["query"] == "Sauvage"
+    assert any(
+        row["brand"].lower() == "dior"
+        and row["fragrance"].lower() == "sauvage"
+        for row in payload["results"]
+    )
