@@ -144,15 +144,17 @@ def test_search_start_shadow_reads_catalog_but_serves_legacy_snapshot(monkeypatc
     monkeypatch.setattr(main, "_CATALOG_BOOTSTRAP_DONE", True)
     monkeypatch.setattr(main, "_CATALOG_BOOTSTRAP_ERROR", None)
     monkeypatch.setattr(main, "_cancel_active_jobs", lambda **kwargs: True)
-    monkeypatch.setattr(
-        main,
-        "phase7_search_catalog_for_frontend",
-        lambda query: {
+    called = []
+
+    def fake_catalog_search(query):
+        called.append(query)
+        return {
             "query": query,
             "results": [{"brand": "Dior", "fragrance": "Sauvage", "offers": []}],
             "count": 1,
-        },
-    )
+        }
+
+    monkeypatch.setattr(main, "phase7_search_catalog_for_frontend", fake_catalog_search)
 
     threads = []
 
