@@ -111,7 +111,7 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - Publication now requires a configured positive TTL for the owning active store. The expiry is calculated from the source observation timestamp (`captured_at + store.offer_ttl_minutes`) and persisted to `offers.valid_until`. Repeat hydration refreshes both the observation timestamp and expiry.
 - Catalog search now returns only active offers with a non-null, unexpired `valid_until`. Legacy rows without an expiry are hidden rather than treated as valid indefinitely.
 - No production retailer TTL has been guessed or automatically seeded. The Bplatz TTL used in PostgreSQL integration tests is test-only; real store TTLs remain operator configuration and must be based on observed source update cadence and acceptable staleness.
-- The synchronous `run_connector_once` helper is now documented as a legacy compatibility/fixture adapter, not a production worker. It uses the shared payload validation contract. Production discovery remains `ingestion_tasks.discover_store_products`, which queues normalization, validation, matching and promotion.
+- The synchronous `run_connector_once` helper is a legacy compatibility/fixture adapter, not a production worker. A regression test now asserts that the Celery worker imports and routes only `app.workers.ingestion_tasks`; the compatibility module is not part of the production worker topology. The adapter uses the shared payload validation contract. Production discovery remains `ingestion_tasks.discover_store_products`, which queues normalization, validation, matching and promotion.
 - The migration and new fail-closed publication/search behavior still require a successful full CI run on the current branch head before acceptance. No persistent database has been migrated.
 
 
@@ -123,3 +123,7 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - Follow-up implementation: `promote_offer` now rejects publication when the active store has no positive `offer_ttl_minutes` configured, and computes `valid_until` from the preserved source observation timestamp. Repeat publication refreshes the expiry using the new source timestamp.
 - Regression tests cover missing-TTL rejection, initial expiry calculation, and expiry refresh on repeat hydration. The Notino PostgreSQL vertical-slice fixture now explicitly configures its test-only TTL even when the store row already exists.
 - CI for these latest changes is running; do not mark this follow-up accepted until the full run completes successfully. Store TTL values for real retailers remain unconfigured until their freshness cadence is verified.
+
+
+- The latest full PostgreSQL vertical-slice run passed on commit `390d43598ac3fe4720bba2cce62f55bd5748194f` ([run 42194181552](https://github.com/dalexmon81/ScentHunter/actions/runs/42194181552)). It includes the TTL publication gate and expiry tests, the Notino fixture with explicit test TTL, and the guard that excludes the synchronous compatibility adapter from production Celery worker imports/routes.
+- The passing run still uses disposable PostgreSQL/Redis and offline fixtures. It does not prove persistent-environment restore, live retailer authorization/coverage, or production readiness. Real retailer TTLs remain deliberately unset until evidence supports each value.
