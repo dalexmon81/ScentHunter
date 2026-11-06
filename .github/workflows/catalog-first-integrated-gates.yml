@@ -15,6 +15,20 @@ on:
       - "tests/test_phase2_schema_contract.py"
       - "tests/test_phase2_seed_catalog.py"
       - ".github/workflows/catalog-first-integrated-gates.yml"
+  push:
+    branches:
+      - phase10/integrated-catalog-first-gates
+    paths:
+      - "backend/app/**"
+      - "backend/alembic/**"
+      - "backend/main.py"
+      - "backend/tests/**"
+      - "backend/requirements.txt"
+      - "backend/scripts/seed_catalog.py"
+      - "tests/test_next_engine_service.py"
+      - "tests/test_phase2_schema_contract.py"
+      - "tests/test_phase2_seed_catalog.py"
+      - ".github/workflows/catalog-first-integrated-gates.yml"
   workflow_dispatch:
 
 permissions:
