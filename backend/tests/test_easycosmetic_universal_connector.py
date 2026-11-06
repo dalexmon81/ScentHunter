@@ -52,6 +52,7 @@ def test_easycosmetic_does_not_use_browser_fallback_after_access_denial(
     from types import ModuleType
     from scrapers.easycosmetic import scraper
 
+    # The fake Playwright module makes any attempted browser fallback observable.
     calls = {"http": 0, "browser": 0}
 
     class Response:
