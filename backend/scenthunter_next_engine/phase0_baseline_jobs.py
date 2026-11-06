@@ -694,7 +694,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                     else:
                         chunk_path.unlink(missing_ok=True)
                 if store_status != "completed":
-                    writer.writerow({"store": store, "catalog_product_count": catalog_product_count,
+                    writer.writerow({"store": store, "catalog_product_count": "",
                                      "store_status": store_status, "is_valid_offer": "false"})
                 else:
                     chunk_path.unlink(missing_ok=True)
