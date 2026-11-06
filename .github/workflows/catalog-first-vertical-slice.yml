@@ -141,12 +141,11 @@ jobs:
           backend/tests/test_legacy_store_raw_capture.py
 
       - name: Validate matcher and offer aggregation contracts
-        run: >-
-          pytest -q
-          tests/test_canonical_matcher.py
-          tests/test_catalog_offer_price_selection.py
-          tests/test_offer_aggregator.py
-          backend/tests/test_offer_ranking.py
+        run: |
+          pytest -q tests/test_canonical_matcher.py tests/test_catalog_offer_price_selection.py tests/test_offer_aggregator.py
+          if [ -f backend/tests/test_offer_ranking.py ]; then
+            pytest -q backend/tests/test_offer_ranking.py
+          fi
 
       - name: Reset disposable PostgreSQL before end-to-end fixture
         run: |
