@@ -696,6 +696,7 @@ from app.services.safe_parsers import safe_float as _safe_float
 from app.services.offer_identity import offer_concentration_token as _offer_concentration_token
 from app.services.offer_identity import is_dior_line_url_mismatch as _is_dior_line_url_mismatch
 from app.services.offer_identity import is_concentration_mismatch_offer as _is_concentration_mismatch_offer
+from app.services.offer_identity import offer_url_identity as _offer_url_identity
 from app.services.product_matcher_bootstrap import load_product_matcher
 
 
@@ -1134,29 +1135,6 @@ def result_key(item):
     product_url = str(item.get('product_url') or item.get('url') or '').strip()
     url = raw_url.lower()
 
-    def _offer_url_identity(value):
-        # Ignore tracking/locale query noise when identifying the same listing,
-        # but retain explicit commercial variant selectors and fragments.
-        from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-        try:
-            parsed = urlsplit(str(value or '').strip())
-            host = parsed.netloc.lower()
-            if host.startswith('www.'):
-                host = host[4:]
-            path = parsed.path.rstrip('/').lower()
-            selectors = {
-                'variant', 'variant_id', 'id_product_attribute',
-                'combination_id', 'sku', 'size', 'size_ml', 'attribute',
-            }
-            query = [
-                (key.lower(), val)
-                for key, val in parse_qsl(parsed.query, keep_blank_values=False)
-                if key.lower() in selectors
-            ]
-            fragment = parsed.fragment.lower()
-            return urlunsplit((parsed.scheme.lower(), host, path, urlencode(sorted(query)), fragment))
-        except Exception:
-            return str(value or '').strip().lower()
     product_id = str(item.get('store_product_id') or item.get('product_id') or '').strip().lower()
     sku = str(item.get('sku') or '').strip().lower()
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
