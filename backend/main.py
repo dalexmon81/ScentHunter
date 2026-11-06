@@ -694,6 +694,7 @@ from app.services.safe_parsers import safe_float as _safe_float
 
 
 from app.services.offer_identity import offer_concentration_token as _offer_concentration_token
+from app.services.offer_identity import is_dior_line_url_mismatch as _is_dior_line_url_mismatch
 from app.services.product_matcher_bootstrap import load_product_matcher
 
 
@@ -891,44 +892,6 @@ _NON_FRAGRANCE_CATEGORY_RE = re.compile(
     r"gel\\s*de\\s*afeitado|gel\\s*de\\s*rasage)(?:[^a-z0-9]|$)",
     re.I,
 )
-
-
-def _is_dior_line_url_mismatch(item):
-    """Reject cross-line Dior Eau Sauvage / Dior Sauvage title-to-URL conflicts.
-
-    Use the displayed product title and primary offer URL first. Secondary/raw
-    metadata can contain stale canonical labels and must not override a clear
-    conflict between what the user sees and the destination they open.
-    """
-    if not isinstance(item, dict):
-        return False
-
-    title = next(
-        (str(item.get(key) or "").strip() for key in
-         ("name", "title", "product_name", "canonical_name", "raw_name", "_raw_name")
-         if str(item.get(key) or "").strip()),
-        "",
-    )
-    url = next(
-        (str(item.get(key) or "").strip() for key in
-         ("url", "product_url", "link", "product_page", "source_url", "_raw_url")
-         if str(item.get(key) or "").strip()),
-        "",
-    )
-    normalize = lambda value: re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
-    title_norm = normalize(title)
-    url_norm = normalize(url)
-
-    title_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", title_norm))
-    url_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", url_norm))
-    title_is_sauvage = bool(re.search(r"\bsauvage\b", title_norm))
-    url_is_sauvage = bool(re.search(r"\bsauvage\b", url_norm))
-
-    if url_is_eau_sauvage and title_is_sauvage and not title_is_eau_sauvage:
-        return True
-    if title_is_eau_sauvage and url_is_sauvage and not url_is_eau_sauvage:
-        return True
-    return False
 
 
 def _is_concentration_mismatch_offer(item):
