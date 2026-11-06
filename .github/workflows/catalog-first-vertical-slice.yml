@@ -203,6 +203,16 @@ jobs:
       - name: Validate catalog canary, shadow comparison and legacy routing
         run: pytest -q backend/tests/test_catalog_rollout.py
 
+      - name: Verify frontend sends a stable canary cohort key
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("frontend/index.html").read_text()
+          assert "scenthunter_catalog_rollout_key" in source
+          assert '"X-Catalog-Rollout-Key":catalogRolloutKey()' in source
+          print("FRONTEND_COHORT_HEADER=PASS")
+          PY
+
       - name: Assert live retailer feed credentials are not configured
         run: |
           python - <<'PY'
