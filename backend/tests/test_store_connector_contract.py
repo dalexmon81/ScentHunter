@@ -30,7 +30,7 @@ def test_offer_validation_rejects_missing_price_url_and_unknown_stock_is_not_in_
     assert not ok
     assert "missing_price" in errors
     assert "invalid_https_url" in errors
-    assert "unsupported_or_missing_currency" not in errors
+    assert "invalid_currency_code" not in errors
     assert valid_offer(availability="unknown").availability == "unknown"
 
 
