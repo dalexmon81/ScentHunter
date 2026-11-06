@@ -1,4 +1,5 @@
 import pytest
+from decimal import Decimal
 
 from app.services.currency_policy import (
     SUPPORTED_CURRENCY_CODES,
@@ -22,6 +23,6 @@ def test_next_engine_rejects_well_formed_but_unenabled_currency():
         RetailerOffer(
             retailer="example",
             raw_name="Example fragrance",
-            price=__import__("decimal").Decimal("10.00"),
+            price=Decimal("10.00"),
             currency="USD",
         )
