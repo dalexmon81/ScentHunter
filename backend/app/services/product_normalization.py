@@ -194,6 +194,12 @@ def deduplication_decision(*, left_gtin: object, right_gtin: object,
                             left_key: str, right_key: str) -> tuple[str, IdentityConflict | None]:
     """Return same/different/review; mismatched verified GTINs are never merged."""
     a, b = normalize_gtin(left_gtin), normalize_gtin(right_gtin)
+    left_supplied = left_gtin is not None and bool(str(left_gtin).strip())
+    right_supplied = right_gtin is not None and bool(str(right_gtin).strip())
+    if (left_supplied and a is None) or (right_supplied and b is None):
+        return "review", IdentityConflict(
+            "invalid_gtin", "A supplied GTIN failed length or check-digit validation."
+        )
     if a and b and a != b:
         return "review", IdentityConflict("gtin_conflict", "Different valid GTINs cannot be auto-merged.")
     if a and b:
