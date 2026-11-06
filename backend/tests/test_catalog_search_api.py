@@ -197,7 +197,7 @@ def test_catalog_search_ranks_quality_above_cheapest_offer():
                 .join(Fragrance, Fragrance.id == ProductVariant.fragrance_id)
                 .where(
                     Fragrance.name.ilike("%Sauvage%"),
-                    ProductVariant.canonical_key.ilike("%|edp|100"),
+                    ProductVariant.canonical_key.ilike("%|edp|100|%"),
                 )
                 .limit(1)
             )
