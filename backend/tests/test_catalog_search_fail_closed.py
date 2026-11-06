@@ -79,3 +79,24 @@ def test_search_start_user_path_fails_closed_when_catalog_engine_is_missing(monk
         if job_id:
             with main.JOBS_LOCK:
                 main.JOBS.pop(job_id, None)
+
+
+
+def test_direct_search_endpoint_fails_closed_without_starting_retailer_adapters(monkeypatch):
+    monkeypatch.setattr(main, "CATALOG_ENGINE_AVAILABLE", False)
+    monkeypatch.setattr(main, "catalog_search_local", None)
+
+    def forbidden_live_search(*args, **kwargs):
+        raise AssertionError("direct /search must not start retailer adapters")
+
+    monkeypatch.setattr(main, "_run_controlled_store", forbidden_live_search)
+    response = main.search_perfume("Sauvage")
+
+    assert response["count"] == 0
+    assert response["offer_count"] == 0
+    assert response["results"] == []
+    assert response["errors"]
+    assert all(
+        store["status"] == "error" and store["verified"] is False
+        for store in response["stores"].values()
+    )
