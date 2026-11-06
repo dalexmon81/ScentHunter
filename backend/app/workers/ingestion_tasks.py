@@ -437,10 +437,13 @@ def normalize_offer(self, raw_id: str):
                 raw.product_variant_id = None
                 reason = f"normalization_review:{type(exc).__name__}:{exc}"[:500]
                 raw.rejection_reason = reason
-                payload["_normalization"] = {
-                    "status": "review_required",
-                    "reason": reason,
-                    "at": datetime.now(timezone.utc).isoformat(),
+                payload = {
+                    **payload,
+                    "_normalization": {
+                        "status": "review_required",
+                        "reason": reason,
+                        "at": datetime.now(timezone.utc).isoformat(),
+                    },
                 }
                 raw.raw_payload = payload
                 session.commit()
