@@ -161,6 +161,7 @@ jobs:
           backend/tests/test_canonical_identity_review_queue.py
           backend/tests/test_canonical_identity_backfill.py
           backend/tests/test_product_normalization.py
+          backend/tests/test_identity_scope_service.py
           tests/test_next_engine_service.py
           tests/test_phase2_schema_contract.py
 
