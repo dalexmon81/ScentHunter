@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def test_parfumzentrum_hawas_diagnostic_supports_hawas_ice_target():
-    source = Path("backend/diagnose_parfumzentrum_hawas_gap.py").read_text(encoding="utf-8")
+    source = Path("tools/diagnostics/diagnose_parfumzentrum_hawas_gap.py").read_text(encoding="utf-8")
     assert 'if "ice" in lowered:' in source
     assert '"hawas_ice"' in source
     assert '"913265"' in source
