@@ -42,7 +42,7 @@ def _ascii_words(value: object) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.lower().replace("’", "'")
-    text = re.sub(r"(?<=\\d)(?=[a-z])|(?<=[a-z])(?=\\d)", " ", text)
+    text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
@@ -54,21 +54,21 @@ def normalize_brand(value: object) -> str:
 def normalize_concentration(*values: object) -> str:
     text = " ".join(_ascii_words(value) for value in values if value not in (None, ""))
     for phrase, token in _CONCENTRATIONS:
-        if re.search(rf"\\b{re.escape(phrase)}\\b", text):
+        if re.search(rf"\b{re.escape(phrase)}\b", text):
             return token
     return ""
 
 
 def extract_size_ml(*values: object) -> int | None:
     text = " ".join(str(value or "") for value in values)
-    match = re.search(r"(?<!\\d)(\\d{1,4}(?:[.,]\\d+)?)\\s*(ml|millilit(?:er|re)s?|cl|l|lit(?:er|re)s?|fl\\.?\\s*oz|oz)\\b", text, re.I)
+    match = re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*(ml|millilit(?:er|re)s?|cl|l|lit(?:er|re)s?|fl\.?\s*oz|oz)\b", text, re.I)
     if not match:
         return None
     try:
         amount = Decimal(match.group(1).replace(",", "."))
     except InvalidOperation:
         return None
-    unit = re.sub(r"\\s+", "", match.group(2).lower()).replace(".", "")
+    unit = re.sub(r"\s+", "", match.group(2).lower()).replace(".", "")
     if unit == "cl":
         amount *= 10
     elif unit in {"l", "liter", "liters", "litre", "litres"}:
@@ -80,7 +80,7 @@ def extract_size_ml(*values: object) -> int | None:
 
 
 def _detect_flag(text: str, patterns: tuple[str, ...]) -> bool:
-    return any(re.search(rf"\\b{pattern}\\b", text) for pattern in patterns)
+    return any(re.search(rf"\b{pattern}\b", text) for pattern in patterns)
 
 
 @dataclass(frozen=True)
@@ -113,7 +113,7 @@ def normalize_fragrance(
     size_value = extract_size_ml(size, raw_name)
 
     audience_hits = [key for key, words in _AUDIENCES.items()
-                     if any(re.search(rf"\\b{re.escape(word)}\\b", combined) for word in words)]
+                     if any(re.search(rf"\b{re.escape(word)}\b", combined) for word in words)]
     audience = audience_hits[0] if len(audience_hits) == 1 else None
 
     tester = bool(is_tester) if is_tester is not None else _detect_flag(combined, ("tester", "testeur"))
@@ -122,13 +122,13 @@ def normalize_fragrance(
 
     clean = _ascii_words(raw_name)
     for phrase, _token in _CONCENTRATIONS:
-        clean = re.sub(rf"\\b{re.escape(phrase)}\\b", " ", clean)
-    clean = re.sub(r"\\b\\d{1,4}(?:[.,]\\d+)?\\s*(?:ml|cl|l|oz)\\b", " ", clean)
-    clean = re.sub(r"\\b(?:tester|testeur|refill|recharge|gift set|coffret|set cadeau|spray|vaporisateur)\\b", " ", clean)
+        clean = re.sub(rf"\b{re.escape(phrase)}\b", " ", clean)
+    clean = re.sub(r"\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl|l|oz)\b", " ", clean)
+    clean = re.sub(r"\b(?:tester|testeur|refill|recharge|gift set|coffret|set cadeau|spray|vaporisateur)\b", " ", clean)
     for words in _AUDIENCES.values():
         for word in words:
-            clean = re.sub(rf"\\b{re.escape(word)}\\b", " ", clean)
-    clean = re.sub(r"\\s+", " ", clean).strip()
+            clean = re.sub(rf"\b{re.escape(word)}\b", " ", clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
 
     parts = [brand_key, clean, concentration_key, str(size_value or ""),
              "tester" if tester else "", "refill" if refill else "", "gift_set" if gift_set else ""]
