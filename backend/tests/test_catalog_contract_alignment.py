@@ -75,6 +75,6 @@ def test_store_freshness_policy_is_explicit_and_positive():
     constraints = {
         constraint.name: str(constraint.sqltext)
         for constraint in Store.__table__.constraints
-        if getattr(constraint, "name", None) == "offer_ttl_positive"
+        if getattr(constraint, "name", None) == "ck_stores_offer_ttl_positive"
     }
-    assert "offer_ttl_minutes > 0" in constraints["offer_ttl_positive"]
+    assert "offer_ttl_minutes > 0" in constraints["ck_stores_offer_ttl_positive"]
