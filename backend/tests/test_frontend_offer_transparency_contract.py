@@ -32,3 +32,11 @@ def test_best_offer_badge_requires_comparable_shipping_across_the_group():
     assert "allOffersPriceComparable" in source
     assert "o.ranking.price_comparable===true" in source
     assert "singleCurrencyComparison&&allOffersPriceComparable" in source
+
+
+def test_offer_cards_show_the_actual_capture_timestamp_when_available():
+    source = FRONTEND.read_text(encoding="utf-8")
+
+    assert 'Date.parse(o&&o.captured_at||"")' in source
+    assert 'PREZZO RILEVATO IL ' in source
+    assert 'toLocaleString("it-IT"' in source
