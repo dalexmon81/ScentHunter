@@ -762,6 +762,23 @@ function shOfferCompare(a,b){
   return shNum(a)-shNum(b);
 }
 
+function shOfferMetaHtml(o){
+  const parts=[];
+  if(o&&o.price_stale)parts.push("ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO");
+  else if(o&&o.ranking&&o.ranking.stale)parts.push("PREZZO DA VERIFICARE · DATI NON AGGIORNATI");
+  if(o&&o.ranking){
+    parts.push("PUNTEGGIO DI CONFRONTO "+esc(o.ranking.score)+"/100 · "+esc(o.ranking.currency_scope||o.currency||""));
+    if(o.ranking.shipping_cost_known===false){
+      parts.push("SPEDIZIONE NON NOTA · PREZZO NON CONFRONTABILE A PARITÀ DI SPEDIZIONE");
+    }else if(o.ranking.price_comparable===true){
+      parts.push("SPEDIZIONE INCLUSA NEL CONFRONTO");
+    }else{
+      parts.push("SPEDIZIONE NON CONFRONTABILE");
+    }
+  }
+  return parts.length?'<div class="offer-meta">'+parts.join(" · ")+"</div>":"";
+}
+
 /*
  * FRONTEND CONTRACT
  * The backend is the single source of truth for product identity.
@@ -985,7 +1002,7 @@ function renderOffersHtml(g,img,offers,saved){
     const refreshId=String(o.phase2_offer_id||"");
     const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
     const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':"";
-    return `<div class="offer ${isBestOffer?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBestOffer?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(o.ranking?'<div class="offer-meta">PUNTEGGIO DI CONFRONTO '+esc(o.ranking.score)+'/100 · '+esc(o.ranking.currency_scope||o.currency||"")+'</div>':(isBestOffer?'<div class="offer-meta">MIGLIOR PREZZO</div>':""))}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
+    return `<div class="offer ${isBestOffer?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBestOffer?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${shOfferMetaHtml(o)||(isBestOffer?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
   }).join("");
 }
 
