@@ -91,3 +91,66 @@ def test_postgresql_migrations_and_offer_promotion():
             assert session.get(IngestionRaw, raw_id).status == "promoted"
     finally:
         engine.dispose()
+
+
+def test_postgresql_catalog_seed_is_idempotent_and_never_imports_offers(tmp_path):
+    import json
+    import subprocess
+
+    database_url = os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL", "")
+    if not database_url.startswith(("postgresql://", "postgresql+")):
+        pytest.skip("A disposable PostgreSQL database is required")
+
+    from app.db import make_engine
+    from app.models import Brand, Fragrance, ProductVariant, Offer, LegacyProductIdMap, LegacyVariantIdMap
+
+    catalog_path = tmp_path / "catalog-fixture.json"
+    catalog_path.write_text(json.dumps({
+        "brands": [{"brand_id": "CI-BRAND", "brand_name": "Postgres CI Brand"}],
+        "products": [
+            {"product_id": "CI-P1", "brand_name": "Postgres CI Brand",
+             "canonical_name": "Migration Test Fragrance", "concentration": "EDP"},
+            {"product_id": "CI-P2", "brand_name": "Postgres CI Brand",
+             "canonical_name": "Identity Without Variant"},
+        ],
+        "variants": [
+            {"variant_id": "CI-V1", "product_id": "CI-P1",
+             "concentration": "EDP", "size_ml": 50}
+        ],
+        "offers": [{"price": 1, "url": "https://must-not-import.example"}],
+    }), encoding="utf-8")
+
+    env = os.environ.copy()
+    env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+    env.pop("SCENTHUNTER_DATABASE_URL", None)
+    command_line = [
+        sys.executable, str(BACKEND / "scripts" / "seed_catalog.py"),
+        "--catalog", str(catalog_path), "--apply",
+    ]
+    first = subprocess.run(command_line, cwd=BACKEND.parent, env=env,
+                           capture_output=True, text=True, check=False)
+    assert first.returncode == 0, first.stderr
+    first_report = json.loads(first.stdout)
+    assert first_report["status"] == "seeded"
+    assert first_report["database_counts"]["offers"] == 0
+    assert first_report["invalid_active_offers"] == 0
+
+    second = subprocess.run(command_line, cwd=BACKEND.parent, env=env,
+                            capture_output=True, text=True, check=False)
+    assert second.returncode == 0, second.stderr
+    second_report = json.loads(second.stdout)
+    assert second_report["database_counts"]["brands"] == first_report["database_counts"]["brands"]
+    assert second_report["database_counts"]["fragrances"] == first_report["database_counts"]["fragrances"]
+    assert second_report["database_counts"]["product_variants"] == first_report["database_counts"]["product_variants"]
+
+    engine = make_engine()
+    try:
+        with Session(engine) as session:
+            assert session.scalar(select(Brand).where(Brand.slug == "postgres-ci-brand")) is not None
+            assert session.scalar(select(Fragrance).where(Fragrance.slug == "identity-without-variant")) is not None
+            assert session.scalar(select(ProductVariant).where(ProductVariant.canonical_key.like("postgres ci brand|migration test fragrance%"))) is not None
+            assert session.scalar(select(LegacyProductIdMap).where(LegacyProductIdMap.legacy_product_id == "CI-P2")) is not None
+            assert session.scalar(select(LegacyVariantIdMap).where(LegacyVariantIdMap.legacy_variant_id == "CI-V1")) is not None
+            assert session.scalar(select(Offer)) is None
+    finally:
+        engine.dispose()
