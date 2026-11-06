@@ -233,6 +233,7 @@ def test_invalid_offer_fields_block_promotion_after_real_legacy_resolution(tmp_p
         invalid_values = [
             {"price": Decimal("0")},
             {"currency": "eur"},
+            {"currency": "USD"},
             {"url": "file:///tmp/not-http"},
             {"availability": "unknown"},
         ]
