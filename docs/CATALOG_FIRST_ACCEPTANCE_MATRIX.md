@@ -75,3 +75,5 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - Offline regression coverage added for currency syntax, publishable availability states, and fractional size precision. These changes are not applied to any live database until an explicitly authorized migration.
 
 - The PostgreSQL Bplatz hydration preflight maintained an exact allow-list of Alembic revisions and therefore rejected the newly added `0008_variant_size_precision` even when all required tables were present. The read-only preflight allow-list now includes the new head; this was found by the disposable PostgreSQL CI run, not by a live environment check.
+
+- The first SQLite compatibility run exposed that the size migration used native `ALTER COLUMN TYPE`, which SQLite does not support. The migration now uses Alembic batch alteration so the same revision can rebuild the SQLite table in disposable tests and use the PostgreSQL type alteration in the canonical CI database. The corrected migration must pass the full CI run before it is accepted.
