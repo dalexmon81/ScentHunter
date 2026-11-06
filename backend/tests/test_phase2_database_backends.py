@@ -20,32 +20,48 @@ class Phase2DatabaseConfigurationTests(unittest.TestCase):
             "SCENTHUNTER_CATALOG_DATABASE_URL": "sqlite:///:memory:",
             "SCENTHUNTER_DATABASE_URL": "postgresql://user:secret@db.example/catalog",
         }
-        self.assertEqual(database_url(env), "sqlite:///:memory:")
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(database_url(), "sqlite:///:memory:")
 
     def test_postgres_urls_normalize_to_psycopg3(self):
-        self.assertEqual(
-            database_url({"SCENTHUNTER_DATABASE_URL": "postgresql://user:secret@db.example/catalog"}),
-            "postgresql+psycopg://user:secret@db.example/catalog",
-        )
-        self.assertEqual(
-            database_url({"SCENTHUNTER_DATABASE_URL": "postgres://user:secret@db.example/catalog"}),
-            "postgresql+psycopg://user:secret@db.example/catalog",
-        )
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DATABASE_URL": "postgresql://user:secret@db.example/catalog",
+        }, clear=True):
+            self.assertEqual(
+                database_url(),
+                "postgresql+psycopg://user:secret@db.example/catalog",
+            )
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DATABASE_URL": "postgres://user:secret@db.example/catalog",
+        }, clear=True):
+            self.assertEqual(
+                database_url(),
+                "postgresql+psycopg://user:secret@db.example/catalog",
+            )
 
     def test_postgres_driver_is_not_silently_replaced(self):
         with self.assertRaisesRegex(RuntimeError, "psycopg 3"):
-            database_url({"SCENTHUNTER_DATABASE_URL": "postgresql+psycopg2://user:secret@db.example/catalog"})
+            with patch.dict(os.environ, {
+                "SCENTHUNTER_DATABASE_URL": "postgresql+psycopg2://user:secret@db.example/catalog",
+            }, clear=True):
+                database_url()
 
     def test_invalid_and_unsupported_urls_do_not_echo_credentials(self):
         for value in ("not-a-url", "mysql://user:secret@db.example/catalog"):
             with self.subTest(value=value):
                 with self.assertRaises(RuntimeError) as caught:
-                    database_url({"SCENTHUNTER_DATABASE_URL": value})
+                    with patch.dict(os.environ, {
+                        "SCENTHUNTER_DATABASE_URL": value,
+                    }, clear=True):
+                        database_url()
                 self.assertNotIn("secret", str(caught.exception))
 
     def test_postgres_url_requires_database_name(self):
         with self.assertRaisesRegex(RuntimeError, "database name"):
-            database_url({"SCENTHUNTER_DATABASE_URL": "postgresql://db.example"})
+            with patch.dict(os.environ, {
+                "SCENTHUNTER_DATABASE_URL": "postgresql://db.example",
+            }, clear=True):
+                database_url()
 
     def test_postgres_engine_uses_psycopg_without_opening_connection(self):
         with patch.dict(os.environ, {
