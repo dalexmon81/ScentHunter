@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
+import pytest
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
@@ -264,3 +266,50 @@ def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
         assert offer.valid_until.replace(tzinfo=timezone.utc) == datetime(
             2025, 2, 2, 10, 30, tzinfo=timezone.utc
         )
+
+
+
+def test_unexpected_error_rolls_back_entire_offer_promotion_batch(monkeypatch):
+    factory, first_raw_id = setup_db()
+    with factory() as session:
+        first = session.get(IngestionRaw, first_raw_id)
+        second = IngestionRaw(
+            store_id=first.store_id,
+            external_product_id="sku-rollback-2",
+            raw_payload={
+                **first.raw_payload,
+                "externalProductId": "sku-rollback-2",
+                "url": "https://shop.example/item/sku-rollback-2",
+                "price": "88.00",
+            },
+            status="matched",
+            product_variant_id=first.product_variant_id,
+            match_method=first.match_method,
+            match_confidence=first.match_confidence,
+        )
+        session.add(second)
+        session.commit()
+        second_raw_id = second.id
+
+    import app.workers.offer_promotion as worker
+
+    original_promote = worker.promote_offer
+    calls = 0
+
+    def fail_second_promotion(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("injected_promotion_write_failure")
+        return original_promote(*args, **kwargs)
+
+    monkeypatch.setattr(worker, "promote_offer", fail_second_promotion)
+    with pytest.raises(RuntimeError, match="injected_promotion_write_failure"):
+        worker.promote_matched_offers(factory)
+
+    with factory() as session:
+        assert session.scalars(select(Offer)).all() == []
+        assert session.scalars(select(PriceHistory)).all() == []
+        assert session.scalars(select(MatchAudit)).all() == []
+        assert session.get(IngestionRaw, first_raw_id).status == "matched"
+        assert session.get(IngestionRaw, second_raw_id).status == "matched"
