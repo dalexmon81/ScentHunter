@@ -12,11 +12,24 @@ def test_catalog_rollout_is_disabled_by_default():
     assert decision["run_shadow"] is False
 
 
-def test_master_switch_defaults_to_full_catalog_only_when_enabled():
+def test_master_switch_alone_does_not_route_traffic():
     decision = catalog_rollout_decision(
         "Sauvage",
         "cohort-1",
         environ={"SCENTHUNTER_CATALOG_SEARCH_ENABLED": "1"},
+    )
+    assert decision["traffic_percent"] == 0
+    assert decision["use_catalog"] is False
+
+
+def test_explicit_full_percentage_is_required_for_full_catalog_routing():
+    decision = catalog_rollout_decision(
+        "Sauvage",
+        "cohort-1",
+        environ={
+            "SCENTHUNTER_CATALOG_SEARCH_ENABLED": "1",
+            "SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT": "100",
+        },
     )
     assert decision["traffic_percent"] == 100
     assert decision["use_catalog"] is True
