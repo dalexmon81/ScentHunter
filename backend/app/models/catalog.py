@@ -39,7 +39,7 @@ class ProductVariant(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fragrance_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False, index=True)
     concentration: Mapped[str | None] = mapped_column(String(60))
-    size_ml: Mapped[int | None] = mapped_column(Integer)
+    size_ml: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     is_tester: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_refill: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_gift_set: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
