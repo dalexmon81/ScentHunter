@@ -77,6 +77,7 @@ jobs:
     env:
       PYTHONPATH: backend:.
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
+      SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
       SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
       SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
       SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
