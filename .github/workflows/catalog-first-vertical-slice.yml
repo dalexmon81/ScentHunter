@@ -65,6 +65,7 @@ on:
       - "backend/tests/test_store_connector_contract.py"
       - "backend/tests/test_store_connector_contract.py"
       - "backend/tests/test_connector_ingestion_worker.py"
+      - "backend/tests/test_offer_promotion_worker.py"
       - "backend/scripts/notino_pilot_preflight.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
