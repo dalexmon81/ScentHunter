@@ -19,8 +19,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: phase5/fly-staging-workers-config
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Install backend dependencies and test runner
         run: |
@@ -38,6 +36,10 @@ jobs:
             backend/tests/test_product_normalization.py \
             backend/tests/test_store_connector_contract.py \
             backend/tests/test_seed_catalog_store_safety.py
+      - name: Verify PostgreSQL fail-closed startup policy
+        env:
+          PYTHONPATH: backend
+        run: pytest -q backend/tests/test_db_postgresql_policy.py
       - name: Verify Fly token is scoped to the staging worker app
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
