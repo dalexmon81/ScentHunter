@@ -88,6 +88,12 @@ def collect_catalog_metrics(session, *, now=None):
         ),
         "pending_raw_records": _count(session, IngestionRaw, IngestionRaw.status == "pending"),
         "unmatched_raw_records": _count(session, IngestionRaw, IngestionRaw.status == "unmatched"),
+        "normalization_reviews_pending": _count(
+            session,
+            IngestionRaw,
+            IngestionRaw.status == "unmatched",
+            IngestionRaw.match_method == "normalization_review",
+        ),
         "rejected_raw_records": _count(session, IngestionRaw, IngestionRaw.status == "rejected"),
         "pending_identity_reviews": _count(
             session, CanonicalIdentityReview, CanonicalIdentityReview.status == "pending"
