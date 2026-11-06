@@ -3,7 +3,7 @@ name: Phase 8 offer ranking tests
 on:
   push:
     branches:
-      - phase8/offer-quality-ranking
+      - phase8/offer-quality-ranking-integrated
     paths:
       - "backend/app/services/offer_ranking.py"
       - "backend/app/api/catalog_search.py"
