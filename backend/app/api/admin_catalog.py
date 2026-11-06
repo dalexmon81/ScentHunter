@@ -51,13 +51,22 @@ def collect_catalog_metrics(session, *, now=None):
     current = now or datetime.now(timezone.utc)
     cutoff = current - timedelta(hours=24)
 
-    active_offer = Offer.status == "active"
+    active_offer = and_(
+        Offer.status == "active",
+        Offer.valid_until.is_not(None),
+        Offer.valid_until > current,
+    )
     stale_offer = and_(
-        active_offer,
+        Offer.status == "active",
         or_(
+            Offer.valid_until.is_(None),
+            Offer.valid_until <= current,
             Offer.captured_at < cutoff,
-            and_(Offer.valid_until.is_not(None), Offer.valid_until <= current),
         ),
+    )
+    missing_expiry_offer = and_(
+        Offer.status == "active",
+        Offer.valid_until.is_(None),
     )
 
     totals = {
@@ -65,8 +74,12 @@ def collect_catalog_metrics(session, *, now=None):
         "fragrances": _count(session, Fragrance),
         "variants": _count(session, ProductVariant),
         "active_stores": _count(session, Store, Store.status == "active"),
+        "stores_missing_offer_ttl": _count(
+            session, Store, Store.status == "active", Store.offer_ttl_minutes.is_(None)
+        ),
         "active_offers": _count(session, Offer, active_offer),
         "stale_offers_24h": _count(session, Offer, stale_offer),
+        "offers_missing_expiry": _count(session, Offer, missing_expiry_offer),
         "offers_without_canonical_variant": _count(
             session, Offer, active_offer, Offer.product_variant_id.is_(None)
         ),
@@ -101,7 +114,7 @@ def collect_catalog_metrics(session, *, now=None):
             Store.name,
             Store.status,
             Store.last_successful_sync_at,
-            func.count(Offer.id).filter(Offer.status == "active").label("active_offers"),
+            func.count(Offer.id).filter(active_offer).label("active_offers"),
             func.count(Offer.id).filter(stale_offer).label("stale_offers_24h"),
         )
         .outerjoin(Offer, Offer.store_id == Store.id)
