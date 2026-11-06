@@ -4,12 +4,14 @@ This endpoint never calls retailer connectors or performs live store searches.
 """
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy import and_, or_, select
 
 from fastapi import APIRouter, HTTPException, Query
 
 from app.db import make_session_factory
-from app.models import Brand, Fragrance, Offer, ProductVariant, Store
+from app.models import Brand, Fragrance, LegacyProductIdMap, Offer, ProductVariant, Store
 
 router = APIRouter()
 
@@ -47,6 +49,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     Fragrance.name.label("fragrance_name"),
                     Fragrance.gender,
                     Fragrance.family,
+                    Fragrance.image_url.label("image_url"),
                     ProductVariant.id.label("variant_id"),
                     ProductVariant.canonical_key,
                     ProductVariant.concentration,
@@ -94,6 +97,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                         "fragrance": row.fragrance_name,
                         "gender": row.gender,
                         "family": row.family,
+                        "image": row.image_url,
                         "variants": {},
                     },
                 )
@@ -132,8 +136,40 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     )
 
             result = []
-            for product in products.values():
+            for fragrance_id, product in products.items():
                 product["variants"] = list(product["variants"].values())
+                legacy_product_id = session.scalar(
+                    select(LegacyProductIdMap.legacy_product_id)
+                    .where(
+                        LegacyProductIdMap.fragrance_id == uuid.UUID(fragrance_id)
+                    )
+                    .order_by(LegacyProductIdMap.legacy_product_id.asc())
+                    .limit(1)
+                )
+                product["catalog_id"] = legacy_product_id or fragrance_id
+                product["canonical_brand"] = product["brand"]
+                product["canonical_name"] = product["fragrance"]
+                product["identity_only"] = not any(
+                    variant["offers"] for variant in product["variants"]
+                )
+                product["offers"] = []
+                for variant in product["variants"]:
+                    for offer in variant["offers"]:
+                        product["offers"].append(
+                            {
+                                **offer,
+                                "phase2_offer_id": offer["offer_id"],
+                                "price_num": offer["price"],
+                                "catalog_id": product["catalog_id"],
+                                "brand": product["brand"],
+                                "canonical_brand": product["brand"],
+                                "name": product["fragrance"],
+                                "canonical_name": product["fragrance"],
+                                "size_ml": variant["size_ml"],
+                                "variant": variant["concentration"],
+                                "family": product["family"] or "",
+                            }
+                        )
                 result.append(product)
             return {"query": term, "count": len(result), "results": result}
     finally:
@@ -148,3 +184,56 @@ def get_catalog_search(
 ):
     """Search canonical catalog records and already-published offers only."""
     return search_catalog(q, limit=limit)
+
+
+
+def search_catalog_for_frontend(query: str):
+    """Return the legacy progressive-search response contract from PostgreSQL."""
+    term = str(query or "").strip()
+    if len(term) < 2:
+        return {
+            "query": term,
+            "count": 0,
+            "offer_count": 0,
+            "results": [],
+            "unresolved_offers": [],
+            "identity_scope": [],
+            "errors": {},
+            "stores": {},
+            "dedupe_diagnostics": [],
+            "completed": True,
+            "status": "completed",
+        }
+
+    payload = search_catalog(term)
+    offers = [
+        offer
+        for product in payload["results"]
+        for offer in product["offers"]
+    ]
+    stores = {}
+    for offer in offers:
+        stores.setdefault(
+            offer["store"],
+            {
+                "status": "catalog",
+                "verified": True,
+                "count": 0,
+                "elapsed": 0,
+                "details": {"source": "postgresql_published_offers"},
+            },
+        )["count"] += 1
+
+    return {
+        "query": term,
+        "count": payload["count"],
+        "offer_count": len(offers),
+        "results": payload["results"],
+        "unresolved_offers": [],
+        "identity_scope": [],
+        "errors": {},
+        "stores": stores,
+        "dedupe_diagnostics": [],
+        "completed": True,
+        "status": "completed",
+    }
