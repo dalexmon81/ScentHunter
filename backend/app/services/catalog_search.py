@@ -4,6 +4,7 @@ This service never calls retailer connectors or performs live store searches.
 """
 from __future__ import annotations
 
+import uuid
 from app.db import make_session_factory
 from app.repositories.catalog_search import fetch_catalog_search_rows, fetch_legacy_product_id
 from app.services.offer_ranking import rank_offers
@@ -81,7 +82,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                 product["variants"] = list(product["variants"].values())
                 for variant in product["variants"]:
                     variant["offers"] = rank_offers(variant["offers"])
-                legacy_product_id = fetch_legacy_product_id(session, __import__("uuid").UUID(fragrance_id))
+                legacy_product_id = fetch_legacy_product_id(session, uuid.UUID(fragrance_id))
                 product["catalog_id"] = legacy_product_id or fragrance_id
                 product["canonical_brand"] = product["brand"]
                 product["canonical_name"] = product["fragrance"]
