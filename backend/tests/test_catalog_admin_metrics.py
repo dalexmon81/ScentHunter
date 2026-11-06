@@ -81,6 +81,14 @@ def test_admin_metrics_and_review_queues_report_persisted_state(monkeypatch, tmp
                     raw_payload={"fixture": True},
                     status="pending",
                 ),
+                IngestionRaw(
+                    store_id=store.id,
+                    external_product_id="normalization-review-fixture",
+                    raw_payload={"brand": "Brand", "title": "Conflicting EDP EDT"},
+                    status="unmatched",
+                    match_method="normalization_review",
+                    rejection_reason="normalization_review:ValueError:conflicting_concentrations_require_review",
+                ),
                 IngestionRun(
                     store_id=store.id,
                     started_at=now - timedelta(hours=1),
@@ -144,6 +152,8 @@ def test_admin_metrics_and_review_queues_report_persisted_state(monkeypatch, tmp
         assert review_response.status_code == 200
         review_payload = review_response.json()
         assert len(review_payload["identity_reviews"]) == 1
+        assert len(review_payload["normalization_reviews"]) == 1
+        assert review_payload["normalization_reviews"][0]["external_product_id"] == "normalization-review-fixture"
         assert len(review_payload["match_reviews"]) == 1
 
         dead_letter_response = client.get("/catalog/admin/dead-letters", headers=headers)
