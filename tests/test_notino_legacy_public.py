@@ -17,16 +17,9 @@ def test_legacy_public_search_never_starts_external_discovery(monkeypatch):
 def test_legacy_public_discovery_is_disabled_without_network(monkeypatch):
     monkeypatch.setattr(
         legacy_public,
-        "_bing_rss",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("external RSS request must not run")
-        ),
-    )
-    monkeypatch.setattr(
-        legacy_public,
-        "_browser_search",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("public browser search must not run")
+        "_new_session",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("disabled Notino discovery must not create an HTTP session")
         ),
     )
     candidates, report = legacy_public._discover("Dior Sauvage")
