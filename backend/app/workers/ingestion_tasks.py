@@ -350,16 +350,21 @@ def discover_store_products(self, store_key: str):
     factory = make_session_factory()
     try:
         with factory() as session:
-            run = session.scalar(select(IngestionRun).join(Store).where(
-                Store.slug == store_key, IngestionRun.status == "running"
-            ).order_by(IngestionRun.started_at.desc()).limit(1))
-            if run is not None:
-                run.status = "completed"
-                run.products_discovered = len(products)
-                run.finished_at = datetime.now(timezone.utc)
-                store = session.get(Store, run.store_id)
-                store.last_successful_sync_at = run.finished_at
-                session.commit()
+            # Update exactly the run created by this task. Selecting the latest
+            # running run for the store races when two discoveries overlap.
+            run = session.get(IngestionRun, UUID(run_id))
+            if run is None:
+                raise LookupError(f"ingestion_run_not_found:{run_id}")
+            if run.store_id is None:
+                raise LookupError(f"ingestion_run_store_missing:{run_id}")
+            run.status = "completed"
+            run.products_discovered = len(products)
+            run.finished_at = datetime.now(timezone.utc)
+            store = session.get(Store, run.store_id)
+            if store is None:
+                raise LookupError(f"ingestion_run_store_not_found:{run_id}")
+            store.last_successful_sync_at = run.finished_at
+            session.commit()
     finally:
         factory.kw["bind"].dispose()
     return {"store": store_key, "discovered": len(products), "offers_staged": len(staged), "raw_ids": staged}
