@@ -12,5 +12,10 @@ def identity_scope(query, product_matcher, logger=print):
             return method(str(query or "").strip())
         return []
     except Exception as exc:
-        logger(f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}')
+        try:
+            logger(f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}')
+        except Exception:
+            # Diagnostics must never turn a safe empty identity scope into a
+            # failed search response.
+            pass
         return []
