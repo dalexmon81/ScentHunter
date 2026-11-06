@@ -252,3 +252,48 @@ def test_reprocess_failed_offers_respects_optional_store_scope(tmp_path, monkeyp
             assert sabina_row.rejection_reason == "retryable:temporary_timeout"
     finally:
         engine.dispose()
+
+
+
+def test_connector_quarantine_requires_consecutive_failed_runs(tmp_path, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Base, IngestionRun, Store
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'connector-quarantine.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    now = datetime.now(timezone.utc)
+    with factory() as session:
+        store = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
+        session.add(store)
+        session.flush()
+        session.add_all([
+            IngestionRun(store_id=store.id, status="failed", started_at=now - timedelta(minutes=3)),
+            IngestionRun(store_id=store.id, status="success", started_at=now - timedelta(minutes=2)),
+            IngestionRun(store_id=store.id, status="failed", started_at=now - timedelta(minutes=1)),
+        ])
+        session.commit()
+
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(ingestion_tasks, "QUARANTINE_AFTER", 3)
+    try:
+        result = ingestion_tasks.quarantine_failed_connector.run("bplatz")
+        assert result["consecutive_failures"] == 1
+        assert result["status"] == "active"
+
+        with factory() as session:
+            store = session.query(Store).filter_by(slug="bplatz").one()
+            session.add_all([
+                IngestionRun(store_id=store.id, status="failed", started_at=now + timedelta(minutes=1)),
+                IngestionRun(store_id=store.id, status="failed", started_at=now + timedelta(minutes=2)),
+            ])
+            session.commit()
+
+        result = ingestion_tasks.quarantine_failed_connector.run("bplatz")
+        assert result["consecutive_failures"] == 3
+        assert result["status"] == "quarantined"
+    finally:
+        engine.dispose()
