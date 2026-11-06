@@ -64,7 +64,7 @@ restored_snapshot="$(psql "$target_url" -v ON_ERROR_STOP=1 -Atc "SELECT (SELECT 
   echo "Backup/restore mismatch: source=$source_snapshot restored=$restored_snapshot" >&2
   exit 1
 }
-[[ "${source_snapshot%%,*}" -gt 0 ]] || {
+[[ "${source_snapshot%%|*}" -gt 0 ]] || {
   echo "Source catalog is unexpectedly empty; refusing to accept the rehearsal." >&2
   exit 1
 }
