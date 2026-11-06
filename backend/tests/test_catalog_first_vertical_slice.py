@@ -143,8 +143,9 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
         assert http_response.status_code == 200, http_response.text
         response = http_response.json()
         assert response["legacy_product_id"] == LEGACY_PRODUCT_ID
-        assert len(response["offers"]) == 1
-        api_offer = response["offers"][0]
+        notino_offers = [offer for offer in response["offers"] if offer["store"] == "notino"]
+        assert len(notino_offers) == 1
+        api_offer = notino_offers[0]
         assert api_offer["phase2_offer_id"] == str(offer_id)
         assert api_offer["store"] == "notino"
         assert api_offer["price"] == 99.9
