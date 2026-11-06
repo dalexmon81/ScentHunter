@@ -319,3 +319,32 @@ def test_reingestion_of_same_retailer_product_updates_one_offer_and_appends_hist
         assert all(entry.offer_id == offers[0].id for entry in history)
         assert len(audits) == 2
         assert first.status == second.status == "promoted"
+
+def test_offer_promotion_transaction_rollback_leaves_no_partial_publication():
+    from app.services.ingestion_persistence import promote_offer
+
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        offer_id = promote_offer(
+            session,
+            ingestion_raw_id=raw_id,
+            price=Decimal("90.50"),
+            currency="EUR",
+            url="https://shop.example/item/sku-100",
+            availability="in_stock",
+            source="fixture",
+            confidence=Decimal("0.990"),
+            captured_at=datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        )
+        assert session.get(Offer, offer_id) is not None
+        assert raw.status == "promoted"
+        session.rollback()
+
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert session.scalar(select(Offer)) is None
+        assert session.scalar(select(PriceHistory)) is None
+        assert session.scalar(select(MatchAudit)) is None
+
