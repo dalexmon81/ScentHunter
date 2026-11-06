@@ -22,4 +22,3 @@ htmlcov/
 *.sqlite
 *.sqlite3
 *.db
-*.csv
