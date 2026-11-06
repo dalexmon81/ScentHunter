@@ -22,6 +22,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
     if not 1 <= limit <= 30:
         raise HTTPException(status_code=400, detail="invalid_search_limit")
 
+    owns_factory = session_factory is None
     factory = session_factory or make_session_factory()
     try:
         with factory() as session:
@@ -136,7 +137,8 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                 result.append(product)
             return {"query": term, "count": len(result), "results": result}
     finally:
-        factory.kw["bind"].dispose()
+        if owns_factory:
+            factory.kw["bind"].dispose()
 
 
 @router.get("/catalog/search")
