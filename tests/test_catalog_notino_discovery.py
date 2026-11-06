@@ -1,3 +1,5 @@
+import sqlite3
+
 """Regression tests for market-specific catalog discovery rules."""
 
 from backend import catalog_engine as catalog
@@ -39,6 +41,52 @@ def test_notino_is_excluded_from_public_html_discovery():
     assert "notino" not in catalog.HTML_DISCOVERY_SEEDS
     assert catalog._discovery_bases("notino") == ("https://www.notino.fr",)
     assert catalog._seed_sitemaps("notino") == ([], ["authorized_feed_only"])
+
+
+def test_queued_legacy_notino_refresh_is_marked_dead_without_retry(monkeypatch, tmp_path):
+    database = tmp_path / "notino-queue.sqlite3"
+    setup = sqlite3.connect(database)
+    setup.execute(
+        """CREATE TABLE hydration_queue (
+            store TEXT, url TEXT, lease_token TEXT, state TEXT, attempts INTEGER,
+            available_at REAL, leased_until REAL, last_finished_at REAL,
+            last_error TEXT, last_http_status INTEGER
+        )"""
+    )
+    url = "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/"
+    setup.execute(
+        """INSERT INTO hydration_queue
+           (store,url,lease_token,state,attempts,available_at)
+           VALUES(?,?,?,?,?,?)""",
+        ("notino", url, "lease-1", "PROCESSING", 1, 0),
+    )
+    setup.commit()
+    setup.close()
+
+    def connect():
+        connection = sqlite3.connect(database)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    monkeypatch.setattr(catalog, "db", connect)
+    catalog._queue_mark_error(
+        {
+            "store": "notino",
+            "url": url,
+            "lease_token": "lease-1",
+            "attempts": 1,
+        },
+        "notino_feed_only_public_refresh_disabled",
+    )
+
+    check = connect()
+    row = check.execute(
+        "SELECT state,last_error FROM hydration_queue WHERE store='notino' AND url=?",
+        (url,),
+    ).fetchone()
+    check.close()
+    assert row["state"] == "DEAD"
+    assert row["last_error"] == "notino_feed_only_public_refresh_disabled"
 
 
 def test_notino_product_refresh_is_blocked_before_any_public_http_request(monkeypatch):
