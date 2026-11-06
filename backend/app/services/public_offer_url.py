@@ -12,11 +12,7 @@ def public_offer_url(item):
     fall back to its default variant. Always normalize the URL to /es/ and
     regenerate the Spanish fragment from the offer's size.
     """
-    raw_url = item.get("variant_url")
-    if raw_url is None:
-        raw_url = item.get("url")
-    if raw_url is None:
-        raw_url = item.get("product_url")
+    raw_url = item.get("variant_url") or item.get("url") or item.get("product_url")
     url = str(raw_url or "").strip()
     if not url:
         return raw_url if raw_url is not None else ""
