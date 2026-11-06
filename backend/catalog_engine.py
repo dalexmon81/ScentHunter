@@ -4072,6 +4072,7 @@ def _maybe_persist_bplatz_phase2(item, url):
             "0005_canonical_identity_reviews",
             "0006_ingestion_artifacts",
             "0007_ingestion_dead_letters",
+            "0008_variant_size_precision",
         }
         if revision not in supported_revisions or missing:
             print(
