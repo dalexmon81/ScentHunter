@@ -683,56 +683,59 @@ def _start_catalog_bootstrap():
         name='scenthunter-catalog-bootstrap',
     ).start()
 
-# Read-only scraper diagnostics. This module does not participate in normal search.
-try:
-    from diagnose_two_scrapers import router as diagnose_two_scrapers_router
-    app.include_router(diagnose_two_scrapers_router)
-    from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
-    app.include_router(diagnose_deloox_scraper_router)
-    from diagnose_sabina_legacy_crawl import router as diagnose_sabina_legacy_crawl_router
-    app.include_router(diagnose_sabina_legacy_crawl_router)
-    from diagnose_sabina_real_seeds import router as diagnose_sabina_real_seeds_router
-    app.include_router(diagnose_sabina_real_seeds_router)
-    from diagnose_sabina_legacy_sparam import router as diagnose_sabina_legacy_sparam_router
-    app.include_router(diagnose_sabina_legacy_sparam_router)
-    from diagnose_deloox_frontier_path import router as diagnose_deloox_frontier_path_router
-    app.include_router(diagnose_deloox_frontier_path_router)
-    from diagnose_sabina_search import router as diagnose_sabina_search_router
-    app.include_router(diagnose_sabina_search_router)
-    from diagnose_sabina_search_stream import router as diagnose_sabina_search_stream_router
-    app.include_router(diagnose_sabina_search_stream_router)
-    from diagnose_easycosmetic_variants_readonly import router as diagnose_easycosmetic_variants_readonly_router
-    app.include_router(diagnose_easycosmetic_variants_readonly_router)
-    from diagnose_easycosmetic_variant_discovery import router as diagnose_easycosmetic_variant_discovery_router
-    app.include_router(diagnose_easycosmetic_variant_discovery_router)
-    from diagnose_easycosmetic_de_variants_readonly import (
-    router as diagnose_easycosmetic_de_variants_readonly_router,
-    )
-    app.include_router(diagnose_easycosmetic_de_variants_readonly_router)
-    from diagnose_parfumzentrum_hawas_gap import router as diagnose_parfumzentrum_hawas_gap_router
-    app.include_router(diagnose_parfumzentrum_hawas_gap_router) 
-    from diagnose_sabina_variants_readonly import router as diagnose_sabina_variants_readonly_router
-    app.include_router(diagnose_sabina_variants_readonly_router)
-    from diagnose_sabina_catalog_variants_read_only import router as diagnose_sabina_catalog_variants_read_only_router
-    app.include_router(diagnose_sabina_catalog_variants_read_only_router)
-    from diagnose_sabina_variant_queue_read_only import (
-        router as diagnose_sabina_variant_queue_read_only_router,
-    )
-    app.include_router(diagnose_sabina_variant_queue_read_only_router)
-    from diagnose_sabina_refresh_parser_read_only import (
-        router as diagnose_sabina_refresh_parser_read_only_router,
-    )
-    app.include_router(diagnose_sabina_refresh_parser_read_only_router)
-    from diagnose_sabina_variant_runtime_read_only import (
-        router as diagnose_sabina_variant_runtime_read_only_router,
-    )
-    app.include_router(diagnose_sabina_variant_runtime_read_only_router)
-    from backend.diagnose_sabina_persistence_path_read_only import router as sabina_persistence_path_read_only_router
-    app.include_router(sabina_persistence_path_read_only_router)
-    from backend.diagnose_sabina_variant_callpath_read_only import router as sabina_variant_callpath_read_only_router
-    app.include_router(sabina_variant_callpath_read_only_router)
-except Exception as exc:
-    print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
+# Diagnostic routers are opt-in and never mounted in production by default.
+# The scripts themselves live under tools/diagnostics/ and tools/debug/.
+if str(os.environ.get('SCENTHUNTER_DIAGNOSTICS_ENABLED', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
+    # Read-only scraper diagnostics. This module does not participate in normal search.
+    try:
+        from diagnose_two_scrapers import router as diagnose_two_scrapers_router
+        app.include_router(diagnose_two_scrapers_router)
+        from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
+        app.include_router(diagnose_deloox_scraper_router)
+        from diagnose_sabina_legacy_crawl import router as diagnose_sabina_legacy_crawl_router
+        app.include_router(diagnose_sabina_legacy_crawl_router)
+        from diagnose_sabina_real_seeds import router as diagnose_sabina_real_seeds_router
+        app.include_router(diagnose_sabina_real_seeds_router)
+        from diagnose_sabina_legacy_sparam import router as diagnose_sabina_legacy_sparam_router
+        app.include_router(diagnose_sabina_legacy_sparam_router)
+        from diagnose_deloox_frontier_path import router as diagnose_deloox_frontier_path_router
+        app.include_router(diagnose_deloox_frontier_path_router)
+        from diagnose_sabina_search import router as diagnose_sabina_search_router
+        app.include_router(diagnose_sabina_search_router)
+        from diagnose_sabina_search_stream import router as diagnose_sabina_search_stream_router
+        app.include_router(diagnose_sabina_search_stream_router)
+        from diagnose_easycosmetic_variants_readonly import router as diagnose_easycosmetic_variants_readonly_router
+        app.include_router(diagnose_easycosmetic_variants_readonly_router)
+        from diagnose_easycosmetic_variant_discovery import router as diagnose_easycosmetic_variant_discovery_router
+        app.include_router(diagnose_easycosmetic_variant_discovery_router)
+        from diagnose_easycosmetic_de_variants_readonly import (
+        router as diagnose_easycosmetic_de_variants_readonly_router,
+        )
+        app.include_router(diagnose_easycosmetic_de_variants_readonly_router)
+        from diagnose_parfumzentrum_hawas_gap import router as diagnose_parfumzentrum_hawas_gap_router
+        app.include_router(diagnose_parfumzentrum_hawas_gap_router) 
+        from diagnose_sabina_variants_readonly import router as diagnose_sabina_variants_readonly_router
+        app.include_router(diagnose_sabina_variants_readonly_router)
+        from diagnose_sabina_catalog_variants_read_only import router as diagnose_sabina_catalog_variants_read_only_router
+        app.include_router(diagnose_sabina_catalog_variants_read_only_router)
+        from diagnose_sabina_variant_queue_read_only import (
+            router as diagnose_sabina_variant_queue_read_only_router,
+        )
+        app.include_router(diagnose_sabina_variant_queue_read_only_router)
+        from diagnose_sabina_refresh_parser_read_only import (
+            router as diagnose_sabina_refresh_parser_read_only_router,
+        )
+        app.include_router(diagnose_sabina_refresh_parser_read_only_router)
+        from diagnose_sabina_variant_runtime_read_only import (
+            router as diagnose_sabina_variant_runtime_read_only_router,
+        )
+        app.include_router(diagnose_sabina_variant_runtime_read_only_router)
+        from backend.diagnose_sabina_persistence_path_read_only import router as sabina_persistence_path_read_only_router
+        app.include_router(sabina_persistence_path_read_only_router)
+        from backend.diagnose_sabina_variant_callpath_read_only import router as sabina_variant_callpath_read_only_router
+        app.include_router(sabina_variant_callpath_read_only_router)
+    except Exception as exc:
+        print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic','notino']
@@ -5697,3 +5700,12 @@ def phase2_sql_verification(authorization: str = _Phase0Header(default='')):
             engine.dispose()
     return results
 
+# Phase 1 repository hygiene: keep investigative HTTP endpoints out of the
+# production route table unless diagnostics are explicitly enabled.
+if str(os.environ.get('SCENTHUNTER_DIAGNOSTICS_ENABLED', '0')).strip().lower() not in {'1', 'true', 'yes', 'on'}:
+    app.router.routes = [
+        route for route in app.router.routes
+        if not any(token in str(getattr(route, 'path', '')).lower()
+                   for token in ('diagnose', 'diagnostic'))
+        and str(getattr(route, 'path', '')).lower() != '/admin/phase2/sql-verification'
+    ]
