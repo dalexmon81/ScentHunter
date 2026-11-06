@@ -218,8 +218,6 @@ def catalog_admin_dead_letters(
                         "task_id": row.task_id,
                         "error": row.error,
                         "created_at": row.created_at.isoformat(),
-                        "args_repr": row.args_repr,
-                        "kwargs_repr": row.kwargs_repr,
                     }
                     for row in rows
                 ],
