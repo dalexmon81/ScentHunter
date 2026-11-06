@@ -222,6 +222,8 @@ jobs:
           assert '"X-Catalog-Rollout-Key":catalogRolloutKey()' in source
           print("FRONTEND_COHORT_HEADER=PASS")
           PY
+          pytest -q backend/tests/test_frontend_offer_transparency_contract.py
+
 
       - name: Assert live retailer feed credentials are not configured
         run: |
