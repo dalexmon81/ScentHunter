@@ -4,10 +4,11 @@ This endpoint never calls retailer connectors or performs live store searches.
 """
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -30,15 +31,35 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
     factory = session_factory or make_session_factory()
     try:
         with factory() as session:
+            if session.get_bind().dialect.name == "postgresql":
+                # Require every query token, while allowing tokens to match
+                # either the brand or fragrance name. The matching expressions
+                # align with the GIN indexes added in migration 0011.
+                tokens = re.findall(r"[^\\W_]+", term, flags=re.UNICODE)
+                if not tokens:
+                    raise HTTPException(status_code=400, detail="invalid_search_query")
+                token_conditions = []
+                for token in tokens:
+                    tsquery = func.plainto_tsquery("simple", token)
+                    token_conditions.append(
+                        or_(
+                            func.to_tsvector("simple", Brand.name).bool_op("@@")(tsquery),
+                            func.to_tsvector("simple", Fragrance.name).bool_op("@@")(tsquery),
+                        )
+                    )
+                search_condition = and_(*token_conditions)
+            else:
+                # Keep lightweight SQLite fixtures compatible; production
+                # PostgreSQL uses indexed full-text matching above.
+                search_condition = or_(
+                    Fragrance.name.ilike(f"%{term}%"),
+                    Brand.name.ilike(f"%{term}%"),
+                )
+
             matching_ids = (
                 select(Fragrance.id)
                 .join(Brand, Brand.id == Fragrance.brand_id)
-                .where(
-                    or_(
-                        Fragrance.name.ilike(f"%{term}%"),
-                        Brand.name.ilike(f"%{term}%"),
-                    )
-                )
+                .where(search_condition)
                 .order_by(Brand.name.asc(), Fragrance.name.asc())
                 .limit(limit)
                 .subquery()
