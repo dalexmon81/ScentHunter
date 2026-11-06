@@ -12,12 +12,11 @@ from app.services.product_normalization import normalize_product
 from app.workers.matching_worker import match_pending_offers
 
 
-def setup_db():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+def setup_db(database_url="sqlite://"):
+    engine_options = {"connect_args": {"check_same_thread": False}}
+    if database_url == "sqlite://":
+        engine_options["poolclass"] = StaticPool
+    engine = create_engine(database_url, **engine_options)
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
@@ -142,10 +141,10 @@ def test_invalid_supplied_gtin_is_sent_to_review_not_canonical_auto_match():
 
 
 
-def test_normalization_conflict_is_persisted_for_review_without_worker_failure(monkeypatch):
+def test_normalization_conflict_is_persisted_for_review_without_worker_failure(monkeypatch, tmp_path):
     import app.workers.ingestion_tasks as ingestion_tasks
 
-    factory, _variant_id, raw_id = setup_db()
+    factory, _variant_id, raw_id = setup_db(f"sqlite:///{tmp_path / 'normalization-review.db'}")
     monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
     with factory() as session:
         raw = session.get(IngestionRaw, raw_id)
