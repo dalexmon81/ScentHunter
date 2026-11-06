@@ -470,6 +470,18 @@ def _offer_objects(data):
     return []
 
 
+def _jsonld_currency(data):
+    """Return only an ISO currency explicitly supplied by a structured offer."""
+    for offer in _offer_objects(data):
+        raw = offer.get("priceCurrency")
+        if raw is None:
+            continue
+        value = _clean(raw).upper()
+        if re.fullmatch(r"[A-Z]{3}", value):
+            return value
+    return None
+
+
 def _jsonld_price(data):
     for offer in _offer_objects(data):
         price = _parse_price(
@@ -1865,7 +1877,7 @@ def _extract_product(url, query, html=None):
         },
         "offer": {
             "price": price,
-            "currency": "EUR",
+            "currency": _jsonld_currency(data),
             "availability": availability,
         },
         "provenance": {

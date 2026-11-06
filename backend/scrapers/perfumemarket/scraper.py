@@ -852,12 +852,8 @@ def _pm_extract_availability(product, offer, soup):
     if any(marker in text for marker in ("instock", "in stock")):
         return "in_stock"
 
-    # Do not treat the generic word "available" in arbitrary page text as
-    # proof of stock; it can occur in unrelated content.
-    page_text = soup.get_text(" ", strip=True).lower()
-    if re.search(r"\bavailable\b", page_text) and not re.search(r"\bunavailable\b", page_text):
-        return "in_stock"
-
+    # Only structured offer/product availability is authoritative.
+    # Generic page copy is not reliable stock evidence.
     return "unknown"
 
 
@@ -935,7 +931,8 @@ def extract_product_page(session, url, query):
     if price is None:
         return None
 
-    currency = str(offer.get("priceCurrency") or product.get("priceCurrency") or "EUR").strip().upper()
+    raw_currency = offer.get("priceCurrency") or product.get("priceCurrency")
+    currency = str(raw_currency).strip().upper() if raw_currency else None
     availability = _pm_extract_availability(product, offer, soup)
     image = _pm_extract_image(product, response.url)
 

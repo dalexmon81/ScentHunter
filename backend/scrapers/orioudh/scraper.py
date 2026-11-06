@@ -401,7 +401,7 @@ def _raw_offer(
         },
         "offer": {
             "price": price,
-            "currency": "EUR",
+            "currency": None,  # Currency is not exposed by the Shopify product JSON payload.
             "availability": _availability(variant.get("available")),
         },
         "provenance": {
@@ -417,7 +417,7 @@ def _raw_offer(
         "name": source_name,
         "price": (f"{price:.2f}".replace(".", ",") + " €") if price is not None else "",
         "url": url,
-        "available": variant.get("available") is True,
+        "available": (True if variant.get("available") is True else False if variant.get("available") is False else None),
     }
 
 

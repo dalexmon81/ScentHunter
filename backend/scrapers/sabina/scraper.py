@@ -1232,7 +1232,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     variants = []
     seen_variant_keys = set()
 
-    def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None, gtin=None, mpn=None, variant_id=None):
+    def add_variant(raw_size, raw_price, currency=None, availability=None, sku=None, variant_url=None, gtin=None, mpn=None, variant_id=None):
         variant_size = extract_size_ml(raw_size)
         variant_price = money_to_float(raw_price)
         if variant_size is None or variant_price is None or variant_price <= 0:
@@ -1273,7 +1273,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     target_url = target_url.split("#", 1)[0]
         variants.append({
             "size_ml": float(variant_size), "price_num": float(variant_price),
-            "currency": clean(currency) or "EUR",
+            "currency": clean(currency) or None,
             "availability": availability or "unknown", "sku": clean(sku) or None,
             "gtin": clean(gtin) or None, "mpn": clean(mpn) or None,
             "url": target_url,
@@ -1348,7 +1348,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             price = next((v for v in price_values if money_to_float(v) is not None), None)
             effective_size = local_size if local_size is not None else (current_variant or {}).get("size")
             if effective_size is not None and price is not None:
-                currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
+                currency = obj.get("priceCurrency") or obj.get("currency")
                 raw_availability = clean(
                     obj.get("availability") or obj.get("stock_status")
                     or obj.get("availability_status")
@@ -1417,7 +1417,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         raw_price = next((attrs.get(k) for k in ("data-price", "data-product-price", "data-final-price", "data-price-amount") if attrs.get(k) not in (None, "")), None)
         if raw_price is None:
             continue
-        add_variant(raw_size, raw_price, attrs.get("data-currency") or "EUR", None,
+        add_variant(raw_size, raw_price, attrs.get("data-currency") or None, None,
                     attrs.get("data-sku"), attrs.get("data-url"), variant_id=attrs.get("data-id-product-attribute"))
 
     price = (
@@ -1434,11 +1434,8 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     if price is None:
         price, price_source = extract_price_from_html(soup)
 
-    currency = (
-        clean(offer.get("priceCurrency"))
-        if isinstance(offer, dict)
-        else ""
-    ) or "EUR"
+    raw_currency = offer.get("priceCurrency") if isinstance(offer, dict) else None
+    currency = clean(raw_currency) or None
 
     availability, availability_source = availability_from_product_page(
         soup,
@@ -1730,7 +1727,7 @@ def _fallback_extract_product_page(session, url, query, authoritative_search=Fal
         "source": {"url": final_url, "name": title, "brand": None, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": None, "store_product_id": {"value": product_id_from_url(final_url), "source": "product_url"}, "store_variant_id": None},
         "attributes": {"size_ml": {"value": size, "source": "product_page"} if size is not None else None, "concentration": {"value": extract_concentration(title, page_text)[0], "source": "product_text"} if extract_concentration(title, page_text)[0] else None, "gender": {"value": "unknown", "source": "default"}, "packaging_type": {"value": "product", "source": "default"}},
-        "offer": {"price": price, "currency": "EUR", "availability": availability},
+        "offer": {"price": price, "currency": None, "availability": availability},
         "provenance": {"name": "sabina_html_fallback", "price": "visible_product_page", "availability": "visible_product_page", "size_ml": "visible_product_page"},
         "raw_data": {"product_url": final_url, "status_code": 200},
         "name": title,

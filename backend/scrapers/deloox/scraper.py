@@ -72,6 +72,24 @@ def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
 
+def explicit_iso_currency(value):
+    """Return a currency only when the selected structured offer states it."""
+    code = clean(value).upper()
+    return code if re.fullmatch(r"[A-Z]{3}", code) else None
+
+
+def offer_currency(offer):
+    """Read currency from the selected Offer or its priceSpecification."""
+    if not isinstance(offer, dict):
+        return None
+    specification = offer.get("priceSpecification")
+    if isinstance(specification, list):
+        specification = next((item for item in specification if isinstance(item, dict) and item.get("priceCurrency")), {})
+    if not isinstance(specification, dict):
+        specification = {}
+    return explicit_iso_currency(offer.get("priceCurrency") or specification.get("priceCurrency"))
+
+
 def norm(v):
     # Normalize accented product names (e.g. Giò -> Gio) before token matching.
     text = unicodedata.normalize("NFKD", clean(v).lower())
@@ -468,6 +486,19 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
 
     price = parse_price(offer.get("price"))
     if price is None:
+        # Schema.org may place the sellable amount on priceSpecification
+        # rather than directly on Offer. Read only the selected offer's
+        # explicit specification; never borrow a sibling offer's price.
+        specification = offer.get("priceSpecification")
+        specifications = specification if isinstance(specification, list) else [specification]
+        for item in specifications:
+            if not isinstance(item, dict):
+                continue
+            candidate_price = parse_price(item.get("price"))
+            if candidate_price is not None and candidate_price > 0:
+                price = candidate_price
+                break
+    if price is None:
         # Only consider visible text outside the product title when falling
         # back to page-price extraction. Otherwise a title such as "125 ml"
         # can be misread as a 125.00 price when JSON-LD omits its offer.
@@ -537,7 +568,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         },
         "offer": {
             "price": price,
-            "currency": "EUR",
+            "currency": offer_currency(offer),
             "availability": avail,
         },
         "provenance": {
@@ -557,7 +588,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         "concentration": concentration(name) or None,
         "gender": "unknown",
         "price_num": price,
-        "currency": "EUR",
+        "currency": offer_currency(offer),
         "availability": avail,
         "fetched_at": time.time(),
         "name": name,
