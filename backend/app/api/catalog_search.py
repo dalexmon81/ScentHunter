@@ -5,6 +5,7 @@ This endpoint never calls retailer connectors or performs live store searches.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import and_, or_, select
 
@@ -12,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.db import make_session_factory
 from app.models import Brand, Fragrance, LegacyProductIdMap, Offer, ProductVariant, Store
+from app.services.offer_ranking import rank_offers
 
 router = APIRouter()
 
@@ -26,6 +28,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
 
     owns_factory = session_factory is None
     factory = session_factory or make_session_factory()
+    current_time = datetime.now(timezone.utc)
     try:
         with factory() as session:
             matching_ids = (
@@ -62,8 +65,12 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     Offer.price,
                     Offer.currency,
                     Offer.availability,
+                    Offer.shipping_cost,
+                    Offer.confidence.label("match_confidence"),
                     Offer.captured_at,
+                    Offer.valid_until,
                     Store.slug.label("store_slug"),
+                    Store.reliability_score.label("store_reliability"),
                 )
                 .join(Brand, Brand.id == Fragrance.brand_id)
                 .outerjoin(ProductVariant, ProductVariant.fragrance_id == Fragrance.id)
@@ -72,6 +79,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     and_(
                         Offer.product_variant_id == ProductVariant.id,
                         Offer.status == "active",
+                        or_(Offer.valid_until.is_(None), Offer.valid_until > current_time),
                     ),
                 )
                 .outerjoin(
@@ -136,6 +144,12 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     )
 
             result = []
+            for product in products.values():
+                for variant in product["variants"].values():
+                    variant["offers"] = rank_offers(
+                        variant["offers"], now=current_time
+                    )
+
             for fragrance_id, product in products.items():
                 product["variants"] = list(product["variants"].values())
                 legacy_product_id = session.scalar(
