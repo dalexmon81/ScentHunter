@@ -12,8 +12,5 @@ def identity_scope(query, product_matcher, logger=print):
             return method(str(query or "").strip())
         return []
     except Exception as exc:
-        logger(
-            f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}',
-            
-        )
+        logger(f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}')
         return []
