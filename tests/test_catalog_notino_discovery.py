@@ -41,6 +41,22 @@ def test_notino_is_excluded_from_public_html_discovery():
     assert catalog._seed_sitemaps("notino") == ([], ["authorized_feed_only"])
 
 
+def test_notino_product_refresh_is_blocked_before_any_public_http_request(monkeypatch):
+    def forbidden_http(*args, **kwargs):
+        raise AssertionError("Notino product-page HTTP must remain disabled")
+
+    monkeypatch.setattr(catalog, "http_get", forbidden_http)
+    url = "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/"
+    with catalog._LAST_REFRESH_ERRORS_LOCK:
+        catalog._LAST_REFRESH_ERRORS.pop(("notino", url), None)
+
+    assert catalog.refresh_url("notino", url) is None
+    with catalog._LAST_REFRESH_ERRORS_LOCK:
+        assert catalog._LAST_REFRESH_ERRORS[("notino", url)] == (
+            "notino_feed_only_public_refresh_disabled"
+        )
+
+
 def test_notino_discovery_blocks_without_feed_and_never_probes_public_pages(monkeypatch):
     states = []
 
