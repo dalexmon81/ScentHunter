@@ -23,6 +23,10 @@ def test_rejects_narrow_non_fragrance_url_slug():
     assert is_non_fragrance_offer({"name": "Daily product", "url": "https://shop.example/face-wash"})
 
 
+def test_rejects_face_wash_category():
+    assert is_non_fragrance_offer({"category": "face wash"})
+
+
 def test_keeps_regular_perfume_offer():
     assert not is_non_fragrance_offer({
         "name": "Dior Sauvage Eau de Parfum 100 ml",

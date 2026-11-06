@@ -179,6 +179,22 @@ def test_public_offer_url_handles_empty_url():
     assert public_offer_url({"store": "sabina", "url": ""}) == ""
 
 
+def test_public_offer_url_falls_back_from_empty_variant_url():
+    from app.services.public_offer_url import public_offer_url
+
+    url = "https://shop.example/product"
+    assert public_offer_url({
+        "store": "other",
+        "variant_url": "",
+        "url": url,
+    }) == url
+    assert public_offer_url({
+        "store": "other",
+        "url": "",
+        "product_url": url,
+    }) == url
+
+
 def test_public_offer_projection_prefers_canonical_identity_and_preserves_availability():
     from app.services.public_offer import public_offer
 

@@ -16,9 +16,17 @@ _NON_FRAGRANCE_CATEGORY_RE = re.compile(
     r"accessor|accessori|jewell|joyer|watch|reloj|bag|bolso|"
     r"toiletr|wallet|cartera|brush|pennello|sponge|esponja|"
     r"deodorant|desodorante|aftershave|rasage|soap|jabon|"
-    r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face\\s*wash|"
-    r"facial\\s*cleanser|toner|tonique|gesichtswasser|shaving|"
-    r"gel\\s*de\\s*afeitado|gel\\s*de\\s*rasage)(?:[^a-z0-9]|$)",
+    r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face\s*wash|"
+    r"facial\s*cleanser|toner|tonique|gesichtswasser|shaving|"
+    r"gel\s*de\s*afeitado|gel\s*de\s*rasage)(?:[^a-z0-9]|$)",
+    re.I,
+)
+
+# "Home" is meaningful in a category field, but can appear in a valid
+# fragrance title (for example, "Home fragrance perfume"). Do not use that
+# broad category token against product titles.
+_NON_FRAGRANCE_TITLE_CATEGORY_RE = re.compile(
+    _NON_FRAGRANCE_CATEGORY_RE.pattern.replace("|home|", "|"),
     re.I,
 )
 
@@ -78,7 +86,7 @@ def is_non_fragrance_offer(item):
 
     return bool(
         _NON_FRAGRANCE_TITLE_RE.search(title_text)
-        or _NON_FRAGRANCE_CATEGORY_RE.search(title_text)
+        or _NON_FRAGRANCE_TITLE_CATEGORY_RE.search(title_text)
         or non_fragrance_url_re.search(url_text)
     )
 

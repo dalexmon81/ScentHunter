@@ -15,7 +15,7 @@ def public_offer_url(item):
     raw_url = item.get("variant_url") or item.get("url") or item.get("product_url")
     url = str(raw_url or "").strip()
     if not url:
-        return raw_url
+        return raw_url if raw_url is not None else ""
 
     store = str(item.get("store") or item.get("shop") or "").strip().lower()
     host = ""

@@ -161,8 +161,22 @@ jobs:
           backend/tests/test_canonical_identity_review_queue.py
           backend/tests/test_canonical_identity_backfill.py
           backend/tests/test_product_normalization.py
+          backend/tests/test_identity_scope_service.py
           tests/test_next_engine_service.py
           tests/test_phase2_schema_contract.py
+
+      - name: Validate extracted Phase 1 service contracts
+        run: >-
+          pytest -q
+          backend/tests/test_catalog_readiness.py
+          backend/tests/test_currency_policy.py
+          backend/tests/test_offer_filtering_service.py
+          backend/tests/test_offer_identity.py
+          backend/tests/test_product_matcher_bootstrap.py
+          backend/tests/test_result_identity_service.py
+          backend/tests/test_safe_parsers.py
+          backend/tests/test_store_identity.py
+          backend/tests/test_store_registry.py
 
       - name: Validate connector contracts and offline retailer fixtures
         run: >-
@@ -232,10 +246,10 @@ jobs:
           python backend/scripts/seed_catalog.py --apply
 
       - name: Run PostgreSQL catalog-first search API and fail-closed tests
-        run: pytest -q backend/tests/test_catalog_search_api.py backend/tests/test_catalog_search_fail_closed.py
+        run: pytest -q backend/tests/test_catalog_search_api.py backend/tests/test_catalog_search_fail_closed.py backend/tests/test_catalog_search_terms.py
 
       - name: Validate authenticated catalog admin metrics and queues
-        run: pytest -q backend/tests/test_catalog_admin_metrics.py
+        run: pytest -q backend/tests/test_catalog_admin_metrics.py backend/tests/test_catalog_price_freshness_diagnostic.py
 
       - name: Validate catalog canary, shadow comparison and legacy routing
         run: pytest -q backend/tests/test_catalog_rollout.py
@@ -256,7 +270,7 @@ jobs:
         run: pytest -q backend/tests/test_production_diagnostics_are_opt_in.py
 
       - name: Validate Phase 0 baseline worker and PostgreSQL-only source
-        run: pytest -q backend/tests/test_phase0_baseline_jobs.py backend/tests/test_phase0_baseline_validation.py
+        run: pytest -q backend/tests/test_phase0_baseline_jobs.py backend/tests/test_phase0_baseline_validation.py backend/tests/test_phase0_summary_report.py
 
       - name: Assert live retailer feed credentials are not configured
         run: |

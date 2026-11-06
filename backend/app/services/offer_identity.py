@@ -51,10 +51,10 @@ def is_dior_line_url_mismatch(item: object) -> bool:
     title_norm = normalize(title)
     url_norm = normalize(url)
 
-    title_is_eau_sauvage = bool(re.search(r"\\beau sauvage\\b", title_norm))
-    url_is_eau_sauvage = bool(re.search(r"\\beau sauvage\\b", url_norm))
-    title_is_sauvage = bool(re.search(r"\\bsauvage\\b", title_norm))
-    url_is_sauvage = bool(re.search(r"\\bsauvage\\b", url_norm))
+    title_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", title_norm))
+    url_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", url_norm))
+    title_is_sauvage = bool(re.search(r"\bsauvage\b", title_norm))
+    url_is_sauvage = bool(re.search(r"\bsauvage\b", url_norm))
 
     if url_is_eau_sauvage and title_is_sauvage and not title_is_eau_sauvage:
         return True
