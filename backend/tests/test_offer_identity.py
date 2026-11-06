@@ -64,3 +64,39 @@ def test_dior_line_guard_accepts_matching_product_line():
 def test_dior_line_guard_ignores_non_dictionary_values():
     assert is_dior_line_url_mismatch(None) is False
     assert is_dior_line_url_mismatch("Dior Sauvage") is False
+
+
+def test_concentration_mismatch_guard_rejects_edp_title_linked_to_edt():
+    from app.services.offer_identity import is_concentration_mismatch_offer
+
+    assert is_concentration_mismatch_offer({
+        "name": "Dior Sauvage Eau de Parfum",
+        "url": "https://shop.example/dior-sauvage-eau-de-toilette",
+    }) is True
+
+
+def test_concentration_mismatch_guard_rejects_known_brand_conflict():
+    from app.services.offer_identity import is_concentration_mismatch_offer
+
+    assert is_concentration_mismatch_offer({
+        "name": "French Avenue Chaos",
+        "brand": "French Avenue",
+        "url": "https://shop.example/vertus-chaos",
+    }) is True
+
+
+def test_concentration_mismatch_guard_accepts_consistent_identity():
+    from app.services.offer_identity import is_concentration_mismatch_offer
+
+    assert is_concentration_mismatch_offer({
+        "name": "Dior Sauvage Eau de Parfum",
+        "brand": "Dior",
+        "url": "https://shop.example/dior-sauvage-eau-de-parfum",
+    }) is False
+
+
+def test_concentration_mismatch_guard_ignores_non_dictionary_values():
+    from app.services.offer_identity import is_concentration_mismatch_offer
+
+    assert is_concentration_mismatch_offer(None) is False
+    assert is_concentration_mismatch_offer("Dior Sauvage") is False

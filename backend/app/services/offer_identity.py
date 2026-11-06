@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import urllib.parse
 
 
 def offer_concentration_token(value: object) -> str:
@@ -59,4 +60,41 @@ def is_dior_line_url_mismatch(item: object) -> bool:
         return True
     if title_is_eau_sauvage and url_is_sauvage and not url_is_eau_sauvage:
         return True
+    return False
+
+
+def is_concentration_mismatch_offer(item: object) -> bool:
+    """Reject decisive product-title / destination identity conflicts."""
+    if not isinstance(item, dict):
+        return False
+    title = " ".join(str(item.get(key) or "") for key in
+                     ("name", "title", "product_name", "raw_name", "_raw_name")).strip()
+    url = " ".join(str(item.get(key) or "") for key in
+                   ("url", "product_url", "source_url", "product_page", "link", "_raw_url")).strip()
+    title_norm = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+    url_norm = re.sub(r"[^a-z0-9]+", " ", url.lower()).strip()
+
+    title_token = offer_concentration_token(title)
+    url_token = offer_concentration_token(url)
+    hard_tokens = {"edt", "edp", "edc", "edt_intense", "edp_intense"}
+    if title_token in hard_tokens and url_token in hard_tokens and title_token != url_token:
+        return True
+    if is_dior_line_url_mismatch(item):
+        return True
+
+    brand = str(item.get("canonical_brand") or item.get("brand") or item.get("manufacturer") or "").strip()
+    brand_norm = re.sub(r"[^a-z0-9]+", " ", brand.lower()).strip()
+    if brand_norm and len(brand_norm) >= 3 and brand_norm not in {"unknown", "perfume"}:
+        url_path = urllib.parse.urlparse(url.split()[0] if url else "").path
+        url_identity = re.sub(r"[^a-z0-9]+", " ", url_path.lower()).strip()
+        known_brands = {
+            "vertus", "french avenue", "rasasi", "dior", "afnan", "lattafa",
+            "armaf", "maison alhambra", "parfums de marly", "xerjoff",
+            "initio", "creed", "chanel", "versace", "gucci", "prada",
+            "yves saint laurent", "givenchy", "valentino", "burberry",
+            "hugo boss", "dolce gabbana", "montale", "mancera", "nishane",
+        }
+        for candidate in known_brands:
+            if candidate != brand_norm and candidate in url_identity and brand_norm in known_brands:
+                return True
     return False
