@@ -14,6 +14,6 @@ def identity_scope(query, product_matcher, logger=print):
     except Exception as exc:
         logger(
             f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
+            
         )
         return []
