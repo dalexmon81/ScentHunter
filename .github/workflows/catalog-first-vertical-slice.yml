@@ -8,6 +8,7 @@ on:
       - phase7/catalog-first-operational-e2e
       - phase8/catalog-offer-ranking
       - phase10/catalog-ops-observability
+      - phase11/catalog-search-canary-shadow
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
@@ -147,6 +148,12 @@ jobs:
         run: |
           if [ -f backend/tests/test_catalog_admin_metrics.py ]; then
             pytest -q backend/tests/test_catalog_admin_metrics.py
+          fi
+
+      - name: Validate Phase 11 canary and shadow comparison
+        run: |
+          if [ -f backend/tests/test_catalog_rollout.py ]; then
+            pytest -q backend/tests/test_catalog_rollout.py
           fi
 
       - name: Validate matcher and offer aggregation contracts
