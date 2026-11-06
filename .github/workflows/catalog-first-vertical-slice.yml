@@ -165,6 +165,18 @@ jobs:
           tests/test_next_engine_service.py
           tests/test_phase2_schema_contract.py
 
+      - name: Validate extracted Phase 1 service contracts
+        run: >-
+          pytest -q
+          backend/tests/test_catalog_readiness.py
+          backend/tests/test_currency_policy.py
+          backend/tests/test_offer_filtering_service.py
+          backend/tests/test_offer_identity.py
+          backend/tests/test_product_matcher_bootstrap.py
+          backend/tests/test_result_identity_service.py
+          backend/tests/test_safe_parsers.py
+          backend/tests/test_store_identity.py
+
       - name: Validate connector contracts and offline retailer fixtures
         run: >-
           pytest -q
@@ -233,7 +245,7 @@ jobs:
           python backend/scripts/seed_catalog.py --apply
 
       - name: Run PostgreSQL catalog-first search API and fail-closed tests
-        run: pytest -q backend/tests/test_catalog_search_api.py backend/tests/test_catalog_search_fail_closed.py
+        run: pytest -q backend/tests/test_catalog_search_api.py backend/tests/test_catalog_search_fail_closed.py backend/tests/test_catalog_search_terms.py
 
       - name: Validate authenticated catalog admin metrics and queues
         run: pytest -q backend/tests/test_catalog_admin_metrics.py
@@ -257,7 +269,7 @@ jobs:
         run: pytest -q backend/tests/test_production_diagnostics_are_opt_in.py
 
       - name: Validate Phase 0 baseline worker and PostgreSQL-only source
-        run: pytest -q backend/tests/test_phase0_baseline_jobs.py backend/tests/test_phase0_baseline_validation.py
+        run: pytest -q backend/tests/test_phase0_baseline_jobs.py backend/tests/test_phase0_baseline_validation.py backend/tests/test_phase0_summary_report.py
 
       - name: Assert live retailer feed credentials are not configured
         run: |
