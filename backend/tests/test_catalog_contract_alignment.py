@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.connectors.base import OfferRecord, validate_offer, validate_offer_payload
-from app.models import ProductVariant
+from app.models import ProductVariant, Store
 from app.services.ingestion_persistence import _ALLOWED_AVAILABILITY
 
 
@@ -66,3 +66,15 @@ def test_ingestion_raw_has_partial_unique_guard_for_live_store_products():
     predicate = str(guard.dialect_options["sqlite"]["where"])
     assert "pending" in predicate and "unmatched" in predicate and "matched" in predicate
     assert "promoted" not in predicate
+
+
+
+def test_store_freshness_policy_is_explicit_and_positive():
+    column = Store.__table__.c.offer_ttl_minutes
+    assert column.nullable is True
+    constraints = {
+        constraint.name: str(constraint.sqltext)
+        for constraint in Store.__table__.constraints
+        if getattr(constraint, "name", None) == "offer_ttl_positive"
+    }
+    assert "offer_ttl_minutes > 0" in constraints["offer_ttl_positive"]
