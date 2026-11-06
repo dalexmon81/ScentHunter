@@ -75,6 +75,7 @@ on:
       - "backend/app/api/catalog_search.py"
       - "backend/app/api/admin_catalog.py"
       - "backend/tests/test_catalog_admin_metrics.py"
+      - "backend/tests/test_catalog_search_api.py"
       - "backend/tests/test_product_normalization.py"
       - "backend/scripts/notino_pilot_preflight.py"
       - "backend/scripts/seed_catalog.py"
