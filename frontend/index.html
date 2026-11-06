@@ -738,19 +738,28 @@ let currentOpenSizeKey=null;
 
 
 function shPrice(o){
-  /* Always normalize commercial prices through the same EUR formatter.
-   * This prevents raw backend strings such as "35.10" from losing the €
-   * marker while preserving the existing Italian decimal presentation. */
   const raw=(o&&o.price!==undefined&&o.price!==null)?String(o.price).trim():"";
   const parsed=raw?parsePrice(raw):Number(o&&o.price_num);
-  if(Number.isFinite(parsed)&&parsed>0)return formatEuro(parsed);
-  return "Prezzo non disponibile";
+  if(!Number.isFinite(parsed)||parsed<=0)return "Prezzo non disponibile";
+  const currency=String(o&&o.currency||"EUR").trim().toUpperCase();
+  try{return new Intl.NumberFormat("it-IT",{style:"currency",currency}).format(parsed)}
+  catch(_){return formatEuro(parsed)}
 }
 function shNum(o){
   const n=Number(o&&o.price_num);
   if(Number.isFinite(n)&&n>0)return n;
   const p=parsePrice(o&&o.price);
   return p===null||p<=0?Infinity:p;
+}
+function shOfferCompare(a,b){
+  const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+  if(ao!==bo)return ao?1:-1;
+  const ac=String(a&&a.currency||"EUR").toUpperCase();
+  const bc=String(b&&b.currency||"EUR").toUpperCase();
+  if(ac!==bc)return ac.localeCompare(bc);
+  const ar=Number(a&&a.ranking&&a.ranking.score),br=Number(b&&b.ranking&&b.ranking.score);
+  if(Number.isFinite(ar)&&Number.isFinite(br)&&ar!==br)return br-ar;
+  return shNum(a)-shNum(b);
 }
 
 /*
@@ -879,11 +888,7 @@ function getSizeGroups(g){
   });
   return [...map.entries()].map(([size,offers])=>({
     size,
-    offers:offers.sort((a,b)=>{
-      const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
-      if(ao!==bo)return ao?1:-1;
-      return shNum(a)-shNum(b);
-    }),
+    offers:offers.sort(shOfferCompare),
     best:offers.find(o=>!isOfferOutOfStock(o))||null
   })).sort((a,b)=>{
     if(!a.size)return 1;
@@ -978,7 +983,7 @@ function renderOffersHtml(g,img,offers,saved){
     const refreshId=String(o.phase2_offer_id||"");
     const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
     const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':"";
-    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
+    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(o.ranking?'<div class="offer-meta">PUNTEGGIO DI CONFRONTO '+esc(o.ranking.score)+'/100 · '+esc(o.ranking.currency_scope||o.currency||"")+'</div>':(!out&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""))}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
   }).join("");
 }
 
@@ -1029,11 +1034,7 @@ function openProduct(i){
   if(knownSizes.length===1 && unknownSizeGroup){
     const selected=groups.find(x=>x.size===knownSizes[0]);
     const combinedOffers=[...(selected?.offers||[]),...(unknownSizeGroup.offers||[])];
-    combinedOffers.sort((a,b)=>{
-      const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
-      if(ao!==bo)return ao?1:-1;
-      return shNum(a)-shNum(b);
-    });
+    combinedOffers.sort(shOfferCompare);
     renderSingleFormatComparison(g,g.image||g.fallback_image||"",combinedOffers,knownSizes[0],saved);
     return;
   }
