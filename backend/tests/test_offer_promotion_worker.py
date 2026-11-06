@@ -264,3 +264,87 @@ def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
         assert offer.valid_until.replace(tzinfo=timezone.utc) == datetime(
             2025, 2, 2, 10, 30, tzinfo=timezone.utc
         )
+
+
+
+
+def test_reingestion_of_same_retailer_product_updates_one_offer_and_appends_history():
+    factory, first_raw_id = setup_db()
+    assert promote_matched_offers(factory, limit=1) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+
+    # The ingestion table intentionally prevents duplicate *live* rows for
+    # one store/product identity. A later observation is inserted only after
+    # the previous row has been promoted.
+    with factory() as session:
+        first = session.get(IngestionRaw, first_raw_id)
+        second = IngestionRaw(
+            store_id=first.store_id,
+            external_product_id=first.external_product_id,
+            raw_payload={
+                **first.raw_payload,
+                "capturedAt": "2025-02-01T10:30:00+00:00",
+                "price": "88.00",
+            },
+            status="matched",
+            product_variant_id=first.product_variant_id,
+            match_method=first.match_method,
+            match_confidence=first.match_confidence,
+        )
+        session.add(second)
+        session.commit()
+        second_raw_id = second.id
+
+    assert promote_matched_offers(factory, limit=1) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+
+    with factory() as session:
+        offers = session.scalars(select(Offer)).all()
+        history = session.scalars(
+            select(PriceHistory).order_by(PriceHistory.captured_at.asc())
+        ).all()
+        audits = session.scalars(select(MatchAudit)).all()
+        first = session.get(IngestionRaw, first_raw_id)
+        second = session.get(IngestionRaw, second_raw_id)
+
+        assert len(offers) == 1
+        assert offers[0].external_product_id == "sku-100"
+        assert offers[0].price == Decimal("88.00")
+        assert len(history) == 2
+        assert {entry.price for entry in history} == {
+            Decimal("90.50"), Decimal("88.00"),
+        }
+        assert all(entry.offer_id == offers[0].id for entry in history)
+        assert len(audits) == 2
+        assert first.status == second.status == "promoted"
+
+def test_offer_promotion_transaction_rollback_leaves_no_partial_publication():
+    from app.services.ingestion_persistence import promote_offer
+
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        offer_id = promote_offer(
+            session,
+            ingestion_raw_id=raw_id,
+            price=Decimal("90.50"),
+            currency="EUR",
+            url="https://shop.example/item/sku-100",
+            availability="in_stock",
+            source="fixture",
+            confidence=Decimal("0.990"),
+            captured_at=datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        )
+        assert session.get(Offer, offer_id) is not None
+        assert raw.status == "promoted"
+        session.rollback()
+
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert session.scalar(select(Offer)) is None
+        assert session.scalar(select(PriceHistory)) is None
+        assert session.scalar(select(MatchAudit)) is None
+

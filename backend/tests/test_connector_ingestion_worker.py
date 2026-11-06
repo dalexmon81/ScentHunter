@@ -358,10 +358,13 @@ def test_discovery_failure_marks_its_own_run_without_touching_another_running_ru
 
     monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
     monkeypatch.setattr(ingestion_tasks, "get_connector", lambda _store_key: FailingConnector())
-    monkeypatch.setattr(
-        ingestion_tasks, "_run",
-        lambda _coroutine: (_ for _ in ()).throw(TimeoutError("discovery timeout")),
-    )
+    def fail_run(coroutine):
+        # Close the coroutine before simulating the transport failure so the
+        # regression test itself does not emit an un-awaited-coroutine warning.
+        coroutine.close()
+        raise TimeoutError("discovery timeout")
+
+    monkeypatch.setattr(ingestion_tasks, "_run", fail_run)
 
     with pytest.raises(TimeoutError, match="discovery timeout"):
         ingestion_tasks.discover_store_products.run("fake-store")

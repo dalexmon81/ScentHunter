@@ -200,6 +200,11 @@ def _request_html(url: str) -> str:
     except requests.RequestException as exc:
         request_error = StoreRequestError("error", str(exc))
 
+    # A retailer denial or rate limit is an explicit access boundary. Do not
+    # retry it through a browser fallback or attempt to work around the response.
+    if request_error is not None and request_error.status == "blocked":
+        raise request_error
+
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as playwright:
