@@ -8,6 +8,16 @@ on:
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
+      - "backend/app/services/**"
+      - "backend/app/workers/**"
+      - "backend/app/connectors/**"
+      - "backend/app/matching/**"
+      - "backend/tests/**"
+      - "tests/test_canonical_matcher.py"
+      - "tests/test_catalog_offer_price_selection.py"
+      - "tests/test_offer_aggregator.py"
+      - "tests/test_next_engine_service.py"
+      - "tests/test_phase2_schema_contract.py"
       - "backend/app/connectors/notino.py"
       - "backend/app/matching/**"
       - "backend/app/models/**"
@@ -40,7 +50,7 @@ permissions:
 jobs:
   postgres-vertical-slice:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:16
@@ -55,21 +65,117 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
     env:
       PYTHONPATH: backend
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://vertical_slice:ci_only_password@127.0.0.1:5432/vertical_slice_test
       SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
+      SCENTHUNTER_REDIS_URL: redis://127.0.0.1:6379/0
+      SCENTHUNTER_CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/1
+      SCENTHUNTER_DISCOVERY_TERMS_JSON: "{}"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install backend dependencies
-        run: python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt pytest
+      - name: Install backend and worker dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt "celery[redis]==5.5.3" pytest
       - name: Apply schema migrations to disposable PostgreSQL
         working-directory: backend
         run: alembic upgrade head
       - name: Seed canonical catalog identities and variants
         run: python backend/scripts/seed_catalog.py --apply
-      - name: Run fixture-backed ingestion, matching, promotion and API test
+      - name: Validate PostgreSQL policy, schema and migration compatibility
+        run: >-
+          pytest -q
+          backend/tests/test_db_postgresql_policy.py
+          backend/tests/test_phase2_database_backends.py
+          backend/tests/test_phase2_postgres_schema.py
+          backend/tests/test_phase2_runtime_db_identity.py
+          backend/tests/test_phase2_sqlite_postgres_import.py
+          backend/tests/test_phase2_bplatz_postgres.py
+
+      - name: Validate canonical identity and normalization
+        run: >-
+          pytest -q
+          backend/tests/test_canonical_identity_persistence.py
+          backend/tests/test_canonical_identity_writer.py
+          backend/tests/test_canonical_identity_review_queue.py
+          backend/tests/test_canonical_identity_backfill.py
+          backend/tests/test_product_normalization.py
+          tests/test_next_engine_service.py
+          tests/test_phase2_schema_contract.py
+
+      - name: Validate connector contracts and offline retailer fixtures
+        run: >-
+          pytest -q
+          backend/tests/test_store_connector_contract.py
+          backend/tests/test_notino_connector_fixture.py
+          backend/tests/test_notino_universal_connector.py
+          backend/tests/test_deloox_universal_connector.py
+          backend/tests/test_easycosmetic_universal_connector.py
+          backend/tests/test_sabina_universal_connector.py
+          backend/tests/test_parfumzentrum_universal_connector.py
+          backend/tests/test_remaining_universal_connectors.py
+          backend/tests/test_connector_ingestion_worker.py
+          backend/tests/test_connector_ingestion_session_defaults.py
+
+      - name: Validate ingestion, matching, promotion and queue workers
+        run: >-
+          pytest -q
+          backend/tests/test_celery_ingestion_pipeline.py
+          backend/tests/test_offer_matching_worker.py
+          backend/tests/test_offer_promotion_worker.py
+          backend/tests/test_offer_detail_refresh_api.py
+          backend/tests/test_legacy_catalog_offer_bridge.py
+          backend/tests/test_legacy_store_raw_capture.py
+
+      - name: Validate matcher and offer aggregation contracts
+        run: >-
+          pytest -q
+          tests/test_canonical_matcher.py
+          tests/test_catalog_offer_price_selection.py
+          tests/test_offer_aggregator.py
+
+      - name: Reset disposable PostgreSQL before end-to-end fixture
+        run: |
+          psql "$SCENTHUNTER_CATALOG_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+          (cd backend && alembic upgrade head)
+          python backend/scripts/seed_catalog.py --apply
+
+      - name: Run fixture-backed ingestion, matching, promotion and catalog API test
         run: pytest -q -s backend/tests/test_catalog_first_vertical_slice.py
+
+      - name: Reset disposable PostgreSQL before isolated search API tests
+        run: |
+          psql "$SCENTHUNTER_CATALOG_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+          (cd backend && alembic upgrade head)
+          python backend/scripts/seed_catalog.py --apply
+
+      - name: Run PostgreSQL catalog-first search API tests
+        run: pytest -q backend/tests/test_catalog_search_api.py
+
+      - name: Assert live retailer feed credentials are not configured
+        run: |
+          python - <<'PY'
+          import os
+          forbidden = (
+              "NOTINO_CJ_FEED_URL",
+              "NOTINO_CJ_USERNAME",
+              "NOTINO_CJ_PASSWORD",
+              "SCENTHUNTER_NOTINO_FEED_URL",
+              "SCENTHUNTER_NOTINO_FEED_USERNAME",
+              "SCENTHUNTER_NOTINO_FEED_PASSWORD",
+          )
+          present = [name for name in forbidden if os.getenv(name)]
+          assert not present, f"Live retailer configuration unexpectedly present: {present}"
+          print("OFFLINE_RETAILER_BOUNDARY=PASS")
+          PY
