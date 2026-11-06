@@ -1,35 +1,59 @@
-name: Phase 2 SQLite schema checks
+name: Phase 2 PostgreSQL integration
 
 on:
-  pull_request:
-    paths:
-      - "backend/app/models/**"
-      - "backend/app/db.py"
-      - "backend/alembic/**"
-      - "backend/alembic.ini"
-      - "backend/scripts/seed_catalog.py"
-      - "requirements.txt"
-      - "tests/test_phase2_schema_contract.py"
-      - "tests/test_phase2_seed_catalog.py"
-      - ".github/workflows/phase2-postgresql.yml"
   push:
     branches:
-      - "feature/phase-2-postgresql-data-model"
+      - phase11/gradual-migration
+    paths:
+      - "backend/**"
+      - "tests/test_phase2_*.py"
+      - ".github/workflows/phase2-postgresql.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "tests/test_phase2_*.py"
+      - ".github/workflows/phase2-postgresql.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  schema-contract:
+  postgresql-integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: scenthunter_test
+          POSTGRES_USER: scenthunter
+          POSTGRES_PASSWORD: scenthunter_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scenthunter -d scenthunter_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://scenthunter:scenthunter_ci_only@localhost:5432/scenthunter_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install SQLite migration tooling
-        run: python -m pip install "SQLAlchemy==2.0.44" "alembic==1.17.1" pytest
-      - name: Run schema and seed integration tests
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+      - name: Run SQLite contract and seed regression tests
         run: pytest -q tests/test_phase2_schema_contract.py tests/test_phase2_seed_catalog.py
+      - name: Run PostgreSQL migration and persistence integration
+        working-directory: backend
+        run: |
+          python -m alembic -c alembic.ini upgrade head
+          cd ..
+          pytest -q tests/test_phase2_postgresql_integration.py
