@@ -267,8 +267,16 @@ def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
 
 
 
+
 def test_reingestion_of_same_retailer_product_updates_one_offer_and_appends_history():
     factory, first_raw_id = setup_db()
+    assert promote_matched_offers(factory, limit=1) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+
+    # The ingestion table intentionally prevents duplicate *live* rows for
+    # one store/product identity. A later observation is inserted only after
+    # the previous row has been promoted.
     with factory() as session:
         first = session.get(IngestionRaw, first_raw_id)
         second = IngestionRaw(
@@ -288,9 +296,6 @@ def test_reingestion_of_same_retailer_product_updates_one_offer_and_appends_hist
         session.commit()
         second_raw_id = second.id
 
-    assert promote_matched_offers(factory, limit=1) == {
-        "processed": 1, "published": 1, "blocked": 0,
-    }
     assert promote_matched_offers(factory, limit=1) == {
         "processed": 1, "published": 1, "blocked": 0,
     }
