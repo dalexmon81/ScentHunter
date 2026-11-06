@@ -5,6 +5,7 @@ on:
     branches:
       - phase2/staging-postgresql-guard
       - phase7/catalog-search-api
+      - phase7/catalog-first-operational-e2e
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
@@ -145,10 +146,21 @@ jobs:
           tests/test_canonical_matcher.py
           tests/test_catalog_offer_price_selection.py
           tests/test_offer_aggregator.py
+          backend/tests/test_offer_ranking.py
 
       - name: Reset disposable PostgreSQL before end-to-end fixture
         run: |
-          psql "$SCENTHUNTER_CATALOG_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+          python - <<'PY'
+          from sqlalchemy import text
+          from app.db import make_engine
+          engine = make_engine()
+          try:
+              with engine.begin() as connection:
+                  connection.execute(text("DROP SCHEMA public CASCADE"))
+                  connection.execute(text("CREATE SCHEMA public"))
+          finally:
+              engine.dispose()
+          PY
           (cd backend && alembic upgrade head)
           python backend/scripts/seed_catalog.py --apply
 
@@ -157,7 +169,17 @@ jobs:
 
       - name: Reset disposable PostgreSQL before isolated search API tests
         run: |
-          psql "$SCENTHUNTER_CATALOG_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+          python - <<'PY'
+          from sqlalchemy import text
+          from app.db import make_engine
+          engine = make_engine()
+          try:
+              with engine.begin() as connection:
+                  connection.execute(text("DROP SCHEMA public CASCADE"))
+                  connection.execute(text("CREATE SCHEMA public"))
+          finally:
+              engine.dispose()
+          PY
           (cd backend && alembic upgrade head)
           python backend/scripts/seed_catalog.py --apply
 
