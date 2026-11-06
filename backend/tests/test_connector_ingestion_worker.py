@@ -144,7 +144,7 @@ def test_notino_fixture_matches_and_promotes_exact_dior_sauvage_edp_100ml():
         session.add(variant)
         session.add(Store(
             name="Notino", slug="notino", domain="notino.fr",
-            country="FR", currency="EUR", status="active",
+            country="FR", currency="EUR", offer_ttl_minutes=1440, status="active",
         ))
         session.commit()
 
