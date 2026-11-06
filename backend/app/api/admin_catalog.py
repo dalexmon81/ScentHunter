@@ -81,10 +81,10 @@ def collect_catalog_metrics(session, *, now=None):
         "stale_offers_24h": _count(session, Offer, stale_offer),
         "offers_missing_expiry": _count(session, Offer, missing_expiry_offer),
         "offers_without_canonical_variant": _count(
-            session, Offer, active_offer, Offer.product_variant_id.is_(None)
+            session, Offer, Offer.status == "active", Offer.product_variant_id.is_(None)
         ),
         "offers_without_shipping_cost": _count(
-            session, Offer, active_offer, Offer.shipping_cost.is_(None)
+            session, Offer, Offer.status == "active", Offer.shipping_cost.is_(None)
         ),
         "pending_raw_records": _count(session, IngestionRaw, IngestionRaw.status == "pending"),
         "unmatched_raw_records": _count(session, IngestionRaw, IngestionRaw.status == "unmatched"),
