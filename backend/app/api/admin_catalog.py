@@ -145,6 +145,30 @@ def collect_catalog_metrics(session, *, now=None):
     }
 
 
+@router.put("/stores/{store_slug}/freshness-policy")
+def set_store_freshness_policy(
+    store_slug: str,
+    offer_ttl_minutes: int = Query(..., gt=0),
+    _authorized: bool = Depends(require_admin_token),
+):
+    """Set the explicit maximum age for published offers from one store."""
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_slug))
+            if store is None:
+                raise HTTPException(status_code=404, detail="catalog_store_not_found")
+            store.offer_ttl_minutes = offer_ttl_minutes
+            session.commit()
+            return {
+                "store": store.slug,
+                "offer_ttl_minutes": store.offer_ttl_minutes,
+                "policy": "source_captured_at_plus_configured_ttl",
+            }
+    finally:
+        factory.kw["bind"].dispose()
+
+
 @router.get("/metrics")
 def catalog_admin_metrics(_authorized: bool = Depends(require_admin_token)):
     factory = make_session_factory()
