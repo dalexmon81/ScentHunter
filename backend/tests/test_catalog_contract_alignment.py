@@ -36,7 +36,7 @@ def test_unknown_stock_is_evidence_but_not_publishable():
     valid, errors = validate_offer_payload(_offer("CHF", "unknown").to_dict())
     assert not valid
     assert "availability_requires_review" in errors
-    assert _ALLOWED_AVAILABILITY == {"in_stock", "out_of_stock", "preorder"}
+    assert _ALLOWED_AVAILABILITY == {"in_stock", "out_of_stock"}
 
 
 def test_variant_size_schema_preserves_fractional_millilitres():
