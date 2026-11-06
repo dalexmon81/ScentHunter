@@ -75,6 +75,7 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                 name="Fixture Active Store",
                 slug="catalog-search-active-fixture",
                 currency="EUR",
+                offer_ttl_minutes=1440,
                 status="active",
             )
             inactive_store = Store(
@@ -98,6 +99,17 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
                     product_variant_id=variant.id,
                     url="https://fixture.example/active-offer",
                     price=Decimal("89.90"),
+                    currency="EUR",
+                    availability="in_stock",
+                    source="catalog_search_test_fixture",
+                    status="active",
+                    valid_until=datetime.now(timezone.utc) + timedelta(hours=24),
+                ),
+                Offer(
+                    store_id=active_store.id,
+                    product_variant_id=variant.id,
+                    url="https://fixture.example/missing-expiry-offer",
+                    price=Decimal("88.90"),
                     currency="EUR",
                     availability="in_stock",
                     source="catalog_search_test_fixture",
@@ -146,6 +158,7 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
         assert fixture_offers[0]["ranking"]["price_basis"] == "product_price_only"
         assert all(offer["store"] != "catalog-search-inactive-fixture" for offer in variant_result["offers"])
         assert all(offer["store"] != "catalog-search-expired-fixture" for offer in variant_result["offers"])
+        assert all(offer["url"] != "https://fixture.example/missing-expiry-offer" for offer in variant_result["offers"])
 
         # A caller-owned session factory remains usable after the search.
         with factory() as session:
