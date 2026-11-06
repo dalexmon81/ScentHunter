@@ -22,6 +22,14 @@ _NON_FRAGRANCE_CATEGORY_RE = re.compile(
     re.I,
 )
 
+# "Home" is meaningful in a category field, but can appear in a valid
+# fragrance title (for example, "Home fragrance perfume"). Do not use that
+# broad category token against product titles.
+_NON_FRAGRANCE_TITLE_CATEGORY_RE = re.compile(
+    _NON_FRAGRANCE_CATEGORY_RE.pattern.replace("|home|", "|"),
+    re.I,
+)
+
 
 def is_non_fragrance_offer(item):
     """Reject generic non-perfume commercial items before matching/publication.
@@ -78,7 +86,7 @@ def is_non_fragrance_offer(item):
 
     return bool(
         _NON_FRAGRANCE_TITLE_RE.search(title_text)
-        or _NON_FRAGRANCE_CATEGORY_RE.search(title_text)
+        or _NON_FRAGRANCE_TITLE_CATEGORY_RE.search(title_text)
         or non_fragrance_url_re.search(url_text)
     )
 
