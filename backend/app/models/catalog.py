@@ -99,6 +99,7 @@ class Offer(Base):
     __tablename__ = "offers"
     __table_args__ = (
         CheckConstraint("price >= 0", name="price_nonnegative"),
+        CheckConstraint("status <> 'active' OR price > 0", name="active_offer_positive_price"),
         CheckConstraint("shipping_cost IS NULL OR shipping_cost >= 0", name="shipping_cost_nonnegative"),
         CheckConstraint("confidence IS NULL OR (confidence >= 0 AND confidence <= 1)", name="confidence_range"),
         CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
