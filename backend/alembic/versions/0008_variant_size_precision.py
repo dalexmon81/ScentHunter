@@ -27,7 +27,7 @@ def downgrade():
     op.alter_column(
         "product_variants",
         "size_ml",
-        existing_type=sa.Numeric(8, 2),
+        existing_type=sa.Numeric(10, 4),
         type_=sa.Integer(),
         existing_nullable=True,
         postgresql_using="round(size_ml)::integer",
