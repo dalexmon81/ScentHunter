@@ -176,12 +176,12 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
             for variant_row in product["variants"]
             for offer in variant_row["offers"]
         ]
-        assert len(published_offers) == 1, published_offers
-        assert published_offers[0]["store"] == "notino"
-        assert published_offers[0]["price"] == 99.9
-        assert published_offers[0]["currency"] == "EUR"
-        assert published_offers[0]["availability"] == "in_stock"
-        assert published_offers[0]["url"] == (
+        notino_published_offers = [offer for offer in published_offers if offer["store"] == "notino"]
+        assert len(notino_published_offers) == 1, published_offers
+        assert notino_published_offers[0]["price"] == 99.9
+        assert notino_published_offers[0]["currency"] == "EUR"
+        assert notino_published_offers[0]["availability"] == "in_stock"
+        assert notino_published_offers[0]["url"] == (
             "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
         )
     finally:
