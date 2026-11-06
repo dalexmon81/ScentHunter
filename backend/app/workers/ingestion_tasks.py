@@ -21,7 +21,7 @@ from sqlalchemy import select
 
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
-from app.connectors.base import is_currency_code
+from app.connectors.base import validate_offer_payload
 from app.models import IngestionArtifact, IngestionDeadLetter, IngestionRaw, IngestionRun, Offer, Store
 from app.matching.offer_matcher import match_staged_offer
 from app.services.product_normalization import normalize_product
@@ -410,28 +410,8 @@ def validate_offer(self, raw_id: str):
             if raw is None or raw.status not in {"pending", "unmatched"}:
                 return {"raw_id": raw_id, "status": "skipped"}
             payload = raw.raw_payload or {}
-            errors = []
-            for field in ("store", "externalProductId", "brand", "fragrance", "title", "url", "availability", "capturedAt", "source"):
-                if not str(payload.get(field) or "").strip():
-                    errors.append(f"missing_{field}")
-            if not str(payload.get("url") or "").startswith("https://"):
-                errors.append("invalid_https_url")
-            try:
-                price = Decimal(str(payload.get("price")))
-                if not price.is_finite() or price <= 0:
-                    errors.append("invalid_price")
-            except (InvalidOperation, TypeError, ValueError):
-                errors.append("invalid_price")
-            if not is_currency_code(payload.get("currency")):
-                errors.append("invalid_currency_code")
-            try:
-                captured = datetime.fromisoformat(str(payload.get("capturedAt", "")).replace("Z", "+00:00"))
-                if captured.tzinfo is None:
-                    errors.append("captured_at_timezone_required")
-            except (TypeError, ValueError):
-                errors.append("invalid_captured_at")
-            if payload.get("availability") not in {"in_stock", "out_of_stock", "preorder"}:
-                errors.append("invalid_availability")
+            _valid, validation_errors = validate_offer_payload(payload)
+            errors = list(validation_errors)
             if errors:
                 raw.status = "rejected"
                 raw.rejection_reason = ",".join(errors)
