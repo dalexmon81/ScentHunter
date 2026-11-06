@@ -6,8 +6,11 @@ primary_region = "ams"
 [build]
   dockerfile = "backend/Dockerfile.worker"
 
-# Keep process-group names aligned with the staging deployment verifier.
-# The wrapper keeps Beat disabled until explicitly reviewed and enabled.
+# Enforce the catalog database contract before the worker process can start.
+# If the staging PostgreSQL URL is missing, startup fails closed.
+[env]
+  SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL = "1"
+
 [processes]
   app = "sh /app/backend/start_worker.sh worker"
   beat = "sh /app/backend/start_worker.sh beat"
