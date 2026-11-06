@@ -63,7 +63,11 @@ jobs:
             python:3.12-alpine \
             python /verify.py
 
-          echo "Checking that the recovery volume has been released after the temporary machine exited."
+          echo "Collecting the one-off machine output before cleanup."
+          flyctl logs --app scenthunter --machine d891e960a17448 --no-tail || true
+          echo "Removing only the temporary verification machine; the recovery volume itself is retained."
+          flyctl machine destroy d891e960a17448 --app scenthunter --force --yes
+          echo "Checking that the recovery volume has been released after the temporary machine was destroyed."
           flyctl volumes list --app scenthunter | tee /tmp/volumes-after.txt
           grep -q "$RECOVERY_VOLUME_ID" /tmp/volumes-after.txt
           grep -q "scenthunter_data" /tmp/volumes-after.txt
