@@ -1,0 +1,161 @@
+name: Phase 0 - Fly.io read-only environment audit
+
+on:
+  push:
+    branches:
+      - phase0/fly-readonly-audit
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scent-hunter-phase0-fly-readonly-audit
+  cancel-in-progress: false
+
+jobs:
+  inspect-fly:
+    name: Inspect Fly.io production and isolated staging (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@1.5
+
+      - name: Inspect production app and persistent volume (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set +e
+          {
+            echo "=== Production Fly app: scenthunter ==="
+            if [[ -z "${FLY_API_TOKEN:-}" ]]; then
+              echo "PRODUCTION_TOKEN=MISSING"
+            else
+              flyctl status --app scenthunter
+              echo
+              echo "=== Production machines ==="
+              machines="$(flyctl machines list --app scenthunter --json 2>&1)"
+              printf '%s\\n' "$machines"
+              machine_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started")][0].id // empty')"
+              echo
+              echo "=== Production persistent volumes ==="
+              flyctl volumes list --app scenthunter
+              if [[ -n "$machine_id" ]]; then
+                cat > /tmp/phase0_prod_readonly.py <<'PY'
+          import json, pathlib, sqlite3
+          path = pathlib.Path("/data/store_catalog.sqlite3")
+          result = {"database_path": str(path), "exists": path.is_file(),
+                    "size_bytes": path.stat().st_size if path.is_file() else 0}
+          if path.is_file():
+              con = sqlite3.connect("file:" + str(path) + "?mode=ro", uri=True, timeout=20)
+              con.execute("PRAGMA query_only=ON")
+              tables = {r[0] for r in con.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'")}
+              result["tables_present"] = sorted(tables)
+              for table in ("store_products", "store_product_variants"):
+                  if table in tables:
+                      result[table + "_by_store"] = dict(con.execute(
+                          "SELECT store, COUNT(*) FROM " + table + " GROUP BY store ORDER BY store"
+                      ).fetchall())
+              result["integrity_check"] = con.execute("PRAGMA quick_check").fetchone()[0]
+              con.close()
+          print("PRODUCTION_SQLITE_READ_ONLY=" + json.dumps(result, ensure_ascii=False))
+          PY
+                encoded="$(base64 -w0 /tmp/phase0_prod_readonly.py)"
+                flyctl ssh console --app scenthunter --machine "$machine_id" --command "python3 -c 'import base64; exec(base64.b64decode("$encoded"))'"
+              else
+                echo "PRODUCTION_MACHINE=NO_STARTED_MACHINE; no machine was started."
+              fi
+            fi
+          } 2>&1 | tee phase0-production.txt
+          exit 0
+
+      - name: Inspect isolated staging worker and PostgreSQL identity (read-only)
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        shell: bash
+        run: |
+          set +e
+          {
+            echo "=== Isolated staging Fly app: scenthunter-staging-workers ==="
+            if [[ -z "${FLY_STAGING_API_TOKEN:-}" ]]; then
+              echo "STAGING_TOKEN=MISSING"
+            else
+              identity="$(curl --fail --silent --show-error -H "Authorization: $FLY_STAGING_API_TOKEN" https://api.machines.dev/v1/tokens/current 2>&1)"
+              if [[ $? -ne 0 ]]; then
+                echo "STAGING_TOKEN_IDENTITY=UNAVAILABLE"
+                printf '%s\\n' "$identity"
+              else
+                printf '%s' "$identity" | jq '{token_app_scopes: [.tokens[].apps[]] | unique}'
+                if ! printf '%s' "$identity" | jq -e '.tokens | any(.apps | index("scenthunter-staging-workers"))' >/dev/null; then
+                  echo "STAGING_TOKEN_SCOPE=REFUSED"
+                  exit 0
+                fi
+                flyctl status --app scenthunter-staging-workers
+                echo
+                machines="$(flyctl machines list --app scenthunter-staging-workers --json 2>&1)"
+                printf '%s\\n' "$machines"
+                machine_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id // empty')"
+                if [[ -n "$machine_id" ]]; then
+                  cat > /tmp/phase0_pg_readonly.py <<'PY'
+          import json
+          from sqlalchemy import inspect, text
+          from app.db import make_engine
+          from app.db_runtime_identity import configuration_source
+          engine = make_engine()
+          result = {"dialect": engine.dialect.name,
+                    "configuration_source": configuration_source()}
+          with engine.connect() as connection:
+              connection.exec_driver_sql("SET TRANSACTION READ ONLY")
+              result["identity"] = dict(zip(
+                  ("database", "schema"),
+                  connection.execute(text("SELECT current_database(), current_schema()")).one()
+              ))
+              tables = set(inspect(connection).get_table_names())
+              result["tables_present"] = sorted(tables)
+              result["counts"] = {}
+              for table in ("brands", "fragrances", "product_variants", "stores", "offers",
+                            "price_history", "match_audit", "ingestion_runs", "alembic_version"):
+                  if table in tables:
+                      result["counts"][table] = connection.execute(
+                          text('SELECT COUNT(*) FROM "' + table + '"')
+                      ).scalar_one()
+              if "alembic_version" in tables:
+                  result["alembic_revisions"] = connection.execute(
+                      text("SELECT version_num FROM alembic_version ORDER BY version_num")
+                  ).scalars().all()
+          engine.dispose()
+          print("STAGING_POSTGRES_READ_ONLY=" + json.dumps(result, ensure_ascii=False))
+          PY
+                  encoded="$(base64 -w0 /tmp/phase0_pg_readonly.py)"
+                  flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import base64; exec(base64.b64decode("$encoded"))'"
+                else
+                  echo "STAGING_WORKER_MACHINE=NO_STARTED_APP_MACHINE; no machine was started."
+                fi
+              fi
+            fi
+          } 2>&1 | tee phase0-staging.txt
+          exit 0
+
+      - name: Combine audit evidence
+        if: always()
+        run: |
+          {
+            echo "ScentHunter Phase 0 Fly.io read-only audit"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            cat phase0-production.txt 2>/dev/null || true
+            echo
+            cat phase0-staging.txt 2>/dev/null || true
+          } > phase0-fly-audit.txt
+
+      - name: Upload read-only audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-fly-readonly-audit
+          path: phase0-fly-audit.txt
+          if-no-files-found: error
+          retention-days: 14
