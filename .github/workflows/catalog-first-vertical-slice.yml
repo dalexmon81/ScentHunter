@@ -170,6 +170,7 @@ jobs:
           backend/tests/test_store_connector_contract.py
           backend/tests/test_catalog_contract_alignment.py
           backend/tests/test_notino_connector_fixture.py
+          backend/tests/test_notino_affiliate_feed.py
           backend/tests/test_notino_universal_connector.py
           backend/tests/test_deloox_universal_connector.py
           backend/tests/test_easycosmetic_universal_connector.py
