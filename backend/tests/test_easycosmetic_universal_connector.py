@@ -1,6 +1,8 @@
 from pathlib import Path
 import asyncio
 
+import pytest
+
 from app.connectors.easycosmetic import EasycosmeticConnector
 
 FIXTURE = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "connectors" / "easycosmetic-product.html"
