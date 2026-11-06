@@ -65,3 +65,11 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 6. Repository modularization and the remaining legacy/production database separation still require acceptance.
 
 **No phase is marked complete by this matrix.** Update a phase to complete only when links to passing CI runs, relevant integration evidence, and operational acceptance are attached.
+
+
+### Follow-up audit corrections (2026-11-06)
+
+- Connector currency validation previously hard-coded EUR. The connector and Celery validation gates now share a normalized three-letter currency-code check; store/marketplace currency support still requires an explicit supported-currency policy before publication. This is syntax validation, not a claim that every possible three-letter code is an assigned ISO 4217 currency.
+- Connector validation previously allowed `unknown` availability although persistence promotion rejected it. Unknown stock is now rejected before matching; `in_stock`, `out_of_stock`, and `preorder` remain explicit states.
+- Canonical variant `size_ml` previously used an integer column despite normalization supporting fractional ml values (for example oz conversion). The model now uses `Numeric(8,2)` with a forward Alembic migration; existing integer values are preserved.
+- Offline regression coverage added for currency syntax, publishable availability states, and fractional size precision. These changes are not applied to any live database until an explicitly authorized migration.
