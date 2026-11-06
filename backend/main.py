@@ -709,23 +709,11 @@ def _load_product_matcher():
 
 PRODUCT_MATCHER = _load_product_matcher()
 
+from app.services.identity_scope import identity_scope as _build_identity_scope
+
+
 def _identity_scope(query):
-    if PRODUCT_MATCHER is None:
-        return []
-    try:
-        method = getattr(PRODUCT_MATCHER, "build_identity_scope", None)
-        if callable(method):
-            return method(str(query or "").strip())
-        method = getattr(PRODUCT_MATCHER, "build_query_scope", None)
-        if callable(method):
-            return method(str(query or "").strip())
-        return []
-    except Exception as exc:
-        print(
-            f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return []
+    return _build_identity_scope(query, PRODUCT_MATCHER)
 
 def _resolve_offer_identity(result, query):
     """Resolve one raw retailer offer through the central ProductMatcher.
