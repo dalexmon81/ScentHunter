@@ -5,9 +5,10 @@ from backend import catalog_engine as catalog
 
 def test_notino_is_configured_for_france_only():
     assert catalog.STORES["notino"] == "https://www.notino.fr"
-    assert catalog._discovery_bases("notino") == ("https://www.notino.fr",)
+    assert catalog._discovery_bases("notino") == ()
     assert catalog.STORE_LABELS["notino"] == "Notino"
-    assert all("notino.de" not in url for url in catalog.HTML_DISCOVERY_SEEDS["notino"])
+    assert "notino" in catalog.FEED_ONLY_STORES
+    assert "notino" not in catalog.HTML_DISCOVERY_SEEDS
 
 
 def test_notino_slug_product_urls_keep_french_host_and_drop_tracking_query():
@@ -34,22 +35,40 @@ def test_notino_rejects_non_product_and_foreign_host_urls():
     ) is None
 
 
-def test_notino_catalog_seeds_are_french_fragrance_navigation_pages():
-    seeds = catalog.HTML_DISCOVERY_SEEDS["notino"]
-    assert "https://www.notino.fr/parfums/" in seeds
-    assert all("notino.de" not in url for url in seeds)
-    assert all("p-" not in url for url in seeds)
+def test_notino_is_excluded_from_public_html_discovery():
+    assert "notino" not in catalog.HTML_DISCOVERY_SEEDS
+    assert catalog._discovery_bases("notino") == ()
+    assert catalog._seed_sitemaps("notino") == ([], ["authorized_feed_only"])
 
 
-def test_notino_listing_admission_only_accepts_catalog_navigation():
-    assert catalog._html_listing_url(
-        "notino", "https://www.notino.fr/parfums/", "https://www.notino.fr/"
-    ) == "https://www.notino.fr/parfums/"
-    assert catalog._html_listing_url(
-        "notino", "https://www.notino.fr/brand/fragrance/p-123456/", "https://www.notino.fr/"
-    ) is None
+def test_notino_discovery_blocks_without_feed_and_never_probes_public_pages(monkeypatch):
+    states = []
 
+    class Feed:
+        @staticmethod
+        def import_configured_feed():
+            raise RuntimeError("notino_feed_credentials_missing")
 
+    monkeypatch.setattr(catalog.importlib, "import_module", lambda _name: Feed)
+    monkeypatch.setattr(
+        catalog,
+        "_set_sync_state",
+        lambda store, state, **kwargs: states.append((store, state, kwargs)),
+    )
+
+    def forbidden_public_discovery(*args, **kwargs):
+        raise AssertionError("Notino must not probe public sitemap or HTML pages")
+
+    monkeypatch.setattr(catalog, "_seed_sitemaps", forbidden_public_discovery)
+    monkeypatch.setattr(catalog, "_discover_html_catalog", forbidden_public_discovery)
+
+    report = catalog.discover_store("notino")
+
+    assert report["status"] == "DISCOVERY_BLOCKED"
+    assert report["count"] == 0
+    assert report["source"] == "cj_viv_authorized_xml"
+    assert "notino_feed_credentials_missing" in report["error"]
+    assert states[0][1] == "DISCOVERY_BLOCKED"
 
 
 
