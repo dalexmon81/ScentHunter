@@ -59,6 +59,8 @@ on:
       - "backend/app/matching/**"
       - "backend/app/models/**"
       - "backend/app/services/ingestion_persistence.py"
+      - "backend/alembic/versions/**"
+      - "backend/app/models/catalog.py"
       - "backend/app/services/product_normalization.py"
       - "backend/app/workers/connector_ingestion.py"
       - "backend/tests/test_catalog_first_vertical_slice.py"
