@@ -182,7 +182,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
             "SCENTHUNTER_CATALOG_DATABASE_URL": "sqlite:///" + str(self.db_path),
             "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "1",
         }):
-            with self.assertRaisesRegex(RuntimeError, "requires PostgreSQL"):
+            with self.assertRaisesRegex(RuntimeError, "requires a PostgreSQL catalog URL"):
                 generate_csv(job, "test-worker")
         self.assertFalse(output.exists())
 
