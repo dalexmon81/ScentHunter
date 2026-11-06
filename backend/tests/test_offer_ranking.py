@@ -156,3 +156,36 @@ def test_expired_offer_has_no_freshness_points():
 
     assert ranked[0]["ranking"]["components"]["freshness"] == 0
     assert ranked[0]["ranking"]["stale"] is True
+
+
+def test_negative_shipping_is_not_a_comparable_delivered_price():
+    ranked = rank_offers(
+        [
+            {
+                "store": "invalid_shipping",
+                "currency": "EUR",
+                "price": 1,
+                "shipping_cost": -5,
+                "availability": "in_stock",
+                "captured_at": NOW,
+                "confidence": 1,
+                "reliability_score": 1,
+            },
+            {
+                "store": "valid_shipping",
+                "currency": "EUR",
+                "price": 40,
+                "shipping_cost": 5,
+                "availability": "in_stock",
+                "captured_at": NOW,
+                "confidence": 1,
+                "reliability_score": 1,
+            },
+        ],
+        now=NOW,
+    )
+    by_store = {row["store"]: row for row in ranked}
+
+    assert by_store["invalid_shipping"]["ranking"]["price_comparable"] is False
+    assert by_store["invalid_shipping"]["ranking"]["components"]["price"] == 0
+    assert by_store["valid_shipping"]["ranking"]["price_comparable"] is True
