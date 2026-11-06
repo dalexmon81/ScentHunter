@@ -2,9 +2,12 @@
 
 This package is being introduced on top of the stable production baseline in a read-only, opt-in stage.
 
-- Normal `/search` behavior remains the legacy catalog-first implementation.
+- The canonical read-only endpoint is `/catalog/search`; the normal frontend flow is `/search-start`.
+- With rollout flags at their safe defaults, `/search-start` continues to use the legacy collector path. Shadow mode may compare catalog results but never serves them.
+- The separate `/search` endpoint also remains a legacy collector endpoint; it must not be described as catalog-first.
+- The normal frontend route is not yet switched to catalog-first. The master switch and an explicit canary percentage remain required, and a catalog failure is surfaced rather than silently falling back.
 - Preview and shadow diagnostic routes require both `SCENTHUNTER_NEXT_ENABLED=1` and `SCENTHUNTER_NEXT_PREVIEW_ENABLED=1`.
-- Do not enable either production flag until the integration CI passes and a controlled production validation is approved.
+- Do not enable production flags or switch the normal search route until staging has a populated PostgreSQL catalog, an authorized real offer has passed the end-to-end acceptance gate, and a controlled rollout is explicitly approved.
 - This package is not yet a replacement adapter for normal search. A later change must compare identity and offer coverage against the existing implementation before cutover.
 
 
