@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlparse
+import re
 
 
 class ConnectorError(RuntimeError):
@@ -77,7 +78,13 @@ class StoreConnector(Protocol):
 
 
 _REQUIRED_TEXT = ("store", "external_product_id", "brand", "fragrance", "title", "url", "availability", "captured_at", "source")
-_ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock", "preorder", "unknown"}
+_ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock", "preorder"}
+_CURRENCY_CODE = re.compile(r"^[A-Z]{3}$")
+
+
+def is_currency_code(value: object) -> bool:
+    """Accept a normalized three-letter currency code; store policy validates support."""
+    return isinstance(value, str) and _CURRENCY_CODE.fullmatch(value) is not None
 
 
 def validate_offer(offer: OfferRecord) -> tuple[bool, tuple[str, ...]]:
@@ -100,8 +107,8 @@ def validate_offer(offer: OfferRecord) -> tuple[bool, tuple[str, ...]]:
                 errors.append("invalid_price")
         except (InvalidOperation, TypeError, ValueError):
             errors.append("invalid_price")
-    if offer.currency != "EUR":
-        errors.append("unsupported_or_missing_currency")
+    if not is_currency_code(offer.currency):
+        errors.append("invalid_currency_code")
     try:
         timestamp = datetime.fromisoformat(offer.captured_at.replace("Z", "+00:00"))
         if timestamp.tzinfo is None:
