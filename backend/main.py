@@ -12,6 +12,7 @@ except Exception as exc:
 from pathlib import Path
 
 from app.services.store_identity import normalize_store_key as _normalise_store
+from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
@@ -399,23 +400,11 @@ def catalog_resync_deloox_status_endpoint(job_id: str = ''):
 
 
 def _catalog_is_ready():
-    """Return whether any persistent catalog data exists.
-
-    This is a global existence check only. Store coverage is checked separately
-    by _stores_missing_catalog(), so one populated retailer cannot hide a
-    missing retailer such as Easycosmetic Belgium.
-    """
+    """Return whether any persistent catalog data exists."""
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
         return False
     try:
-        statuses = catalog_store_status() or {}
-        return any(
-            int((statuses.get(store) or {}).get(
-                'valid_indexed_urls',
-                (statuses.get(store) or {}).get('indexed_urls', 0),
-            ) or 0) > 0
-            for store in STORES
-        )
+        return catalog_has_indexed_store(catalog_store_status() or {}, STORES)
     except Exception as exc:
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
@@ -426,18 +415,7 @@ def _stores_missing_catalog():
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
         return []
     try:
-        statuses = catalog_store_status() or {}
-        missing = []
-        for store in STORES:
-            state = statuses.get(store) or {}
-            indexed = state.get('valid_indexed_urls', state.get('indexed_urls', 0))
-            try:
-                indexed = int(indexed or 0)
-            except (TypeError, ValueError):
-                indexed = 0
-            if indexed <= 0:
-                missing.append(store)
-        return missing
+        return stores_missing_indexed_catalog(catalog_store_status() or {}, STORES)
     except Exception as exc:
         print(f'CATALOG STORE COVERAGE ERROR: {type(exc).__name__}: {exc}', flush=True)
         return []
