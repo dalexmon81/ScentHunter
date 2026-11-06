@@ -53,25 +53,10 @@ class IngestionTask(celery_app.Task):
             )
             store_key = kwargs.get("store_key") or (args[0] if args else None)
             if store_key and self.name != "app.workers.ingestion_tasks.quarantine_failed_connector":
-                factory = make_session_factory()
-                try:
-                    with factory() as session:
-                        store = session.scalar(select(Store).where(Store.slug == store_key))
-                        if store is not None:
-                            run = session.scalar(select(IngestionRun).where(
-                                IngestionRun.store_id == store.id,
-                                IngestionRun.status == "running",
-                            ).order_by(IngestionRun.started_at.desc()).limit(1))
-                            if run is None:
-                                run = IngestionRun(store_id=store.id, status="failed", errors=[])
-                                session.add(run)
-                            run.status = "failed"
-                            run.finished_at = datetime.now(timezone.utc)
-                            run.errors = [{"task": self.name, "task_id": task_id,
-                                           "error": f"{type(exc).__name__}: {exc}"[:500]}]
-                            session.commit()
-                finally:
-                    factory.kw["bind"].dispose()
+                # A generic failure hook cannot safely guess which ingestion run
+                # belongs to this task: two discoveries for one store may overlap.
+                # Run-owning tasks must mark their exact run_id in their own
+                # exception path. This hook is limited to store quarantine.
                 quarantine_failed_connector.apply_async(args=[store_key], queue="dead_letter")
         except Exception:
             logger.exception("Unable to enqueue dead-letter record for %s", task_id)
@@ -357,48 +342,66 @@ def discover_store_products(self, store_key: str):
             session.commit()
     finally:
         factory.kw["bind"].dispose()
-    products = _run(connector.discover_products())
-    raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
-    if not raw_artifacts:
-        raw_artifacts = [{"format": "json", "data": list(products), "metadata": {"kind": "discovery_result"}}]
-    artifact_ids = _persist_raw_artifacts(store_key, run_id, raw_artifacts)
-    staged = []
-    # Discovery and offer extraction must share this connector instance:
-    # connector adapters keep their parsed discovery cache in memory, and
-    # Celery tasks may execute on different workers. Queueing only the product
-    # key here would lose that cache and silently produce zero offers.
-    for product in products:
-        product_key = str(product.get("externalProductId") or product.get("external_product_id") or product.get("url") or "").strip()
-        if not product_key:
-            continue
-        records = _run(connector.fetch_offers(product_key))
-        for record in records:
-            evidence = _json_safe(dict(product))
-            evidence["raw_artifact_ids"] = artifact_ids
-            raw_id = _stage_record(store_key, record, evidence)
-            normalize_offer.apply_async(args=[raw_id], queue="validation")
-            staged.append(raw_id)
-    factory = make_session_factory()
     try:
-        with factory() as session:
-            # Update exactly the run created by this task. Selecting the latest
-            # running run for the store races when two discoveries overlap.
-            run = session.get(IngestionRun, UUID(run_id))
-            if run is None:
-                raise LookupError(f"ingestion_run_not_found:{run_id}")
-            if run.store_id is None:
-                raise LookupError(f"ingestion_run_store_missing:{run_id}")
-            run.status = "completed"
-            run.products_discovered = len(products)
-            run.finished_at = datetime.now(timezone.utc)
-            store = session.get(Store, run.store_id)
-            if store is None:
-                raise LookupError(f"ingestion_run_store_not_found:{run_id}")
-            store.last_successful_sync_at = run.finished_at
-            session.commit()
-    finally:
-        factory.kw["bind"].dispose()
-    return {"store": store_key, "discovered": len(products), "offers_staged": len(staged), "raw_ids": staged}
+        products = _run(connector.discover_products())
+        raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
+        if not raw_artifacts:
+            raw_artifacts = [{"format": "json", "data": list(products), "metadata": {"kind": "discovery_result"}}]
+        artifact_ids = _persist_raw_artifacts(store_key, run_id, raw_artifacts)
+        staged = []
+        # Discovery and offer extraction must share this connector instance:
+        # connector adapters keep their parsed discovery cache in memory, and
+        # Celery tasks may execute on different workers. Queueing only the product
+        # key here would lose that cache and silently produce zero offers.
+        for product in products:
+            product_key = str(product.get("externalProductId") or product.get("external_product_id") or product.get("url") or "").strip()
+            if not product_key:
+                continue
+            records = _run(connector.fetch_offers(product_key))
+            for record in records:
+                evidence = _json_safe(dict(product))
+                evidence["raw_artifact_ids"] = artifact_ids
+                raw_id = _stage_record(store_key, record, evidence)
+                normalize_offer.apply_async(args=[raw_id], queue="validation")
+                staged.append(raw_id)
+        factory = make_session_factory()
+        try:
+            with factory() as session:
+                # Update exactly the run created by this task. Selecting the latest
+                # running run for the store races when two discoveries overlap.
+                run = session.get(IngestionRun, UUID(run_id))
+                if run is None:
+                    raise LookupError(f"ingestion_run_not_found:{run_id}")
+                if run.store_id is None:
+                    raise LookupError(f"ingestion_run_store_missing:{run_id}")
+                run.status = "completed"
+                run.products_discovered = len(products)
+                run.finished_at = datetime.now(timezone.utc)
+                store = session.get(Store, run.store_id)
+                if store is None:
+                    raise LookupError(f"ingestion_run_store_not_found:{run_id}")
+                store.last_successful_sync_at = run.finished_at
+                session.commit()
+        finally:
+            factory.kw["bind"].dispose()
+        return {"store": store_key, "discovered": len(products), "offers_staged": len(staged), "raw_ids": staged}
+    except Exception as exc:
+        # Mark this task's own run, never another concurrent run for the store.
+        failure_factory = make_session_factory()
+        try:
+            with failure_factory() as session:
+                run = session.get(IngestionRun, UUID(run_id))
+                if run is not None and run.status == "running":
+                    run.status = "failed"
+                    run.finished_at = datetime.now(timezone.utc)
+                    run.errors = [{
+                        "task": "discover_store_products",
+                        "error": f"{type(exc).__name__}: {exc}"[:500],
+                    }]
+                    session.commit()
+        finally:
+            failure_factory.kw["bind"].dispose()
+        raise
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.fetch_store_offers")
 def fetch_store_offers(self, store_key: str, product_key: str, discovery_evidence: dict | None = None):
