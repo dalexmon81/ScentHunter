@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.db import make_session_factory
 from app.models import Brand, Fragrance, LegacyProductIdMap, Offer, ProductVariant, Store
+from app.services.offer_ranking import rank_offers
 
 router = APIRouter()
 
@@ -63,6 +64,10 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                     Offer.currency,
                     Offer.availability,
                     Offer.captured_at,
+                    Offer.valid_until,
+                    Offer.shipping_cost,
+                    Offer.confidence,
+                    Store.reliability_score,
                     Store.slug.label("store_slug"),
                 )
                 .join(Brand, Brand.id == Fragrance.brand_id)
@@ -127,6 +132,10 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                             "price": float(row.price),
                             "currency": row.currency,
                             "availability": row.availability,
+                            "shipping_cost": (float(row.shipping_cost) if row.shipping_cost is not None else None),
+                            "confidence": (float(row.confidence) if row.confidence is not None else None),
+                            "reliability_score": (float(row.reliability_score) if row.reliability_score is not None else None),
+                            "valid_until": (row.valid_until.isoformat() if row.valid_until else None),
                             "captured_at": (
                                 row.captured_at.isoformat()
                                 if row.captured_at
@@ -138,6 +147,8 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
             result = []
             for fragrance_id, product in products.items():
                 product["variants"] = list(product["variants"].values())
+                for variant in product["variants"]:
+                    variant["offers"] = rank_offers(variant["offers"])
                 legacy_product_id = session.scalar(
                     select(LegacyProductIdMap.legacy_product_id)
                     .where(
