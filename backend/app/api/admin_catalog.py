@@ -201,6 +201,16 @@ def catalog_admin_review_queue(
                 .order_by(CanonicalIdentityReview.created_at.asc())
                 .limit(limit)
             ).all()
+            normalization_rows = session.execute(
+                select(IngestionRaw, Store)
+                .join(Store, Store.id == IngestionRaw.store_id)
+                .where(
+                    IngestionRaw.status == "unmatched",
+                    IngestionRaw.match_method == "normalization_review",
+                )
+                .order_by(IngestionRaw.created_at.asc())
+                .limit(limit)
+            ).all()
             match_rows = session.execute(
                 select(MatchAudit, Offer, Store)
                 .join(Offer, Offer.id == MatchAudit.offer_id)
