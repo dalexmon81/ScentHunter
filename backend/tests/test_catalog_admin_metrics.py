@@ -127,8 +127,10 @@ def test_admin_metrics_and_review_queues_report_persisted_state(monkeypatch, tmp
         metrics = metrics_response.json()
         totals = metrics["totals"]
         assert totals["active_stores"] == 1
-        assert totals["active_offers"] == 1
+        assert totals["stores_missing_offer_ttl"] == 1
+        assert totals["active_offers"] == 0
         assert totals["stale_offers_24h"] == 1
+        assert totals["offers_missing_expiry"] == 1
         assert totals["offers_without_canonical_variant"] == 1
         assert totals["pending_raw_records"] == 1
         assert totals["pending_identity_reviews"] == 1
