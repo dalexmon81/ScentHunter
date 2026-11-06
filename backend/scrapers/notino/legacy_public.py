@@ -1319,180 +1319,35 @@ def _dedupe_results(results: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return list(by_key.values())
 
 
-def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    raw_query = _clean(query)
-    identity_query = " ".join(_query_identity_tokens(raw_query))
-    compact_query = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", _norm(raw_query))
-    queries: List[str] = []
-    seen_q = set()
-    for value in (raw_query, identity_query, compact_query):
-        key = value.casefold()
-        if value and key not in seen_q:
-            seen_q.add(key)
-            queries.append(value)
-
-    diagnostics: Dict[str, Any] = {
-        "strategy": "direct-html+jsonld -> Jina search -> sitemap-if-empty",
-        "queries": queries[:3],
-        "direct": [],
-        "reader": [],
-        "sitemap_used": False,
+def _discover(query: str, session: requests.Session | None = None) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Disabled legacy discovery entry point; Notino is authorized-feed-only."""
+    return [], {
+        "status": "disabled",
+        "source": "cj_viv_authorized_xml",
+        "error": "notino_public_html_disabled",
     }
-    candidates: Dict[str, Dict[str, Any]] = {}
-
-    # Direct HTTP requests are allowed to fail; the reader is the recovery path.
-    for search_query in queries[:2]:
-        for url in _search_urls(search_query):
-            try:
-                response = _request(session, url)
-                found = _html_candidates(response.text, raw_query)
-                diagnostics["direct"].append({"url": url, "status": response.status_code, "candidates": len(found)})
-                for item in found:
-                    old = candidates.get(item["url"])
-                    if old is None or item["score"] > old["score"]:
-                        candidates[item["url"]] = item
-            except requests.RequestException as exc:
-                diagnostics["direct"].append({
-                    "url": url,
-                    "status": getattr(getattr(exc, "response", None), "status_code", None),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-
-    for search_query in queries[:3]:
-        for url in _search_urls(search_query):
-            text, error = _reader_search(session, url)
-            if text is None:
-                diagnostics["reader"].append({"url": url, "query": search_query, "status": None, "candidates": 0, "error": error})
-                continue
-            found = _reader_candidates(text, raw_query)
-            diagnostics["reader"].append({
-                "url": url,
-                "query": search_query,
-                "status": 200,
-                "candidates": len(found),
-                "text_length": len(text),
-            })
-            for item in found:
-                old = candidates.get(item["url"])
-                if old is None or item["score"] > old["score"]:
-                    candidates[item["url"]] = item
-
-    if not candidates:
-        diagnostics["sitemap_used"] = True
-        try:
-            response = _request(session, SITEMAP_URL)
-            soup = BeautifulSoup(response.text, "xml")
-            for loc in soup.find_all("loc"):
-                url = normaliseurl(loc.get_text(" ", strip=True))
-                if not lookslikeproducturl(url):
-                    continue
-                slug = _clean_name(_slug_name(url))
-                if not slug or not _query_matches_name(slug, raw_query):
-                    continue
-                candidate = _candidate_from_evidence(url, slug, "", raw_query, "sitemap")
-                if candidate:
-                    candidates[url] = candidate
-        except requests.RequestException as exc:
-            diagnostics["sitemap_error"] = f"{type(exc).__name__}: {exc}"
-
-    ordered = sorted(candidates.values(), key=lambda item: (-item["score"], item["url"]))
-    return ordered, diagnostics
 
 
 def search(query: str) -> List[Dict[str, Any]]:
-    query = _clean(query)
-    if not query:
-        return []
-
-    session = _new_session()
-    try:
-        candidates, _ = _discover(query, session)
-    finally:
-        session.close()
-
-    # Keep more candidates than the old 24-result cutoff, but put the exact
-    # query match first. This prevents broad families from hiding the requested
-    # variant behind unrelated results.
-    candidates = candidates[:MAX_CANDIDATES]
-    results: List[Dict[str, Any]] = []
-    if not candidates:
-        return []
-
-    with ThreadPoolExecutor(max_workers=min(ENRICH_WORKERS, len(candidates))) as executor:
-        futures = [executor.submit(_enrich_one, candidate, query) for candidate in candidates]
-        for future in as_completed(futures):
-            try:
-                item = future.result()
-            except Exception:
-                item = None
-            if isinstance(item, list):
-                results.extend(item)
-            elif item:
-                results.append(item)
-    return _dedupe_results(results)[:MAX_CANDIDATES]
-
-
-def scrape(query: str) -> List[Dict[str, Any]]:
-    return search(query)
+    """Legacy public search is disabled; use the authorized CJ/VIV feed adapter."""
+    return []
 
 
 def diagnose(query: str) -> Dict[str, Any]:
-    query = _clean(query)
-    if not query:
-        return {
-            "diagnostic": True,
-            "scraper_version": SCRAPER_VERSION,
-            "query": "",
-            "error": "empty_query",
-        }
-
-    session = _new_session()
-    try:
-        candidates, discovery = _discover(query, session)
-        enrichment: List[Dict[str, Any]] = []
-        for candidate in candidates[:MAX_CANDIDATES]:
-            entry = {
-                "url": candidate.get("url"),
-                "product_id": candidate.get("product_id"),
-                "name": candidate.get("name"),
-                "score": candidate.get("score"),
-                "candidate_source": candidate.get("source"),
-                "card_price": candidate.get("price"),
-                "card_size_ml": candidate.get("size_ml"),
-                "card_stock": candidate.get("stock"),
-                "card_attempt": None,
-                "product_page_attempt": None,
-            }
-            try:
-                card = _card_result(candidate, query)
-                entry["card_attempt"] = {"ok": bool(card), "result": card}
-            except Exception as exc:
-                entry["card_attempt"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-            if not entry["card_attempt"].get("ok"):
-                try:
-                    page = _reader_product(session, candidate, query)
-                    entry["product_page_attempt"] = {"ok": bool(page), "result": page}
-                except Exception as exc:
-                    entry["product_page_attempt"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-            enrichment.append(entry)
-    finally:
-        session.close()
-
+    """Return a disabled diagnostic without making public retailer requests."""
     return {
         "diagnostic": True,
         "scraper_version": SCRAPER_VERSION,
-        "query": query,
-        "normalized_query": _norm(query),
-        "identity_tokens": _query_identity_tokens(query),
-        "discovery": discovery,
-        "candidate_count": len(candidates),
-        "candidates": candidates[:MAX_CANDIDATES],
-        "enrichment": enrichment,
-        "result_count": sum(
-            1 for item in enrichment
-            if item.get("card_attempt", {}).get("ok")
-            or item.get("product_page_attempt", {}).get("ok")
-        ),
+        "query": _clean(query),
+        "candidate_count": 0,
+        "result_count": 0,
+        "candidates": [],
+        "enrichment": [],
+        "discovery": {
+            "status": "disabled",
+            "source": "cj_viv_authorized_xml",
+            "error": "notino_public_html_disabled",
+        },
     }
 
 
