@@ -1,5 +1,6 @@
 import pytest
 
+import app.db as catalog_db
 from app.db import database_url
 
 
@@ -26,9 +27,16 @@ def test_postgresql_requirement_accepts_explicit_postgresql_url(monkeypatch):
     assert database_url().startswith("postgresql+psycopg://")
 
 
-def test_postgresql_requirement_can_be_explicitly_disabled(monkeypatch):
+def test_postgresql_requirement_can_be_explicitly_disabled(monkeypatch, tmp_path):
     _clear_database_urls(monkeypatch)
     monkeypatch.setenv("SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL", "false")
+    # The production default lives under /data, which is not writable on a
+    # GitHub-hosted runner. Keep this test isolated in pytest's temp directory.
+    monkeypatch.setattr(
+        catalog_db,
+        "DEFAULT_DATABASE_URL",
+        f"sqlite:///{tmp_path / 'catalog' / 'catalog.sqlite3'}",
+    )
 
     assert database_url().startswith("sqlite:///")
 
