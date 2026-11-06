@@ -50,11 +50,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt pytest
-      - name: Run SQLite contract, seed, and normalization regression tests
+      - name: Run SQLite contract, seed, normalization, and runtime-policy tests
         env:
           PYTHONPATH: backend
-        run: pytest -q tests/test_phase2_schema_contract.py tests/test_phase2_seed_catalog.py tests/test_phase3_normalization.py
+        run: |
+          pytest -q tests/test_phase2_schema_contract.py tests/test_phase2_seed_catalog.py tests/test_phase3_normalization.py
+          pytest -q backend/tests/test_db_postgresql_policy.py
       - name: Run PostgreSQL migration and persistence integration
+        env:
+          SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
         working-directory: backend
         run: |
           python -m alembic -c alembic.ini upgrade head
