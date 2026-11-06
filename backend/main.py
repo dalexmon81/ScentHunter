@@ -697,45 +697,11 @@ def _safe_float(value):
     except (TypeError, ValueError): return None
 
 
+from app.services.product_matcher_bootstrap import load_product_matcher
+
+
 def _load_product_matcher():
-    if ProductMatcher is None:
-        return None
-
-    try:
-        with open(PRODUCT_CATALOG_PATH, 'r', encoding='utf-8') as handle:
-            payload = json.load(handle)
-
-        if isinstance(payload, dict):
-            catalog = payload
-            product_count = len(payload.get("products") or [])
-        elif isinstance(payload, list):
-            catalog = payload
-            product_count = len(payload)
-        else:
-            catalog = []
-            product_count = 0
-
-        if not product_count:
-            print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
-            return None
-
-        # product_catalog.json remains the primary identity source.
-        # family_registry.json only supplements registered legacy families.
-        family_registry = None
-        if FAMILY_REGISTRY_PATH.exists():
-            with open(FAMILY_REGISTRY_PATH, 'r', encoding='utf-8') as handle:
-                family_registry = json.load(handle)
-
-        return ProductMatcher(
-            catalog=catalog,
-            family_registry=family_registry,
-        )
-    except Exception as exc:
-        print(
-            f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return None
+    return load_product_matcher(ProductMatcher, PRODUCT_CATALOG_PATH, FAMILY_REGISTRY_PATH)
 
 PRODUCT_MATCHER = _load_product_matcher()
 
