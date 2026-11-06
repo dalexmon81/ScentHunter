@@ -17,7 +17,7 @@ from app.models import (
 )
 
 _CURRENCY = re.compile(r"^[A-Z]{3}$")
-_ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock"}
+_ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock", "preorder"}
 
 
 class PromotionRejected(ValueError):
