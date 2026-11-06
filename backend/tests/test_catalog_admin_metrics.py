@@ -15,6 +15,7 @@ from app.models import (
     IngestionRaw,
     IngestionRun,
     MatchAudit,
+    Store,
     Offer,
     Store,
 )
@@ -150,5 +151,38 @@ def test_admin_metrics_and_review_queues_report_persisted_state(monkeypatch, tmp
         assert dead_letter_response.status_code == 200
         assert dead_letter_response.json()["count"] == 1
         assert dead_letter_response.json()["items"][0]["task_id"] == "ci-dead-letter-001"
+    finally:
+        engine.dispose()
+
+
+def test_admin_can_configure_store_offer_ttl(monkeypatch, tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'catalog-ttl-admin.db'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory.begin() as session:
+        session.add(Store(name="TTL Store", slug="ttl-store", status="active"))
+
+    monkeypatch.setattr(admin_catalog, "make_session_factory", lambda: factory)
+    monkeypatch.setenv("SCENTHUNTER_ADMIN_TOKEN", "ci-admin-secret")
+    try:
+        response = _client().put(
+            "/catalog/admin/stores/ttl-store/freshness-policy",
+            params={"offer_ttl_minutes": 180},
+            headers={"X-ScentHunter-Admin-Token": "ci-admin-secret"},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["offer_ttl_minutes"] == 180
+        with factory() as session:
+            store = session.scalar(
+                __import__("sqlalchemy").select(Store).where(Store.slug == "ttl-store")
+            )
+            assert store.offer_ttl_minutes == 180
+
+        missing = _client().put(
+            "/catalog/admin/stores/not-configured/freshness-policy",
+            params={"offer_ttl_minutes": 180},
+            headers={"X-ScentHunter-Admin-Token": "ci-admin-secret"},
+        )
+        assert missing.status_code == 404
     finally:
         engine.dispose()
