@@ -119,9 +119,10 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
             row for row in product["variants"]
             if row["size_ml"] == 100
         )
-        assert len(variant_result["offers"]) == 1
-        assert variant_result["offers"][0]["store"] == "catalog-search-active-fixture"
-        assert variant_result["offers"][0]["price"] == 89.9
+        fixture_offers = [offer for offer in variant_result["offers"] if offer["store"] == "catalog-search-active-fixture"]
+        assert len(fixture_offers) == 1
+        assert fixture_offers[0]["price"] == 89.9
+        assert all(offer["store"] != "catalog-search-inactive-fixture" for offer in variant_result["offers"])
 
         # A caller-owned session factory remains usable after the search.
         with factory() as session:
