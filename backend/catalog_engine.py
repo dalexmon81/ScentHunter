@@ -4191,6 +4191,11 @@ def _should_persist_bplatz_phase2(store, item):
 
 
 def refresh_url(store, url):
+    if store in FEED_ONLY_STORES:
+        detail = "notino_feed_only_public_refresh_disabled"
+        with _LAST_REFRESH_ERRORS_LOCK:
+            _LAST_REFRESH_ERRORS[(store, url)] = detail
+        return None
     try:
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
@@ -5963,7 +5968,8 @@ def _queue_mark_error(task, error, http_status=None):
         # the initial attempt budget, at the capped 24-hour backoff interval.
         terminal_http = http_status in (404, 410)
         terminal_placeholder = 'invalid_placeholder_price' in str(error)
-        next_state = 'DEAD' if terminal_http or terminal_placeholder else 'ERROR'
+        terminal_policy = 'notino_feed_only_public_refresh_disabled' in str(error)
+        next_state = 'DEAD' if terminal_http or terminal_placeholder or terminal_policy else 'ERROR'
         if next_state == 'ERROR' and attempts >= HYDRATION_MAX_ATTEMPTS:
             delay = float(HYDRATION_BACKOFF_SECONDS[-1])
             next_time = now + delay + delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
