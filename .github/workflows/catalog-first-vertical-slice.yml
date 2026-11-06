@@ -27,6 +27,8 @@ on:
       - "tests/test_next_engine_service.py"
       - "tests/test_phase2_schema_contract.py"
       - "backend/app/connectors/notino.py"
+      - "backend/app/connectors/base.py"
+      - "backend/app/workers/ingestion_tasks.py"
       - "backend/app/api/admin_catalog.py"
       - "backend/app/services/catalog_rollout.py"
       - "backend/main.py"
