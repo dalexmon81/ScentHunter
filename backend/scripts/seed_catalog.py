@@ -10,7 +10,6 @@ import argparse
 import json
 import re
 import sys
-import unicodedata
 import uuid
 from pathlib import Path
 
@@ -22,6 +21,7 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
+from app.matching.normalization import normalize_brand, normalize_fragrance
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -42,14 +42,6 @@ def norm(value: str) -> str:
     value = "".join(ch for ch in value if not unicodedata.combining(ch)).lower()
     return re.sub(r"[^a-z0-9]+", " ", value).strip()
 
-
-def normalize_brand(value: str) -> str:
-    """Normalize brand names consistently without depending on optional app modules."""
-    normalized = norm(str(value).replace("&", " and "))
-    return {"dior": "christian dior", "christian dior": "christian dior",
-            "nishane": "nishane istanbul", "nishane istanbul": "nishane istanbul"}.get(
-                normalized, normalized
-            )
 
 
 def slugify(value: str) -> str:
@@ -256,6 +248,28 @@ def main() -> int:
                     source_id = str(variant["variant_id"]).strip()
                     concentration = variant.get("concentration") or product.get("concentration")
                     size = variant.get("size_ml")
+                    normalized_variant = normalize_fragrance(
+                        product["brand_name"],
+                        product["canonical_name"],
+                        concentration=concentration or "",
+                        size=size if size not in (None, "") else "",
+                        is_tester=variant.get("is_tester"),
+                        is_refill=variant.get("is_refill"),
+                        is_gift_set=variant.get("is_gift_set"),
+                    )
+                    # Fill only absent attributes from explicit source text. Existing
+                    # structured catalog values always take precedence.
+                    concentration = concentration or (normalized_variant.concentration or None)
+                    size = size if size not in (None, "") else normalized_variant.size_ml
+                    is_tester = variant.get("is_tester")
+                    if is_tester is None and normalized_variant.is_tester:
+                        is_tester = True
+                    is_refill = variant.get("is_refill")
+                    if is_refill is None and normalized_variant.is_refill:
+                        is_refill = True
+                    is_gift_set = variant.get("is_gift_set")
+                    if is_gift_set is None and normalized_variant.is_gift_set:
+                        is_gift_set = True
                     key = "|".join((
                         normalize_brand(str(product["brand_name"])),
                         norm(name),
@@ -274,9 +288,9 @@ def main() -> int:
                             fragrance_id=fragrance.id,
                             concentration=concentration,
                             size_ml=int(size) if size not in (None, "") else None,
-                            is_tester=variant.get("is_tester"),
-                            is_refill=variant.get("is_refill"),
-                            is_gift_set=variant.get("is_gift_set"),
+                            is_tester=is_tester,
+                            is_refill=is_refill,
+                            is_gift_set=is_gift_set,
                             gtin=variant.get("gtin"),
                             canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
