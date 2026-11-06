@@ -4790,7 +4790,7 @@ def search_start(
                 },
             }
 
-sync shadow block    if not query:
+    if not query:
         return {
             'job_id': '',
             'query': '',
