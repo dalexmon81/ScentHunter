@@ -469,15 +469,14 @@ def _export_store_chunk(store_slug: str, chunk_path: str, result_queue: Any) -> 
         from backend.app.models import Brand, Fragrance, Offer, ProductVariant, Store
 
         engine = make_engine()
-        with engine.connect() as connection:
-            if connection.dialect.name != "postgresql":
-                raise RuntimeError(
-                    "Phase 0 baseline requires the canonical PostgreSQL catalog; "
-                    f"configured backend is {connection.dialect.name}"
-                )
-            connection.exec_driver_sql("SET TRANSACTION READ ONLY")
+        if engine.dialect.name != "postgresql":
+            raise RuntimeError(
+                "Phase 0 baseline requires the canonical PostgreSQL catalog; "
+                f"configured backend is {engine.dialect.name}"
+            )
         from sqlalchemy.orm import Session
         session = Session(engine)
+        session.execute(__import__("sqlalchemy").text("SET TRANSACTION READ ONLY"))
         catalog_product_count = session.scalar(select(func.count(Fragrance.id))) or 0
         retailer = session.scalar(select(Store).where(Store.slug == store_slug))
         written = 0
