@@ -1,6 +1,13 @@
 name: Phase 8 offer ranking tests
 
 on:
+  pull_request:
+    branches:
+      - phase8/offer-quality-ranking-integrated
+    paths:
+      - "backend/app/services/offer_ranking.py"
+      - "backend/tests/test_offer_ranking.py"
+      - ".github/workflows/phase8-offer-ranking.yml"
   push:
     branches:
       - phase8/offer-quality-ranking-integrated
