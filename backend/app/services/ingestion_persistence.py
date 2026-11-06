@@ -1,7 +1,6 @@
 """SQLAlchemy persistence gate with explicit legacy-ID to UUID resolution."""
 from __future__ import annotations
 
-import re
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from decimal import Decimal
@@ -11,12 +10,13 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.services.currency_policy import is_supported_currency_code
+
 from app.models import (
     Fragrance, IngestionRaw, LegacyProductIdMap, LegacyVariantIdMap,
     MatchAudit, Offer, PriceHistory, ProductVariant, Store,
 )
 
-_CURRENCY = re.compile(r"^[A-Z]{3}$")
 _ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock"}
 
 
@@ -153,8 +153,8 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected("canonical product variant UUID does not exist")
     if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
         raise PromotionRejected("price must be a positive finite Decimal")
-    if not isinstance(currency, str) or not _CURRENCY.fullmatch(currency):
-        raise PromotionRejected("currency must be an uppercase ISO 4217 code")
+    if not is_supported_currency_code(currency):
+        raise PromotionRejected("currency is not enabled by the supported-currency policy")
     if availability not in _ALLOWED_AVAILABILITY:
         raise PromotionRejected("availability must be explicit")
     parsed = urlparse(url or "")
