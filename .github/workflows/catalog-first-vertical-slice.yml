@@ -6,9 +6,11 @@ on:
       - phase2/staging-postgresql-guard
       - phase7/catalog-search-api
       - phase7/catalog-first-operational-e2e
+      - phase10/catalog-ops-observability
     paths:
       - "backend/app/api/legacy_catalog.py"
       - "backend/app/api/catalog_search.py"
+      - "backend/main.py"
       - "backend/app/services/**"
       - "backend/app/workers/**"
       - "backend/app/connectors/**"
@@ -139,6 +141,12 @@ jobs:
           backend/tests/test_offer_detail_refresh_api.py
           backend/tests/test_legacy_catalog_offer_bridge.py
           backend/tests/test_legacy_store_raw_capture.py
+
+      - name: Validate authenticated catalog operations metrics and queues
+        run: |
+          if [ -f backend/tests/test_catalog_admin_metrics.py ]; then
+            pytest -q backend/tests/test_catalog_admin_metrics.py
+          fi
 
       - name: Validate matcher and offer aggregation contracts
         run: |
