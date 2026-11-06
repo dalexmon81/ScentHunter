@@ -2160,12 +2160,15 @@ def _catalog_search_terms(query):
         return terms
 
 
-def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
+def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=False):
     """Primary catalog-first search path.
 
     Discovery is performed by catalog_engine, not by retailer search endpoints.
     ProductMatcher remains the only component allowed to decide identity.
     """
+    # User-initiated search is strictly read-only: never fetch retailer pages,
+    # even if an old environment flag or caller requests a live fallback.
+    allow_live_fallback = False
     started = time.monotonic()
     reports_by_store = {}
     catalog_search_elapsed = 0.0
@@ -2262,9 +2265,9 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                             f'updated={prioritized}',
                             flush=True,
                         )
-                foreground_refresh_enabled = str(
-                    os.environ.get('CATALOG_FOREGROUND_REFRESH_ENABLED', '')
-                ).strip().lower() in {'1', 'true', 'yes', 'on'}
+                # Foreground search must not fetch retailer product pages.
+                # The background hydrator exclusively owns offer refresh.
+                foreground_refresh_enabled = False
                 if foreground_refresh_enabled:
                     refreshed = catalog_refresh_candidates(
                         requested,
@@ -2529,75 +2532,43 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     return [reports_by_store[s] for s in stores if s in reports_by_store]
 
 
-def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
+def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=False):
+    """Collect search results from the persistent catalog only.
+
+    The legacy allow_live_fallback argument is retained for call compatibility
+    but deliberately ignored. A missing catalog engine is an operational error,
+    never permission to invoke retailer search adapters from a user request.
+    """
     requested = list(stores)
     if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
         try:
-            return _collect_catalog_reports_isolated(query, requested, on_report=on_report, on_result=on_result, cancel_event=cancel_event, job_id=job_id, allow_live_fallback=allow_live_fallback)
+            return _collect_catalog_reports_isolated(
+                query,
+                requested,
+                on_report=on_report,
+                on_result=on_result,
+                cancel_event=cancel_event,
+                job_id=job_id,
+                allow_live_fallback=False,
+            )
         except Exception as exc:
-            # Normal search is catalog-only. Never fall back to the legacy live
-            # scraper here: that path is what caused one slow search to occupy
-            # the global job for minutes and block subsequent searches.
             print(f'CATALOG PRIMARY PATH ERROR: {type(exc).__name__}: {exc}', flush=True)
             error = f'catalog_search_error:{type(exc).__name__}:{exc}'
-            reports = []
-            for store in requested:
-                report = _empty_report(store, status='error', elapsed=0.0, error=error) | {
-                    'verified': False,
-                    'details': {'source': 'persistent_catalog', 'authoritative': True},
-                }
-                reports.append(report)
-                if callable(on_report):
-                    on_report(report)
-            return reports
-    reports = {}
-    lock = threading.Lock()
-    threads = []
+    else:
+        error = 'catalog_engine_unavailable'
 
-    def publish(report):
-        with lock:
-            reports[report['store']] = report
+    # Fail closed. Never start _run_controlled_store() here: it launches
+    # retailer adapters and would turn a catalog outage into live scraping.
+    reports = []
+    for store in requested:
+        report = _empty_report(store, status='error', elapsed=0.0, error=error) | {
+            'verified': False,
+            'details': {'source': 'persistent_catalog', 'authoritative': False},
+        }
+        reports.append(report)
         if callable(on_report):
             on_report(report)
-
-    for store in requested:
-        t = threading.Thread(
-            target=_run_controlled_store,
-            args=(store, query, publish, on_result, cancel_event),
-            daemon=True,
-            name=f'scenthunter-store-{store}'
-        )
-        t.start()
-        threads.append(t)
-
-    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
-    for t in threads:
-        t.join(timeout=max(0.0, deadline - time.monotonic()))
-
-    unfinished = [
-        t.name.rsplit('scenthunter-store-', 1)[-1]
-        for t in threads
-        if t.is_alive()
-    ]
-
-    if unfinished:
-        print(f'SEARCH SUPERVISORS CANCELLING stores={unfinished}', flush=True)
-        if cancel_event is not None:
-            cancel_event.set()
-        cancel_deadline = time.monotonic() + 3.0
-        for t in threads:
-            if t.is_alive():
-                t.join(timeout=max(0.0, cancel_deadline - time.monotonic()))
-
-    with lock:
-        for store in unfinished:
-            reports.setdefault(
-                store,
-                _empty_report(store, elapsed=JOB_TIMEOUT_SECONDS, error='job_timeout')
-            )
-
-    return [reports[s] for s in requested if s in reports]
-
+    return reports
 
 JOBS={}; JOBS_LOCK=threading.Lock()
 
@@ -2954,6 +2925,7 @@ def _run_job(job_id, query):
             on_result=on_result,
             cancel_event=cancel_event,
             job_id=job_id,
+            allow_live_fallback=False,
         )
         collect_elapsed = round(time.monotonic() - collect_started, 3)
         with JOBS_LOCK:
