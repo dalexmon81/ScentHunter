@@ -70,16 +70,16 @@ def test_promotion_creates_offer_history_and_audit():
         assert raw.status == "promoted"
 
 
-def test_unsupported_availability_is_blocked_without_publication():
+def test_preorder_is_an_explicit_publishable_availability_state():
     factory, raw_id = setup_db("preorder")
     assert promote_matched_offers(factory) == {
-        "processed": 1, "published": 0, "blocked": 1,
+        "processed": 1, "published": 1, "blocked": 0,
     }
     with factory() as session:
-        assert session.scalar(select(Offer)) is None
-        assert session.scalar(select(PriceHistory)) is None
+        offer = session.scalar(select(Offer))
         raw = session.get(IngestionRaw, raw_id)
-        assert raw.status == "matched"
+        assert offer is not None and offer.availability == "preorder"
+        assert raw.status == "promoted"
 
 
 def test_worker_ignores_unmatched_rows():
@@ -98,7 +98,7 @@ def test_worker_ignores_unmatched_rows():
 
 
 def test_blocked_old_row_does_not_starve_later_promotion_batch():
-    factory, blocked_id = setup_db("preorder")
+    factory, blocked_id = setup_db("unknown")
     with factory() as session:
         blocked = session.get(IngestionRaw, blocked_id)
         later = IngestionRaw(
