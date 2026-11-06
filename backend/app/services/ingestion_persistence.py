@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -147,6 +147,8 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     store = session.get(Store, row.store_id)
     if store is None or store.status != "active":
         raise PromotionRejected("store is not active")
+    if not isinstance(store.offer_ttl_minutes, int) or store.offer_ttl_minutes <= 0:
+        raise PromotionRejected("store_offer_ttl_not_configured")
     if session.get(ProductVariant, row.product_variant_id) is None:
         raise PromotionRejected("canonical product variant UUID does not exist")
     if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
@@ -169,6 +171,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     ):
         raise PromotionRejected("captured_at must be a timezone-aware datetime")
     observation_time = captured_at or datetime.now(timezone.utc)
+    valid_until = observation_time + timedelta(minutes=store.offer_ttl_minutes)
 
     # Retailer identity is the idempotency key. Never reuse an unrelated
     # listing merely because it maps to the same canonical variant: a shop may
@@ -199,6 +202,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
             currency=currency, availability=availability, source=source,
             confidence=confidence if confidence is not None else row.match_confidence,
             captured_at=observation_time,
+            valid_until=valid_until,
             status="active",
         )
         session.add(offer)
@@ -214,6 +218,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing.product_variant_id = row.product_variant_id
         existing.url = url
         existing.captured_at = observation_time
+        existing.valid_until = valid_until
         existing.price = price
         existing.currency = currency
         existing.availability = availability
