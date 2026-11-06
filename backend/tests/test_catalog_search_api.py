@@ -122,6 +122,9 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
         assert len(variant_result["offers"]) == 1
         assert variant_result["offers"][0]["store"] == "catalog-search-active-fixture"
         assert variant_result["offers"][0]["price"] == 89.9
+        assert variant_result["offers"][0]["ranking"]["position"] == 1
+        assert 0 <= variant_result["offers"][0]["ranking"]["score"] <= 100
+        assert "shipping_transparency" in variant_result["offers"][0]["ranking"]["components"]
 
         # A caller-owned session factory remains usable after the search.
         with factory() as session:
