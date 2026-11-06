@@ -69,6 +69,9 @@ def test_promotion_creates_offer_history_and_audit():
         assert offers[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
         assert offers[0].valid_until.replace(tzinfo=timezone.utc) == expected_capture.replace(day=3)
         assert history[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
+        assert offers[0].valid_until.replace(tzinfo=timezone.utc) == datetime(
+            2025, 1, 3, 3, 4, 5, tzinfo=timezone.utc
+        )
         assert history[0].price == Decimal("90.50")
         assert audits[0].method == "canonical_key_exact"
         assert raw.status == "promoted"
@@ -219,3 +222,45 @@ def test_promotion_is_blocked_until_store_freshness_ttl_is_configured():
         raw = session.get(IngestionRaw, raw_id)
         assert raw.status == "matched"
         assert "store_offer_ttl_not_configured" in raw.rejection_reason
+
+
+
+def test_missing_store_ttl_blocks_publication_instead_of_creating_non_expiring_offer():
+    factory, raw_id = setup_db(offer_ttl_minutes=None)
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "store_offer_ttl_not_configured" in raw.rejection_reason
+
+
+def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
+    factory, raw_id = setup_db()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.status = "matched"
+        raw.rejection_reason = None
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "capturedAt": "2025-02-01T10:30:00+00:00",
+            "price": "88.00",
+        }
+        session.commit()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 1, "blocked": 0,
+    }
+    with factory() as session:
+        offer = session.scalar(select(Offer))
+        assert offer.price == Decimal("88.00")
+        assert offer.captured_at.replace(tzinfo=timezone.utc) == datetime(
+            2025, 2, 1, 10, 30, tzinfo=timezone.utc
+        )
+        assert offer.valid_until.replace(tzinfo=timezone.utc) == datetime(
+            2025, 2, 2, 10, 30, tzinfo=timezone.utc
+        )
