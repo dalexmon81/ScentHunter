@@ -103,3 +103,13 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - Offer expiry is still unresolved: `valid_until` remains nullable and catalog search treats a null value as non-expiring. No default TTL has been invented. A store-specific freshness/expiry policy and stale-offer behavior must be designed and tested before operational acceptance.
 - The legacy `run_connector_once` helper remains an alternate staging-only implementation; it is not yet unified with the Celery normalize/validate/match/promote pipeline. This remains open work.
 - The successful CI run uses disposable PostgreSQL/Redis services and offline fixtures only. It does not prove persistent staging/production restore, live retailer coverage, or readiness to enable traffic.
+
+
+### Explicit offer freshness policy (2026-11-06)
+
+- Added nullable `stores.offer_ttl_minutes` with a positive-value database constraint and Alembic revision `0010_store_offer_ttl`.
+- Publication now requires a configured positive TTL for the owning active store. The expiry is calculated from the source observation timestamp (`captured_at + store.offer_ttl_minutes`) and persisted to `offers.valid_until`. Repeat hydration refreshes both the observation timestamp and expiry.
+- Catalog search now returns only active offers with a non-null, unexpired `valid_until`. Legacy rows without an expiry are hidden rather than treated as valid indefinitely.
+- No production retailer TTL has been guessed or automatically seeded. The Bplatz TTL used in PostgreSQL integration tests is test-only; real store TTLs remain operator configuration and must be based on observed source update cadence and acceptable staleness.
+- The synchronous `run_connector_once` helper is now documented as a legacy compatibility/fixture adapter, not a production worker. It uses the shared payload validation contract. Production discovery remains `ingestion_tasks.discover_store_products`, which queues normalization, validation, matching and promotion.
+- The migration and new fail-closed publication/search behavior still require a successful full CI run on the current branch head before acceptance. No persistent database has been migrated.
