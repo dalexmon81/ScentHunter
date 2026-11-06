@@ -135,6 +135,26 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
                             "price": float(row.price),
                             "currency": row.currency,
                             "availability": row.availability,
+                            "shipping_cost": (
+                                float(row.shipping_cost)
+                                if row.shipping_cost is not None
+                                else None
+                            ),
+                            "match_confidence": (
+                                float(row.match_confidence)
+                                if row.match_confidence is not None
+                                else None
+                            ),
+                            "store_reliability": (
+                                float(row.store_reliability)
+                                if row.store_reliability is not None
+                                else None
+                            ),
+                            "valid_until": (
+                                row.valid_until.isoformat()
+                                if row.valid_until
+                                else None
+                            ),
                             "captured_at": (
                                 row.captured_at.isoformat()
                                 if row.captured_at
