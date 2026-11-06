@@ -3310,7 +3310,7 @@ def discover_store(store):
             notino_feed_error = 'notino_feed_empty'
         except Exception as exc:
             notino_feed_error = str(exc)
-            if notino_feed_error.startswith('notino_feed_') is False:
+            if not notino_feed_error.startswith('notino_feed_'):
                 notino_feed_error = f'notino_feed_import_error:{type(exc).__name__}'
         # Notino is feed-only. Missing entitlement, an empty feed, or any feed
         # error is a hard stop: do not probe robots.txt, sitemaps, HTML listings,
@@ -3347,7 +3347,7 @@ def discover_store(store):
     # Deloox's sitemap roots repeatedly return errors while its HTML catalog graph is usable.
     # Give sitemap discovery only a short probe window there so it cannot consume
     # most of the bounded run before the persistent HTML frontier gets time.
-    sitemap_budget = 5 if store in ('deloox', 'notino') else SITEMAP_DISCOVERY_BUDGET
+    sitemap_budget = 5 if store == 'deloox' else SITEMAP_DISCOVERY_BUDGET
     sitemap_deadline = min(
         started_at + DISCOVERY_HARD_TIMEOUT,
         started_at + sitemap_budget,
