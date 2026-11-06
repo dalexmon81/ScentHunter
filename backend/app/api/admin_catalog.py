@@ -234,6 +234,17 @@ def catalog_admin_review_queue(
                     }
                     for row in identity_rows
                 ],
+                "normalization_reviews": [
+                    {
+                        "raw_id": str(raw.id),
+                        "store": store.slug,
+                        "external_product_id": raw.external_product_id,
+                        "reason": raw.rejection_reason,
+                        "raw_payload": raw.raw_payload,
+                        "created_at": raw.created_at.isoformat(),
+                    }
+                    for raw, store in normalization_rows
+                ],
                 "match_reviews": [
                     {
                         "id": str(audit.id),
