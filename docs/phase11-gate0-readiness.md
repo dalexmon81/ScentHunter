@@ -53,6 +53,42 @@ The fix reads an explicit price from the selected Schema.org `priceSpecification
 
 The latest Gmail check found no new Bplatz permission response and no Notino advertiser approval/feed entitlement. The CJ network welcome email is not advertiser approval. Therefore these results do not change any Gate 0 authorization or real-offer requirements.
 
+## Public-site publisher-readiness audit — 2026-11-06
+
+### Public URL supplied by owner
+`https://scenthunter.fly.dev` is the current Fly.io application URL supplied by the owner. No custom domain is currently configured/known.
+
+### Live availability check
+A direct page fetch of the Fly URL could not be completed in this audit (browser cache miss / fetch unavailable). Therefore HTTP status, rendered content, mobile behavior, robots/indexing, TLS, and live navigation are **not verified**. Do not report the live site as down or healthy based on this failed inspection.
+
+### Repository source inspection
+Inspected `frontend/index.html` on `phase11/gradual-migration` (916 KB). The source contains:
+- Italian-language ScentHunter branding and perfume price-comparison positioning.
+- Search UI, offer section, fragrance categories and wishlist/comparison interface.
+- Retailer outbound links rendered from offer URLs.
+
+The inspected HTML source did not expose a clear public navigation/footer link or page route for:
+- About / operator identity;
+- Contact details;
+- Privacy policy;
+- Terms of use;
+- Affiliate disclosure / how the service earns money;
+- Comparison methodology, offer freshness, and correction/reporting process.
+
+This is a source-level observation of the inspected single-page frontend file, not a definitive claim that no such routes exist elsewhere in the deployed app. A repository-wide route/server audit and live browser verification remain required.
+
+### Priority remediation before advertiser reapplication
+1. Verify the deployed URL from a normal browser, including a logged-out session and mobile viewport.
+2. Add clear, accurate public links for About, Contact, Privacy, Terms, Affiliate Disclosure, and How comparison works; ensure each page is actually served and linked in the visible footer/navigation.
+3. Explain the service accurately: fragrance-only comparison, exact variant matching (concentration/size/packaging), retailer source, price/currency, stock status, last checked time, shipping/coupon limitations, and how users report errors. Never claim coverage or freshness not measured by the backend.
+4. Identify the actual operator and reachable business contact. Do not invent a company, postal address, legal entity, or support mailbox.
+5. Add a clear affiliate disclosure and state that commission does not determine ranking only if the ranking implementation supports that statement.
+6. Verify consent/cookie behavior and privacy text against the actual data collected and processors. Obtain appropriate legal review for EU/Luxembourg requirements before launch.
+7. Ensure there are genuine product/category pages and traceable current offers before presenting the site as an operational price-comparison service. Do not fabricate products, retailers, prices, stock, reviews, or timestamps.
+
+### Scope
+No frontend files were changed, no DNS/custom domain was purchased or configured, no new affiliate application was submitted, and no retailer was activated. This is an audit and prioritized remediation plan only. Gate 0 remains BLOCKED; shadow/canary remain 0%.
+
 ## Awin advertiser application outcomes — verified from Gmail, 2026-11-06
 
 A Gmail search of messages from `no-reply@awin.com` found two advertiser rejection notices dated 2026-08-06 for publisher ScentHunter (PID 3021971):
