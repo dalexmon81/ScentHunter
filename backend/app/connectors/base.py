@@ -78,7 +78,7 @@ class StoreConnector(Protocol):
 
 
 _REQUIRED_TEXT = ("store", "external_product_id", "brand", "fragrance", "title", "url", "availability", "captured_at", "source")
-_ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock", "preorder"}
+_ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock", "preorder", "unknown"}
 _CURRENCY_CODE = re.compile(r"^[A-Z]{3}$")
 
 
@@ -142,7 +142,12 @@ def validate_offer_payload(payload: Mapping[str, Any]) -> tuple[bool, tuple[str,
         )
     except (TypeError, ValueError):
         return False, ("invalid_payload",)
-    return validate_offer(offer)
+    valid, errors = validate_offer(offer)
+    # Unknown stock is valid captured evidence, but it cannot enter the
+    # matching/promotion path until availability has been resolved.
+    if offer.availability == "unknown":
+        return False, tuple((*errors, "availability_requires_review"))
+    return valid, errors
 
 
 @dataclass(frozen=True)
