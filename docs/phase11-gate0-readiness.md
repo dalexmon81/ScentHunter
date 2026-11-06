@@ -77,13 +77,38 @@ The inspected HTML source did not expose a clear public navigation/footer link o
 
 This is a source-level observation of the inspected single-page frontend file, not a definitive claim that no such routes exist elsewhere in the deployed app. A repository-wide route/server audit and live browser verification remain required.
 
+### Operator status — owner confirmation, 2026-11-06
+The owner has explicitly confirmed that **he is the individual behind ScentHunter and that no company has been incorporated or otherwise established for the project yet**. This is the currently verified operator arrangement; do not describe ScentHunter as a SARL, company, or other legal entity.
+
+This confirmation does **not**, by itself, establish whether the activity is legally a private non-professional project or a commercial/professional activity, nor whether a business permit, registration, VAT status, or other formalities are required. That classification must be checked against the actual activity, revenue model, and operational facts before launch or further affiliate monetization.
+
+### Luxembourg legal-notice and privacy implications
+The Luxembourg Law of 14 August 2000 on electronic commerce, Article 5, requires an information-society service provider to make certain identification details easily, directly, and permanently accessible to recipients and competent authorities. The statutory list includes the provider's name, geographical address of establishment, and contact details enabling rapid and direct communication, including an email address. Registration, VAT and activity-authorization details are included **where applicable**. The legal text does not make up a company identity where no company exists.
+
+Accordingly, the public-site remediation must:
+1. Identify the real operator in the correct capacity; do not invent a company name, legal form, RCS number, VAT number, or business permit.
+2. Establish, with Luxembourg professional/legal advice if needed, which geographical address is legally appropriate to publish for this individual's actual establishment. Do not publish a home address in the repository or this audit; do not substitute a mailbox or registered-office service unless it is legally valid for the actual situation.
+3. Publish a working direct contact channel, including an email address controlled by the operator. No address has been supplied or verified for publication.
+4. Add registration/VAT/authorization details only if they apply and have been obtained.
+5. Publish a privacy notice identifying the actual data controller and explaining real processing purposes, legal bases, recipients/processors, retention, user rights, and contact route. Do not copy a generic policy that describes data practices the site does not actually have.
+6. Audit cookies and third-party trackers. CNPD guidance requires prior consent for non-essential cookies/trackers; strictly necessary technologies are treated differently. The live site's actual scripts and network behavior still need inspection.
+7. Clearly identify affiliate/commercial communications and disclose the commercial relationship where links or placements may generate commission. Do not claim commissions never affect ranking unless that is demonstrably true in the implemented ranking logic.
+
+Official references reviewed:
+- [Luxembourg Law of 14 August 2000 on electronic commerce, consolidated text (Article 5 and commercial communications provisions)](https://legilux.public.lu/eli/etat/leg/loi/2000/08/14/n8)
+- [Luxembourg Directorate for Consumer Protection — company identity and legal notices on websites](https://mpc.gouvernement.lu/en/le-ministere/protjur/pro-pc.html)
+- [CNPD — cookies and other trackers guidance](https://cnpd.public.lu/fr/dossiers-thematiques/cookies0/cookies.html)
+- [CNPD — information to provide to data subjects](https://cnpd.public.lu/en/particuliers/vos-droits/droit-a-information.html)
+
+These sources support the information requirements above; they do not replace advice on the legal classification of this particular activity.
+
 ### Priority remediation before advertiser reapplication
 1. Verify the deployed URL from a normal browser, including a logged-out session and mobile viewport.
-2. Add clear, accurate public links for About, Contact, Privacy, Terms, Affiliate Disclosure, and How comparison works; ensure each page is actually served and linked in the visible footer/navigation.
-3. Explain the service accurately: fragrance-only comparison, exact variant matching (concentration/size/packaging), retailer source, price/currency, stock status, last checked time, shipping/coupon limitations, and how users report errors. Never claim coverage or freshness not measured by the backend.
-4. Identify the actual operator and reachable business contact. Do not invent a company, postal address, legal entity, or support mailbox.
-5. Add a clear affiliate disclosure and state that commission does not determine ranking only if the ranking implementation supports that statement.
-6. Verify consent/cookie behavior and privacy text against the actual data collected and processors. Obtain appropriate legal review for EU/Luxembourg requirements before launch.
+2. Complete the Luxembourg legal classification of the activity and confirm whether any business permit, registration, or tax steps are required before monetized operation.
+3. Confirm the operator's legally appropriate geographical address and a working contact email. Keep private address details out of source control until publication is intentionally approved.
+4. Add clear, accurate public links for About, Contact, Privacy, Terms, Affiliate Disclosure, and How comparison works; ensure each page is actually served and linked in the visible footer/navigation.
+5. Explain the service accurately: fragrance-only comparison, exact variant matching (concentration/size/packaging), retailer source, price/currency, stock status, last checked time, shipping/coupon limitations, and how users report errors. Never claim coverage or freshness not measured by the backend.
+6. Verify consent/cookie behavior and privacy text against the actual data collected and processors.
 7. Ensure there are genuine product/category pages and traceable current offers before presenting the site as an operational price-comparison service. Do not fabricate products, retailers, prices, stock, reviews, or timestamps.
 
 ### Scope
