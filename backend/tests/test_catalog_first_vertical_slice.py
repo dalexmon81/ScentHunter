@@ -11,6 +11,7 @@ from sqlalchemy import select
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app.api.legacy_catalog import router as legacy_catalog_router
+from app.api.catalog_search import router as catalog_search_router
 from app.connectors.notino import NotinoAffiliateFeedConnector
 from app.db import make_engine
 from app.matching.offer_matcher import match_staged_offer
@@ -151,6 +152,35 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
         assert api_offer["availability"] == "in_stock"
         assert api_offer["size_ml"] == 100
         assert api_offer["url"] == (
+            "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
+        )
+
+        # The same persisted offer must also be visible through the new
+        # catalog-first search route used by the frontend migration.
+        search_api = FastAPI()
+        search_api.include_router(catalog_search_router)
+        with TestClient(search_api) as client:
+            search_response = client.get(
+                "/catalog/search", params={"q": "Sauvage"}
+            )
+        assert search_response.status_code == 200, search_response.text
+        search_payload = search_response.json()
+        product = next(
+            row for row in search_payload["results"]
+            if row["brand"].lower() == "dior"
+            and row["fragrance"].lower() == "sauvage"
+        )
+        published_offers = [
+            offer
+            for variant_row in product["variants"]
+            for offer in variant_row["offers"]
+        ]
+        assert len(published_offers) == 1, published_offers
+        assert published_offers[0]["store"] == "notino"
+        assert published_offers[0]["price"] == 99.9
+        assert published_offers[0]["currency"] == "EUR"
+        assert published_offers[0]["availability"] == "in_stock"
+        assert published_offers[0]["url"] == (
             "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
         )
     finally:

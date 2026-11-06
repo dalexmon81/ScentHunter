@@ -1,7 +1,10 @@
 import os
 import unittest
 from decimal import Decimal
+from pathlib import Path
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 
@@ -28,7 +31,14 @@ class PostgreSQLMigrationContractTests(unittest.TestCase):
         self.assertTrue(set(Base.metadata.tables).issubset(tables))
         with self.engine.connect() as connection:
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        self.assertEqual(revision, "0003_store_domain")
+
+        # Keep the contract aligned with the actual checked-in migration graph.
+        # A pinned historical revision silently made this test fail as soon as
+        # later catalog/ingestion migrations were added.
+        alembic_ini = Path(__file__).resolve().parents[1] / "alembic.ini"
+        config = Config(str(alembic_ini))
+        expected_head = ScriptDirectory.from_config(config).get_current_head()
+        self.assertEqual(revision, expected_head)
         for table in ("fragrances", "product_variants", "offers", "ingestion_raw"):
             self.assertTrue(inspector.get_foreign_keys(table), table)
 

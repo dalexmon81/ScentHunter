@@ -16,7 +16,7 @@ def test_phase2_declares_all_core_tables():
         "brands", "fragrances", "product_variants", "stores",
         "offers", "price_history", "match_audit", "ingestion_runs",
         "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
-        "canonical_identity_reviews",
+        "canonical_identity_reviews", "ingestion_artifacts", "ingestion_dead_letters",
     }
 
 def test_canonical_identity_is_separate_from_retailer_offers():
@@ -46,6 +46,8 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
     db_path = tmp_path / "catalog" / "catalog.sqlite3"
     monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", f"sqlite:///{db_path}")
     monkeypatch.delenv("SCENTHUNTER_DATABASE_URL", raising=False)
+    # This test deliberately exercises the supported local SQLite migration path.
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL", "0")
     config = Config(str(BACKEND / "alembic.ini"))
     command.upgrade(config, "head")
     engine = make_engine()
