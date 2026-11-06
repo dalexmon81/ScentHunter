@@ -1,4 +1,5 @@
 """PostgreSQL integration tests for the catalog-only search API."""
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import FastAPI
@@ -122,6 +123,9 @@ def test_catalog_search_returns_only_published_offers_from_active_stores():
         assert len(variant_result["offers"]) == 1
         assert variant_result["offers"][0]["store"] == "catalog-search-active-fixture"
         assert variant_result["offers"][0]["price"] == 89.9
+        assert variant_result["offers"][0]["ranking"]["position"] == 1
+        assert 0 <= variant_result["offers"][0]["ranking"]["score"] <= 100
+        assert "shipping_transparency" in variant_result["offers"][0]["ranking"]["components"]
 
         # A caller-owned session factory remains usable after the search.
         with factory() as session:
@@ -177,3 +181,92 @@ def test_existing_frontend_search_route_can_opt_into_postgres_catalog(monkeypatc
         and offer["size_ml"] == 100
         for offer in product["offers"]
     )
+
+
+def test_catalog_search_ranks_quality_above_cheapest_offer():
+    engine = make_engine()
+    assert engine.dialect.name == "postgresql"
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    now = datetime.now(timezone.utc)
+    store_ids = []
+    offer_ids = []
+    try:
+        with factory.begin() as session:
+            variant = session.scalar(
+                select(ProductVariant)
+                .join(Fragrance, Fragrance.id == ProductVariant.fragrance_id)
+                .where(
+                    Fragrance.name.ilike("%Sauvage%"),
+                    ProductVariant.canonical_key.ilike("%|edp|100|%"),
+                )
+                .limit(1)
+            )
+            assert variant is not None
+            weak_store = Store(
+                name="CI Weak Retailer",
+                slug="ci-weak-retailer",
+                status="active",
+                reliability_score=Decimal("0.100"),
+            )
+            strong_store = Store(
+                name="CI Strong Retailer",
+                slug="ci-strong-retailer",
+                status="active",
+                reliability_score=Decimal("1.000"),
+            )
+            session.add_all([weak_store, strong_store])
+            session.flush()
+            store_ids.extend([weak_store.id, strong_store.id])
+
+            cheap_stale = Offer(
+                store_id=weak_store.id,
+                product_variant_id=variant.id,
+                url="https://example.invalid/ci-cheap-stale",
+                price=Decimal("40.00"),
+                currency="EUR",
+                availability="out_of_stock",
+                source="ci_fixture",
+                confidence=Decimal("0.300"),
+                captured_at=now - timedelta(days=14),
+                status="active",
+            )
+            reliable_fresh = Offer(
+                store_id=strong_store.id,
+                product_variant_id=variant.id,
+                url="https://example.invalid/ci-reliable-fresh",
+                price=Decimal("80.00"),
+                currency="EUR",
+                availability="in_stock",
+                shipping_cost=Decimal("0.00"),
+                source="ci_fixture",
+                confidence=Decimal("1.000"),
+                captured_at=now - timedelta(minutes=20),
+                status="active",
+            )
+            session.add_all([cheap_stale, reliable_fresh])
+            session.flush()
+            offer_ids.extend([cheap_stale.id, reliable_fresh.id])
+
+        payload = search_catalog("Sauvage", session_factory=factory)
+        product = next(
+            row for row in payload["results"]
+            if any(v["variant_id"] == str(variant.id) for v in row["variants"])
+        )
+        ranked = next(
+            v["offers"] for v in product["variants"]
+            if v["variant_id"] == str(variant.id)
+        )
+        ranked_ids = [row["offer_id"] for row in ranked]
+        assert ranked_ids.index(str(reliable_fresh.id)) < ranked_ids.index(str(cheap_stale.id))
+        strong_row = next(row for row in ranked if row["offer_id"] == str(reliable_fresh.id))
+        assert strong_row["ranking"]["score"] > next(
+            row["ranking"]["score"] for row in ranked
+            if row["offer_id"] == str(cheap_stale.id)
+        )
+    finally:
+        with factory.begin() as session:
+            if offer_ids:
+                session.query(Offer).filter(Offer.id.in_(offer_ids)).delete(synchronize_session=False)
+            if store_ids:
+                session.query(Store).filter(Store.id.in_(store_ids)).delete(synchronize_session=False)
+        engine.dispose()
