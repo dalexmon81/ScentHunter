@@ -1083,3 +1083,51 @@ def test_pendora_scents_veteran_oud_is_in_official_men_collection():
     assert row.get("formats_ml") is None
     assert row.get("concentration") is None
 
+def test_paris_corner_parent_collection_all_four_pages_match_105_official_names():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = [
+        row for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+        and row.get("collection_name") == "Paris Corner"
+    ]
+    expected_names = {
+        "Affogato Al Caffe", "Aira", "Arwa", "Atoof", "Azm", "Bayn Al Asrar",
+        "Caramel Bash", "Choco Lait", "Ciao Citrus", "Confidential", "Cosmic Giardino",
+        "Dar Al Oud", "Date Caramel", "December Ambar", "December Rose",
+        "December Vanilla", "Dulzura", "Dulzura Vanilla Envie", "Eshal Musk",
+        "Eshal Vanilla", "Eternal Coffee", "Eternal Meadows", "Eternal Musk", "Farah",
+        "Fatal Embrace", "Fayora", "Fayora Oshino", "Green Bet", "Heer", "Hurriya",
+        "Ibisco Nirvana", "Indomitable", "Jardin Des Papillons", "Kaheela Platinum",
+        "Khair", "Khair Confection", "Khair Felicity", "Khair Fusion",
+        "Khair Peach Delulu", "Khair Pistachio", "Khayal", "Manaal",
+        "Marshmallow Blush", "Mawj Appletini", "Mawj Cognac Blaze", "Mawj Moscow Mule",
+        "Mehwish", "Midnight Sin By Daniel Rene", "Miel Obscura", "Miel Vanille",
+        "Minya", "Minya Caramel Dulce", "Minya Coco Lush",
+        "Misty Dawn Musk Collection", "Molten Caramel", "Mysterium",
+        "Nada Blumingle", "Nada Whimsical", "Nada Wink", "Nouf",
+        "Ophidian Black Cherry", "Ophidian Mango Bliss", "Ophidian Sweet Surrender",
+        "Oravea", "Oud Faek", "Oud Wahaaj", "Papillon Des Vents", "Perseviron",
+        "Perseviron Fig Hug", "Pinkling", "Plum Liquor", "Prodigy", "Prodigy Noir",
+        "Qawafi", "Qissa", "Qissa Delicious", "Qissa Gala", "Qissa Pink", "Rawq",
+        "Reham Rose Petals", "Reham Vanilla Mood", "Reham Wild Mineral", "Rifaaqat",
+        "Rifaaqat Adorn", "Rua", "Rua Radiant Roses", "Soothing Zephyr", "Taskeen",
+        "Taskeen Caramel Cascade", "Taskeen Lactea Divina", "Taskeen Marina",
+        "Taskeen Wowie", "Tawaaq", "The Show Magnifique",
+        "Tranquil Night Musk Collection", "Twilight Shadow Musk Collection",
+        "Virilis", "Zahi", "Zahri Amara", "Zaman Al Ula", "Zariya", "Zodiac",
+        "Zodiac Lunaris", "Zodiac Solmaris", "Zodiac Stratos",
+    }
+    actual_names = {row["canonical_name"] for row in products}
+    assert len(products) == 105
+    assert actual_names == expected_names
+    expected_page_counts = {
+        "https://www.pariscornerperfumes.com/collections/paris-corner": 32,
+        "https://www.pariscornerperfumes.com/collections/paris-corner?page=2": 32,
+        "https://www.pariscornerperfumes.com/collections/paris-corner?page=3": 32,
+        "https://www.pariscornerperfumes.com/collections/paris-corner?page=4": 9,
+    }
+    actual_page_counts = {}
+    for row in products:
+        actual_page_counts[row["source_url"]] = actual_page_counts.get(row["source_url"], 0) + 1
+    assert actual_page_counts == expected_page_counts
+
