@@ -224,6 +224,71 @@ jobs:
             *) echo "::error::Staging frontend did not contain the ScentHunter application."; exit 1 ;;
           esac
           curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 3 --max-time 20 "$url/search-start?q=Sauvage" | python -c 'import json,sys; d=json.load(sys.stdin); p=d.get("results",[]); assert d.get("status")=="completed"; assert any(str(x.get("brand","")).lower()=="dior" and str(x.get("fragrance","")).lower()=="sauvage" for x in p); print({"status":d.get("status"),"products":d.get("count"),"offers":d.get("offer_count")})'
+      - name: Verify staging account and delivery-destination flow
+        env:
+          STAGING_BASE_URL: https://scenthunter-staging-workers.fly.dev
+          SMOKE_EMAIL: staging-smoke-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
+        run: |
+          python - <<'PY'
+          import json, os, secrets, urllib.error, urllib.parse, urllib.request
+          base = os.environ["STAGING_BASE_URL"].rstrip("/")
+          email = os.environ["SMOKE_EMAIL"]
+          password = secrets.token_urlsafe(24)
+          def request(path, method="GET", payload=None, token=None, expected=200):
+              headers = {}
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+              if token:
+                  headers["Authorization"] = "Bearer " + token
+              data = json.dumps(payload).encode() if payload is not None else None
+              req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as response:
+                      status, body = response.status, response.read()
+              except urllib.error.HTTPError as exc:
+                  status, body = exc.code, exc.read()
+              if status != expected:
+                  raise RuntimeError(f"{method} {path}: expected {expected}, got {status}: {body[:300]!r}")
+              return json.loads(body) if body else {}
+          registered = request("/account/register", "POST", {
+              "email": email, "password": password,
+              "residence_country_code": "LU", "residence_postal_code": "L-1234"
+          }, expected=201)
+          token = registered["access_token"]
+          assert registered["account"]["email"] == email
+          me = request("/account/me", token=token)
+          assert me["account"]["residence_country_code"] == "LU"
+          destination = request("/account/destinations", "POST", {
+              "label": "Staging smoke destination", "country_code": "IT",
+              "postal_code": "00100", "is_default": True
+          }, token=token, expected=201)
+          assert destination["country_code"] == "IT" and destination["is_default"] is True
+          listed = request("/account/destinations", token=token)
+          assert any(x["id"] == destination["id"] and x["is_default"] for x in listed["destinations"])
+          request("/account/logout", "POST", token=token)
+          request("/account/me", token=token, expected=401)
+          query = urllib.parse.urlencode({"q": "Sauvage", "country_code": "LU", "postal_code": "L-1234"})
+          result = request("/search-start?" + query)
+          assert result.get("status") == "completed"
+          print({"registration": "passed", "profile_read": "passed",
+                 "saved_destination": "passed", "logout_revocation": "passed",
+                 "explicit_delivery_search": "passed", "synthetic_account": email})
+          PY
+      - name: Remove staging smoke-test account
+        if: always()
+        continue-on-error: true
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          SMOKE_EMAIL: staging-smoke-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then exit 0; fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import os; from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); tx=c.begin(); uid=c.execute(text("SELECT id FROM user_accounts WHERE email=:email"),{"email":os.environ["SMOKE_EMAIL"]}).scalar();
+if uid is not None:
+ c.execute(text("DELETE FROM user_sessions WHERE user_id=:uid"),{"uid":uid}); c.execute(text("DELETE FROM user_delivery_destinations WHERE user_id=:uid"),{"uid":uid}); c.execute(text("DELETE FROM user_accounts WHERE id=:uid"),{"uid":uid});
+tx.commit(); print({"smoke_account_removed":uid is not None}); c.close(); e.dispose()'"
       - name: Inspect worker logs and machine state
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
