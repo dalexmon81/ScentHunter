@@ -46,7 +46,7 @@
     {
       "brand": "Bujairami",
       "url": "https://bujairami.com.au/collections/all-products",
-      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Additional official product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious and Drip. Concentration is not inferred where absent. Additional official individual product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious, Drip, Billion Dollar, Woolloomooloo, Imperial Oud, Oud Royale and Roselle."
+      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Additional official product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious and Drip. Concentration is not inferred where absent. Additional official individual product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious, Drip, Billion Dollar, Woolloomooloo, Imperial Oud, Oud Royale and Roselle. Official product pages also explicitly identify 100ml EDP variants for Aquafina, Rosalie and Beautiful Lady."
     },
     {
       "brand": "Mykonos",
@@ -1136,6 +1136,39 @@
       "variants": [
         {
           "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Aquafina",
+      "source_url": "https://bujairami.com.au/products/aquafina-inspired-by-acqua-digio-edp",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Rosalie",
+      "source_url": "https://bujairami.com.au/products/rosalie-inspired-by-dior-miss-dior-edp",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Beautiful Lady",
+      "source_url": "https://bujairami.com.au/products/beautiful-lady-inspired-by-libre-yves-saint-laurent",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
           "size_ml": 100
         }
       ]
