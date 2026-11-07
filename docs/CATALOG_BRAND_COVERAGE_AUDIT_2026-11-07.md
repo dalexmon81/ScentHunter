@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,589 canonical product identity records; 149 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,593 canonical product identity records; 149 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 247 |
+| Armaf | 251 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,589** |
+| **Total** | **1,593** |
 
 ## Findings from live public sources
 
@@ -658,7 +658,7 @@ Source: https://www.pariscornerperfumes.com/collections/paris-corner?page=4
 
 Reviewed the official ARMAF US collection **All Fragrances (Not Gift Set)** and the first four currently surfaced pages. The collection's live page reports 424 listings and its concentration filters include EDP, EDT, Extrait and Parfum alongside body sprays, mists, lotions, deodorants, roll-ons, shower gels and soaps. Therefore the raw collection count is not a perfume-identity count and must not be imported wholesale.
 
-Compared visible product names from the first six pages against the existing Armaf catalog. Eight official perfume identities were missing and have been added with product-detail evidence URLs and verified concentrations:
+Compared visible product names from the first eight pages against the existing Armaf catalog. Twelve official fragrance identities were missing and have been added with product-detail evidence URLs and verified concentrations:
 - Odyssey Bloody Hot — Eau de Parfum
 - Odyssey Ring My Bell — Eau de Parfum
 - Eter Arabian Sky — Eau de Parfum
@@ -666,6 +666,10 @@ Compared visible product names from the first six pages against the existing Arm
 - Odyssey Pink Pop — Eau de Parfum
 - Spartacus — Eau de Parfum
 - Odyssey Soda Pop — official fragrance identity (concentration not inferred from the detail page)
+- Uniq Effects of Uniq — official fragrance identity (concentration not inferred)
+- Scentasy Noir De Peche — official fragrance identity (concentration not inferred)
+- Kunafa Chocolate — Eau de Parfum
+- Dubai Nights Midnight — official fragrance identity (concentration not inferred)
 - Club de Nuit Iconic Extrait de Parfum — Extrait de Parfum
 
 Also reconciled two official names to existing canonical records instead of creating duplicates:
@@ -675,12 +679,12 @@ Also reconciled two official names to existing canonical records instead of crea
 Added a 70ml variant for Club de Nuit Iconic Extrait de Parfum from the official product description. No prices, stock or retailer offers were added.
 
 Updated branch snapshot:
-- Product identities: **1,589** (up from 1,581)
+- Product identities: **1,593** (up from 1,581)
 - Explicit variants: **149** (up from 147)
-- Armaf identities: **247** (up from 239)
-- Products without declared variants: **1,462**
+- Armaf identities: **251** (up from 239)
+- Products without declared variants: **1,466**
 
-This is a partial Armaf pass only. Six pages of a large, mixed-format official collection do not establish full Armaf coverage. The remaining pages, product types and any further concentration/size variants still need reconciliation. The 424 collection count includes non-perfume body-care items and must be filtered by product type before completeness can be measured.
+This is a partial Armaf pass only. Eight pages of a large, mixed-format official collection do not establish full Armaf coverage. The remaining pages, product types and any further concentration/size variants still need reconciliation. The 424 collection count includes non-perfume body-care items and must be filtered by product type before completeness can be measured.
 
 Official sources:
 - https://armaf.com/collections/all-fragrances-not-gift-set
@@ -696,3 +700,10 @@ Official sources:
 
 
 Page 6 also exposed **Odyssey Soda Pop**, which was absent from the Armaf bucket. Added it as a source-verified fragrance identity with its official product-detail URL. Its concentration and size were left unset because the retrieved product detail did not state them. Source: https://armaf.com/products/odyssey-soda-pop
+
+
+Pages 7–8 yielded four more product-detail-confirmed Armaf fragrance identities absent from the catalog: **Uniq Effects of Uniq, Scentasy Noir De Peche, Kunafa Chocolate and Dubai Nights Midnight**. Added them with official product-detail evidence. Concentration remains unset for three because the retrieved detail pages did not state it; Kunafa Chocolate is explicitly Eau de Parfum. Sources:
+- https://armaf.com/products/uniq-effects-of-uniq-spr
+- https://armaf.com/products/scentasy-noir-de-peche
+- https://armaf.com/products/kunafa-chocolate
+- https://armaf.com/products/dubai-nights-midnight-spr
