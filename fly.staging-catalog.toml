@@ -11,7 +11,6 @@ primary_region = "ams"
 
 [processes]
   app = "sh /app/backend/start_worker.sh worker"
-  beat = "sh /app/backend/start_worker.sh beat"
   web = "sh /app/backend/start_api.sh"
 
 [http_service]
@@ -34,12 +33,6 @@ primary_region = "ams"
   cpus = 1
   memory = "1gb"
   processes = ["app"]
-
-[[vm]]
-  cpu_kind = "shared"
-  cpus = 1
-  memory = "512mb"
-  processes = ["beat"]
 
 [[vm]]
   cpu_kind = "shared"
