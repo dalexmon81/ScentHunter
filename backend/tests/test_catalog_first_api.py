@@ -42,7 +42,7 @@ def test_search_start_returns_completed_catalog_contract(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert called == {"query": "Sauvage", "destination": {"destination_country_code": None, "destination_postal_code": None}}
+    assert called == {"query": "Sauvage", "destination": {"destination_country_code": "IT", "destination_postal_code": "00100"}}
     assert payload["completed"] is True
     assert payload["status"] == "completed"
     assert payload["catalog_rollout"] == {
