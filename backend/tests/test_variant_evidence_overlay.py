@@ -37,6 +37,7 @@ def test_variant_evidence_overlay_adds_only_documented_sizes_and_concentrations(
     assert {row["size_ml"] for row in raw["variants"] if row["product_id"].endswith("adonis")} == {35, 100}
     oravea = next(row for row in raw["variants"] if row["product_id"].endswith("oravea"))
     assert oravea["concentration"] == "Eau de Parfum"
+    assert next(row for row in raw["variants"] if row["product_id"].endswith("adonis"))["canonical_key"] == "velixir|adonis|edp|35|standard"
     assert oravea["evidence_url"].endswith("/products/oravea")
     assert all(row["is_tester"] is False and row["is_refill"] is False for row in raw["variants"])
 
