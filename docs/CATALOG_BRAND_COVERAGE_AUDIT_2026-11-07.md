@@ -1340,3 +1340,14 @@ A regression test checks all 16 product-detail URLs, line attribution, sizes and
 - The official all-products feed still needs a full name-by-name reconciliation. The 252 feed count includes product types and lines that require classification; not every listing should become a standalone perfume identity.
 - CI for the latest branch head must complete before treating the new regression test as passed.
 
+## Pass 13 — catalog attribution and CI regression correction (2026-11-07)
+
+The first Actions runs exposed stale hard-coded catalog counts and an attribution issue in the new detail-page additions. The catalog and tests have been corrected:
+
+- Updated seed assertions to the current **1,766 identities / 193 variants / 1,573 products without variants**.
+- Preserved the Paris Corner parent collection as exactly **105 identities**. Eleven additional product-detail identities whose exact sub-line is not established are now labeled Unclassified, rather than incorrectly counted as members of the parent collection.
+- Added source_product_url and corrected source_evidence_url for six previously cataloged 100 ml Paris Corner products (Confidential, Khayal, Minya, Ophidian Black Cherry, Qawafi and Taskeen Lactea Divina).
+- Kept the 16 newly verified product-detail identities and their size variants; line attribution remains explicit only where the official page supports it.
+
+The failed runs reported 32–33 passing tests and failures from the stale totals, old detail evidence, and the over-broad parent-collection count. The corrections are committed, but no successful Actions run for the corrected current head has yet been observed. Do not mark CI green until a fresh run completes.
+
