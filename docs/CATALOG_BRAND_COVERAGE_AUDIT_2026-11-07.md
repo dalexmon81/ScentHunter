@@ -243,7 +243,7 @@ Sources: https://armaf.uk/collections/all-armaf-products?page=5 ; https://armaf.
 
 ### Maison Alhambra
 
-Used the European B2B distributor's Maison Alhambra brand catalogue, which explicitly separates LATTAFA MAISON ALHAMBRA from Lattafa air fresheners, deodorants and other sub-brands. Pages 1–4 list 100ml/80ml EDP identities and SKUs; added 34 absent identities in total across these pages (10 on page 1, 15 on page 2, 6 on page 3, 3 on page 4). Correction: the actual additions in this commit are 10 from page 1 plus 24 from pages 2–4 (9 + 6 + 9 = 24), total 34. Names added:
+Used the European B2B distributor's Maison Alhambra brand catalogue, which explicitly separates LATTAFA MAISON ALHAMBRA from Lattafa air fresheners, deodorants and other sub-brands. Pages 1–4 list 100ml/80ml EDP identities and SKUs; added 34 absent identities in total across these pages: 10 from page 1 and 24 from pages 2–4 (9 + 6 + 9). Names added:
 
 - Page 1: Sensual Vanilla; Your Touch Amber; Yeah! Man; Your Touch for Women; Jean Lowe Maitre; Winsome; Queenstown Pour Femme Intense; Spectrum; Victoria Flower Rosa Lilium; Victorioso Heroic. (Florenza was already in catalog.)
 - Page 2: Tonic Malt; Tonic Ice; Encode Mountain; Vogue Party; Vogue Rouge; Vogue Night; Pink Velvet; Smoky Touch; Sceptre Oceana.
