@@ -37,4 +37,4 @@ def test_signed_in_search_uses_default_destination_then_residence_fallback():
     assert 'destinations.find(d=>d.is_default)' in source
     assert 'preferred?.country_code||a.residence_country_code' in source
     assert 'preferred?.postal_code||a.residence_postal_code' in source
-    assert 'if(!deliveryCountry.value)' in source
+    assert 'if(deliveryCountry&&!deliveryCountry.value)' in source
