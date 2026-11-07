@@ -231,20 +231,26 @@ jobs:
           SMOKE_EMAIL: staging-smoke-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
         run: |
           python - <<'PY'
-          import json, os, secrets, urllib.error, urllib.parse, urllib.request
+          import http.cookiejar, json, os, secrets, urllib.error, urllib.request
           base = os.environ["STAGING_BASE_URL"].rstrip("/")
           email = os.environ["SMOKE_EMAIL"]
           password = secrets.token_urlsafe(24)
-          def request(path, method="GET", payload=None, token=None, expected=200):
-              headers = {}
+          jar = http.cookiejar.CookieJar()
+          opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+          def csrf_cookie():
+              return next((c.value for c in jar if c.name == "__Host-scenthunter_csrf"), "")
+          def request(path, method="GET", payload=None, expected=200):
+              headers = {"Origin": base}
               if payload is not None:
                   headers["Content-Type"] = "application/json"
-              if token:
-                  headers["Authorization"] = "Bearer " + token
+              if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+                  csrf = csrf_cookie()
+                  if csrf:
+                      headers["X-CSRF-Token"] = csrf
               data = json.dumps(payload).encode() if payload is not None else None
               req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
               try:
-                  with urllib.request.urlopen(req, timeout=20) as response:
+                  with opener.open(req, timeout=20) as response:
                       status, body = response.status, response.read()
               except urllib.error.HTTPError as exc:
                   status, body = exc.code, exc.read()
@@ -255,24 +261,25 @@ jobs:
               "email": email, "password": password,
               "residence_country_code": "LU", "residence_postal_code": "L-1234"
           }, expected=201)
-          token = registered["access_token"]
           assert registered["account"]["email"] == email
-          me = request("/account/me", token=token)
+          assert registered["session_type"] == "http_only_cookie"
+          assert csrf_cookie(), "CSRF cookie missing"
+          me = request("/account/me")
           assert me["account"]["residence_country_code"] == "LU"
           destination = request("/account/destinations", "POST", {
               "label": "Staging smoke destination", "country_code": "IT",
               "postal_code": "00100", "is_default": True
-          }, token=token, expected=201)
+          }, expected=201)
           assert destination["country_code"] == "IT" and destination["is_default"] is True
-          listed = request("/account/destinations", token=token)
+          listed = request("/account/destinations")
           assert any(x["id"] == destination["id"] and x["is_default"] for x in listed["destinations"])
-          request("/account/logout", "POST", token=token)
-          request("/account/me", token=token, expected=401)
-          query = urllib.parse.urlencode({"q": "Sauvage", "country_code": "LU", "postal_code": "L-1234"})
+          request("/account/logout", "POST")
+          request("/account/me", expected=401)
+          query = "q=Sauvage&country_code=LU&postal_code=L-1234"
           result = request("/search-start?" + query)
           assert result.get("status") == "completed"
-          print({"registration": "passed", "profile_read": "passed",
-                 "saved_destination": "passed", "logout_revocation": "passed",
+          print({"registration": "passed", "httponly_cookie_session": "passed",
+                 "csrf_protected_destination": "passed", "logout_revocation": "passed",
                  "explicit_delivery_search": "passed", "synthetic_account": email})
           PY
       - name: Remove staging smoke-test account
