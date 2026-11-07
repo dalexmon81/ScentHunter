@@ -157,8 +157,8 @@ jobs:
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
-          queue_output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import base64; p="/tmp/scenthunter-variant-research-queue.csv"; print("QUEUE_BASE64="+base64.b64encode(open(p,"rb").read()).decode())'")"
-          queue_b64="$(printf '%s\\n' "$queue_output" | sed -n 's/^QUEUE_BASE64=//p' | tail -n 1)"
+          queue_output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import base64; p=\"/tmp/scenthunter-variant-research-queue.csv\"; print(\"QUEUE_BASE64=\"+base64.b64encode(open(p,\"rb\").read()).decode())'")"
+          queue_b64="$(printf '%s\n' "$queue_output" | sed -n 's/^QUEUE_BASE64=//p' | tail -n 1)"
           if [ -z "$queue_b64" ]; then
             echo "::error::Could not retrieve the variant research queue from staging."
             exit 1
