@@ -813,6 +813,24 @@ function shOfferMetaHtml(o){
       parts.push("SPEDIZIONE NON CONFRONTABILE");
     }
   }
+  if(o&&o.shipping_status==="verified"&&o.delivered_total_verified===true){
+    const shipping=Number(o.shipping&&o.shipping.shipping_cost);
+    const total=Number(o.delivered_total);
+    if(Number.isFinite(shipping)&&Number.isFinite(total)){
+      parts.push("SPEDIZIONE "+formatEuro(shipping)+" · TOTALE CONSEGNATO "+formatEuro(total));
+    }
+  }else if(o&&o.shipping_status==="estimated"){
+    const estimate=Number(o.shipping&&o.shipping.shipping_cost_estimate);
+    parts.push(Number.isFinite(estimate)?"SPEDIZIONE STIMATA "+formatEuro(estimate)+" · TOTALE NON VERIFICATO":"SPEDIZIONE STIMATA · TOTALE NON VERIFICATO");
+  }else if(o&&o.shipping_status==="unknown"){
+    parts.push("SPEDIZIONE NON DISPONIBILE · TOTALE NON VERIFICATO");
+  }else if(o&&o.shipping_status==="stale"){
+    parts.push("TARIFFA DI SPEDIZIONE SCADUTA · TOTALE DA VERIFICARE");
+  }else if(o&&o.shipping_status==="unavailable"){
+    parts.push("IL NEGOZIO NON SPEDISCE A QUESTA DESTINAZIONE");
+  }else if(o&&o.shipping_status==="destination_required"){
+    parts.push("SELEZIONA LA DESTINAZIONE PER CALCOLARE LA SPEDIZIONE");
+  }
   return parts.length?'<div class="offer-meta">'+parts.join(" · ")+"</div>":"";
 }
 
