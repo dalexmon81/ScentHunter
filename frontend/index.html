@@ -1047,18 +1047,35 @@ async function hydratePhase2OfferIds(g){
   return g._phase2OfferPromise;
 }
 
+function shShippingHtml(o){
+  const currency=String(o&&o.currency||"EUR").toUpperCase();
+  const money=value=>{
+    const n=Number(value);
+    if(!Number.isFinite(n))return "";
+    try{return new Intl.NumberFormat("it-IT",{style:"currency",currency}).format(n)}
+    catch(_){return formatEuro(n)}
+  };
+  if(o&&o.delivered_total_verified===true){
+    return '<div class="offer-meta">TOTALE CONSEGNATO · '+esc(money(o.delivered_total))+' · spedizione '+esc(money(o.shipping&&o.shipping.shipping_cost))+'</div>';
+  }
+  if(o&&o.shipping_status==="estimated"){
+    return '<div class="offer-meta">Spedizione stimata: '+esc(money(o.shipping&&o.shipping.shipping_cost_estimate))+' · totale non verificato</div>';
+  }
+  return '<div class="offer-meta">Spedizione non verificata per questa destinazione · totale non disponibile</div>';
+}
+
 function renderOffersHtml(g,img,offers,saved){
   const singleCurrencyComparison=new Set((offers||[]).map(o=>String(o&&o.currency||"EUR").toUpperCase())).size===1;
   const allOffersPriceComparable=(offers||[]).every(o=>!o||!o.ranking||o.ranking.price_comparable===true);
   return (offers||[]).map((o,n)=>{
     const out=isOfferOutOfStock(o);
-    const isBestOffer=!out&&n===0&&singleCurrencyComparison&&allOffersPriceComparable;
+    const isBestOffer=!out&&n===0&&singleCurrencyComparison&&allOffersPriceComparable&&o.delivered_total_verified===true;
     const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
     const refreshId=String(o.phase2_offer_id||"");
     const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
     const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':"";
-    return `<div class="offer ${isBestOffer?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBestOffer?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${shOfferMetaHtml(o)||(isBestOffer?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
+    return `<div class="offer ${isBestOffer?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBestOffer?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${shOfferMetaHtml(o)||(isBestOffer?'<div class="offer-meta">MIGLIOR TOTALE CONSEGNATO</div>':"")}${!out?shShippingHtml(o):""}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
   }).join("");
 }
 
