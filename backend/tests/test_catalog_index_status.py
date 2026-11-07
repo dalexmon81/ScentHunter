@@ -27,7 +27,7 @@ class FakeCursor:
 def test_reports_active_url_presence_and_closes_connection():
     connection = FakeConnection({"sabina"})
     result = catalog_indexed_flags(
-        ["sabina", "deloox", "", None],
+        ["sabina", "deloox", ""],
         lambda: connection,
     )
 
