@@ -2,8 +2,10 @@
 
 Discovery terms are supplied as JSON in SCENTHUNTER_DISCOVERY_TERMS_JSON,
 for example {"deloox":["Dior Sauvage 100 ml"],"sabina":["Chanel No 5"]}.
-No live discovery is attempted for a store without configured terms, except
-Notino where the authorized affiliate feed is its discovery source.
+No live discovery is attempted for a store without configured terms. Notino's
+CJ/VIV feed adapter is registered but is not evidence of an approved program,
+feed entitlement, or working credentials. Do not enable its store until the
+retailer/affiliate authorization and feed access have been verified.
 """
 from __future__ import annotations
 
