@@ -53,7 +53,7 @@ def test_variant_evidence_overlay_refuses_unknown_or_ambiguous_catalog_identity(
             "variants": [{"concentration": "Eau de Parfum", "size_ml": 35}],
         }]
     }
-    with pytest.raises(ValueError, match="expected exactly one catalog identity"):
+    with pytest.raises(ValueError, match="no exact catalog identity"):
         merge_variant_evidence_overlay(raw, overlay)
 
 
@@ -90,3 +90,20 @@ def test_variant_evidence_overlay_is_idempotent():
     assert merge_variant_evidence_overlay(raw, overlay) == 1
     assert merge_variant_evidence_overlay(raw, overlay) == 0
     assert len(raw["variants"]) == 1
+
+
+def test_variant_evidence_overlay_resolves_legacy_and_discovery_ids_to_same_identity():
+    raw = {
+        "products": [
+            {"product_id": "legacy-123", "brand_name": "Velixir", "canonical_name": "Adonis"},
+            {"product_id": "discovery:velixir:adonis", "brand_name": "Velixir", "canonical_name": "Adonis"},
+        ],
+        "variants": [],
+    }
+    overlay = {"products": [{
+        "brand": "Velixir", "fragrance": "Adonis",
+        "source_url": "https://velixirperfumes.eu/perfumes/",
+        "variants": [{"concentration": "Eau de Parfum", "size_ml": 35}],
+    }]}
+    assert merge_variant_evidence_overlay(raw, overlay) == 1
+    assert raw["variants"][0]["product_id"] == "discovery:velixir:adonis"
