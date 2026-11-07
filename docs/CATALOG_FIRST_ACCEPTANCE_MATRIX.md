@@ -210,3 +210,23 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - Approval requires an exact store slug, permitted collection method, one or more enumerated scopes, written authorization reference, HTTPS evidence URL and approver identity. Optional validity timestamps must include a timezone; expiry must be later than validity start. `price_stock` and `product_discovery` each require `offer_data`. Revocation changes status and timestamp while preserving the record.
 - Added validation tests in `backend/tests/test_manage_store_authorization_cli.py` and included them in vertical-slice CI and the staging pre-deploy test suite. Latest CI results are pending; this CLI has not yet been used to grant any retailer permission.
 - The CLI is intended for a trusted operator shell only. No unauthenticated HTTP grant-management endpoint was added. An authenticated role-based admin UI remains future work.
+
+
+## Account, delivery destination and delivered-price increment (PR #424 draft)
+
+Implemented on `phase9/staging-catalog-api` after the earlier staging baseline:
+- `0014_user_accounts_destinations`: minimal account profile and saved delivery destinations, separate residence and destination countries.
+- `0015_user_sessions`: revocable opaque bearer sessions; token digests only are persisted.
+- Account API: registration, login, logout, current profile, destination list/create/default/delete.
+- Guest frontend destination selector (country required, postal code optional) passes destination context into catalog-only search.
+- Catalog search attaches retailer-specific shipping quotes to each published offer and sorts verified delivered totals only within the same currency.
+- Frontend keeps product price visible and labels shipping fee and verified delivered total separately; estimated/unknown/stale/unavailable tariffs are not presented as confirmed totals.
+- Automated tests were added to the vertical-slice workflow for account API, session handling, schema, and frontend destination contract.
+
+Acceptance remains **partial / not yet verified**:
+- The current GitHub Actions query for the latest PR head has not returned workflow runs or status checks. Do not treat these additions as CI-passing until the workflow result is visible.
+- The new migrations have not yet been applied to Fly staging; no deployment was performed in this increment.
+- Account registration/login and saved-destination management are API-only; the frontend currently supports guest destination selection, not a complete account UI.
+- No real retailer offers or verified shipping tariffs are present, so real delivered-price comparisons remain unproven.
+- Password reset, email verification, abuse/rate limiting and the signed-in destination precedence resolver remain before general user release.
+- PR #424 remains open and draft. No merge, production change, retailer activation or staging deploy was performed for this increment.
