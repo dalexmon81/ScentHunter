@@ -291,3 +291,15 @@ A source audit found an important distinction that must be resolved before the l
 - The separate user-screenshot observation records a displayed price but explicitly has no capture timestamp, product URL or stock evidence; it must remain observational test data, not an offer.
 
 **Required correction before claiming exact-match acceptance:** ensure the canonical 100 ml Liquid Brun EDP variant is present in the PostgreSQL seed source with the verified GTIN, or provide a separately reviewed canonical identity import path. Then add an integration test that reads the seeded canonical variant and proves the real matcher resolves the Bplatz fixture by GTIN without a hard-coded variant ID. The test must still keep the Bplatz retailer authorization gate closed and must not publish a fixture as a live offer. Re-run the PostgreSQL vertical slice and staging seed/search smoke after the code change. Until then, Liquid Brun is known to the family registry but is not proven as a GTIN-backed canonical PostgreSQL variant.
+
+
+## Arabian fragrance catalog expansion (2026-11-07)
+
+A researched discovery overlay was added at `backend/catalog_overlays/arabian_fragrance_discovery_2026-11-07.json`:
+
+- 1,186 fragrance identity candidates across 13 requested brands/lines: Velixir (28), Mykonos (60), Maison Asrar (83, including the nine Royal Collection names), Khadlaj (52), Bujairami (314), Paris Corner (116), Assaf (41), Al Wataniah (78), Armaf (50), French Avenue (60), Arabiyat Prestige (107), Gulf Orchid (146), and Swiss Arabian (51).
+- Names were cross-checked against brand collection pages and fragrance catalogues. The overlay records its research source URLs and check date. Counts are the number of identities captured in this research pass, not a claim that these are the complete worldwide ranges; third-party catalogues disagree and some brand databases contain discontinued items, oils, or non-spray formats.
+- This is a **discovery identity layer only**. It intentionally creates no size/concentration variants, GTINs, retailer records, prices, stock, shipping rates, or offers. Product identity names must not be presented as purchasable listings.
+- `seed_catalog.py` accepts the overlay only with explicit `--include-discovery-overlay`. The isolated staging deployment opts in and checks 1,186 `discovery:` legacy mappings while keeping stores and offers at zero. The production workflow does not pass that flag and therefore does not import this overlay.
+- Regression coverage verifies the 13-brand set, all 1,186 identities, identity-only fields, idempotent merge, and catalog validation.
+- The overlay is a first researched import, not proof that every perfume ever released by each house is present. Further source reconciliation can add omitted/discontinued/new releases without inventing variants or offers.
