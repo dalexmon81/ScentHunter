@@ -46,7 +46,7 @@
     {
       "brand": "Bujairami",
       "url": "https://bujairami.com.au/collections/all-products",
-      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Concentration is not stated on these pages and is left unspecified."
+      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Additional official product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious and Drip. Concentration is not inferred where absent."
     },
     {
       "brand": "Mykonos",
@@ -1005,6 +1005,83 @@
         {
           "concentration": null,
           "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Too Damn Good",
+      "source_url": "https://bujairami.com.au/products/too-damn-good-inspired-by-bal-dafrique-absolu-byredo-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Non Stop",
+      "source_url": "https://bujairami.com.au/products/non-stop-inspired-by-pacific-chill-louis-vuitton-extrait-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Riverina",
+      "source_url": "https://bujairami.com.au/products/riverina-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Queens Avenue",
+      "source_url": "https://bujairami.com.au/products/queens-ave-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Harbour Tea",
+      "source_url": "https://bujairami.com.au/products/harbour-tea-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Glorious",
+      "source_url": "https://bujairami.com.au/products/glorious-inspired-by-erba-pura-xerjoff-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Drip",
+      "source_url": "https://bujairami.com.au/products/drip-inspired-by-afternoon-swim-louis-vuitton-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
         }
       ]
     }
