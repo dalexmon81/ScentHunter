@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1638
-    assert report["variants"] == 157
-    assert report["products_without_variants"] == 1503
+    assert report["fragrances"] == 1643
+    assert report["variants"] == 160
+    assert report["products_without_variants"] == 1505
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1638
-    assert len(variants) == 157
+    assert len(products) == 1643
+    assert len(variants) == 160
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -618,3 +618,29 @@ def test_armaf_pages_17_to_20_official_ombre_and_eter_products_are_traced():
     assert eter["concentration"] == "Eau de Parfum"
     assert eter["source_evidence_url"] == "https://armaf.com/products/eter-desert-rose"
     assert not any(v["product_id"] == eter["product_id"] for v in raw["variants"])
+
+
+
+def test_armaf_pages_13_to_20_missing_official_products_and_100ml_variants():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["product_id"]: row for row in raw["products"]}
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "SH-ARMAF-OFFICIAL-ETER-PERFUME-OASIS": ("Eter Perfume Oasis", "Eau de Parfum", "https://armaf.com/products/eter-perfume-oasis"),
+        "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-DREAMS": ("Club de Nuit Private Key To My Dreams", "Eau de Toilette", "https://armaf.com/products/club-de-nuit-private-key-to-my-dreams-100ml"),
+        "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SOUL": ("Club de Nuit Private Key To My Soul", "Eau de Parfum", "https://armaf.com/products/club-de-nuit-private-key-to-my-soul-100ml"),
+        "SH-ARMAF-OFFICIAL-NICHE-SAPPHIRE": ("Niche Sapphire", None, "https://armaf.com/products/niche-saphire"),
+        "SH-ARMAF-OFFICIAL-PROFUMI-DART-13-TANTA-ROBA": ("Profumi D'Art 13 Tanta Roba", "Eau de Parfum", "https://armaf.com/products/profumi-dart-13-e-tanta-roba"),
+    }
+    for product_id, (name, concentration, evidence_url) in expected.items():
+        row = products[product_id]
+        assert row["canonical_name"] == name
+        assert row.get("concentration") == concentration
+        assert row["source_evidence_url"] == evidence_url
+        assert row["identity_status"] == "source_verified_name"
+    for variant_id in (
+        "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-DREAMS-100-000",
+        "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SOUL-100-000",
+        "SHV-SH-ARMAF-OFFICIAL-PROFUMI-DART-13-TANTA-ROBA-100-000",
+    ):
+        assert variants[variant_id]["size_ml"] == 100
