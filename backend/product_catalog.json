@@ -15575,6 +15575,1179 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-THE-CREST-001",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "The Crest",
+      "name": "The Crest",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "The Crest",
+      "aliases": [
+        "The Crest",
+        "Al Wataniah The Crest"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ONYX-002",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Onyx",
+      "name": "Onyx",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Onyx",
+      "aliases": [
+        "Onyx",
+        "Al Wataniah Onyx"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-POLO-ESTATE-NAVY-GOLD-003",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Polo Estate Navy Gold",
+      "name": "Polo Estate Navy Gold",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Polo Estate Navy Gold",
+      "aliases": [
+        "Polo Estate Navy Gold",
+        "Al Wataniah Polo Estate Navy Gold"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-KAYAAN-EXTRAIT-004",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Kayaan Extrait",
+      "name": "Kayaan Extrait",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Kayaan Extrait",
+      "aliases": [
+        "Kayaan Extrait",
+        "Al Wataniah Kayaan Extrait"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EVEREST-005",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Everest",
+      "name": "Everest",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Everest",
+      "aliases": [
+        "Everest",
+        "Al Wataniah Everest"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMERALD-PLUME-006",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Emerald Plume",
+      "name": "Emerald Plume",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Emerald Plume",
+      "aliases": [
+        "Emerald Plume",
+        "Al Wataniah Emerald Plume"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMERALD-ASCOT-007",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Emerald Ascot",
+      "name": "Emerald Ascot",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Emerald Ascot",
+      "aliases": [
+        "Emerald Ascot",
+        "Al Wataniah Emerald Ascot"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-ICE-BLUE-008",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Attar Al Wesal Ice Blue",
+      "name": "Attar Al Wesal Ice Blue",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Attar Al Wesal Ice Blue",
+      "aliases": [
+        "Attar Al Wesal Ice Blue",
+        "Al Wataniah Attar Al Wesal Ice Blue"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-PEARL-009",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sabah Al Ward Pearl",
+      "name": "Sabah Al Ward Pearl",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Sabah Al Ward Pearl",
+      "aliases": [
+        "Sabah Al Ward Pearl",
+        "Al Wataniah Sabah Al Ward Pearl"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-INTENSE-010",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Attar Al Wesal Intense",
+      "name": "Attar Al Wesal Intense",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Attar Al Wesal Intense",
+      "aliases": [
+        "Attar Al Wesal Intense",
+        "Al Wataniah Attar Al Wesal Intense"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BLUSH-PAPILLON-011",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Blush Papillon",
+      "name": "Blush Papillon",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Blush Papillon",
+      "aliases": [
+        "Blush Papillon",
+        "Al Wataniah Blush Papillon"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-CASHMERE-IVORY-012",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Cashmere Ivory",
+      "name": "Cashmere Ivory",
+      "family_id": "al-wataniah_catalog",
+      "family_name": "Cashmere Ivory",
+      "aliases": [
+        "Cashmere Ivory",
+        "Al Wataniah Cashmere Ivory"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all-products",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ACADIA-INTENSO-EMIR-013",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Acadia Intenso Emir",
+      "name": "Acadia Intenso Emir",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Acadia Intenso Emir",
+      "aliases": [
+        "Acadia Intenso Emir",
+        "Paris Corner Acadia Intenso Emir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ARCANA-014",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Arcana",
+      "name": "Arcana",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Arcana",
+      "aliases": [
+        "Arcana",
+        "Paris Corner Arcana"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ATTRATUS-015",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Attratus",
+      "name": "Attratus",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Attratus",
+      "aliases": [
+        "Attratus",
+        "Paris Corner Attratus"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-BANANA-BLISS-016",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Banana Bliss",
+      "name": "Banana Bliss",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Banana Bliss",
+      "aliases": [
+        "Banana Bliss",
+        "Paris Corner Banana Bliss"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-BLACKBERRY-WISH-017",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Blackberry Wish",
+      "name": "Blackberry Wish",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Blackberry Wish",
+      "aliases": [
+        "Blackberry Wish",
+        "Paris Corner Blackberry Wish"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CAKE-TEMPTATION-018",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cake Temptation",
+      "name": "Cake Temptation",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Cake Temptation",
+      "aliases": [
+        "Cake Temptation",
+        "Paris Corner Cake Temptation"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CAMP-FIRE-EMIR-FACTORY-EDITION-019",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Camp Fire Emir Factory Edition",
+      "name": "Camp Fire Emir Factory Edition",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Camp Fire Emir Factory Edition",
+      "aliases": [
+        "Camp Fire Emir Factory Edition",
+        "Paris Corner Camp Fire Emir Factory Edition"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CEDRAT-ESSENCE-EMIR-020",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cedrat Essence Emir",
+      "name": "Cedrat Essence Emir",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Cedrat Essence Emir",
+      "aliases": [
+        "Cedrat Essence Emir",
+        "Paris Corner Cedrat Essence Emir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CELESTIAL-EMIR-021",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Celestial Emir",
+      "name": "Celestial Emir",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Celestial Emir",
+      "aliases": [
+        "Celestial Emir",
+        "Paris Corner Celestial Emir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHARUTO-REGAL-RESERVE-022",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Charuto Regal Reserve",
+      "name": "Charuto Regal Reserve",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Charuto Regal Reserve",
+      "aliases": [
+        "Charuto Regal Reserve",
+        "Paris Corner Charuto Regal Reserve"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHARUTO-TOBACCO-VANILLE-023",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Charuto Tobacco Vanille",
+      "name": "Charuto Tobacco Vanille",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Charuto Tobacco Vanille",
+      "aliases": [
+        "Charuto Tobacco Vanille",
+        "Paris Corner Charuto Tobacco Vanille"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHERRY-COLA-024",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cherry Cola",
+      "name": "Cherry Cola",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Cherry Cola",
+      "aliases": [
+        "Cherry Cola",
+        "Paris Corner Cherry Cola"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COCONUT-LAGOON-025",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Coconut Lagoon",
+      "name": "Coconut Lagoon",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Coconut Lagoon",
+      "aliases": [
+        "Coconut Lagoon",
+        "Paris Corner Coconut Lagoon"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NORTH-STAG-NEUF-IX-026",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "North Stag Neuf IX",
+      "name": "North Stag Neuf IX",
+      "family_id": "paris-corner_catalog",
+      "family_name": "North Stag Neuf IX",
+      "aliases": [
+        "North Stag Neuf IX",
+        "Paris Corner North Stag Neuf IX"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-GOURMAND-027",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Gourmand",
+      "name": "Ministry of Gourmand",
+      "family_id": "paris-corner_catalog",
+      "family_name": "Ministry of Gourmand",
+      "aliases": [
+        "Ministry of Gourmand",
+        "Paris Corner Ministry of Gourmand"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-INCENSE-01-028",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Incense 01",
+      "name": "Incense 01",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Incense 01",
+      "aliases": [
+        "Incense 01",
+        "Swiss Arabian Incense 01"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-VANILLA-TOFFEE-029",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Vanilla Toffee",
+      "name": "Shaghaf Vanilla Toffee",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Shaghaf Vanilla Toffee",
+      "aliases": [
+        "Shaghaf Vanilla Toffee",
+        "Swiss Arabian Shaghaf Vanilla Toffee"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-VANILLA-01-030",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Vanilla 01",
+      "name": "Vanilla 01",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Vanilla 01",
+      "aliases": [
+        "Vanilla 01",
+        "Swiss Arabian Vanilla 01"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-TOBACCO-01-031",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Tobacco 01",
+      "name": "Tobacco 01",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Tobacco 01",
+      "aliases": [
+        "Tobacco 01",
+        "Swiss Arabian Tobacco 01"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-MUSK-01-032",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Musk 01",
+      "name": "Musk 01",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Musk 01",
+      "aliases": [
+        "Musk 01",
+        "Swiss Arabian Musk 01"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-ROSE-01-033",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Rose 01",
+      "name": "Rose 01",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Rose 01",
+      "aliases": [
+        "Rose 01",
+        "Swiss Arabian Rose 01"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-MUSK-07-034",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Musk 07",
+      "name": "Musk 07",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Musk 07",
+      "aliases": [
+        "Musk 07",
+        "Swiss Arabian Musk 07"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-OUD-07-035",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Oud 07",
+      "name": "Oud 07",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Oud 07",
+      "aliases": [
+        "Oud 07",
+        "Swiss Arabian Oud 07"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SOUL-OF-BALI-036",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Soul of Bali",
+      "name": "Soul of Bali",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Soul of Bali",
+      "aliases": [
+        "Soul of Bali",
+        "Swiss Arabian Soul of Bali"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-OPULENCE-OF-DUBAI-037",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Opulence of Dubai",
+      "name": "Opulence of Dubai",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Opulence of Dubai",
+      "aliases": [
+        "Opulence of Dubai",
+        "Swiss Arabian Opulence of Dubai"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-PRIVATE-OUD-038",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Private Oud",
+      "name": "Private Oud",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Private Oud",
+      "aliases": [
+        "Private Oud",
+        "Swiss Arabian Private Oud"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.com/collections/all-products",
+      "source_evidence_url": "https://swissarabian.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SHIYAAKA-MEN-039",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Shiyaaka Men",
+      "name": "Shiyaaka Men",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Shiyaaka Men",
+      "aliases": [
+        "Shiyaaka Men",
+        "Khadlaj Shiyaaka Men"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MUSE-040",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Muse",
+      "name": "Muse",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Muse",
+      "aliases": [
+        "Muse",
+        "Khadlaj Muse"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections"
+    },
+    {
+      "product_id": "SH-KHADLAJ-NAFAIS-MAGRIB-041",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Nafais Magrib",
+      "name": "Nafais Magrib",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Nafais Magrib",
+      "aliases": [
+        "Nafais Magrib",
+        "Khadlaj Nafais Magrib"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ZAYAAN-GOLD-042",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Zayaan Gold",
+      "name": "Zayaan Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Zayaan Gold",
+      "aliases": [
+        "Zayaan Gold",
+        "Khadlaj Zayaan Gold"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MOCHA-LATTE-043",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Mocha Latte",
+      "name": "Mocha Latte",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Mocha Latte",
+      "aliases": [
+        "Mocha Latte",
+        "Khadlaj Mocha Latte"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-BLACK-GRAPEFRUIT-044",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Black Grapefruit",
+      "name": "Black Grapefruit",
+      "family_id": "maison-asrar_catalog",
+      "family_name": "Black Grapefruit",
+      "aliases": [
+        "Black Grapefruit",
+        "Maison Asrar Black Grapefruit"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://maisonasrar.com/collections/all",
+      "source_evidence_url": "https://maisonasrar.com/collections/all"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-BLOOM-045",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Bloom",
+      "name": "Bloom",
+      "family_id": "maison-asrar_catalog",
+      "family_name": "Bloom",
+      "aliases": [
+        "Bloom",
+        "Maison Asrar Bloom"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://maisonasrar.com/collections/all",
+      "source_evidence_url": "https://maisonasrar.com/collections/all"
+    },
+    {
+      "product_id": "SH-ZIMAYA-HAYAM-046",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Hayam",
+      "name": "Hayam",
+      "family_id": "zimaya_catalog",
+      "family_name": "Hayam",
+      "aliases": [
+        "Hayam",
+        "Zimaya Hayam"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://zimayaperfumes.com/collections/all",
+      "source_evidence_url": "https://zimayaperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AMBER-OUD-GOLD-EDITION-047",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Gold Edition",
+      "name": "Amber Oud Gold Edition",
+      "family_id": "al-haramain_catalog",
+      "family_name": "Amber Oud Gold Edition",
+      "aliases": [
+        "Amber Oud Gold Edition",
+        "Al Haramain Amber Oud Gold Edition"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-PINK-DIVA-048",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Pink Diva",
+      "name": "Arrogate Pink Diva",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Pink Diva",
+      "aliases": [
+        "Arrogate Pink Diva",
+        "Assaf Arrogate Pink Diva"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-PINK-ROSE-049",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Pink Rose",
+      "name": "Arrogate Pink Rose",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Pink Rose",
+      "aliases": [
+        "Arrogate Pink Rose",
+        "Assaf Arrogate Pink Rose"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ATTACKS-050",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Attacks",
+      "name": "Attacks",
+      "family_id": "assaf_catalog",
+      "family_name": "Attacks",
+      "aliases": [
+        "Attacks",
+        "Assaf Attacks"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ATTACKS-BLUE-051",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Attacks Blue",
+      "name": "Attacks Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Attacks Blue",
+      "aliases": [
+        "Attacks Blue",
+        "Assaf Attacks Blue"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ATTACKS-X-052",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Attacks X",
+      "name": "Attacks X",
+      "family_id": "assaf_catalog",
+      "family_name": "Attacks X",
+      "aliases": [
+        "Attacks X",
+        "Assaf Attacks X"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-AURA-30-053",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Aura 30",
+      "name": "Aura 30",
+      "family_id": "assaf_catalog",
+      "family_name": "Aura 30",
+      "aliases": [
+        "Aura 30",
+        "Assaf Aura 30"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-AURA-BLACK-054",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Aura Black",
+      "name": "Aura Black",
+      "family_id": "assaf_catalog",
+      "family_name": "Aura Black",
+      "aliases": [
+        "Aura Black",
+        "Assaf Aura Black"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-BAKHUR-PEGASUS-055",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Bakhur Pegasus",
+      "name": "Bakhur Pegasus",
+      "family_id": "assaf_catalog",
+      "family_name": "Bakhur Pegasus",
+      "aliases": [
+        "Bakhur Pegasus",
+        "Assaf Bakhur Pegasus"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-BLACK-WILD-056",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Black Wild",
+      "name": "Black Wild",
+      "family_id": "assaf_catalog",
+      "family_name": "Black Wild",
+      "aliases": [
+        "Black Wild",
+        "Assaf Black Wild"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-BONJOUR-057",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Bonjour",
+      "name": "Bonjour",
+      "family_id": "assaf_catalog",
+      "family_name": "Bonjour",
+      "aliases": [
+        "Bonjour",
+        "Assaf Bonjour"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-BOOM-BLUE-058",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Boom Blue",
+      "name": "Boom Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Boom Blue",
+      "aliases": [
+        "Boom Blue",
+        "Assaf Boom Blue"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-CHALLENGE-059",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Challenge",
+      "name": "Challenge",
+      "family_id": "assaf_catalog",
+      "family_name": "Challenge",
+      "aliases": [
+        "Challenge",
+        "Assaf Challenge"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-CHARISMA-060",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Charisma",
+      "name": "Charisma",
+      "family_id": "assaf_catalog",
+      "family_name": "Charisma",
+      "aliases": [
+        "Charisma",
+        "Assaf Charisma"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-COPACAPANA-061",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Copacapana",
+      "name": "Copacapana",
+      "family_id": "assaf_catalog",
+      "family_name": "Copacapana",
+      "aliases": [
+        "Copacapana",
+        "Assaf Copacapana"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-CROWN-SPIRIT-062",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Crown Spirit",
+      "name": "Crown Spirit",
+      "family_id": "assaf_catalog",
+      "family_name": "Crown Spirit",
+      "aliases": [
+        "Crown Spirit",
+        "Assaf Crown Spirit"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-DANGEROUS-ARROGATE-063",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Dangerous Arrogate",
+      "name": "Dangerous Arrogate",
+      "family_id": "assaf_catalog",
+      "family_name": "Dangerous Arrogate",
+      "aliases": [
+        "Dangerous Arrogate",
+        "Assaf Dangerous Arrogate"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-DEEP-AMBER-064",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Deep Amber",
+      "name": "Deep Amber",
+      "family_id": "assaf_catalog",
+      "family_name": "Deep Amber",
+      "aliases": [
+        "Deep Amber",
+        "Assaf Deep Amber"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ERROR-404-065",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Error 404",
+      "name": "Error 404",
+      "family_id": "assaf_catalog",
+      "family_name": "Error 404",
+      "aliases": [
+        "Error 404",
+        "Assaf Error 404"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FRANKEL-AFTERNOON-066",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Afternoon",
+      "name": "Frankel Afternoon",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Afternoon",
+      "aliases": [
+        "Frankel Afternoon",
+        "Assaf Frankel Afternoon"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FOREVER-HERE-067",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Forever Here",
+      "name": "Forever Here",
+      "family_id": "assaf_catalog",
+      "family_name": "Forever Here",
+      "aliases": [
+        "Forever Here",
+        "Assaf Forever Here"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-I-AM-HERE-068",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "I Am Here",
+      "name": "I Am Here",
+      "family_id": "assaf_catalog",
+      "family_name": "I Am Here",
+      "aliases": [
+        "I Am Here",
+        "Assaf I Am Here"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-KING-ENABLE-069",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "King Enable",
+      "name": "King Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "King Enable",
+      "aliases": [
+        "King Enable",
+        "Assaf King Enable"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
     }
   ],
   "variants": [
