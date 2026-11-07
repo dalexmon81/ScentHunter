@@ -2319,7 +2319,13 @@
         "Swiss Arabian Shaghaf Oud"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.swissarabian.com/products/shaghaf-oud-3",
+      "source_evidence_url": "https://de.swissarabian.com/products/shaghaf-oud-3"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-3fec7eab",
@@ -4454,7 +4460,13 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "source_evidence_url": "https://it.afnan.com/products/supremacy-not-only-intense",
+      "formats_ml": [
+        100,
+        150
+      ],
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://it.afnan.com/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-AFNAN-e408d61b",
@@ -4662,7 +4674,15 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "source_evidence_url": "https://www.bjutip.com/men-perfumes",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://uae.afnan.com/products/9-pm-perfume",
+      "gtins": [
+        "6290171002338"
+      ]
     },
     {
       "product_id": "SH-AFNAN-dec689ab",
@@ -10802,6 +10822,38 @@
       "aliases": [
         "Cloud Candy 100 ml",
         "Khadlaj Cloud Candy 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-AFNAN-823a97f5",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM 100 ml",
+        "Afnan 9 PM 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-AFNAN-d1fee769",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Not Only Intense 100 ml",
+        "Afnan Supremacy Not Only Intense 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-AFNAN-d1fee769",
+      "size_ml": 150,
+      "aliases": [
+        "Supremacy Not Only Intense 150 ml",
+        "Afnan Supremacy Not Only Intense 150ml"
+      ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-8a079897",
+      "size_ml": 75,
+      "aliases": [
+        "Shaghaf Oud 75 ml",
+        "Swiss Arabian Shaghaf Oud 75ml"
       ]
     }
   ]
