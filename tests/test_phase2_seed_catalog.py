@@ -155,8 +155,8 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
     assert report["fragrances"] == 1572
-    assert report["variants"] == 141
-    assert report["products_without_variants"] == 1453
+    assert report["variants"] == 147
+    assert report["products_without_variants"] == 1447
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -392,7 +392,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
     assert len(products) == 1572
-    assert len(variants) == 141
+    assert len(variants) == 147
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -417,3 +417,23 @@ def test_maison_asrar_royal_collection_is_present_without_duplicate_names():
     }
     assert all(names.count(name) == 1 for name in royal)
 
+
+
+
+def test_paris_corner_official_100ml_sizes_are_explicit_variants():
+    """Official product pages expose 100ml for these six existing fragrance identities."""
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    expected = {
+        "SH-PARIS-CORNER-c5ed3eb2": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+        "SH-PARIS-CORNER-KHAYAL-PG09": "https://www.pariscornerperfumes.com/products/khayal-100ml",
+        "SH-PARIS-CORNER-MINYA-PG19": "https://www.pariscornerperfumes.com/products/minya-100ml",
+        "SH-PARIS-CORNER-OPHIDIAN-BLACK-CHERRY-PG29": "https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml",
+        "SH-PARIS-CORNER-QAWAFI-P310": "https://www.pariscornerperfumes.com/products/qawafi-100ml",
+        "SH-PARIS-CORNER-TASKEEN-LACTEA-DIVINA-P326": "https://www.pariscornerperfumes.com/products/taskeen-lactea-divina-100ml",
+    }
+    products = {row["product_id"]: row for row in raw["products"]}
+    variants = {row["product_id"]: row for row in raw["variants"] if row["product_id"] in expected}
+    assert set(variants) == set(expected)
+    for product_id, evidence_url in expected.items():
+        assert products[product_id]["source_evidence_url"] == evidence_url
+        assert variants[product_id]["size_ml"] == 100
