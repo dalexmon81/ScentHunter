@@ -1158,3 +1158,39 @@ This follow-up checks the official storefront collection indexes again. These to
 
 ### Interpretation and next action
 These fresh snapshots strengthen the need for a product-type-aware reconciliation rather than raw count matching. The next implementation pass should extract listing titles and detail URLs page by page for one official source at a time, compare normalized names with the seed, and emit explicit matched/missing/ambiguous/excluded results. No missing products are inferred solely from count differences, and no retailer offers/prices/stock/shipping data are added by this catalog task.
+
+
+## Pass 7 — Khadlaj and Paris Corner name-level gap sample (2026-11-07)
+
+### Khadlaj: independent fragrance-index cross-check
+
+Compared a sample of fragrance names shown by Fragrantica's Khadlaj Perfumes index with the current 113 Khadlaj identities. The index reports 147 fragrances and lists multiple collection families; it is a secondary reference, not a manufacturer master catalogue. The following exact displayed names were not found as exact canonical names in the current seed during this sample: **Bleu Glace, Code Viola Nectar, Gaith, Johayna Green, Maya, Musk Ice, Opulence Bleu, Qarar, Sueño, Uno Sensuale, Vanilla Kiss, Wow Oud and Zayaan Silver**.
+
+Other sampled names, including Caffe Latte, Cashmere Sunshine Musk, Icon, Ihthiraam, Kayaan Gold, Magnate Noble, Mansion, Mocha Latte, Muse, Ombre Notes, Ria, Sara, Sawaar Vanille Blanc, Titan and Zayaan Gold, already matched existing canonical names.
+
+These 13 absent names are **review candidates only**. Before adding them, verify each against an official Khadlaj product-detail page or official perfume-spray collection entry, then capture SKU, concentration and size only if the source actually provides them. Do not import perfume oils or home/ambience products into the spray-fragrance scope by name alone.
+
+Secondary cross-check: https://www.fragrantica.com/designers/Khadlaj-Perfumes.html
+Official collection sources for subsequent verification:
+- https://khadlaj-perfumes.com/collections/khadlaj-perfume-spray
+- https://khadlaj-perfumes.com/collections/khadlaj-premium-range/perfume-spray
+
+### Paris Corner: independent fragrance-index cross-check
+
+A current specialist index lists 261 Paris Corner fragrances, while the official all-products storefront includes multiple product lines and product types. The specialist index is useful for finding possible omissions, but it is not authoritative for current manufacturer availability or parent/sub-label attribution.
+
+The visible index includes names such as **Rifaaqat Ume, Arwa, Atomise Intensive Men, Bayn Al Asrar, Camaro Homme Intense, Camp Fire, Cedrat Essence, Charuto Mysterious Tobacco, Charuto Regal Reserve, Cosmopolitan Newyork, December Vanilla, Dusky Vanilla, Ecstatic Blanc Fleur, Elania Emir, Fig Fete, Frenetic Delicieuse, Harrier Absolute, Hidden Halo, Honeyed Fantasy, Khair Peach Delulu, Mango Flames, Mawj Cognac Blaze, Nouf, Poppy Pulse, Taskeen Lactéa Divina and Zodiac Lunaris**.
+
+The current seed already contains some names from this sample (for example Arwa, Bayn Al Asrar, Atomise Intensive Men, Camp Fire, Cedrat Essence and Charuto Mysterious Tobacco). This pass did not add records from the secondary index because exact matching must also account for aliases, sub-label ownership, discontinued products and possible display-name differences. Use it to generate a candidate comparison list, then resolve each candidate against the official Paris Corner product page and correct collection line.
+
+Sources:
+- Secondary cross-check: https://scentradar.eu/brands/paris-corner/
+- Official all-products listing: https://www.pariscornerperfumes.com/collections/all
+
+### Pass 7 decision
+
+- New product identities added: **0**. This is intentional: a secondary index mismatch is not sufficient evidence to create a canonical product record.
+- Khadlaj: 13 sample names flagged for official product-page verification.
+- Paris Corner: secondary index used to identify candidate gaps; no speculative records added.
+- No sizes, concentrations, GTINs, retailer offers, prices, stock or shipping values were inferred.
+- The 1,645-product / 171-variant catalog snapshot remains unchanged by this audit pass.
