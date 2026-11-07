@@ -463,8 +463,9 @@ def normalize_offer(self, raw_id: str):
 def validate_offer(self, raw_id: str):
     factory = make_session_factory()
     try:
+        raw_uuid = UUID(str(raw_id))
         with factory() as session:
-            raw = session.get(IngestionRaw, raw_id)
+            raw = session.get(IngestionRaw, raw_uuid)
             if raw is None or raw.status not in {"pending", "unmatched"}:
                 return {"raw_id": raw_id, "status": "skipped"}
             payload = raw.raw_payload or {}
