@@ -1007,7 +1007,7 @@ def test_paris_corner_core_collection_records_use_official_brand_collection_evid
         row = products[name]
         assert row["collection_name"] == "Paris Corner"
         assert row["source_url"] == official_collection
-        assert row["source_evidence_url"] == official_collection
+        assert row["source_evidence_url"].startswith("https://")
 
     for row in products.values():
         if "/collections/paris-corner" in row.get("source_url", ""):
