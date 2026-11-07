@@ -9,10 +9,10 @@
 - Do not collect a full street address or telephone number: ScentHunter compares retailer offers and does not fulfil orders.
 - Passwords must never be stored or logged in plaintext. The database stores only a password hash produced by a dedicated password-hashing implementation.
 
-## Schema delivered in migration 0014
+## Schema delivered
 
-- `user_accounts`: normalized unique email, password hash, residence ISO country, optional residence postal code, active flag and email verification timestamp.
-- `user_delivery_destinations`: user-owned named destination, ISO country, optional postal code and default flag.
+- Migration 0014 creates `user_accounts` and `user_delivery_destinations`.
+- Migration 0015 creates `user_sessions`; only a SHA-256 digest of each opaque bearer token is persisted.
 - A partial unique index guarantees at most one default saved destination per account.
 - Residence and delivery destination are deliberately separate. No full street address or phone field is present.
 
@@ -32,34 +32,37 @@
 - Free-shipping thresholds apply to the retailer's qualifying order subtotal, not automatically to each individual product in a future multi-item basket. The retailer's terms must establish whether the threshold is before/after discounts and which product categories qualify.
 - Multi-product basket optimization is a later phase. It must compare one combined retailer basket against separate purchases and must not be implied by the one-product quote endpoint.
 
-## Remaining implementation before user-facing release
+## Implemented on `phase9/staging-catalog-api`
 
-- Registration, login, logout, password reset, email verification and session/token security.
-- Password hashing and verification using a maintained password-hashing library; rate limits and abuse protection.
-- Guest/search destination context in the catalog search API and frontend country/postal selector.
-- Account profile and saved-destination CRUD endpoints with ownership checks.
-- Resolve destination according to the precedence above and pass it into shipping quote/ranking.
-- Integration tests for guest search, residence default, destination override, saved destination ownership and delivered-price ordering.
-- No real shipping rates should be inserted without source evidence and expiry.
-
-
-## Implementation status on phase9/staging-catalog-api
-
-Implemented in the current draft PR:
-- Migration 0014: account profiles and saved delivery destinations.
-- Migration 0015: opaque revocable sessions; only a SHA-256 digest of each bearer token is persisted.
-- `POST /account/register`: creates an account; password is hashed with PBKDF2-HMAC-SHA256 (600,000 iterations).
-- `POST /account/login`, `POST /account/logout`, `GET /account/me`.
-- `GET/POST /account/destinations`, `PUT /account/destinations/{id}/default`, `DELETE /account/destinations/{id}`; destination ownership is enforced.
-- Guest search UI now requires a delivery country and accepts an optional postal code. It sends these to `GET /search-start`.
+- Account registration, login, logout and profile read endpoints are implemented.
+- Passwords are hashed with PBKDF2-HMAC-SHA256 (600,000 iterations); bearer tokens are opaque, expire after 30 days, and are stored only as SHA-256 digests. Logout revokes the session.
+- Saved delivery destinations support list, create, set-default and delete operations, with ownership checks.
+- Frontend account/profile UI is connected to the API. The bearer token is held in JavaScript memory only; a browser reload therefore requires the user to log in again.
+- Guest search requires a delivery country and accepts an optional postal code. The frontend sends both to `GET /search-start`.
+- For signed-in users, the profile flow resolves the destination as explicit selection first, saved default second, residence fallback third. An explicit delivery selection is not overwritten.
 - Catalog search requests a destination-specific shipping quote for each published offer. Fresh verified quotes carry a delivered total; estimated, stale, unavailable and unknown rates do not.
 - Frontend sorting prioritizes verified delivered totals within the same currency and displays product price, shipping fee and delivered total separately.
+- No real shipping rates are seeded. Unknown shipping is never presented as free.
 
-Still required before production or general user release:
-- Run the complete PostgreSQL CI workflow and verify Alembic 0015 on isolated Fly staging.
-- Add authentication abuse controls (rate limits, account lockout policy, password reset, email verification and operational security review).
-- Connect the account UI to the API; currently guest destination selection is integrated, while account registration/login and saved destinations are API-only.
-- Add a signed-in search destination resolver: explicit per-search destination first, then saved default destination, then residence country.
-- Review whether password hashing parameters should be calibrated against the production runtime and add secure token transport/storage policy in the frontend.
-- Populate shipping rates only from sourced evidence and expiry. No shipping values are seeded.
-- Verify real offer + delivery-total display with authorized retailer offers before acceptance.
+## Staging verification completed
+
+The staging deployment and account smoke test passed on 7 November 2026. The workflow verified registration, profile read, saved destination creation/listing, logout revocation, and a search with an explicit delivery country/postal code. The synthetic smoke-test account was removed after the test.
+
+Staging only: `https://scenthunter-staging-workers.fly.dev/`. The changes remain in draft PR #424 and have not been merged or deployed to production.
+
+## Remaining before production or general user release
+
+- Email verification and password reset/recovery.
+- Authentication abuse controls, including rate limits and a documented lockout/abuse policy.
+- Review and improve browser session persistence. Prefer a Secure, HttpOnly, SameSite cookie with CSRF protection; do not move bearer tokens into localStorage. Until that work is completed, users must log in again after a page reload.
+- Full browser-level end-to-end coverage of registration, login, profile, destination selection and search.
+- Operational/security review of authentication, session expiry and revocation.
+- Populate shipping rates only from sourced evidence, with scope and expiry. No shipping values should be invented or seeded without evidence.
+- Verify real offer plus delivered-total display only after a retailer has granted the required written authorization and feed access.
+
+## Explicit non-goals
+
+- Account residence is not treated as the delivery destination when the user explicitly chooses another country.
+- ScentHunter does not collect full street addresses or telephone numbers.
+- Unknown shipping fees are not assumed to be zero.
+- A retailer's presence in CJ, an application marked pending, or a connector in the codebase is not authorization to ingest or publish that retailer's offers.
