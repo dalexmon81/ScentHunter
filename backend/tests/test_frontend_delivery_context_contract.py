@@ -29,3 +29,12 @@ def test_frontend_account_profile_connects_auth_and_saved_destinations():
     assert 'data-profile-default' in source
     assert 'data-profile-delete' in source
     assert 'scentHunterAccessToken=""' in source
+
+
+def test_signed_in_search_uses_default_destination_then_residence_fallback():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert 'destinations.find(d=>d.is_default)' in source
+    assert 'preferred?.country_code||a.residence_country_code' in source
+    assert 'preferred?.postal_code||a.residence_postal_code' in source
+    assert 'if(!deliveryCountry.value)' in source
