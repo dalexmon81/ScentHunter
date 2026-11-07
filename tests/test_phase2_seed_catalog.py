@@ -689,7 +689,8 @@ def test_requested_brand_catalog_coverage_and_maison_asrar_royal_collection():
     assert expected_brands.issubset(brands)
 
     royal_names = {
-        "Belgravia", "Legacy", "Vanguard", "Regent", "Majesty", "Heritage", "Treasure",
+        "Belgravia", "Legacy", "Vanguard", "Regent", "Majesty",
+        "Monarch", "Heritage", "Imperial", "Treasure",
     }
     royal_products = {
         row["canonical_name"]: row for row in products
@@ -697,14 +698,10 @@ def test_requested_brand_catalog_coverage_and_maison_asrar_royal_collection():
         and row.get("collection_name") == "Royal Collection"
     }
     assert set(royal_products) == royal_names
-    for name, row in royal_products.items():
-        expected_source = (
-            "https://maisonasrar.co.uk/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex"
-            if name == "Treasure"
-            else "https://maisonasrar.co.uk/collections/royal-collection"
-        )
-        assert row["source_url"] == expected_source
-        assert row["source_evidence_url"] == "https://maisonasrar.co.uk/collections/royal-collection"
+    official_collection = "https://maisonasrar.com/collections/royal-collection"
+    for row in royal_products.values():
+        assert row["source_url"] == official_collection
+        assert row["source_evidence_url"] == official_collection
         assert row["identity_status"] == "source_listed_name"
 
 
