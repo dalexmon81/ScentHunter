@@ -1131,3 +1131,41 @@ def test_paris_corner_parent_collection_all_four_pages_match_105_official_names(
         actual_page_counts[row["source_url"]] = actual_page_counts.get(row["source_url"], 0) + 1
     assert actual_page_counts == expected_page_counts
 
+def test_paris_corner_sixteen_official_product_detail_pages_have_verified_variants():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+    }
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "Frenetic Men": ("https://www.pariscornerperfumes.com/products/frenetic-men", 100, "Paris Corner"),
+        "Frenetic Red Tempt": ("https://www.pariscornerperfumes.com/products/frenetic-red-tempt", 80, "Paris Corner"),
+        "Frenetic Tobacco Honey": ("https://www.pariscornerperfumes.com/products/frenetic-tobacco-honey", 100, "Emir"),
+        "Identity Oud Crescent": ("https://www.pariscornerperfumes.com/products/identity-oud-crescent", 100, "Paris Corner"),
+        "Identity Rose & Leather": ("https://www.pariscornerperfumes.com/products/identity-rose-leather", 100, "Paris Corner"),
+        "Identity Unique Portrait": ("https://www.pariscornerperfumes.com/products/identity-unique-portrait", 100, "Paris Corner"),
+        "Intense Oud": ("https://www.pariscornerperfumes.com/products/intense-oud-arabian", 100, "Paris Corner"),
+        "Intense Oud Saffron": ("https://www.pariscornerperfumes.com/products/intense-oud-saffron", 100, "Paris Corner"),
+        "Le Charme": ("https://www.pariscornerperfumes.com/products/la-charme-emir", 100, "Emir"),
+        "Protocol Edition": ("https://www.pariscornerperfumes.com/products/protocol-edition", 100, "Pendora Scents"),
+        "Resurrection": ("https://www.pariscornerperfumes.com/products/resurrection", 100, "Emir"),
+        "The Triumphant Sapphire": ("https://www.pariscornerperfumes.com/products/the-triumphant-sapphire", 100, "Paris Corner"),
+        "Toxic Heart": ("https://www.pariscornerperfumes.com/products/toxic-heart", 100, "Paris Corner"),
+        "You're Drugged Emir": ("https://www.pariscornerperfumes.com/products/youre-drugged-emir", 100, "Emir"),
+        "Frenetic Delicieuse": ("https://www.pariscornerperfumes.com/products/frenetic-delicieuse", 80, "Paris Corner"),
+        "Frenetic Homme Intense": ("https://www.pariscornerperfumes.com/products/frenetichomme-intense", 80, "Paris Corner"),
+    }
+    assert len(expected) == 16
+    for name, (url, size, line) in expected.items():
+        row = products[name]
+        assert row["identity_status"] == "source_verified_name"
+        assert row["source_product_url"] == url
+        assert row["source_evidence_url"] == url
+        assert row["collection_name"] == line
+        assert row["formats_ml"] == [size]
+        variant_id = f"SHV-{row['product_id']}-{size}-000"
+        assert variants[variant_id]["product_id"] == row["product_id"]
+        assert variants[variant_id]["size_ml"] == size
+
