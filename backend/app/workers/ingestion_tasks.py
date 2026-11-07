@@ -111,7 +111,7 @@ def _require_store_authorization(session, store: Store, scope: str, reference: s
     return grant
 
 
-def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[dict]) -> list[str]:
+def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[dict], required_scope: str = "offer_data") -> list[str]:
     """Persist exact source bytes (or deterministic JSON evidence) once per hash."""
     factory = make_session_factory()
     artifact_ids = []
@@ -122,7 +122,7 @@ def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[d
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 raise ValueError(f"connector_store_not_active:{store_key}")
-            _require_store_authorization(session, store, "offer_data")
+            _require_store_authorization(session, store, required_scope)
             for artifact in artifacts:
                 raw = artifact.get("data")
                 fmt = str(artifact.get("format") or "json").lower()
@@ -161,7 +161,7 @@ def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[d
     finally:
         factory.kw["bind"].dispose()
 
-def _stage_record(store_key: str, record, discovery_evidence: dict | None = None) -> str:
+def _stage_record(store_key: str, record, discovery_evidence: dict | None = None, required_scope: str = "offer_data") -> str:
     factory = make_session_factory()
     try:
         with factory() as session:
@@ -170,7 +170,7 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 raise ValueError(f"connector_store_not_active:{store_key}")
-            _require_store_authorization(session, store, "offer_data")
+            _require_store_authorization(session, store, required_scope)
             payload = record.to_dict()
             # Keep fields at the root for existing matcher/promotion contracts;
             # preserve source evidence separately for replay and audit.
@@ -609,7 +609,7 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
     record = _run(connector.fetch_price_and_stock(refresh_key))
     raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
     artifact_ids = (
-        _persist_raw_artifacts(store_key, None, raw_artifacts)
+        _persist_raw_artifacts(store_key, None, raw_artifacts, required_scope="price_stock")
         if raw_artifacts else []
     )
     if record is None:
@@ -620,6 +620,7 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
     raw_id = _stage_record(
         store_key, record,
         {"refresh_of": offer_id, "raw_artifact_ids": artifact_ids},
+        required_scope="price_stock",
     )
     validate_offer.apply_async(args=[raw_id], queue="validation")
     return {
