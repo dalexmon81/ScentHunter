@@ -87,6 +87,36 @@
       "brand": "Al Haramain",
       "url": "https://shop.alharamainperfumes.com/eu/collection.html",
       "note": "Official Al Haramain EU catalog pages list fragrance identities with explicit sizes and concentration types. Only EDP/Extrait perfume listings are recorded; oils, deodorants and unspecified-size listings are excluded."
+    },
+    {
+      "brand": "Armaf",
+      "url": "https://armaf.com/collections/all",
+      "note": "Official Armaf catalog; individual official product pages used for concentration and size. Sizes expressed in oz were converted only where the page explicitly equates 3.4 oz with 100ml and 2.02 oz with 60ml; 6.8 oz/200ml and 0.34 oz/10ml are explicitly paired on Odyssey Mega page."
+    },
+    {
+      "brand": "Afnan",
+      "url": "https://www.it.afnan.com/products/modest-une",
+      "note": "Official Afnan Italy product page explicitly states Eau de Parfum, 100 ML."
+    },
+    {
+      "brand": "Afnan",
+      "url": "https://www.at.afnan.com/en/products/lynked-forever",
+      "note": "Official Afnan regional product page explicitly states Eau de Parfum, 100 ML."
+    },
+    {
+      "brand": "Swiss Arabian",
+      "url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "note": "Official Swiss Arabian US product listing explicitly identifies Wild Spirit, Pure Instinct, Intense Pride, Primal Code, Royal Mystery, Attar Al Ghutra and Cardamom & Apple as Eau de Parfum 100ml."
+    },
+    {
+      "brand": "Swiss Arabian",
+      "url": "https://us.swissarabian.com/collections/harmony",
+      "note": "Official Swiss Arabian Harmony collection explicitly lists the named Harmony fragrances as Eau de Parfum 100ml."
+    },
+    {
+      "brand": "Swiss Arabian",
+      "url": "https://us.swissarabian.com/products/casablanca",
+      "note": "Official Swiss Arabian product page identifies Casablanca Eau de Parfum 100ml."
     }
   ],
   "products": [
@@ -2665,6 +2695,253 @@
         {
           "concentration": "Eau de Parfum",
           "size_ml": 50
+        }
+      ]
+    },
+    {
+      "brand": "Armaf",
+      "fragrance": "LET'S MOVE SALSA",
+      "source_url": "https://armaf.com/products/lets-move-salsa",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Armaf",
+      "fragrance": "OLD MONEY",
+      "source_url": "https://armaf.com/products/old-money",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Armaf",
+      "fragrance": "ODYSSEY AOUD",
+      "source_url": "https://armaf.com/products/odyssey-aoud-edition",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        }
+      ]
+    },
+    {
+      "brand": "Armaf",
+      "fragrance": "ODYSSEY MEGA",
+      "source_url": "https://armaf.com/products/odyssey-mega-3-4-oz",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 10
+        }
+      ]
+    },
+    {
+      "brand": "Armaf",
+      "fragrance": "CLUB DE NUIT PRIVATE KEY TO MY SOUL",
+      "source_url": "https://armaf.com/products/club-de-nuit-private-key-to-my-soul-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Armaf",
+      "fragrance": "MISS ARMAF MYSTIQUE",
+      "source_url": "https://armaf.com/products/miss-armaf-mystique",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Afnan",
+      "fragrance": "Modest Une",
+      "source_url": "https://www.it.afnan.com/products/modest-une",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Afnan",
+      "fragrance": "Lynked Forever",
+      "source_url": "https://www.at.afnan.com/en/products/lynked-forever",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Casablanca",
+      "source_url": "https://us.swissarabian.com/products/casablanca",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Wild Spirit",
+      "source_url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Pure Instinct",
+      "source_url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Intense Pride",
+      "source_url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Primal Code",
+      "source_url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Royal Mystery",
+      "source_url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Attar Al Ghutra",
+      "source_url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Cardamom & Apple",
+      "source_url": "https://us.swissarabian.com/products?page=4&variant=44254075879743",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Bergamot & Cedarwood",
+      "source_url": "https://us.swissarabian.com/collections/harmony",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Mint & Wood",
+      "source_url": "https://us.swissarabian.com/collections/harmony",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Bergamot & Patchouli",
+      "source_url": "https://us.swissarabian.com/collections/harmony",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Oud & Lychee",
+      "source_url": "https://us.swissarabian.com/collections/harmony",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Leather & Oud",
+      "source_url": "https://us.swissarabian.com/collections/harmony",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
         }
       ]
     }
