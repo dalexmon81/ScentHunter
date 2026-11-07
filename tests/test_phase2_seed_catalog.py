@@ -154,8 +154,8 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1778
-    assert report["variants"] == 205
+    assert report["fragrances"] == 1781
+    assert report["variants"] == 208
     assert report["products_without_variants"] == 1595
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1778
-    assert len(variants) == 205
+    assert len(products) == 1781
+    assert len(variants) == 208
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -1257,4 +1257,30 @@ def test_three_khadlaj_la_fede_and_perfume_oil_products_have_official_variants()
         variant_id = f"SHV-{row['product_id']}-{size}-000"
         assert variants[variant_id]["product_id"] == row["product_id"]
         assert variants[variant_id]["size_ml"] == size
+
+def test_remaining_khadlaj_uno_range_products_are_official_100ml_edp_variants():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Khadlaj"
+    }
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "Uno Lusso": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae",
+        "Uno Intimo": "https://khadlaj-perfumes.com/collections/uno-range/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
+        "Uno Durable": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae",
+    }
+    for name, url in expected.items():
+        row = products[name]
+        assert row["identity_status"] == "source_verified_name"
+        assert row["source_product_url"] == url
+        assert row["source_evidence_url"] == url
+        assert row["source_url"] == "https://khadlaj-perfumes.com/collections/uno-range"
+        assert row["collection_name"] == "Uno Range"
+        assert row["formats_ml"] == [100]
+        assert row["concentration"] == "Eau de Parfum"
+        variant_id = f"SHV-{row['product_id']}-100-000"
+        assert variants[variant_id]["size_ml"] == 100
+        assert variants[variant_id]["concentration"] == "Eau de Parfum"
 
