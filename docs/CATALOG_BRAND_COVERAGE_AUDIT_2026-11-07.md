@@ -1388,3 +1388,9 @@ A regression test checks the six official product URLs, sizes, collection classi
 - The parent Paris Corner collection remains exactly 105/105. Unclassified products from the mixed all-products feed are not incorrectly counted as parent-collection members.
 - CI for these latest additions must be checked against the current branch head.
 
+## Pass 16 — latest Paris Corner regression suite green (2026-11-07)
+
+The latest test commit **8b51c6fb8f9fa36136718edd39d0faa6fe64a655** completed GitHub Actions run **#42419385171** successfully. The Phase 2 schema-contract job reports **38 passed, 1 warning**. This run includes the six additional detail-page identities and variants, updated totals, the 105-item parent collection regression, and prior Paris Corner line/detail checks.
+
+The immediately preceding run (#42419374203) failed only because it tested the catalog commit before the count assertions were updated. The later run against the test commit is green.
+
