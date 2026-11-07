@@ -107,3 +107,22 @@ def test_account_endpoints_require_authentication_and_validate_password_length()
         assert short.status_code == 422
     finally:
         engine.dispose()
+
+def test_account_session_factory_reuses_process_scoped_pool(monkeypatch):
+    from app.api import accounts
+
+    created = []
+    sentinel_factory = object()
+
+    def build_factory():
+        created.append(True)
+        return sentinel_factory
+
+    accounts._account_session_factory.cache_clear()
+    monkeypatch.setattr(accounts, "make_session_factory", build_factory)
+    try:
+        assert accounts._account_session_factory() is sentinel_factory
+        assert accounts._account_session_factory() is sentinel_factory
+        assert created == [True]
+    finally:
+        accounts._account_session_factory.cache_clear()
