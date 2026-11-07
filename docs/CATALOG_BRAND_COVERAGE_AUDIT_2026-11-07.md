@@ -1031,3 +1031,18 @@ The two already-existing catalog identities **Monarch** and **Imperial** are now
 Official source: https://maisonasrar.com/collections/royal-collection
 
 This is a live catalog snapshot and can change; future refreshes should compare the collection membership again rather than treating nine as permanent.
+
+
+## Armaf catalog coverage — scope warning and next reconciliation (2026-11-07)
+
+The current seed contains **305 canonical identities labelled Armaf**. The current official Armaf US "All Fragrances" collection reports **464 product listings**, but the same page's filters include Eau de Parfum, Eau de Toilette, extrait/parfum, body mist, body spray, deodorants, roll-ons, shampoo, shower gel, soap and other care formats. The listing count is therefore **not directly comparable** to 305 canonical fragrance identities: it includes non-fragrance care products and can include multiple concentrations/variants or sets.
+
+No automatic gap-filling or deletions were made from the 464 listing count. The next Armaf audit must:
+1. Define scope as standalone fragrance identities (include EDP/EDT/extrait as variants or distinct concentration variants according to canonical rules; exclude body care and gift/travel sets from fragrance identity count).
+2. Extract official product names and detail URLs, deduplicate variants and bundles.
+3. Match against the 305 current canonical identities by exact product identity, not loose name similarity.
+4. Add only confirmed missing fragrances, with official detail-page evidence, and preserve existing product IDs/variant links.
+
+Official source: https://armaf.com/collections/all-perfumes (current listing reports 464 products; filters visibly include fragrance and non-fragrance categories).
+
+This count is a scope signal, **not evidence that 159 perfumes are missing**.
