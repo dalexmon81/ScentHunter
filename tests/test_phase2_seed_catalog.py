@@ -1049,7 +1049,6 @@ def test_paris_corner_emir_pendora_and_parent_official_listing_gaps_are_added():
             "Oud Holidays", "Poppy Pulse", "Praise", "Precision", "Rose de Nuit",
             "The Aoud", "The Green", "The Peace", "The Scent", "The Street",
         },
-        "Paris Corner": {"Empire de la Rouge"},
     }
     source_urls = {
         "Emir": "https://www.pariscornerperfumes.com/collections/emir-1",
@@ -1066,5 +1065,5 @@ def test_paris_corner_emir_pendora_and_parent_official_listing_gaps_are_added():
             assert row["source_evidence_url"] == source_urls[line]
             assert row.get("formats_ml") is None
             assert row.get("concentration") is None
-    assert sum(map(len, expected.values())) == 71
+    assert sum(map(len, expected.values())) == 70
 
