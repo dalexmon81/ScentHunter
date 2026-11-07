@@ -36,6 +36,7 @@
 
 - Account registration, login, logout and profile read endpoints are implemented.
 - Passwords are hashed with PBKDF2-HMAC-SHA256 (600,000 iterations); bearer tokens are opaque, expire after 30 days, and are stored only as SHA-256 digests. Logout revokes the session.
+- Account API requests reuse a process-scoped SQLAlchemy session factory/connection pool; each HTTP request still receives and closes its own short-lived ORM Session.
 - Saved delivery destinations support list, create, set-default and delete operations, with ownership checks.
 - Frontend account/profile UI is connected to the API. The bearer token is held in JavaScript memory only; a browser reload therefore requires the user to log in again.
 - Guest search requires a delivery country and accepts an optional postal code. The frontend sends both to `GET /search-start`.
