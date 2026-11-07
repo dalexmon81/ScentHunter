@@ -85,7 +85,7 @@ jobs:
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-        run: flyctl scale count app=1 beat=0 web=1 --app scenthunter-staging-workers --yes
+        run: flyctl scale count app=1 web=1 --app scenthunter-staging-workers --yes
       - name: Allow worker startup and broker connection
         run: sleep 10
       - name: Read-only staging catalog schema and store safety audit
