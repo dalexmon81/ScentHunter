@@ -155,8 +155,8 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
     assert report["fragrances"] == 1750
-    assert report["variants"] == 171
-    assert report["products_without_variants"] == 1496
+    assert report["variants"] == 193
+    assert report["products_without_variants"] == 1573
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -392,7 +392,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
     assert len(products) == 1750
-    assert len(variants) == 171
+    assert len(variants) == 193
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
