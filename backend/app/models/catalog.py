@@ -69,6 +69,31 @@ class Store(Base):
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class StoreAuthorization(Base):
+    """Auditable retailer permission record; no row means collection is denied."""
+    __tablename__ = "store_authorizations"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'approved', 'rejected', 'revoked', 'expired')", name="store_authorization_status"),
+        CheckConstraint("collection_method IN ('api', 'feed', 'affiliate_feed', 'manual_url', 'other')", name="store_authorization_method"),
+        Index("ix_store_authorizations_store_status", "store_id", "status"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
+    collection_method: Mapped[str] = mapped_column(String(24), nullable=False)
+    scopes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    authorization_reference: Mapped[str | None] = mapped_column(String(240))
+    evidence_url: Mapped[str | None] = mapped_column(Text)
+    approved_by: Mapped[str | None] = mapped_column(String(160))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    terms: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LegacyProductIdMap(Base):
     __tablename__ = "legacy_product_id_map"
     legacy_product_id: Mapped[str] = mapped_column(String(80), primary_key=True)
@@ -239,3 +264,102 @@ class CanonicalIdentityReview(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reviewed_by: Mapped[str | None] = mapped_column(String(160))
     resolution_notes: Mapped[str | None] = mapped_column(Text)
+
+
+class StoreShippingRate(Base):
+    """Country-specific shipping terms, separate from product offers."""
+    __tablename__ = "store_shipping_rates"
+    __table_args__ = (
+        CheckConstraint("length(country_code) = 2 AND country_code = upper(country_code)", name="shipping_country_iso2"),
+        CheckConstraint("currency = upper(currency) AND length(currency) = 3", name="shipping_currency_iso3"),
+        CheckConstraint("base_cost IS NULL OR base_cost >= 0", name="shipping_base_cost_nonnegative"),
+        CheckConstraint("free_shipping_threshold IS NULL OR free_shipping_threshold >= 0", name="shipping_free_threshold_nonnegative"),
+        CheckConstraint("minimum_order_total IS NULL OR minimum_order_total >= 0", name="shipping_min_order_nonnegative"),
+        CheckConstraint("maximum_order_total IS NULL OR maximum_order_total >= minimum_order_total", name="shipping_order_range_valid"),
+        CheckConstraint("minimum_weight_kg IS NULL OR minimum_weight_kg >= 0", name="shipping_min_weight_nonnegative"),
+        CheckConstraint("maximum_weight_kg IS NULL OR maximum_weight_kg >= minimum_weight_kg", name="shipping_weight_range_valid"),
+        CheckConstraint("delivery_min_days IS NULL OR delivery_min_days >= 0", name="shipping_delivery_min_nonnegative"),
+        CheckConstraint("delivery_max_days IS NULL OR delivery_max_days >= delivery_min_days", name="shipping_delivery_range_valid"),
+        CheckConstraint("status IN ('verified', 'estimated', 'unavailable')", name="shipping_rate_status"),
+        CheckConstraint("method IN ('official_page', 'api', 'feed', 'manual_confirmation')", name="shipping_rate_method"),
+        CheckConstraint("status <> 'verified' OR (base_cost IS NOT NULL AND valid_until IS NOT NULL)", name="verified_shipping_rate_has_cost_and_expiry"),
+        CheckConstraint("status <> 'verified' OR ((source_url IS NOT NULL AND length(trim(source_url)) > 0) OR (evidence_reference IS NOT NULL AND length(trim(evidence_reference)) > 0))", name="verified_shipping_rate_has_evidence"),
+        Index("ix_store_shipping_rates_destination", "store_id", "country_code", "status"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    postal_code_prefix: Mapped[str | None] = mapped_column(String(24))
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR", server_default="EUR")
+    base_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    free_shipping_threshold: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    minimum_order_total: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    maximum_order_total: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    minimum_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    maximum_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    delivery_min_days: Mapped[int | None] = mapped_column(Integer)
+    delivery_max_days: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="estimated", server_default="estimated")
+    method: Mapped[str] = mapped_column(String(24), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(Text)
+    evidence_reference: Mapped[str | None] = mapped_column(String(240))
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class UserAccount(Base):
+    """Minimal account profile; passwords are stored only as secure hashes."""
+    __tablename__ = "user_accounts"
+    __table_args__ = (
+        CheckConstraint("email = lower(trim(email)) AND length(email) > 3", name="user_account_email_normalized"),
+        CheckConstraint("length(residence_country_code) = 2 AND residence_country_code = upper(residence_country_code)", name="user_account_residence_country_iso2"),
+        UniqueConstraint("email", name="uq_user_accounts_email"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    residence_country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    residence_postal_code: Mapped[str | None] = mapped_column(String(24))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class UserDeliveryDestination(Base):
+    """Saved delivery destination, distinct from the user's residence country."""
+    __tablename__ = "user_delivery_destinations"
+    __table_args__ = (
+        CheckConstraint("length(country_code) = 2 AND country_code = upper(country_code)", name="delivery_destination_country_iso2"),
+        Index("ix_user_delivery_destinations_user", "user_id"),
+        Index(
+            "uq_user_delivery_destinations_one_default", "user_id", unique=True,
+            postgresql_where=text("is_default = true"),
+            sqlite_where=text("is_default = 1"),
+        ),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    postal_code: Mapped[str | None] = mapped_column(String(24))
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class UserSession(Base):
+    """Opaque, revocable bearer session; only the token digest is persisted."""
+    __tablename__ = "user_sessions"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_user_sessions_token_hash"),
+        Index("ix_user_sessions_user_expiry", "user_id", "expires_at"),
+        Index("ix_user_sessions_expiry", "expires_at"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

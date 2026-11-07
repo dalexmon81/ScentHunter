@@ -22,7 +22,7 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
-from app.services.product_normalization import normalize_brand
+from app.services.product_normalization import normalize_brand, normalize_product
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -51,6 +51,134 @@ def slugify(value: str) -> str:
 def stable_id(kind: str, source_id: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"{kind}:{source_id}")
 
+
+def merge_discovery_overlay(raw: dict, overlay: dict) -> int:
+    """Merge researched fragrance identities only; never infer variants or offers."""
+    products = raw.setdefault("products", [])
+    existing_ids = {
+        str(row.get("product_id") or "").strip()
+        for row in products if isinstance(row, dict)
+    }
+    existing_brands = {
+        normalize_brand(str(row.get("brand_name") or ""))
+        for row in raw.setdefault("brands", [])
+        if isinstance(row, dict)
+    }
+    added = 0
+    for brand in overlay.get("brands", []):
+        brand_name = str(brand.get("brand_name") or "").strip()
+        if not brand_name:
+            raise ValueError("discovery overlay brand_name is required")
+        normalized_brand = normalize_brand(brand_name)
+        if normalized_brand not in existing_brands:
+            raw["brands"].append({"brand_name": brand_name})
+            existing_brands.add(normalized_brand)
+        for product_name in brand.get("products", []):
+            product_name = str(product_name or "").strip()
+            if not product_name:
+                continue
+            product_id = f"discovery:{slugify(brand_name)}:{slugify(product_name)}"
+            if product_id in existing_ids:
+                continue
+            products.append({
+                "product_id": product_id,
+                "brand_name": brand_name,
+                "canonical_name": product_name,
+            })
+            existing_ids.add(product_id)
+            added += 1
+    return added
+
+
+
+def merge_variant_evidence_overlay(raw: dict, overlay: dict) -> int:
+    """Add only variants explicitly backed by a URL and exact catalog identity."""
+    products = raw.get("products")
+    variants = raw.setdefault("variants", [])
+    if not isinstance(products, list) or not isinstance(variants, list):
+        raise ValueError("catalog products[] and variants[] must be lists")
+
+    product_index: dict[tuple[str, str], list[dict]] = {}
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+        key = (
+            normalize_brand(str(product.get("brand_name") or "")),
+            norm(str(product.get("canonical_name") or "")),
+        )
+        product_index.setdefault(key, []).append(product)
+
+    existing_ids = {
+        str(row.get("variant_id") or "").strip()
+        for row in variants if isinstance(row, dict)
+    }
+    added = 0
+    for item in overlay.get("products", []):
+        brand = str(item.get("brand") or "").strip()
+        fragrance = str(item.get("fragrance") or "").strip()
+        source_url = str(item.get("source_url") or "").strip()
+        if not brand or not fragrance:
+            raise ValueError("variant evidence requires brand and fragrance")
+        if not source_url.startswith("https://"):
+            raise ValueError(f"{brand} / {fragrance}: an HTTPS evidence URL is required")
+
+        matches = product_index.get((normalize_brand(brand), norm(fragrance)), [])
+        if not matches:
+            raise ValueError(f"{brand} / {fragrance}: no exact catalog identity found")
+        # Legacy and discovery IDs can describe the same canonical fragrance.
+        # The database deduplicates them by brand + slug, so attach evidence to
+        # the discovery ID when present, otherwise the first exact identity.
+        product = next(
+            (row for row in matches if str(row.get("product_id", "")).startswith(
+                f"discovery:{slugify(brand)}:{slugify(fragrance)}"
+            )),
+            matches[0],
+        )
+        pid = str(product["product_id"]).strip()
+
+        evidence_variants = item.get("variants")
+        if not isinstance(evidence_variants, list) or not evidence_variants:
+            raise ValueError(f"{brand} / {fragrance}: at least one evidenced variant is required")
+
+        for evidence in evidence_variants:
+            size = evidence.get("size_ml")
+            try:
+                size_int = int(size)
+                if size_int <= 0 or str(size_int) != str(size).strip():
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ValueError(f"{brand} / {fragrance}: invalid evidenced size {size!r}")
+
+            concentration = evidence.get("concentration")
+            if concentration is not None:
+                concentration = str(concentration).strip()
+                if not concentration:
+                    concentration = None
+
+            variant_id = "evidence:" + ":".join((
+                slugify(brand), slugify(fragrance),
+                slugify(concentration or "unspecified"), str(size_int),
+            ))
+            if variant_id in existing_ids:
+                continue
+
+            canonical = normalize_product(
+                brand, fragrance, concentration=concentration, size_ml=size_int,
+            ).canonical_key
+            variants.append({
+                "product_id": pid,
+                "variant_id": variant_id,
+                "concentration": concentration,
+                "size_ml": size_int,
+                "is_tester": False,
+                "is_refill": False,
+                "is_gift_set": False,
+                "canonical_key": canonical[:320],
+                "evidence_url": source_url,
+            })
+            existing_ids.add(variant_id)
+            added += 1
+    return added
 
 def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Brand:
     """Resolve an existing brand by either canonical name or unique slug.
@@ -151,6 +279,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", default=str(ROOT / "backend" / "product_catalog.json"))
     parser.add_argument(
+        "--include-discovery-overlay",
+        action="store_true",
+        help="explicitly include the researched fragrance identity overlay (never used by default or production seed)",
+    )
+    parser.add_argument(
+        "--discovery-overlay",
+        default=str(ROOT / "backend" / "catalog_overlays" / "arabian_fragrance_discovery_2026-11-07.json"),
+        help="path to the optional researched fragrance identity overlay",
+    )
+    parser.add_argument(
+        "--include-variant-evidence-overlay",
+        action="store_true",
+        help="include explicitly sourced product sizes/concentrations from the verified variant evidence overlay",
+    )
+    parser.add_argument(
+        "--variant-evidence-overlay",
+        default=str(ROOT / "backend" / "catalog_overlays" / "verified_variant_evidence_2026-11-07.json"),
+        help="path to the optional source-backed variant evidence overlay",
+    )
+    parser.add_argument(
         "--apply",
         action="store_true",
         help="write canonical identities to the configured isolated catalog after reviewing dry-run",
@@ -164,6 +312,29 @@ def main() -> int:
 
     with Path(args.catalog).open(encoding="utf-8") as handle:
         raw = json.load(handle)
+
+    overlay_path = (
+        Path(args.discovery_overlay)
+        if args.include_discovery_overlay
+        else None
+    )
+    overlay_product_count = 0
+    if overlay_path is not None:
+        with overlay_path.open(encoding="utf-8") as handle:
+            overlay = json.load(handle)
+        try:
+            overlay_product_count = merge_discovery_overlay(raw, overlay)
+        except (TypeError, ValueError) as exc:
+            raise SystemExit(f"STOP: invalid discovery overlay: {exc}") from exc
+
+    evidence_variant_count = 0
+    if args.include_variant_evidence_overlay:
+        with Path(args.variant_evidence_overlay).open(encoding="utf-8") as handle:
+            evidence_overlay = json.load(handle)
+        try:
+            evidence_variant_count = merge_variant_evidence_overlay(raw, evidence_overlay)
+        except (TypeError, ValueError) as exc:
+            raise SystemExit(f"STOP: invalid variant evidence overlay: {exc}") from exc
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
@@ -195,7 +366,9 @@ def main() -> int:
         "source_brand_records": len(source_brands),
         "brands": len(names),
         "fragrances": len(products),
+        "discovery_overlay_products": overlay_product_count,
         "variants": variant_count,
+        "source_backed_variants_added": evidence_variant_count,
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
         "offers_imported": 0,
@@ -276,6 +449,10 @@ def main() -> int:
                         session.flush()
                     elif variant_row.fragrance_id != fragrance.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
+                    else:
+                        expected_key = str(variant.get("canonical_key") or key[:320])
+                        if variant_row.canonical_key != expected_key:
+                            variant_row.canonical_key = expected_key
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:

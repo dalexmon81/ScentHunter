@@ -13,6 +13,8 @@ on:
       - "backend/app/api/catalog_search.py"
       - "backend/scripts/verify_postgres_backup_restore.sh"
       - "backend/app/api/admin_catalog.py"
+      - "backend/app/api/accounts.py"
+      - "backend/catalog_first_api.py"
       - "backend/main.py"
       - "backend/app/services/catalog_rollout.py"
       - "frontend/index.html"
@@ -152,6 +154,8 @@ jobs:
           backend/tests/test_phase2_runtime_db_identity.py
           backend/tests/test_phase2_sqlite_postgres_import.py
           backend/tests/test_phase2_bplatz_postgres.py
+          backend/tests/test_manage_store_authorization_cli.py
+          backend/tests/test_shipping_quotes.py
 
       - name: Validate canonical identity and normalization
         run: >-
@@ -163,6 +167,9 @@ jobs:
           backend/tests/test_product_normalization.py
           tests/test_next_engine_service.py
           tests/test_phase2_schema_contract.py
+          backend/tests/test_user_account_destinations.py
+          backend/tests/test_account_api.py
+          backend/tests/test_frontend_delivery_context_contract.py
 
       - name: Validate connector contracts and offline retailer fixtures
         run: >-

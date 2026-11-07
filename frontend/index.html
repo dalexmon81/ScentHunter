@@ -85,6 +85,9 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 .navitem .navicon{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin-bottom:3px!important;font-size:0!important;line-height:0!important}
 .navitem .navicon svg{width:30px!important;height:30px!important;fill:none!important;stroke:currentColor!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important;display:block!important}
 
+ .delivery-context{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px;align-items:center}.delivery-context label{grid-column:1/-1;color:#d7d7d3;font-size:12px;font-weight:800;letter-spacing:.4px}.delivery-context select,.delivery-context input{min-width:0;width:100%;border:1px solid #3b403e;border-radius:13px;background:#121615;color:#f7f7f5;padding:12px;font-size:14px}.delivery-context select{grid-column:1/-1}.delivery-context input{grid-column:1/-1}.delivery-context select:invalid{color:#a9aaae}
+/* Account profile */
+.profile-wrap{padding:8px 2px 90px}.profile-card{border:1px solid #303238;border-radius:18px;background:#121416;padding:18px;margin:12px 0}.profile-card h2{margin:0 0 8px;font-size:21px}.profile-card p{color:#aeb0b4;font-size:13px;line-height:1.45}.profile-form{display:grid;gap:10px;margin-top:14px}.profile-form input,.profile-form select{width:100%;border:1px solid #3b403e;border-radius:13px;background:#0c0e0f;color:#f7f7f5;padding:13px;font-size:14px}.profile-action{border-radius:13px;background:#e7b83f;color:#111;padding:14px;font-weight:900}.profile-secondary{border:1px solid #48494b;border-radius:13px;background:#191b1d;color:#eee;padding:12px;font-weight:800}.profile-message{font-size:13px;color:#e7b83f;min-height:18px;margin-top:9px}.profile-destination{border-top:1px solid #303238;padding:12px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}.profile-destination small{display:block;color:#aeb0b4;margin-top:4px}.profile-pill{color:#7ed99a;font-size:11px;font-weight:900}
 </style>
 <style>
 .nav{position:fixed!important;left:50%!important;right:auto!important;bottom:0!important;top:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;z-index:9999!important;margin:0!important}
@@ -333,6 +336,19 @@ body{position:relative}
     <div class="home-search-field">
       <span class="home-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg></span>
       <input id="query" type="search" placeholder="Cerca un profumo..." autocomplete="off" enterkeyhint="search" aria-label="Cerca un profumo">
+      <div class="delivery-context">
+        <label for="deliveryCountry">Spedire in</label>
+        <select id="deliveryCountry" aria-label="Paese di consegna">
+          <option value="">Scegli il Paese di consegna</option>
+          <option value="LU">Lussemburgo</option>
+          <option value="BE">Belgio</option>
+          <option value="FR">Francia</option>
+          <option value="DE">Germania</option>
+          <option value="IT">Italia</option>
+          <option value="NL">Paesi Bassi</option>
+        </select>
+        <input id="deliveryPostalCode" type="text" maxlength="24" placeholder="CAP (facoltativo)" aria-label="Codice postale di consegna">
+      </div>
     </div>
     <button id="searchButton" class="home-search-button" type="button">INIZIA LA RICERCA</button>
   </div>
@@ -356,6 +372,41 @@ body{position:relative}
   <div class="wishlist-head"><h2>Wishlist</h2><span id="wishlistCount" class="wishlist-count">0 profumi</span></div>
   <div id="wishlistList"></div>
 </div>
+<div id="profileView" class="view">
+  <div class="profile-wrap">
+    <div class="wishlist-head"><h2>Il tuo account</h2></div>
+    <section id="profileAuth" class="profile-card">
+      <h2>Accedi a ScentHunter</h2>
+      <p>Salva il tuo Paese di residenza e le destinazioni di consegna. Puoi continuare a cercare anche senza account.</p>
+      <div class="profile-form">
+        <input id="profileEmail" type="email" autocomplete="email" placeholder="Email">
+        <input id="profilePassword" type="password" autocomplete="current-password" placeholder="Password (almeno 12 caratteri per registrarti)">
+        <div id="profileRegisterFields" style="display:none" class="profile-form">
+          <select id="profileResidence"><option value="LU">Lussemburgo</option><option value="BE">Belgio</option><option value="FR">Francia</option><option value="DE">Germania</option><option value="IT">Italia</option><option value="NL">Paesi Bassi</option></select>
+          <input id="profileResidencePostal" maxlength="24" placeholder="CAP di residenza (facoltativo)">
+        </div>
+        <button id="profileSubmit" class="profile-action" type="button">ACCEDI</button>
+        <button id="profileMode" class="profile-secondary" type="button">Crea un account</button>
+      </div>
+      <div id="profileAuthMessage" class="profile-message" role="status"></div>
+    </section>
+    <section id="profileSignedIn" class="profile-card" style="display:none">
+      <h2 id="profileWelcome">Account</h2>
+      <p id="profileResidenceSummary"></p>
+      <h3>Destinazioni salvate</h3>
+      <div id="profileDestinations"></div>
+      <div class="profile-form">
+        <input id="profileDestinationLabel" maxlength="80" placeholder="Etichetta (es. Casa in Italia)">
+        <select id="profileDestinationCountry"><option value="LU">Lussemburgo</option><option value="BE">Belgio</option><option value="FR">Francia</option><option value="DE">Germania</option><option value="IT">Italia</option><option value="NL">Paesi Bassi</option></select>
+        <input id="profileDestinationPostal" maxlength="24" placeholder="CAP (facoltativo)">
+        <label style="font-size:13px;color:#ddd"><input id="profileDestinationDefault" type="checkbox" style="width:auto"> Usa come destinazione predefinita</label>
+        <button id="profileAddDestination" class="profile-action" type="button">SALVA DESTINAZIONE</button>
+      </div>
+      <div id="profileAccountMessage" class="profile-message" role="status"></div>
+      <button id="profileLogout" class="profile-secondary" type="button">ESCI DALL'ACCOUNT</button>
+    </section>
+  </div>
+</div>
 </main>
 
 <nav class="nav">
@@ -363,11 +414,28 @@ body{position:relative}
 <div class="navitem" data-view="wishlist"><b class="navicon"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></b>Wishlist</div>
 <div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><path d="M3 18h18L19 7l-5 5-2-8-2 8-5-5-2 11z"/><path d="M5 21h14"/></svg></b>Top</div>
 <div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><path d="M4 3v18M7 3v18M11 3v18M13 3v18M17 3v18M20 3v18"/></svg></b>Confronta</div>
-<div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M7 21v-3a5 5 0 0 1 10 0v3H7z"/></svg></b>Profilo</div>
+<div class="navitem" data-view="profile"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M7 21v-3a5 5 0 0 1 10 0v3H7z"/></svg></b>Profilo</div>
 </nav>
 <script>
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),unresolvedBox=document.getElementById("unresolvedBox"),errorsBox=document.getElementById("errorsBox");
+const deliveryCountry=document.getElementById("deliveryCountry");
+const deliveryPostalCode=document.getElementById("deliveryPostalCode");
+const DELIVERY_CONTEXT_KEY="scenthunter_delivery_context_v1";
+try{
+  const savedDestination=JSON.parse(localStorage.getItem(DELIVERY_CONTEXT_KEY)||"null");
+  if(savedDestination&&deliveryCountry&&savedDestination.country)deliveryCountry.value=savedDestination.country;
+  if(savedDestination&&deliveryPostalCode&&savedDestination.postalCode)deliveryPostalCode.value=savedDestination.postalCode;
+}catch(_){}
+function saveDeliveryContext(){
+  if(!deliveryCountry)return;
+  localStorage.setItem(DELIVERY_CONTEXT_KEY,JSON.stringify({
+    country:deliveryCountry.value,
+    postalCode:deliveryPostalCode?deliveryPostalCode.value.trim():""
+  }));
+}
+if(deliveryCountry)deliveryCountry.addEventListener("change",saveDeliveryContext);
+if(deliveryPostalCode)deliveryPostalCode.addEventListener("change",saveDeliveryContext);
 
 const WISH_KEY="scenthunter_wishlist_v4";
 const PREV_WISH_KEY="scenthunter_wishlist_v3";
@@ -699,10 +767,12 @@ document.addEventListener("click",e=>{
   const nav=e.target.closest(".navitem[data-view]");
   if(nav){
     document.querySelectorAll(".navitem").forEach(n=>n.classList.remove("active"));nav.classList.add("active");
-    const isWish=nav.dataset.view==="wishlist";
-    document.getElementById("exploreView").classList.toggle("active",!isWish);
-    document.getElementById("wishlistView").classList.toggle("active",isWish);
-    if(isWish)renderWishlist();
+    const view=nav.dataset.view;
+    document.getElementById("exploreView").classList.toggle("active",view==="explore");
+    document.getElementById("wishlistView").classList.toggle("active",view==="wishlist");
+    document.getElementById("profileView").classList.toggle("active",view==="profile");
+    if(view==="wishlist")renderWishlist();
+    if(view==="profile")loadProfile();
   }
 });
 
@@ -757,6 +827,13 @@ function shOfferCompare(a,b){
   const ac=String(a&&a.currency||"EUR").toUpperCase();
   const bc=String(b&&b.currency||"EUR").toUpperCase();
   if(ac!==bc)return ac.localeCompare(bc);
+  const av=a&&a.delivered_total_verified===true;
+  const bv=b&&b.delivered_total_verified===true;
+  if(av!==bv)return av?-1:1;
+  if(av&&bv){
+    const at=Number(a.delivered_total),bt=Number(b.delivered_total);
+    if(Number.isFinite(at)&&Number.isFinite(bt)&&at!==bt)return at-bt;
+  }
   const ar=Number(a&&a.ranking&&a.ranking.score),br=Number(b&&b.ranking&&b.ranking.score);
   if(Number.isFinite(ar)&&Number.isFinite(br)&&ar!==br)return br-ar;
   return shNum(a)-shNum(b);
@@ -775,6 +852,24 @@ function shOfferMetaHtml(o){
     }else{
       parts.push("SPEDIZIONE NON CONFRONTABILE");
     }
+  }
+  if(o&&o.shipping_status==="verified"&&o.delivered_total_verified===true){
+    const shipping=Number(o.shipping&&o.shipping.shipping_cost);
+    const total=Number(o.delivered_total);
+    if(Number.isFinite(shipping)&&Number.isFinite(total)){
+      parts.push("SPEDIZIONE "+formatEuro(shipping)+" · TOTALE CONSEGNATO "+formatEuro(total));
+    }
+  }else if(o&&o.shipping_status==="estimated"){
+    const estimate=Number(o.shipping&&o.shipping.shipping_cost_estimate);
+    parts.push(Number.isFinite(estimate)?"SPEDIZIONE STIMATA "+formatEuro(estimate)+" · TOTALE NON VERIFICATO":"SPEDIZIONE STIMATA · TOTALE NON VERIFICATO");
+  }else if(o&&o.shipping_status==="unknown"){
+    parts.push("SPEDIZIONE NON DISPONIBILE · TOTALE NON VERIFICATO");
+  }else if(o&&o.shipping_status==="stale"){
+    parts.push("TARIFFA DI SPEDIZIONE SCADUTA · TOTALE DA VERIFICARE");
+  }else if(o&&o.shipping_status==="unavailable"){
+    parts.push("IL NEGOZIO NON SPEDISCE A QUESTA DESTINAZIONE");
+  }else if(o&&o.shipping_status==="destination_required"){
+    parts.push("SELEZIONA LA DESTINAZIONE PER CALCOLARE LA SPEDIZIONE");
   }
   return parts.length?'<div class="offer-meta">'+parts.join(" · ")+"</div>":"";
 }
@@ -992,18 +1087,35 @@ async function hydratePhase2OfferIds(g){
   return g._phase2OfferPromise;
 }
 
+function shShippingHtml(o){
+  const currency=String(o&&o.currency||"EUR").toUpperCase();
+  const money=value=>{
+    const n=Number(value);
+    if(!Number.isFinite(n))return "";
+    try{return new Intl.NumberFormat("it-IT",{style:"currency",currency}).format(n)}
+    catch(_){return formatEuro(n)}
+  };
+  if(o&&o.delivered_total_verified===true){
+    return '<div class="offer-meta">TOTALE CONSEGNATO · '+esc(money(o.delivered_total))+' · spedizione '+esc(money(o.shipping&&o.shipping.shipping_cost))+'</div>';
+  }
+  if(o&&o.shipping_status==="estimated"){
+    return '<div class="offer-meta">Spedizione stimata: '+esc(money(o.shipping&&o.shipping.shipping_cost_estimate))+' · totale non verificato</div>';
+  }
+  return '<div class="offer-meta">Spedizione non verificata per questa destinazione · totale non disponibile</div>';
+}
+
 function renderOffersHtml(g,img,offers,saved){
   const singleCurrencyComparison=new Set((offers||[]).map(o=>String(o&&o.currency||"EUR").toUpperCase())).size===1;
   const allOffersPriceComparable=(offers||[]).every(o=>!o||!o.ranking||o.ranking.price_comparable===true);
   return (offers||[]).map((o,n)=>{
     const out=isOfferOutOfStock(o);
-    const isBestOffer=!out&&n===0&&singleCurrencyComparison&&allOffersPriceComparable;
+    const isBestOffer=!out&&n===0&&singleCurrencyComparison&&allOffersPriceComparable&&o.delivered_total_verified===true;
     const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
     const refreshId=String(o.phase2_offer_id||"");
     const canRefresh=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(refreshId);
     const refreshButton=canRefresh?'<button class="offer-refresh" type="button" data-refresh-id="'+refreshId+'" onclick="requestOfferRefresh(this.dataset.refreshId,this)">Aggiorna prezzo</button>':"";
-    return `<div class="offer ${isBestOffer?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBestOffer?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${shOfferMetaHtml(o)||(isBestOffer?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
+    return `<div class="offer ${isBestOffer?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBestOffer?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${shOfferMetaHtml(o)||(isBestOffer?'<div class="offer-meta">MIGLIOR TOTALE CONSEGNATO</div>':"")}${!out?shShippingHtml(o):""}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}${refreshButton}</div>`;
   }).join("");
 }
 
@@ -1168,7 +1280,12 @@ async function searchStoresProgressive(term,onPartial){
   let jobId="";
   try{
     while(Date.now()-startedAt<180000){
-      const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000,{"X-Catalog-Rollout-Key":catalogRolloutKey()});
+      const country=deliveryCountry?deliveryCountry.value:"";
+      const postal=deliveryPostalCode?deliveryPostalCode.value.trim():"";
+      const params=new URLSearchParams({q:query});
+      if(country)params.set("country_code",country);
+      if(postal)params.set("postal_code",postal);
+      const start=await fetchJSONWithTimeout(backend()+"/search-start?"+params.toString(),15000,{"X-Catalog-Rollout-Key":catalogRolloutKey()});
       if(start?.status==="busy"){
         lastData=start;
         await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||200)));
@@ -1231,6 +1348,12 @@ async function searchPerfume(){
   if(searchButton.disabled)return;
   const q=queryInput.value.trim();
   if(!q){statusBox.textContent="Cerca un profumo per confrontare i prezzi.";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";return;}
+  if(!deliveryCountry||!deliveryCountry.value){
+    statusBox.textContent="Seleziona il Paese di consegna per confrontare i costi.";
+    deliveryCountry?.focus();
+    return;
+  }
+  saveDeliveryContext();
   searchButton.disabled=true;searchButton.classList.add("searching");searchButton.textContent="CERCO…";
   statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";clearOpenProduct();
   try{
@@ -1325,6 +1448,91 @@ async function searchPerfume(){
 
 searchButton.addEventListener("click",searchPerfume);
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume();}});
+
+/* Account UI: browser session uses Secure HttpOnly cookies and a CSRF token. */
+let profileRegisterMode=false;
+const profileCountries={LU:"Lussemburgo",BE:"Belgio",FR:"Francia",DE:"Germania",IT:"Italia",NL:"Paesi Bassi"};
+function profileCsrfToken(){
+  const match=document.cookie.match(/(?:^|; )__Host-scenthunter_csrf=([^;]*)/);
+  return match?decodeURIComponent(match[1]):"";
+}
+async function profileApi(path,options={}){
+  const method=String(options.method||"GET").toUpperCase();
+  const headers={"Accept":"application/json","Content-Type":"application/json",...(options.headers||{})};
+  if(!["GET","HEAD","OPTIONS"].includes(method)){
+    const csrf=profileCsrfToken();
+    if(csrf)headers["X-CSRF-Token"]=csrf;
+  }
+  const response=await fetch(backend()+path,{...options,method,credentials:"same-origin",headers});
+  let data={};try{data=await response.json()}catch(_){}
+  if(!response.ok)throw new Error(data.detail||("HTTP "+response.status));
+  return data;
+}
+function profileMessage(id,message){const el=document.getElementById(id);if(el)el.textContent=message||""}
+function setProfileMode(register){
+  profileRegisterMode=Boolean(register);
+  document.getElementById("profileRegisterFields").style.display=profileRegisterMode?"grid":"none";
+  document.getElementById("profileSubmit").textContent=profileRegisterMode?"CREA ACCOUNT":"ACCEDI";
+  document.getElementById("profileMode").textContent=profileRegisterMode?"Ho già un account":"Crea un account";
+  document.getElementById("profilePassword").autocomplete=profileRegisterMode?"new-password":"current-password";
+  profileMessage("profileAuthMessage","");
+}
+async function loadProfile(){
+  try{const data=await profileApi("/account/me");showSignedInProfile(data)}
+  catch(_){
+    document.getElementById("profileAuth").style.display="block";
+    document.getElementById("profileSignedIn").style.display="none";
+  }
+}
+function showSignedInProfile(data){
+  const a=data.account||{};
+  document.getElementById("profileAuth").style.display="none";
+  document.getElementById("profileSignedIn").style.display="block";
+  document.getElementById("profileWelcome").textContent=a.email||"Account";
+  document.getElementById("profileResidenceSummary").textContent="Residenza: "+(profileCountries[a.residence_country_code]||a.residence_country_code)+(a.residence_postal_code?" · "+a.residence_postal_code:"");
+  const list=document.getElementById("profileDestinations");
+  const destinations=Array.isArray(data.destinations)?data.destinations:[];
+  if(deliveryCountry&&!deliveryCountry.value){
+    const preferred=destinations.find(d=>d.is_default)||null;
+    deliveryCountry.value=preferred?.country_code||a.residence_country_code||"";
+    if(deliveryPostalCode)deliveryPostalCode.value=preferred?.postal_code||a.residence_postal_code||"";
+    if(deliveryCountry.value)saveDeliveryContext();
+  }
+  list.innerHTML=destinations.length?destinations.map(d=>`<div class="profile-destination"><div><strong>${esc(d.label)}</strong><small>${esc(profileCountries[d.country_code]||d.country_code)}${d.postal_code?" · "+esc(d.postal_code):""}</small></div><div style="text-align:right">${d.is_default?'<span class="profile-pill">PREDEFINITA</span>':`<button class="profile-secondary" type="button" data-profile-default="${esc(d.id)}">Imposta predefinita</button>`}<br><button class="profile-secondary" type="button" data-profile-delete="${esc(d.id)}" style="margin-top:6px">Elimina</button></div></div>`).join(""):'<p>Nessuna destinazione salvata.</p>';
+}
+document.getElementById("profileMode").addEventListener("click",()=>setProfileMode(!profileRegisterMode));
+document.getElementById("profileSubmit").addEventListener("click",async()=>{
+  const email=document.getElementById("profileEmail").value.trim(),password=document.getElementById("profilePassword").value;
+  if(!email||!password){profileMessage("profileAuthMessage","Inserisci email e password.");return}
+  const body={email,password};
+  if(profileRegisterMode){body.residence_country_code=document.getElementById("profileResidence").value;body.residence_postal_code=document.getElementById("profileResidencePostal").value.trim()||null}
+  const button=document.getElementById("profileSubmit");button.disabled=true;
+  try{await profileApi(profileRegisterMode?"/account/register":"/account/login",{method:"POST",body:JSON.stringify(body)});showSignedInProfile(await profileApi("/account/me"));profileMessage("profileAccountMessage","Accesso effettuato.");document.getElementById("profilePassword").value=""}
+  catch(e){profileMessage("profileAuthMessage",e.message==="email_already_registered"?"Email già registrata. Prova ad accedere.":e.message==="invalid_email_or_password"?"Email o password non corrette.":e.message)}
+  finally{button.disabled=false}
+});
+document.getElementById("profileAddDestination").addEventListener("click",async()=>{
+  const body={label:document.getElementById("profileDestinationLabel").value.trim(),country_code:document.getElementById("profileDestinationCountry").value,postal_code:document.getElementById("profileDestinationPostal").value.trim()||null,is_default:document.getElementById("profileDestinationDefault").checked};
+  try{await profileApi("/account/destinations",{method:"POST",body:JSON.stringify(body)});showSignedInProfile(await profileApi("/account/me"));document.getElementById("profileDestinationLabel").value="";document.getElementById("profileDestinationPostal").value="";profileMessage("profileAccountMessage","Destinazione salvata.")}
+  catch(e){profileMessage("profileAccountMessage",e.message)}
+});
+document.getElementById("profileDestinations").addEventListener("click",async e=>{
+  const makeDefault=e.target.closest("[data-profile-default]"),remove=e.target.closest("[data-profile-delete]");
+  try{
+    if(makeDefault)await profileApi("/account/destinations/"+encodeURIComponent(makeDefault.dataset.profileDefault)+"/default",{method:"PUT"});
+    if(remove)await profileApi("/account/destinations/"+encodeURIComponent(remove.dataset.profileDelete),{method:"DELETE"});
+    if(makeDefault||remove)showSignedInProfile(await profileApi("/account/me"));
+  }catch(err){profileMessage("profileAccountMessage",err.message)}
+});
+document.getElementById("profileLogout").addEventListener("click",async()=>{
+  try{await profileApi("/account/logout",{method:"POST"})}catch(e){profileMessage("profileAccountMessage",e.message);return}
+  document.getElementById("profileAuth").style.display="block";
+  document.getElementById("profileSignedIn").style.display="none";
+  document.getElementById("profilePassword").value="";
+  profileMessage("profileAuthMessage","Sei uscito dall'account.");
+});
+void loadProfile();
+
 renderWishlist();syncHearts();
 </script>
 </body></html>

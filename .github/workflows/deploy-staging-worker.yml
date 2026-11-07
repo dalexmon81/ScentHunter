@@ -1,9 +1,17 @@
-name: Deploy staging worker # verify refreshed Fly secrets
+name: Deploy staging catalog API and worker
 on:
+  pull_request:
+    branches:
+      - phase10/ops-phase11-integrated
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "fly.staging-catalog.toml"
+      - ".github/workflows/deploy-staging-worker.yml"
   workflow_dispatch:
     inputs:
       confirm_staging_deploy:
-        description: "Type yes to deploy the isolated staging worker"
+        description: "Type yes to deploy the isolated staging API and worker"
         required: true
         type: choice
         options:
@@ -14,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
-    if: inputs.confirm_staging_deploy == 'yes'
+    if: inputs.confirm_staging_deploy == 'yes' || github.event.pull_request.number == 424
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,14 +36,8 @@ jobs:
         env:
           PYTHONPATH: backend
         run: |
-          pytest -q \
-            backend/tests/test_celery_ingestion_pipeline.py \
-            backend/tests/test_connector_ingestion_worker.py \
-            backend/tests/test_offer_matching_worker.py \
-            backend/tests/test_offer_promotion_worker.py \
-            backend/tests/test_product_normalization.py \
-            backend/tests/test_store_connector_contract.py \
-            backend/tests/test_seed_catalog_store_safety.py
+          pytest -q backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py backend/tests/test_product_normalization.py backend/tests/test_store_connector_contract.py backend/tests/test_seed_catalog_store_safety.py backend/tests/test_catalog_first_api.py backend/tests/test_manage_store_authorization_cli.py backend/tests/test_account_api.py backend/tests/test_user_account_destinations.py backend/tests/test_frontend_delivery_context_contract.py tests/test_arabian_fragrance_discovery_overlay.py backend/tests/test_variant_coverage_audit.py backend/tests/test_variant_evidence_overlay.py
+          python -m compileall -q backend/app/api/accounts.py
       - name: Verify PostgreSQL fail-closed startup policy
         env:
           PYTHONPATH: backend
@@ -60,16 +62,36 @@ jobs:
         run: |
           flyctl secrets list --app scenthunter-staging-workers
           flyctl secrets deploy --app scenthunter-staging-workers
-      - name: Deploy isolated worker
+      - name: Deploy isolated catalog API and worker
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-        run: flyctl deploy --config fly.staging-workers.toml --remote-only --yes
-      - name: Keep staging footprint to one worker and zero Beat machines
+        run: flyctl deploy --config fly.staging-catalog.toml --remote-only --yes
+      - name: Ensure public Fly.io staging IPs exist
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-        run: flyctl scale count app=1 beat=0 --app scenthunter-staging-workers --yes
+        run: |
+          set -euo pipefail
+          ips="$(flyctl ips list --app scenthunter-staging-workers)"
+          printf '%s\\n' "$ips"
+          if ! printf '%s\\n' "$ips" | grep -Eq '(^|[[:space:]])v6([[:space:]]|$)'; then
+            flyctl ips allocate-v6 --app scenthunter-staging-workers
+          fi
+          if ! printf '%s\\n' "$ips" | grep -Eq '(^|[[:space:]])v4([[:space:]]|$)'; then
+            flyctl ips allocate-v4 --shared --yes --app scenthunter-staging-workers
+          fi
+          ips="$(flyctl ips list --app scenthunter-staging-workers)"
+          printf '%s\\n' "$ips"
+          if ! printf '%s\\n' "$ips" | grep -Eq '(^|[[:space:]])v4([[:space:]]|$)'; then
+            echo "::error::Fly.io did not allocate a shared IPv4 address; public HTTPS verification cannot proceed."
+            exit 1
+          fi
+      - name: Keep staging footprint to one API, one worker and zero Beat machines
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        run: flyctl scale count app=1 web=1 --app scenthunter-staging-workers --yes
       - name: Allow worker startup and broker connection
         run: sleep 10
       - name: Read-only staging catalog schema and store safety audit
@@ -78,7 +100,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
-          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
             echo "::error::No started machine for read-only catalog audit."
             exit 1
@@ -98,7 +120,7 @@ jobs:
           fi
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import hashlib; from sqlalchemy import text; from app.db import make_engine; from app.db_runtime_identity import configuration_source; e=make_engine(); c=e.connect(); row=c.execute(text(\"SELECT current_database(), current_schema()\")).one(); fp=hashlib.sha256((e.dialect.name+chr(92)+chr(48)+str(row[0])+chr(92)+chr(48)+str(row[1])).encode()).hexdigest()[:16]; print({\"database\":row[0],\"schema\":row[1],\"fingerprint\":fp,\"config_source\":configuration_source()}); assert e.dialect.name==\"postgresql\" and row[0]==\"neondb\" and row[1]==\"public\" and fp==\"8b2f015a4746cccc\" and configuration_source()==\"SCENTHUNTER_CATALOG_DATABASE_URL\", \"Refusing migration: staging database identity does not match the reviewed Neon project\"; c.close(); e.dispose()'"
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -m alembic -c /app/backend/alembic.ini upgrade head"
-          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); c=e.connect(); tables=set(inspect(e).get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"price_history\",\"match_audit\",\"ingestion_runs\",\"ingestion_raw\",\"ingestion_artifacts\",\"ingestion_dead_letters\",\"legacy_product_id_map\",\"legacy_variant_id_map\"}; missing=sorted(required-tables); revisions=c.execute(text(\"SELECT version_num FROM alembic_version\")).scalars().all() if \"alembic_version\" in tables else []; result={\"database_dialect\":e.dialect.name,\"required_tables_missing\":missing,\"alembic_revisions\":revisions}; print(result); assert not missing and revisions==[\"0007_ingestion_dead_letters\"], \"Staging schema or Alembic head verification failed\"; c.close(); e.dispose()'"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import inspect, text; from app.db import make_engine; e=make_engine(); c=e.connect(); tables=set(inspect(e).get_table_names()); required={\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"price_history\",\"match_audit\",\"ingestion_runs\",\"ingestion_raw\",\"ingestion_artifacts\",\"ingestion_dead_letters\",\"legacy_product_id_map\",\"legacy_variant_id_map\"}; missing=sorted(required-tables); revisions=c.execute(text(\"SELECT version_num FROM alembic_version\")).scalars().all() if \"alembic_version\" in tables else []; result={\"database_dialect\":e.dialect.name,\"required_tables_missing\":missing,\"alembic_revisions\":revisions}; print(result); assert not missing and len(revisions)==1, \"Staging schema or Alembic head verification failed\"; c.close(); e.dispose()'"
       - name: Normalize known brand aliases in the isolated staging seed
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
@@ -114,17 +136,43 @@ jobs:
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
-          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/seed_catalog.py --apply"
-          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; q=\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand AND f.slug=:slug AND pv.canonical_key=:key\"; dior=c.execute(text(q),{\"brand\":\"christian dior\",\"slug\":\"sauvage\",\"key\":\"christian-dior|sauvage|edp|100|standard\"}).scalar_one(); print({\"counts\":counts,\"dior_sauvage_edp_100ml_matches\":dior}); assert counts[\"brands\"]==60 and counts[\"fragrances\"]>0 and counts[\"product_variants\"]==512 and counts[\"legacy_product_id_map\"]==1389 and counts[\"legacy_variant_id_map\"]==512 and counts[\"stores\"]==0 and counts[\"offers\"]==0 and dior==1; c.close(); e.dispose()'"
-      - name: Report Notino credential presence without exposing values or calling the feed
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/seed_catalog.py --apply --include-discovery-overlay --include-variant-evidence-overlay"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; q=\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand AND f.slug=:slug AND pv.canonical_key=:key\"; dior=c.execute(text(q),{\"brand\":\"christian dior\",\"slug\":\"sauvage\",\"key\":\"christian-dior|sauvage|edp|100|standard\"}).scalar_one(); velixir=c.execute(text(\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand\"),{\"brand\":\"velixir\"}).scalar_one(); gulf=c.execute(text(\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand\"),{\"brand\":\"gulf orchid\"}).scalar_one(); assaf=c.execute(text(\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand\"),{\"brand\":\"assaf\"}).scalar_one(); bujairami=c.execute(text(\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand\"),{\"brand\":\"bujairami\"}).scalar_one(); print({\"counts\":counts,\"dior_sauvage_edp_100ml_matches\":dior,\"velixir_evidenced_variants\":velixir}); assert counts[\"brands\"]>=60 and counts[\"fragrances\"]>0 and counts[\"product_variants\"]==715 and counts[\"legacy_product_id_map\"]>=3518 and counts[\"legacy_variant_id_map\"]==715 and counts[\"stores\"]==0 and counts[\"offers\"]==0 and dior==1 and velixir==52 and gulf==24 and assaf==6 and bujairami==19; c.close(); e.dispose()'"
+      - name: Audit canonical variant coverage without modifying catalog
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
-          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import os; keys=(\"NOTINO_CJ_FEED_URL\",\"NOTINO_CJ_FEED_USERNAME\",\"NOTINO_CJ_FEED_PASSWORD\"); print({key:bool(os.environ.get(key)) for key in keys})'"
-      - name: Verify one non-root worker and zero Beat machines
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started staging machine for the read-only variant coverage audit."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/audit_variant_coverage.py --summary-only --csv /tmp/scenthunter-variant-research-queue.csv"
+      - name: Export variant research queue from isolated staging
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          queue_output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import base64; p=\"/tmp/scenthunter-variant-research-queue.csv\"; print(\"QUEUE_BASE64=\"+base64.b64encode(open(p,\"rb\").read()).decode())'")"
+          queue_b64="$(printf '%s\n' "$queue_output" | sed -n 's/^QUEUE_BASE64=//p' | tail -n 1)"
+          if [ -z "$queue_b64" ]; then
+            echo "::error::Could not retrieve the variant research queue from staging."
+            exit 1
+          fi
+          printf '%s' "$queue_b64" | base64 --decode > scent-hunter-variant-research-queue.csv
+          echo "Variant research queue rows: $(($(wc -l < scent-hunter-variant-research-queue.csv) - 1))"
+      - name: Publish variant research queue artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scent-hunter-variant-research-queue
+          path: scent-hunter-variant-research-queue.csv
+          if-no-files-found: error
+          retention-days: 14
+      - name: Verify one API, one non-root worker and zero Beat machines
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
@@ -133,10 +181,12 @@ jobs:
           machines="$(flyctl machines list --app scenthunter-staging-workers --json)"
           app_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")] | length')"
           beat_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "beat")] | length')"
-          if [ "$app_count" -ne 1 ] || [ "$beat_count" -ne 0 ]; then
-            echo "::error::Expected exactly one started worker and no started Beat machine."
+          web_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "web")] | length')"
+          if [ "$app_count" -ne 1 ] || [ "$beat_count" -ne 0 ] || [ "$web_count" -ne 1 ]; then
+            echo "::error::Expected one API, one worker and zero Beat machines."
             exit 1
           fi
+          echo "Staging process counts: web=$web_count app=$app_count beat=$beat_count"
           worker_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           process_info="$(flyctl ssh console --app scenthunter-staging-workers --machine "$worker_id" --command "python -c 'import glob,os,sys; entries=[(p,open(p,\"rb\").read().replace(bytes([0]),b\" \").decode(errors=\"ignore\"),open(\"/proc/\"+p.split(\"/\")[2]+\"/status\").read()) for p in glob.glob(\"/proc/[0-9]*/cmdline\") if p.split(\"/\")[2]!=str(os.getpid())]; found=[(p.split(\"/\")[2],next(x.split()[1] for x in st.splitlines() if x.startswith(\"Uid:\")),cmd) for p,cmd,st in entries if \"app.workers.celery_app:celery_app worker\" in cmd]; print(found); sys.exit(0 if found and all(uid==\"10001\" for _,uid,_ in found) else 1)'")"
           printf '%s\\n' "$process_info"
@@ -146,7 +196,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
-          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
             echo "::error::No started worker machine is available for the Celery ping."
             exit 1
@@ -163,7 +213,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
-          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
             echo "::error::No started worker machine is available for the task smoke test."
             exit 1
@@ -174,6 +224,110 @@ jobs:
             echo "::error::Queued Celery smoke task did not return a successful result."
             exit 1
           fi
+      - name: Verify the staging frontend and PostgreSQL search API
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          web_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "web")][0].id')"
+          if [ -z "$web_id" ] || [ "$web_id" = "null" ]; then
+            echo "::error::No started staging API machine."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$web_id" --command "python -c 'import json,urllib.request; base=\"http://127.0.0.1:8080\"; health=json.load(urllib.request.urlopen(base+\"/healthz\",timeout=10)); print({\"health\":health}); assert health[\"ok\"] and health[\"database_dialect\"]==\"postgresql\"; page=urllib.request.urlopen(base+\"/\",timeout=10).read().decode(); assert \"ScentHunter\" in page; result=json.load(urllib.request.urlopen(base+\"/search-start?q=Sauvage\",timeout=20)); products=result.get(\"results\",[]); match=next((x for x in products if str(x.get(\"brand\",\"\")).lower()==\"dior\" and str(x.get(\"fragrance\",\"\")).lower()==\"sauvage\"),None); print({\"search_status\":result.get(\"status\"),\"product_count\":result.get(\"count\"),\"offer_count\":result.get(\"offer_count\"),\"dior_sauvage_found\":bool(match)}); assert result.get(\"status\")==\"completed\" and match is not None' "
+      - name: Verify public DNS, HTTPS frontend and API
+        run: |
+          set -euo pipefail
+          url="https://scenthunter-staging-workers.fly.dev"
+          echo "Checking public DNS and HTTPS for $url"
+          for attempt in $(seq 1 24); do
+            if curl --fail --silent --show-error --location --max-time 15 "$url/healthz" >/tmp/staging-health.json; then
+              cat /tmp/staging-health.json
+              break
+            fi
+            if [ "$attempt" -eq 24 ]; then
+              echo "::error::Staging hostname did not resolve or its public health endpoint did not respond."
+              getent ahosts scenthunter-staging-workers.fly.dev || true
+              exit 1
+            fi
+            sleep 5
+          done
+          frontend_html="$(curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 3 --max-time 20 "$url/")"
+          case "$frontend_html" in
+            *ScentHunter*) ;;
+            *) echo "::error::Staging frontend did not contain the ScentHunter application."; exit 1 ;;
+          esac
+          curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 3 --max-time 20 "$url/search-start?q=Sauvage" | python -c 'import json,sys; d=json.load(sys.stdin); p=d.get("results",[]); assert d.get("status")=="completed"; assert any(str(x.get("brand","")).lower()=="dior" and str(x.get("fragrance","")).lower()=="sauvage" for x in p); print({"status":d.get("status"),"products":d.get("count"),"offers":d.get("offer_count")})'
+      - name: Verify staging account and delivery-destination flow
+        env:
+          STAGING_BASE_URL: https://scenthunter-staging-workers.fly.dev
+          SMOKE_EMAIL: staging-smoke-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
+        run: |
+          python - <<'PY'
+          import http.cookiejar, json, os, secrets, urllib.error, urllib.request
+          base = os.environ["STAGING_BASE_URL"].rstrip("/")
+          email = os.environ["SMOKE_EMAIL"]
+          password = secrets.token_urlsafe(24)
+          jar = http.cookiejar.CookieJar()
+          opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+          def csrf_cookie():
+              return next((c.value for c in jar if c.name == "__Host-scenthunter_csrf"), "")
+          def request(path, method="GET", payload=None, expected=200):
+              headers = {"Origin": base}
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+              if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+                  csrf = csrf_cookie()
+                  if csrf:
+                      headers["X-CSRF-Token"] = csrf
+              data = json.dumps(payload).encode() if payload is not None else None
+              req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
+              try:
+                  with opener.open(req, timeout=20) as response:
+                      status, body = response.status, response.read()
+              except urllib.error.HTTPError as exc:
+                  status, body = exc.code, exc.read()
+              if status != expected:
+                  raise RuntimeError(f"{method} {path}: expected {expected}, got {status}: {body[:300]!r}")
+              return json.loads(body) if body else {}
+          registered = request("/account/register", "POST", {
+              "email": email, "password": password,
+              "residence_country_code": "LU", "residence_postal_code": "L-1234"
+          }, expected=201)
+          assert registered["account"]["email"] == email
+          assert registered["session_type"] == "http_only_cookie"
+          assert csrf_cookie(), "CSRF cookie missing"
+          me = request("/account/me")
+          assert me["account"]["residence_country_code"] == "LU"
+          destination = request("/account/destinations", "POST", {
+              "label": "Staging smoke destination", "country_code": "IT",
+              "postal_code": "00100", "is_default": True
+          }, expected=201)
+          assert destination["country_code"] == "IT" and destination["is_default"] is True
+          listed = request("/account/destinations")
+          assert any(x["id"] == destination["id"] and x["is_default"] for x in listed["destinations"])
+          request("/account/logout", "POST")
+          request("/account/me", expected=401)
+          query = "q=Sauvage&country_code=LU&postal_code=L-1234"
+          result = request("/search-start?" + query)
+          assert result.get("status") == "completed"
+          print({"registration": "passed", "httponly_cookie_session": "passed",
+                 "csrf_protected_destination": "passed", "logout_revocation": "passed",
+                 "explicit_delivery_search": "passed", "synthetic_account": email})
+          PY
+      - name: Remove staging smoke-test account
+        if: always()
+        continue-on-error: true
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then exit 0; fi
+          smoke_email="staging-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.invalid"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); tx=c.begin(); uid=c.execute(text(\"SELECT id FROM user_accounts WHERE email=:email\"),{\"email\":\"$smoke_email\"}).scalar(); c.execute(text(\"DELETE FROM user_sessions WHERE user_id=:uid\"),{\"uid\":uid}) if uid is not None else None; c.execute(text(\"DELETE FROM user_delivery_destinations WHERE user_id=:uid\"),{\"uid\":uid}) if uid is not None else None; c.execute(text(\"DELETE FROM user_accounts WHERE id=:uid\"),{\"uid\":uid}) if uid is not None else None; tx.commit(); print({\"smoke_account_removed\":uid is not None}); c.close(); e.dispose()'"
       - name: Inspect worker logs and machine state
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}

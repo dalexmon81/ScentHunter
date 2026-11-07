@@ -1,0 +1,2048 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-07",
+  "purpose": "Source-backed product variant evidence; no retailer offer data.",
+  "rules": [
+    "Only exact brand/fragrance matches are enriched.",
+    "Only sizes and concentrations explicitly shown by cited product/brand source are included.",
+    "No GTIN, stock, price, availability, tester, refill or gift-set facts are inferred."
+  ],
+  "sources": [
+    {
+      "brand": "Velixir",
+      "url": "https://velixirperfumes.eu/perfumes/",
+      "note": "Brand catalogue states 24 EDP fragrances in 35ml and 100ml; four Extrait fragrances in 100ml."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar",
+      "note": "Official product page names Rey as EDP 100ml."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+      "note": "Official product page names Fakhama as EDP 100ml."
+    },
+    {
+      "brand": "Paris Corner",
+      "url": "https://www.pariscornerperfumes.com/",
+      "note": "Official brand product pages used for each individual fragrance; where concentration is not explicit, it is left null."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "url": "https://arabiyatprestige.com/collections/arabiyat-prestige",
+      "note": "Official collection listing confirms listed EDP concentrations and 100ml sizes; individual product pages used where available."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/sabah-al-ward",
+      "note": "Official product pages identify Sabah Al Ward and Special Oud as Eau de Parfum 100ml."
+    },
+    {
+      "brand": "Khadlaj",
+      "url": "https://khadlaj-perfumes.com/collections/all",
+      "note": "Official product pages for Cloud Candy, Caffe Latte, Mocha Latte and Gaith explicitly show concentration and 100ml; Sawaar Vanille Blanc size 100ml is explicit but the official page title and image metadata disagree on concentration, so concentration is intentionally left unspecified."
+    },
+    {
+      "brand": "Bujairami",
+      "url": "https://bujairami.com.au/collections/all-products",
+      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Additional official product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious and Drip. Concentration is not inferred where absent. Additional official individual product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious, Drip, Billion Dollar, Woolloomooloo, Imperial Oud, Oud Royale and Roselle. Official product pages also explicitly identify 100ml EDP variants for Aquafina, Rosalie and Beautiful Lady."
+    },
+    {
+      "brand": "Mykonos",
+      "url": "https://officialmykonos.com/collections/100ml-collection",
+      "note": "Official Mykonos product pages explicitly state Extrait de Parfum and the available 50ml/100ml options for Glitch, Empire, Sorrento, Royal Ispahan, Reflection and Penthouse; Utopia, On The Rocks and Moroccan Vanilla are listed as 100ml Extrait."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/collections/royal-collection",
+      "note": "Official Royal Collection lists Heritage and Treasure; their individual official product URL slugs explicitly identify Eau de Parfum 100ml. Other Royal Collection products were not assigned a size where the official product page did not state it."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume",
+      "note": "Official Gulf Orchid perfume shop product pages explicitly identify the listed products and sizes: Vanilla Addiction 100ml EDP, Mango Ice 100ml EDP, Sweet Heaven 20ml EDP, Cookie Bite 100ml EDP, Exotic Oud 100ml EDP and Sweet Like Candy 100ml EDP. Additional official product pages confirm Sweet Heaven 100ml EDP (alongside its separately listed 20ml variant), Rahaf 100ml EDP, Romantic For Her 100ml EDP, Romantic For Him 100ml EDP and Widian 100ml EDP."
+    },
+    {
+      "brand": "Assaf",
+      "url": "https://assaf.ae/collections/all-perfumes",
+      "note": "Official Assaf product pages explicitly state sizes for Frankel Ascot 200ml, Frankel Blackout 200ml, Attacks 125ml, Gris Erik 100ml EDP, Tobacco Jam 50 100ml (50% oil, not mapped to EDP) and Arrogate Comete 200ml. Concentration is left unspecified unless the page explicitly identifies EDP."
+    }
+  ],
+  "products": [
+    {
+      "brand": "Velixir",
+      "fragrance": "Adonis",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Aphrodite",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Apollo",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Ares",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Artemis",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Asteria",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Athena",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Comus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Concordia",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Demeter",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Ether",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Galatea",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Harmonia",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Helios",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Hera",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Himeros",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Icarus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Morpheus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Narcisus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Nyx",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Orion",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Orpheus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Paladin",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Panacea",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Persephone",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Poseidon",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Selene",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Uranus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Rey",
+      "source_url": "https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Fakhama",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "AZM",
+      "source_url": "https://www.pariscornerperfumes.com/products/azm",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khayal",
+      "source_url": "https://www.pariscornerperfumes.com/products/khayal-100ml",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Oravéa",
+      "source_url": "https://www.pariscornerperfumes.com/products/oravea",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Confidential",
+      "source_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Wayfarer",
+      "source_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Aariz",
+      "source_url": "https://arabiyatprestige.com/products/aariz-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Aariz Intense",
+      "source_url": "https://arabiyatprestige.com/collections/arabiyat-prestige/products/aariz-intense-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Aariz L’Absolu",
+      "source_url": "https://arabiyatprestige.com/collections/arabiyat-prestige",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Nashwa",
+      "source_url": "https://arabiyatprestige.com/products/nashwa-edp-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Yumun",
+      "source_url": "https://arabiyatprestige.com/products/arabiyat-prestige-yumun-edp-100ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Uhud",
+      "source_url": "https://arabiyatprestige.com/products/arabiyat-prestige-uhud-edp-100ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Sabah Al Ward",
+      "source_url": "https://www.alwataniah.com/products/sabah-al-ward",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Special Oud",
+      "source_url": "https://www.alwataniah.com/products/special-oud",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Cloud Candy",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Caffe Latte",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/caffe-latte-100-ml-extrait-de-parfum-spray",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Mocha Latte",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-seller-top-fragrances-to-shop-online/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Gaith",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Sawaar Vanille Blanc",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Agha",
+      "source_url": "https://bujairami.com.au/products/agha-inspired-by-irresistible-althair-parfums-de-marly",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        },
+        {
+          "concentration": null,
+          "size_ml": 50
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Madness",
+      "source_url": "https://bujairami.com.au/products/madness-inspired-by-ombre-nomade-louis-vuitton",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Unforgettable",
+      "source_url": "https://bujairami.com.au/products/unforgettable-inspired-by-symphony-louis-vuitton",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Glitch",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Empire",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Utopia",
+      "source_url": "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Sorrento",
+      "source_url": "https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Royal Ispahan",
+      "source_url": "https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Reflection",
+      "source_url": "https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "On The Rocks",
+      "source_url": "https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Penthouse",
+      "source_url": "https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Moroccan Vanilla",
+      "source_url": "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Heritage",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Treasure",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Vanilla Addiction",
+      "source_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Mango Ice",
+      "source_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Sweet Heaven",
+      "source_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 20
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Cookie Bite",
+      "source_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Exotic Oud",
+      "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Sweet Like Candy",
+      "source_url": "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Frankel Ascot",
+      "source_url": "https://assaf.ae/products/frankel-ascot",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Frankel Blackout",
+      "source_url": "https://assaf.ae/products/frankel-blackout",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Attacks",
+      "source_url": "https://assaf.ae/products/attacks",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 125
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Gris Erik",
+      "source_url": "https://assaf.ae/products/edp-gris-erik-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Tobacco Jam 50",
+      "source_url": "https://assaf.ae/products/tobacco-jam-50",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Arrogate Comete",
+      "source_url": "https://assaf.ae/products/edp-arrogate-comete-200ml-copy",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Too Damn Good",
+      "source_url": "https://bujairami.com.au/products/too-damn-good-inspired-by-bal-dafrique-absolu-byredo-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Non Stop",
+      "source_url": "https://bujairami.com.au/products/non-stop-inspired-by-pacific-chill-louis-vuitton-extrait-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Riverina",
+      "source_url": "https://bujairami.com.au/products/riverina-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Queens Avenue",
+      "source_url": "https://bujairami.com.au/products/queens-ave-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Harbour Tea",
+      "source_url": "https://bujairami.com.au/products/harbour-tea-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Glorious",
+      "source_url": "https://bujairami.com.au/products/glorious-inspired-by-erba-pura-xerjoff-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Drip",
+      "source_url": "https://bujairami.com.au/products/drip-inspired-by-afternoon-swim-louis-vuitton-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Billion Dollar",
+      "source_url": "https://bujairami.com.au/products/billion-dollar-inspired-by-vanilla-diorama-dior-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Woolloomooloo",
+      "source_url": "https://bujairami.com.au/products/woolloomooloo-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Imperial Oud",
+      "source_url": "https://bujairami.com.au/products/imperial-oud-inspired-by-oud-zarian-creed-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Oud Royale",
+      "source_url": "https://bujairami.com.au/products/oud-royale-inspired-by-arabian-oud-taraf-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Roselle",
+      "source_url": "https://bujairami.com.au/products/roselle-inspired-by-sirene-fragrance-du-bois-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Aquafina",
+      "source_url": "https://bujairami.com.au/products/aquafina-inspired-by-acqua-digio-edp",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Rosalie",
+      "source_url": "https://bujairami.com.au/products/rosalie-inspired-by-dior-miss-dior-edp",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Beautiful Lady",
+      "source_url": "https://bujairami.com.au/products/beautiful-lady-inspired-by-libre-yves-saint-laurent",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Rahaf",
+      "source_url": "https://shop-gulforchid.com/products/rahaf-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Romantic For Her",
+      "source_url": "https://shop-gulforchid.com/products/romantic-perfume-by-gulf-orchid-eau-de-parfum-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Romantic For Him",
+      "source_url": "https://shop-gulforchid.com/products/romantic-perfume-by-gulf-orchid-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Widian",
+      "source_url": "https://shop-gulforchid.com/products/widian_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Nobilty",
+      "source_url": "https://shop-gulforchid.com/products/nobilty_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Shumookh",
+      "source_url": "https://shop-gulforchid.com/products/shumookh-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Layla",
+      "source_url": "https://shop-gulforchid.com/products/layla-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Fresh Oud",
+      "source_url": "https://shop-gulforchid.com/products/fresh-oud-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 110
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Riwaya",
+      "source_url": "https://shop-gulforchid.com/products/riwaya_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Awham",
+      "source_url": "https://shop-gulforchid.com/products/awham_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Almalek",
+      "source_url": "https://shop-gulforchid.com/products/almalek-by-gulf-orchid-eau-de-parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Angham",
+      "source_url": "https://shop-gulforchid.com/products/angham-by-gulf-orchid-eau-de-parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 110
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Legend",
+      "source_url": "https://shop-gulforchid.com/products/legend-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 110
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Belle",
+      "source_url": "https://shop-gulforchid.com/products/belle",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Amour",
+      "source_url": "https://shop-gulforchid.com/products/amour",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Chic",
+      "source_url": "https://shop-gulforchid.com/products/chic",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Mosaic",
+      "source_url": "https://shop-gulforchid.com/products/mosaic",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Runway Girl",
+      "source_url": "https://shop-gulforchid.com/products/runway-girl",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Amber Oud Ruby Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Amber Oud Gold Edition Extreme",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 60
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Junoon Oud",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Azlan Oud Bleu Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Azlan Oud Saffron Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Amber Oud Tobacco Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "L'Aventure Grapefruit",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "L'Aventure Iris",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "L'Aventure Ciel",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Amber Oud Gold Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 120
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Amber Oud Carbon Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Junoon Rose",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Golden Oud",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Detour Noir",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Amber Oud White Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Platinum Oud",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Oyuny",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Opulent Sapphire",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Jameela",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Manege Rouge",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Portfolio Floral Sculpture",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Amber Musk",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Tanasuk",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Sceptre Malachite",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-malachite-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Your Touch",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-your-touch-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Jean Lowe Immortal",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-immortal-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Philos Rosso",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-philos-rosso-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Victorioso Nero",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-nero-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Glacier Bold",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-bold-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Glacier Le Noir",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-le-noir-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Infini Oud",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-infini-oud-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Anarch",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-anarch-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Anchor Black",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-anchor-black-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Aquilo",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Aromatic Rouge",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aromatic-rouge-eau-de-parfum-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Athena",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-athena-eau-de-parfum-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Aura D'Eclat",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aura-declat-eau-de-parfum-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Avant",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Avant Ruby",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-ruby-eau-de-parfum-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Avant Silk",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-silk-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Baroque Satin Oud",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-baroque-satin-oud-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Berlinetta",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-berlinetta-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Black Origami",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-black-origami-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Camille",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Afeef",
+      "source_url": "https://lattafa.com/product/afeef/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Ameer Al Oudh",
+      "source_url": "https://lattafa.com/product/ameer-al-oud/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Ameer Al Oudh Intense Oud",
+      "source_url": "https://lattafa.com/product/ameer-al-oudh-intense/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Hayatim",
+      "source_url": "https://lattafa.com/product/hayatim/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Atheeri",
+      "source_url": "https://lattafa.com/product/atheeri/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Adeeb",
+      "source_url": "https://lattafa.com/product/adeeb/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Asad",
+      "source_url": "https://lattafa.com/product/asad/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Asad Zanzibar",
+      "source_url": "https://lattafa.com/product/asad-zanzibar/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Asad Elixir",
+      "source_url": "https://lattafa.com/product/asad-elixir/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Qaed Al Fursan",
+      "source_url": "https://lattafa.com/product/qaed-al-fursan/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 90
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Iconic",
+      "source_url": "https://bujairami.com.au/products/iconic-by-bujairami",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "HIM",
+      "source_url": "https://bujairami.com.au/products/bujairami-him",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Snow White",
+      "source_url": "https://bujairami.com.au/products/snow-white-bujairami-powdery-scent",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Million Dollar Smell",
+      "source_url": "https://bujairami.com.au/products/million-dollar-smell-inspired-by-vanilla-diorama-dior",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Only Ever",
+      "source_url": "https://bujairami.com.au/products/only-ever-inspired-by-power-of-you-giorgio-armani",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    }
+  ]
+}
