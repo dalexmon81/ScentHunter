@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,596 canonical product identity records; 150 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,598 canonical product identity records; 151 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 254 |
+| Armaf | 256 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,596** |
+| **Total** | **1,598** |
 
 ## Findings from live public sources
 
@@ -658,7 +658,7 @@ Source: https://www.pariscornerperfumes.com/collections/paris-corner?page=4
 
 Reviewed the official ARMAF US collection **All Fragrances (Not Gift Set)** and the first four currently surfaced pages. The collection's live page reports 424 listings and its concentration filters include EDP, EDT, Extrait and Parfum alongside body sprays, mists, lotions, deodorants, roll-ons, shower gels and soaps. Therefore the raw collection count is not a perfume-identity count and must not be imported wholesale.
 
-Compared visible product names from the first ten pages against the existing Armaf catalog. Fifteen official fragrance identities were missing and have been added with product-detail evidence URLs and verified concentrations:
+Compared visible product names from the first twelve pages against the existing Armaf catalog. Seventeen official fragrance identities were missing and have been added with product-detail evidence URLs and verified concentrations:
 - Odyssey Bloody Hot — Eau de Parfum
 - Odyssey Ring My Bell — Eau de Parfum
 - Eter Arabian Sky — Eau de Parfum
@@ -673,6 +673,8 @@ Compared visible product names from the first ten pages against the existing Arm
 - Mirage Woman — Eau de Parfum
 - Voyage Brown Man — Eau de Parfum
 - Club de Nuit Private Key To My Life — Eau de Toilette
+- Club de Nuit Woman Parfum Extreme Edition — Parfum
+- Niche Purple Amethyst Fleur — Eau de Parfum
 - Club de Nuit Iconic Extrait de Parfum — Extrait de Parfum
 
 Also reconciled two official names to existing canonical records instead of creating duplicates:
@@ -682,12 +684,12 @@ Also reconciled two official names to existing canonical records instead of crea
 Added a 70ml variant for Club de Nuit Iconic Extrait de Parfum from the official product description. No prices, stock or retailer offers were added.
 
 Updated branch snapshot:
-- Product identities: **1,596** (up from 1,581)
-- Explicit variants: **150** (up from 147)
-- Armaf identities: **254** (up from 239)
-- Products without declared variants: **1,468**
+- Product identities: **1,598** (up from 1,581)
+- Explicit variants: **151** (up from 147)
+- Armaf identities: **256** (up from 239)
+- Products without declared variants: **1,469**
 
-This is a partial Armaf pass only. Ten pages of a large, mixed-format official collection do not establish full Armaf coverage. The remaining pages, product types and any further concentration/size variants still need reconciliation. The 424 collection count includes non-perfume body-care items and must be filtered by product type before completeness can be measured.
+This is a partial Armaf pass only. Twelve pages of a large, mixed-format official collection do not establish full Armaf coverage. The remaining pages, product types and any further concentration/size variants still need reconciliation. The 424 collection count includes non-perfume body-care items and must be filtered by product type before completeness can be measured.
 
 Official sources:
 - https://armaf.com/collections/all-fragrances-not-gift-set
@@ -719,3 +721,8 @@ Pages 9–10 added three further product identities confirmed by official detail
 - https://armaf.com/products/the-lions-club-monarque
 - https://armaf.com/products/armaf-craze
 - https://armaf.com/products/club-de-nuit-iconic
+
+
+Pages 11–12 yielded two additional concentration-specific products confirmed by the official detail pages: **Club de Nuit Woman Parfum Extreme Edition** (Parfum, 105ml) and **Niche Purple Amethyst Fleur** (Eau de Parfum). Both are now separate canonical identities; the 105ml variant is explicit for the former. Official sources:
+- https://armaf.com/products/club-de-nuit-woman-parfum-extreme-edition
+- https://armaf.com/products/niche-purple-amethyst-fleur
