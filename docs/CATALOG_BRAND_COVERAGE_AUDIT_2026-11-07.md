@@ -1094,12 +1094,15 @@ The corrected seed dry-run test now expects 1,645 fragrances and 1,496 products 
 
 Reviewed the first four pages of the official US ARMAF `/collections/all-perfumes` listing. The live collection reports 464 listings overall, but it mixes fragrance products, body-care formats and sets; the 464 total is not a canonical perfume count.
 
-Across pages 1–4, **46 fragrance listing titles** were reconciled against the current 303 Armaf canonical identities. All 46 resolve to existing identities by exact canonical name or an existing verified alias. One additional listing, **Miss Armaf Parfum Discovery Set**, is a set and was correctly excluded from canonical fragrance identities. No new product identities or variants were created.
+Across pages 1–4, **47 fragrance product cards** were reviewed, representing **46 distinct fragrance display names**. All 46 distinct names resolve to existing Armaf canonical identities by exact canonical name or an existing verified alias. One additional listing, **Miss Armaf Parfum Discovery Set**, is a set and was correctly excluded from canonical fragrance identities. The title **Club de Nuit Intense Man** appears twice in the listing as separate Eau de Parfum and Eau de Toilette product pages; the catalog currently retains one canonical fragrance identity and has not yet modeled concentration-specific offers/variants for both presentations. The EDP product page is now the primary source on the existing identity; the EDT detail page is recorded as a reconciliation item for the product-variant model. No new product identities or variants were created in this pass.
 
-Three existing identities received stronger product-level evidence instead of generic collection URLs:
+Four existing identities received stronger product-level evidence instead of generic collection URLs:
 - Club de Nuit Woman Extrait → https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr
 - Odyssey Pink Pop → https://armaf.com/products/odyssey-pink-pop-edp
 - Spartacus → https://armaf.com/products/spartacus-edp
+- Club de Nuit Intense Man (EDP) → https://armaf.com/products/club-de-nuit-intense-for-man
+
+Separate EDT page for the same displayed fragrance name: https://armaf.com/products/club-de-nuit-intense-man-4. Keep the EDP/EDT distinction explicit when the product-variant schema is extended.
 
 The official product pages confirm the first is an Extrait de Parfum, the second is an Eau de Parfum, and the third is an Eau de Parfum. The existing canonical names and IDs are retained; the longer display spellings remain covered by aliases where applicable.
 
