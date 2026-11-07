@@ -280,15 +280,12 @@ jobs:
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-          SMOKE_EMAIL: staging-smoke-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
         run: |
           set -euo pipefail
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then exit 0; fi
-          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import os; from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); tx=c.begin(); uid=c.execute(text("SELECT id FROM user_accounts WHERE email=:email"),{"email":os.environ["SMOKE_EMAIL"]}).scalar();
-if uid is not None:
- c.execute(text("DELETE FROM user_sessions WHERE user_id=:uid"),{"uid":uid}); c.execute(text("DELETE FROM user_delivery_destinations WHERE user_id=:uid"),{"uid":uid}); c.execute(text("DELETE FROM user_accounts WHERE id=:uid"),{"uid":uid});
-tx.commit(); print({"smoke_account_removed":uid is not None}); c.close(); e.dispose()'"
+          smoke_email="staging-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.invalid"
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); tx=c.begin(); uid=c.execute(text(\"SELECT id FROM user_accounts WHERE email=:email\"),{\"email\":\"$smoke_email\"}).scalar(); c.execute(text(\"DELETE FROM user_sessions WHERE user_id=:uid\"),{\"uid\":uid}) if uid is not None else None; c.execute(text(\"DELETE FROM user_delivery_destinations WHERE user_id=:uid\"),{\"uid\":uid}) if uid is not None else None; c.execute(text(\"DELETE FROM user_accounts WHERE id=:uid\"),{\"uid\":uid}) if uid is not None else None; tx.commit(); print({\"smoke_account_removed\":uid is not None}); c.close(); e.dispose()'"
       - name: Inspect worker logs and machine state
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
