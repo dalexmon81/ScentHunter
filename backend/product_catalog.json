@@ -2925,7 +2925,8 @@
         "Paris Corner Confidential"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/confidential-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-41eeb4a5",
@@ -20177,7 +20178,8 @@
       ],
       "concentration": null,
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khayal-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-MANAAL-PG10",
@@ -20337,7 +20339,8 @@
       ],
       "concentration": null,
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-MINYA-CARAMEL-DULCE-PG20",
@@ -20497,7 +20500,8 @@
       ],
       "concentration": null,
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-OPHIDIAN-MANGO-BLISS-PG30",
@@ -20817,7 +20821,8 @@
       ],
       "concentration": null,
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=3"
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=3",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qawafi-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-P311",
@@ -21073,7 +21078,8 @@
       ],
       "concentration": null,
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=3"
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=3",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-lactea-divina-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-TASKEEN-MARINA-P327",
@@ -27308,6 +27314,60 @@
         "Lattafa Asad Bourbon 100ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-ASAD-BOURBON-001-100-000"
+    },
+    {
+      "variant_id": "SHV-SH-PARIS-CORNER-c5ed3eb2-100-000",
+      "product_id": "SH-PARIS-CORNER-c5ed3eb2",
+      "size_ml": 100,
+      "aliases": [
+        "Confidential 100 ml",
+        "Paris Corner Confidential 100 ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAYAL-PG09-100-000",
+      "product_id": "SH-PARIS-CORNER-KHAYAL-PG09",
+      "size_ml": 100,
+      "aliases": [
+        "Khayal 100 ml",
+        "Paris Corner Khayal 100 ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-PARIS-CORNER-MINYA-PG19-100-000",
+      "product_id": "SH-PARIS-CORNER-MINYA-PG19",
+      "size_ml": 100,
+      "aliases": [
+        "Minya 100 ml",
+        "Paris Corner Minya 100 ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-PARIS-CORNER-OPHIDIAN-BLACK-CHERRY-PG29-100-000",
+      "product_id": "SH-PARIS-CORNER-OPHIDIAN-BLACK-CHERRY-PG29",
+      "size_ml": 100,
+      "aliases": [
+        "Ophidian Black Cherry 100 ml",
+        "Paris Corner Ophidian Black Cherry 100 ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-PARIS-CORNER-QAWAFI-P310-100-000",
+      "product_id": "SH-PARIS-CORNER-QAWAFI-P310",
+      "size_ml": 100,
+      "aliases": [
+        "Qawafi 100 ml",
+        "Paris Corner Qawafi 100 ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-PARIS-CORNER-TASKEEN-LACTEA-DIVINA-P326-100-000",
+      "product_id": "SH-PARIS-CORNER-TASKEEN-LACTEA-DIVINA-P326",
+      "size_ml": 100,
+      "aliases": [
+        "Taskeen Lactea Divina 100 ml",
+        "Paris Corner Taskeen Lactea Divina 100 ml"
+      ]
     }
   ]
 }
