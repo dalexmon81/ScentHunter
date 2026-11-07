@@ -479,3 +479,68 @@ This status is deliberately conservative. It is better to report an open gap tha
 ### Current conclusion
 
 The branch is a substantial catalog expansion and the JSON parses cleanly. It has **1,503 identities and 141 variants**, but still contains three normalized identity collisions and incomplete source reconciliation. It is suitable for continued review on the isolated branch, not yet for a claim of a complete, production-ready fragrance catalog.
+
+
+
+## Targeted Royal Collection and duplicate-identity follow-up — 2026-11-07
+
+### Maison Asrar — Royal Collection checked against the official collection page
+
+The official Maison Asrar Royal Collection page currently lists nine perfume identities:
+- Belgravia
+- Legacy
+- Vanguard
+- Regent
+- Majesty
+- Heritage
+- Monarch
+- Treasure
+- Imperial
+
+A name-level comparison against the current Maison Asrar bucket in `backend/product_catalog.json` confirms **9/9 are already present**. No duplicate Royal Collection rows were added. This resolves the specific Royal Collection coverage request at the visible collection-listing level; it does not certify the entire Maison Asrar range as complete.
+
+Official source: https://maisonasrar.com/collections/royal-collection
+
+Product-level official sources also exist for Heritage, Monarch, Treasure and Imperial:
+- https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex
+- https://maisonasrar.com/products/maison-asrar-monarch-eau-de-parfum
+- https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex
+- https://maisonasrar.com/products/maison-asrar-imperial-eau-de-parfum
+
+The UK site also lists “The Royal” and a “Royal Collection Discovery Set”. These are bundle/set SKUs, not additional standalone perfume identities, so they must not be imported as individual fragrances. Sources:
+- https://maisonasrar.co.uk/products/the-royal
+- https://maisonasrar.co.uk/products/royal-collection-discovery-set
+
+### Afnan — official 9 AM / 9 PM collection confirms the two duplicate pairs
+
+The official Afnan collection page currently displays the standalone names exactly as:
+- **9 AM - Pour Femme**
+- **9 PM - Pour Femme**
+
+The catalog contains two records for each name, differing only in punctuation and generated product ID. These are duplicate canonical identities, not four distinct fragrances. The same official collection page also contains gift-set products, which must remain separate from standalone fragrance identities.
+
+Official source: https://afnan.com/collections/9am-9pm
+
+The two duplicate pairs should be collapsed to one canonical fragrance record each after adding explicit legacy-ID migration support. Do not simply delete the extra product IDs: downstream code may reference them, and `legacy_product_id_map` must continue resolving old IDs to the canonical fragrance.
+
+### Giorgio Armani — one fragrance identity, multiple package variants
+
+The two existing Acqua di Gio Profondo records point to the same fragrance name and concentration (Eau de Parfum), with different package formats:
+- 75 ml and 125 ml standard formats
+- 100 ml refillable bottle
+
+These should be represented as one canonical fragrance identity with three distinct variants, not two fragrance identities. The current variants list assigns the 75 ml and 125 ml formats to `SH-0043` and the 100 ml refillable format to `SH-AUTO-0019`.
+
+Do not merge these records until the migration path preserves both legacy product IDs and all three variant IDs. The seed script currently maps each catalog product ID separately; it has no documented `legacy_product_ids` alias field yet. The correct fix therefore requires a small, tested schema/seed-script enhancement, not a cosmetic name edit.
+
+Evidence:
+- Standard EDP 125 ml: https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-125-ml-man_z771966/
+- Refillable EDP 100 ml: https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/
+
+### Updated resolution status
+
+- Maison Asrar Royal Collection: **9/9 listed standalone perfume names already present**.
+- Afnan 9 AM / 9 PM Pour Femme: **two duplicate identity pairs confirmed**; consolidation pending legacy-ID-safe migration.
+- Giorgio Armani Acqua di Gio Profondo: **one fragrance identity with three package variants**; consolidation pending legacy-ID-safe migration.
+- Catalog product IDs remain unique as stored; normalized identity audit still reports three duplicate-key groups. No records or IDs were deleted in this pass.
+- No live retailer offers, prices, stock or shipping data were added.
