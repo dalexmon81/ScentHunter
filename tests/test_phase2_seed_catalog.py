@@ -1346,3 +1346,38 @@ def test_khadlaj_la_fede_eau_de_parfum_collection_has_37_additional_official_ide
         assert variants[variant_id]["size_ml"] == size
         assert variants[variant_id]["concentration"] == concentration
 
+def test_maison_asrar_all_74_official_perfume_spray_listings_map_to_existing_identities():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = [
+        row for row in raw["products"]
+        if row.get("brand") == "Maison Asrar"
+    ]
+    indexed_names = {
+        value.strip().lower()
+        for row in products
+        for value in [row["canonical_name"], *(row.get("aliases") or [])]
+    }
+    expected = {
+        "Bloom", "Lolita", "Bonita", "Lily", "Kiss My Lips", "Never Forget Me",
+        "Night in Paris", "Sunset in Capri", "Dear Jasmine", "Patchouli with Love",
+        "Fresh Iris", "Vanilla Rouge", "Heritage", "Treasure", "Jawhara Rouge",
+        "Jawhara Black", "Petra", "Casablanca", "Trophy", "Oscar", "Fairy Tale",
+        "Magic Night", "Icon", "Desire", "Black Grapefruit", "1963", "Emessa",
+        "Zenobia", "Fakhama", "Hamsat Ishq", "Hamsat Ghazal", "Hamsat Hob",
+        "Hamsat Gharam", "Pink Crush", "Red Velvet", "Adorable", "Gentle Oud",
+        "Italian Leather", "Wood Intense", "Khateer", "Basma", "Khayal", "Soudfa",
+        "Rose Musk", "Rose Oud", "Rose Honey", "Rose Vanilla", "Daham", "Alonoud",
+        "Turath", "Turath Malaki", "Rosé Bouquet", "Vanilla Seduction", "Vanilla Aura",
+        "Throne Eclipse", "Throne", "Aseel", "Khayyal", "Mohra Oud", "Milky Way",
+        "Vanguard", "III Thriller", "Regent", "Veyra", "Dubai Milano", "Dubai London",
+        "Dubai Miami", "Infina", "Librae", "Fairyland", "Harmony", "Whisper",
+        "Belgravia", "Ameer",
+    }
+    assert len(products) == 121
+    assert len(expected) == 74
+    assert expected.issubset(indexed_names)
+    mohra = next(row for row in products if row["canonical_name"] == "Mohra")
+    assert "Mohra Oud" in mohra["aliases"]
+    assert mohra["source_product_url"] == "https://maisonasrar.com/products/mohrab"
+    assert all("room spray" not in row["canonical_name"].lower() for row in products)
+
