@@ -1319,6 +1319,61 @@
           "size_ml": 110
         }
       ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Belle",
+      "source_url": "https://shop-gulforchid.com/products/belle",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Amour",
+      "source_url": "https://shop-gulforchid.com/products/amour",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Chic",
+      "source_url": "https://shop-gulforchid.com/products/chic",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Mosaic",
+      "source_url": "https://shop-gulforchid.com/products/mosaic",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Runway Girl",
+      "source_url": "https://shop-gulforchid.com/products/runway-girl",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
     }
   ]
 }
