@@ -1449,13 +1449,21 @@ async function searchPerfume(){
 searchButton.addEventListener("click",searchPerfume);
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume();}});
 
-/* Account UI: bearer token is kept in memory only; reload requires login again. */
-let scentHunterAccessToken="";
+/* Account UI: browser session uses Secure HttpOnly cookies and a CSRF token. */
 let profileRegisterMode=false;
 const profileCountries={LU:"Lussemburgo",BE:"Belgio",FR:"Francia",DE:"Germania",IT:"Italia",NL:"Paesi Bassi"};
-function profileAuthHeaders(){return scentHunterAccessToken?{Authorization:"Bearer "+scentHunterAccessToken}:{}}
+function profileCsrfToken(){
+  const match=document.cookie.match(/(?:^|; )__Host-scenthunter_csrf=([^;]*)/);
+  return match?decodeURIComponent(match[1]):"";
+}
 async function profileApi(path,options={}){
-  const response=await fetch(backend()+path,{...options,headers:{"Accept":"application/json","Content-Type":"application/json",...profileAuthHeaders(),...(options.headers||{})}});
+  const method=String(options.method||"GET").toUpperCase();
+  const headers={"Accept":"application/json","Content-Type":"application/json",...(options.headers||{})};
+  if(!["GET","HEAD","OPTIONS"].includes(method)){
+    const csrf=profileCsrfToken();
+    if(csrf)headers["X-CSRF-Token"]=csrf;
+  }
+  const response=await fetch(backend()+path,{...options,method,credentials:"same-origin",headers});
   let data={};try{data=await response.json()}catch(_){}
   if(!response.ok)throw new Error(data.detail||("HTTP "+response.status));
   return data;
@@ -1470,9 +1478,11 @@ function setProfileMode(register){
   profileMessage("profileAuthMessage","");
 }
 async function loadProfile(){
-  if(!scentHunterAccessToken)return;
   try{const data=await profileApi("/account/me");showSignedInProfile(data)}
-  catch(_){scentHunterAccessToken="";document.getElementById("profileAuth").style.display="block";document.getElementById("profileSignedIn").style.display="none"}
+  catch(_){
+    document.getElementById("profileAuth").style.display="block";
+    document.getElementById("profileSignedIn").style.display="none";
+  }
 }
 function showSignedInProfile(data){
   const a=data.account||{};
@@ -1482,8 +1492,6 @@ function showSignedInProfile(data){
   document.getElementById("profileResidenceSummary").textContent="Residenza: "+(profileCountries[a.residence_country_code]||a.residence_country_code)+(a.residence_postal_code?" · "+a.residence_postal_code:"");
   const list=document.getElementById("profileDestinations");
   const destinations=Array.isArray(data.destinations)?data.destinations:[];
-  // Preserve an explicitly selected delivery country. If none is selected,
-  // use the saved default destination, then the account residence.
   if(deliveryCountry&&!deliveryCountry.value){
     const preferred=destinations.find(d=>d.is_default)||null;
     deliveryCountry.value=preferred?.country_code||a.residence_country_code||"";
@@ -1499,7 +1507,7 @@ document.getElementById("profileSubmit").addEventListener("click",async()=>{
   const body={email,password};
   if(profileRegisterMode){body.residence_country_code=document.getElementById("profileResidence").value;body.residence_postal_code=document.getElementById("profileResidencePostal").value.trim()||null}
   const button=document.getElementById("profileSubmit");button.disabled=true;
-  try{const data=await profileApi(profileRegisterMode?"/account/register":"/account/login",{method:"POST",body:JSON.stringify(body)});scentHunterAccessToken=data.access_token;showSignedInProfile(await profileApi("/account/me"));profileMessage("profileAccountMessage","Accesso effettuato.")}
+  try{await profileApi(profileRegisterMode?"/account/register":"/account/login",{method:"POST",body:JSON.stringify(body)});showSignedInProfile(await profileApi("/account/me"));profileMessage("profileAccountMessage","Accesso effettuato.");document.getElementById("profilePassword").value=""}
   catch(e){profileMessage("profileAuthMessage",e.message==="email_already_registered"?"Email già registrata. Prova ad accedere.":e.message==="invalid_email_or_password"?"Email o password non corrette.":e.message)}
   finally{button.disabled=false}
 });
@@ -1517,13 +1525,13 @@ document.getElementById("profileDestinations").addEventListener("click",async e=
   }catch(err){profileMessage("profileAccountMessage",err.message)}
 });
 document.getElementById("profileLogout").addEventListener("click",async()=>{
-  try{await profileApi("/account/logout",{method:"POST"})}catch(_){}
-  scentHunterAccessToken="";
+  try{await profileApi("/account/logout",{method:"POST"})}catch(e){profileMessage("profileAccountMessage",e.message);return}
   document.getElementById("profileAuth").style.display="block";
   document.getElementById("profileSignedIn").style.display="none";
   document.getElementById("profilePassword").value="";
   profileMessage("profileAuthMessage","Sei uscito dall'account.");
 });
+void loadProfile();
 
 renderWishlist();syncHearts();
 </script>
