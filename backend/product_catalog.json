@@ -16748,6 +16748,57 @@
       "identity_status": "source_listed_name",
       "source_url": "https://assafperfumes.eu/perfumes/",
       "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-UNSOLVED-MYSTERY-X001",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Unsolved Mystery",
+      "name": "Unsolved Mystery",
+      "family_id": "maison-asrar_catalog",
+      "family_name": "Unsolved Mystery",
+      "aliases": [
+        "Unsolved Mystery",
+        "Maison Asrar Unsolved Mystery"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://maisonasrar.com/collections/all",
+      "source_evidence_url": "https://maisonasrar.com/collections/all"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-PLOT-TWIST-X002",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Plot Twist",
+      "name": "Plot Twist",
+      "family_id": "maison-asrar_catalog",
+      "family_name": "Plot Twist",
+      "aliases": [
+        "Plot Twist",
+        "Maison Asrar Plot Twist"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://maisonasrar.com/collections/all",
+      "source_evidence_url": "https://maisonasrar.com/collections/all"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-LOVE-KEY-X003",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Love Key",
+      "name": "Love Key",
+      "family_id": "maison-asrar_catalog",
+      "family_name": "Love Key",
+      "aliases": [
+        "Love Key",
+        "Maison Asrar Love Key"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://maisonasrar.com/collections/all",
+      "source_evidence_url": "https://maisonasrar.com/collections/all"
     }
   ],
   "variants": [
