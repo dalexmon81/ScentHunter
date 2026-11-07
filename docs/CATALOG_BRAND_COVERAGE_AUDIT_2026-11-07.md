@@ -563,3 +563,14 @@ The seed script already resolves products to an existing fragrance by normalized
 The real-catalog dry-run test expectations were also updated to the exact current branch snapshot: 1,503 product identities, 141 variants, 21 normalized brand identities and 1,384 products without declared variants. The latter is a data-coverage indicator, not permission to infer sizes or variants.
 
 The regression tests have been committed but **have not yet been executed in GitHub Actions**. Do not treat them as passing until a CI run reports success.
+
+
+## Requested-brand and Royal Collection regression gates — 2026-11-07
+
+Added two more regression tests to `tests/test_phase2_seed_catalog.py`:
+
+1. The catalog must retain all 20 requested brands/lines, exactly 1,503 product rows and 141 explicit variant rows at this snapshot, with unique product/variant IDs, no orphan variants, HTTPS source URLs, recognized source-evidence states and no embedded offer price/stock.
+2. Maison Asrar must retain all nine officially listed standalone Royal Collection fragrances, exactly once per name.
+
+The assertions were cross-checked directly against the current JSON data in the GitHub branch. They are committed, but no passing CI run has been observed yet. These tests are snapshot guards, not a substitute for verifying that every brand's full current range is complete.
+
