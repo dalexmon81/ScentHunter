@@ -757,8 +757,9 @@
         "Maison Asrar Imperial"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "source_evidence_url": "https://maisonasrar.com/collections/royal-collection",
+      "collection_name": "Royal Collection"
     },
     {
       "product_id": "SH-MAISON-ASRAR-a50292d2",
@@ -773,8 +774,9 @@
         "Maison Asrar Monarch"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "source_evidence_url": "https://maisonasrar.com/collections/royal-collection",
+      "collection_name": "Royal Collection"
     },
     {
       "product_id": "SH-MAISON-ASRAR-100281b5",
