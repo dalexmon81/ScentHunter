@@ -1,4 +1,4 @@
-"""Runtime construction for the nine universal store connectors.
+"""Runtime construction for the ten registered store connectors.
 
 Discovery terms are supplied as JSON in SCENTHUNTER_DISCOVERY_TERMS_JSON,
 for example {"deloox":["Dior Sauvage 100 ml"],"sabina":["Chanel No 5"]}.
@@ -13,7 +13,7 @@ from typing import Any
 
 from app.connectors import (
     BplatzConnector, DelooxConnector, EasycosmeticConnector,
-    NotinoAffiliateFeedConnector, OrioudhConnector, ParfumCityConnector,
+    NotinoAffiliateFeedConnector, OrioudhConnector, ParfumCityConnector, PerfumesMemConnector,
     PerfumeMarketConnector, ParfumzentrumConnector, SabinaConnector,
 )
 
@@ -43,6 +43,9 @@ def build_connectors() -> dict[str, Any]:
         "parfumcity": ParfumCityConnector(terms.get("parfumcity", ())),
         "bplatz": BplatzConnector(terms.get("bplatz", ())),
         "orioudh": OrioudhConnector(terms.get("orioudh", ())),
+        # Published terms prohibit crawling/extraction and commercial reuse;
+        # this connector remains fail-closed until written permission is recorded.
+        "perfumesmem": PerfumesMemConnector(),
     }
 
 def get_connector(store_key: str):
