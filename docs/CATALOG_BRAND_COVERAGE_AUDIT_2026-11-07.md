@@ -937,3 +937,27 @@ The earlier six-name claim omitted Treasure; the earlier nine-name claim include
 - https://maisonasrar.co.uk/products/the-royal
 - https://maisonasrar.co.uk/products/royal-collection-discovery-set
 - https://maisonasrar.co.uk/products/the-royal-duo
+
+
+## Khadlaj official perfume-spray reconciliation — 2026-11-07
+
+A fresh review of the official Khadlaj shop separates the **Perfume Sprays** collection from perfume oils, bakhoor, home/ambiance products and gift sets. The current Perfume Sprays collection reports 101 products; the official collections index reports separate counts for Khadlaj Perfume Spray (88), La Fede EDP (42), perfume oils, home/ambiance and other categories. Counts overlap across promotional and line collections and must not be summed as unique fragrances.
+
+The visible product cards sampled across the official Perfume Sprays pagination matched existing catalog identities after normalizing product-card names to canonical names. No new canonical identity was added from this pass. Seven existing records received product-level source reconciliation:
+- **Musk Pure Musk Blend** — official detail page spells out “Musk Pure Musk Blend Creation of Iqbal”; retained as one identity, with the official title added as an alias. Existing 60 ml EDP variant retained.
+- **Khadlaj 25 Experience, 25 Trust, 25 Loyalty, 25 Heritage and 25 Integrity** — exact official product pages confirm 100 ml Eau de Parfum; product source URLs, concentration, format and explicit 100 ml variants were added.
+- **Wild Indonesian Oud** — official page title is “Wild Indonesian Oud Pure”, 60 ml Eau de Parfum; retained as one identity with the official full title as an alias and a 60 ml EDP variant.
+
+Official collection:
+https://khadlaj-perfumes.com/collections/perfumes-spray
+
+Official product evidence:
+- https://khadlaj-perfumes.com/collections/perfumes-spray/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae
+- https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-experience-100-ml-edp-spray
+- https://khadlaj-perfumes.com/collections/perfumes-spray/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women
+- https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae
+- https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-heritage-100-ml-edp-spray
+- https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-integrity-100-ml-edp-spray
+- https://khadlaj-perfumes.com/collections/perfumes-spray/products/wild-indonesian-oud-spray-shop-online-best-price-in-dubai-uae
+
+This is a product-level correction of existing identities and variant data, not a claim that all Khadlaj perfume oils, extracts, collections or regional products have been exhaustively reconciled.
