@@ -60,3 +60,23 @@ def test_missing_catalog_id_downgrades_match():
     matcher = Matcher({"canonical_name": "Perfume"})
     result = resolve_offer_identity({"name": "Perfume"}, "Perfume", matcher, LABELS, normalize_store)
     assert result["_match_status"] == "unresolved"
+
+
+def test_logger_failure_does_not_break_fail_closed_match_result():
+    class Broken:
+        def match(self, offer, query):
+            raise RuntimeError("matcher unavailable")
+
+    def broken_logger(message):
+        raise RuntimeError("logger unavailable")
+
+    result = resolve_offer_identity(
+        {"name": "Perfume"},
+        "Perfume",
+        Broken(),
+        LABELS,
+        normalize_store,
+        logger=broken_logger,
+    )
+    assert result["_match_status"] == "unresolved"
+    assert "matcher unavailable" in result["_match_error"]
