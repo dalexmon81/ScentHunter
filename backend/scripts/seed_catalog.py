@@ -90,6 +90,91 @@ def merge_discovery_overlay(raw: dict, overlay: dict) -> int:
     return added
 
 
+
+def merge_variant_evidence_overlay(raw: dict, overlay: dict) -> int:
+    """Add only variants explicitly backed by a URL and exact catalog identity."""
+    products = raw.get("products")
+    variants = raw.setdefault("variants", [])
+    if not isinstance(products, list) or not isinstance(variants, list):
+        raise ValueError("catalog products[] and variants[] must be lists")
+
+    product_index: dict[tuple[str, str], list[dict]] = {}
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+        key = (
+            normalize_brand(str(product.get("brand_name") or "")),
+            norm(str(product.get("canonical_name") or "")),
+        )
+        product_index.setdefault(key, []).append(product)
+
+    existing_ids = {
+        str(row.get("variant_id") or "").strip()
+        for row in variants if isinstance(row, dict)
+    }
+    added = 0
+    for item in overlay.get("products", []):
+        brand = str(item.get("brand") or "").strip()
+        fragrance = str(item.get("fragrance") or "").strip()
+        source_url = str(item.get("source_url") or "").strip()
+        if not brand or not fragrance:
+            raise ValueError("variant evidence requires brand and fragrance")
+        if not source_url.startswith("https://"):
+            raise ValueError(f"{brand} / {fragrance}: an HTTPS evidence URL is required")
+
+        matches = product_index.get((normalize_brand(brand), norm(fragrance)), [])
+        if len(matches) != 1:
+            raise ValueError(
+                f"{brand} / {fragrance}: expected exactly one catalog identity, found {len(matches)}"
+            )
+        product = matches[0]
+        pid = str(product["product_id"]).strip()
+
+        evidence_variants = item.get("variants")
+        if not isinstance(evidence_variants, list) or not evidence_variants:
+            raise ValueError(f"{brand} / {fragrance}: at least one evidenced variant is required")
+
+        for evidence in evidence_variants:
+            size = evidence.get("size_ml")
+            try:
+                size_int = int(size)
+                if size_int <= 0 or str(size_int) != str(size).strip():
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ValueError(f"{brand} / {fragrance}: invalid evidenced size {size!r}")
+
+            concentration = evidence.get("concentration")
+            if concentration is not None:
+                concentration = str(concentration).strip()
+                if not concentration:
+                    concentration = None
+
+            variant_id = "evidence:" + ":".join((
+                slugify(brand), slugify(fragrance),
+                slugify(concentration or "unspecified"), str(size_int),
+            ))
+            if variant_id in existing_ids:
+                continue
+
+            key = "|".join((
+                normalize_brand(brand), norm(fragrance), norm(concentration or ""),
+                str(size_int), "False", "False", "False", variant_id,
+            ))
+            variants.append({
+                "product_id": pid,
+                "variant_id": variant_id,
+                "concentration": concentration,
+                "size_ml": size_int,
+                "is_tester": False,
+                "is_refill": False,
+                "is_gift_set": False,
+                "canonical_key": key[:320],
+                "evidence_url": source_url,
+            })
+            existing_ids.add(variant_id)
+            added += 1
+    return added
+
 def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Brand:
     """Resolve an existing brand by either canonical name or unique slug.
 
@@ -199,6 +284,16 @@ def main() -> int:
         help="path to the optional researched fragrance identity overlay",
     )
     parser.add_argument(
+        "--include-variant-evidence-overlay",
+        action="store_true",
+        help="include explicitly sourced product sizes/concentrations from the verified variant evidence overlay",
+    )
+    parser.add_argument(
+        "--variant-evidence-overlay",
+        default=str(ROOT / "backend" / "catalog_overlays" / "verified_variant_evidence_2026-11-07.json"),
+        help="path to the optional source-backed variant evidence overlay",
+    )
+    parser.add_argument(
         "--apply",
         action="store_true",
         help="write canonical identities to the configured isolated catalog after reviewing dry-run",
@@ -226,6 +321,15 @@ def main() -> int:
             overlay_product_count = merge_discovery_overlay(raw, overlay)
         except (TypeError, ValueError) as exc:
             raise SystemExit(f"STOP: invalid discovery overlay: {exc}") from exc
+
+    evidence_variant_count = 0
+    if args.include_variant_evidence_overlay:
+        with Path(args.variant_evidence_overlay).open(encoding="utf-8") as handle:
+            evidence_overlay = json.load(handle)
+        try:
+            evidence_variant_count = merge_variant_evidence_overlay(raw, evidence_overlay)
+        except (TypeError, ValueError) as exc:
+            raise SystemExit(f"STOP: invalid variant evidence overlay: {exc}") from exc
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
@@ -259,6 +363,7 @@ def main() -> int:
         "fragrances": len(products),
         "discovery_overlay_products": overlay_product_count,
         "variants": variant_count,
+        "source_backed_variants_added": evidence_variant_count,
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
         "offers_imported": 0,
