@@ -117,6 +117,16 @@
       "brand": "Swiss Arabian",
       "url": "https://us.swissarabian.com/products/casablanca",
       "note": "Official Swiss Arabian product page identifies Casablanca Eau de Parfum 100ml."
+    },
+    {
+      "brand": "Zimaya",
+      "url": "https://zimayaperfumes.com/collections/eau-de-parfum",
+      "note": "Official Zimaya Eau de Parfum collection page lists these fragrance identities. This collection page did not expose an explicit size/concentration for each individual listing in the retrieved evidence, so names are added identity-only."
+    },
+    {
+      "brand": "Paris Corner",
+      "url": "https://www.parfum-paris-corner.com/boutique/",
+      "note": "Third-party French retailer catalog listing Paris Corner fragrances with explicit Eau de Parfum concentration and size. Used as secondary source evidence, not as an official manufacturer source; out-of-stock status is not copied into ScentHunter catalog."
     }
   ],
   "products": [
@@ -554,6 +564,10 @@
         {
           "concentration": null,
           "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
         }
       ]
     },
@@ -564,6 +578,10 @@
       "variants": [
         {
           "concentration": null,
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
           "size_ml": 100
         }
       ]
@@ -586,6 +604,10 @@
       "variants": [
         {
           "concentration": null,
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
           "size_ml": 100
         }
       ]
@@ -2938,6 +2960,479 @@
       "brand": "Swiss Arabian",
       "fragrance": "Leather & Oud",
       "source_url": "https://us.swissarabian.com/collections/harmony",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Affogato Al Caffé",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Aira",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Arwa",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Atoof",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Banana Bliss",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Bayn Al Asrar",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Chocolait",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Cosmic Giardino",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Daar Al Oud",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Date Caramel",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "December Rose",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 85
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "December Vanilla",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 85
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Dulzura",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Eshal Musk",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Eshal Vanilla",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Eternal Coffee",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 85
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Eternal Meadows",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 85
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Eternal Musk",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 85
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Fayora",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Fayora Oshino",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khair",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khair Confection",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khair Felicity",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khair Fusion",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khair Peach Delulu",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khair Pistachio",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Manaal",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Marshmallow Blush",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Mawj Appletini",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Mawj Cognac Blaze",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Mawj Moscow Mule",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Mehwish",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Miel Obscura",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Miel Vanille",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Minya",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Minya Caramel Dulce",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Minya Coco Lush",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Molten Caramel",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Mysterium",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Nouf",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Ophidian Black Cherry",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Ophidian Mango Bliss",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Ophidian Sweet Surrender",
+      "source_url": "https://www.parfum-paris-corner.com/boutique/",
       "variants": [
         {
           "concentration": "Eau de Parfum",
