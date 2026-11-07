@@ -86,3 +86,21 @@ def test_estimated_shipping_never_returns_verified_total(shipping_session):
     assert result["status"] == "estimated"
     assert result["total_cost_estimate"] == 37.9
     assert "total_cost" not in result
+
+
+def test_expired_estimated_shipping_rate_is_not_reused(shipping_session):
+    rate = shipping_session.query(StoreShippingRate).one()
+    rate.status = "estimated"
+    rate.valid_until = datetime.now(timezone.utc) - timedelta(hours=1)
+    shipping_session.commit()
+    result = quote_shipping(shipping_session, store_slug="example", country_code="LU",
+                            order_subtotal="30.00")
+    assert result["status"] == "stale"
+    assert "total_cost_estimate" not in result
+
+
+@pytest.mark.parametrize("subtotal", ["NaN", "Infinity", "-Infinity"])
+def test_non_finite_order_subtotal_is_rejected(shipping_session, subtotal):
+    with pytest.raises(ValueError, match="finite_and_nonnegative"):
+        quote_shipping(shipping_session, store_slug="example", country_code="LU",
+                       order_subtotal=subtotal)
