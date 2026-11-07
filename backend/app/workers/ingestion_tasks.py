@@ -798,7 +798,19 @@ def enqueue_refresh_for_active_stores():
                        Offer.external_product_id.is_not(None), Store.slug.in_(main_stores))
             ).all()
             queued = 0
+            authorization_cache = {}
             for external_product_id, store_key in rows:
+                if store_key not in authorization_cache:
+                    store = session.scalar(select(Store).where(Store.slug == store_key))
+                    try:
+                        if store is None:
+                            raise PermissionError("store_not_configured")
+                        _require_store_authorization(session, store, "price_stock")
+                        authorization_cache[store_key] = True
+                    except PermissionError:
+                        authorization_cache[store_key] = False
+                if not authorization_cache[store_key]:
+                    continue
                 refresh_price_and_stock.apply_async(
                     kwargs={"store_key": store_key, "offer_id": external_product_id},
                     queue="refresh",
