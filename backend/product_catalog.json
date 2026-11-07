@@ -19655,6 +19655,193 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.orientfragance.com/en/collections/arabiyat-prestige-distribuidor-oficial-perfumes-arabes",
       "source_evidence_url": "https://www.orientfragance.com/en/collections/arabiyat-prestige-distribuidor-oficial-perfumes-arabes"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-OUD-MALAKI-SRC001",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Oud Malaki",
+      "name": "Oud Malaki",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Oud Malaki",
+      "aliases": [
+        "Oud Malaki",
+        "Swiss Arabian Oud Malaki"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-EDGE-INTENSE-SRC002",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Edge Intense",
+      "name": "Edge Intense",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Edge Intense",
+      "aliases": [
+        "Edge Intense",
+        "Swiss Arabian Edge Intense"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SECRET-MUSK-SRC003",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Secret Musk",
+      "name": "Secret Musk",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Secret Musk",
+      "aliases": [
+        "Secret Musk",
+        "Swiss Arabian Secret Musk"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-KASHKHA-SRC004",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Kashkha",
+      "name": "Kashkha",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Kashkha",
+      "aliases": [
+        "Kashkha",
+        "Swiss Arabian Kashkha"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-RASHEEQA-SRC005",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Rasheeqa",
+      "name": "Rasheeqa",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Rasheeqa",
+      "aliases": [
+        "Rasheeqa",
+        "Swiss Arabian Rasheeqa"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-DEHN-EL-OUD-CAMBODI-SRC006",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Dehn El Oud Cambodi",
+      "name": "Dehn El Oud Cambodi",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Dehn El Oud Cambodi",
+      "aliases": [
+        "Dehn El Oud Cambodi",
+        "Swiss Arabian Dehn El Oud Cambodi"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-OUD-AND-LYCHEE-SRC007",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Oud And Lychee",
+      "name": "Oud And Lychee",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Oud And Lychee",
+      "aliases": [
+        "Oud And Lychee",
+        "Swiss Arabian Oud And Lychee"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-ROSE-AND-PATCHOULI-SRC008",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Rose And Patchouli",
+      "name": "Rose And Patchouli",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Rose And Patchouli",
+      "aliases": [
+        "Rose And Patchouli",
+        "Swiss Arabian Rose And Patchouli"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-OUD-ELIXIR-SRC009",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Elixir",
+      "name": "Shaghaf Oud Elixir",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Shaghaf Oud Elixir",
+      "aliases": [
+        "Shaghaf Oud Elixir",
+        "Swiss Arabian Shaghaf Oud Elixir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-OUD-74-SRC010",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Oud 74",
+      "name": "Oud 74",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Oud 74",
+      "aliases": [
+        "Oud 74",
+        "Swiss Arabian Oud 74"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SECRET-ROSE-SRC011",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Secret Rose",
+      "name": "Secret Rose",
+      "family_id": "swiss-arabian_catalog",
+      "family_name": "Secret Rose",
+      "aliases": [
+        "Secret Rose",
+        "Swiss Arabian Secret Rose"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://om.swissarabian.com/products/",
+      "source_evidence_url": "https://om.swissarabian.com/products/"
     }
   ],
   "variants": [
