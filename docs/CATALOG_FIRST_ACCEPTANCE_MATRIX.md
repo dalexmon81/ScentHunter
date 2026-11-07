@@ -263,3 +263,20 @@ Acceptance remains **partial / not yet verified**:
 - The first cookie smoke test failed because the app saw an internal HTTP scheme behind Fly's TLS termination. The origin check was corrected to validate HTTPS against the externally forwarded host and port. The subsequent full staging smoke test passed. Do not treat the earlier failed run as acceptance.
 - PR #424 remains open, draft and unmerged. No production deployment, merge, retailer activation, or traffic ramp occurred.
 - This closes the browser-session persistence subtask only. Email verification, password recovery, account rate limiting, live retailer authorization/offers, verified shipping rates, and the broader phase acceptance criteria remain open. No phase is automatically marked complete by this account increment.
+
+## Mandatory live end-to-end acceptance scenario
+
+The first real-data acceptance run must use **French Avenue Liquid Brun Eau de Parfum, 100 ml** (GTIN/EAN **6290360375694**) as the single canonical test product, not Dior Sauvage. The product was selected because it is known to be listed by multiple retailers and can exercise exact-variant matching across stores.
+
+The acceptance run is not complete until all of the following are demonstrated on isolated staging:
+
+1. Resolve the exact 100 ml EDP variant by GTIN where the source exposes it; otherwise record the source identifier and require deterministic evidence before matching.
+2. Ingest current product and offer data from at least one genuinely accessible, permitted retailer source. Record source, retailer, capture time, product URL, price, currency and explicit availability.
+3. Run the actual background ingestion, normalization, matching, validation and publication pipeline; do not insert a hand-written offer directly into the published-offers table.
+4. Search for Liquid Brun through the real ScentHunter frontend/API and return the persisted published offer(s), with no live retailer lookup in the user-search request.
+5. Verify the retailer product page and availability independently at test time; record any differences rather than silently correcting them.
+6. Calculate the delivered total for a selected delivery country only when product price and shipping are evidenced for that destination. Keep unknown shipping visibly unknown.
+7. Refresh the same offer through the worker and verify price/availability timestamp changes, stale handling and price-history recording.
+8. Save a reproducible test report with request, result, offer IDs, source evidence, timestamps, destination and observed discrepancies.
+
+A public retailer listing or a third-party price-comparison page can help identify candidate retailers and cross-check observations, but it is not by itself permission to ingest that retailer's data. No retailer is activated until its source access and terms have been reviewed. Until the live-source requirement is met, use fixtures only for automated tests and label them as test data; do not describe them as live offers. This acceptance scenario is a release gate for claiming that real multi-store search works; its status remains **Partial** until completed.
