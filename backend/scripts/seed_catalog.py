@@ -151,6 +151,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", default=str(ROOT / "backend" / "product_catalog.json"))
     parser.add_argument(
+        "--discovery-overlay",
+        default=str(ROOT / "backend" / "catalog_overlays" / "arabian_fragrance_discovery_2026-11-07.json"),
+        help="researched fragrance identity overlay; imports identities only, never variants or offers",
+    )
+    parser.add_argument(
         "--apply",
         action="store_true",
         help="write canonical identities to the configured isolated catalog after reviewing dry-run",
@@ -164,6 +169,32 @@ def main() -> int:
 
     with Path(args.catalog).open(encoding="utf-8") as handle:
         raw = json.load(handle)
+
+    overlay_path = Path(args.discovery_overlay) if args.discovery_overlay else None
+    overlay_product_count = 0
+    if overlay_path is not None:
+        with overlay_path.open(encoding="utf-8") as handle:
+            overlay = json.load(handle)
+        for brand in overlay.get("brands", []):
+            brand_name = str(brand.get("brand_name") or "").strip()
+            if not brand_name:
+                raise SystemExit("STOP: discovery overlay contains a brand without brand_name")
+            for product_name in brand.get("products", []):
+                product_name = str(product_name or "").strip()
+                if not product_name:
+                    continue
+                product_id = f"discovery:{slugify(brand_name)}:{slugify(product_name)}"
+                raw.setdefault("products", []).append({
+                    "product_id": product_id,
+                    "brand_name": brand_name,
+                    "canonical_name": product_name,
+                })
+                overlay_product_count += 1
+        raw.setdefault("brands", []).extend(
+            {"brand_name": str(row.get("brand_name") or "").strip()}
+            for row in overlay.get("brands", [])
+            if str(row.get("brand_name") or "").strip()
+        )
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
@@ -195,6 +226,7 @@ def main() -> int:
         "source_brand_records": len(source_brands),
         "brands": len(names),
         "fragrances": len(products),
+        "discovery_overlay_products": overlay_product_count,
         "variants": variant_count,
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
