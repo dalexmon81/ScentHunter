@@ -3994,7 +3994,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         from sqlalchemy import create_engine, event, inspect, select, text
         from sqlalchemy.engine import make_url
         from sqlalchemy.orm import Session
-        from app.models import Store
+        from app.models import Store, StoreAuthorization
         from app.db_runtime_identity import (
             configuration_source, log_runtime_database_identity, opened_at_utc,
         )
@@ -4083,6 +4083,7 @@ def _maybe_persist_bplatz_phase2(item, url):
             "0009_live_ingestion_uniqueness",
             "0010_store_offer_ttl",
             "0011_catalog_search_fts",
+            "0012_store_authorizations",
         }
         if revision not in supported_revisions or missing:
             print(
@@ -4146,6 +4147,31 @@ def _maybe_persist_bplatz_phase2(item, url):
                     "BPLATZ_PHASE2_SKIPPED reason=bplatz_store_not_provisioned_or_inactive",
                     flush=True,
                 )
+                return False
+            # Legacy hydration is also a collection path: require a current
+            # written grant before persisting retailer page data or offers.
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            grant = session.scalar(
+                select(StoreAuthorization).where(
+                    StoreAuthorization.store_id == store.id,
+                    StoreAuthorization.status == "approved",
+                    StoreAuthorization.approved_at.is_not(None),
+                    StoreAuthorization.revoked_at.is_(None),
+                    (StoreAuthorization.valid_from.is_(None) | (StoreAuthorization.valid_from <= now)),
+                    (StoreAuthorization.expires_at.is_(None) | (StoreAuthorization.expires_at > now)),
+                ).order_by(
+                    StoreAuthorization.approved_at.desc(),
+                    StoreAuthorization.created_at.desc(),
+                ).limit(1)
+            )
+            required_scopes = {"offer_data", "price_stock"}
+            if (
+                grant is None
+                or not (grant.authorization_reference or "").strip()
+                or not required_scopes.issubset(set(grant.scopes or []))
+            ):
+                print("BPLATZ_PHASE2_SKIPPED reason=written_authorization_missing_or_insufficient", flush=True)
                 return False
             result = persist_bplatz_record(
                 session, store_id=store.id, raw_record=raw_record,
