@@ -151,9 +151,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", default=str(ROOT / "backend" / "product_catalog.json"))
     parser.add_argument(
+        "--include-discovery-overlay",
+        action="store_true",
+        help="explicitly include the researched fragrance identity overlay (never used by default or production seed)",
+    )
+    parser.add_argument(
         "--discovery-overlay",
         default=str(ROOT / "backend" / "catalog_overlays" / "arabian_fragrance_discovery_2026-11-07.json"),
-        help="researched fragrance identity overlay; imports identities only, never variants or offers",
+        help="path to the optional researched fragrance identity overlay",
     )
     parser.add_argument(
         "--apply",
@@ -170,7 +175,11 @@ def main() -> int:
     with Path(args.catalog).open(encoding="utf-8") as handle:
         raw = json.load(handle)
 
-    overlay_path = Path(args.discovery_overlay) if args.discovery_overlay else None
+    overlay_path = (
+        Path(args.discovery_overlay)
+        if args.include_discovery_overlay
+        else None
+    )
     overlay_product_count = 0
     if overlay_path is not None:
         with overlay_path.open(encoding="utf-8") as handle:
