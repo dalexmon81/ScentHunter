@@ -1515,3 +1515,26 @@ A regression test now asserts the 74 official perfume-spray names map to the 121
 
 GitHub Actions run **#42420311483** for test commit **f2a76caf021ddbee36db6c4c24635b3a8eef83ba** passed: **43 tests passed, 1 warning**. This includes the full 74-name Maison Asrar perfume-spray mapping, the Mohra Oud alias, and the room-spray exclusion assertion. The preceding failure was a case-normalization error in the test itself; the catalog mapping was complete and the corrected test now passes.
 
+## Pass 27 — Al Wataniah official catalog expansion (2026-11-07)
+
+The current official Al Wataniah all-products collection reports **123 products** and mixes perfumes with air fresheners and perfumed body mists. The branch previously contained only 22 Al Wataniah identities (10 current perfume names plus 12 announced/launching-soon names). Compared the four paginated all-products pages and added **73 missing perfume identities**; air-freshener and body-mist SKUs were not imported as perfume identities.
+
+New names include Al Daiem, Al Daiem Elixir, Al Layl, Alya, Ameerati, Ameeri, Amnia, Anwan, Arya, Arya Peony Rose, Attar Al Wesal, Attar Al Wesal Elixir, Baraa, Bareeq Al Dhahab, Castilla, Crème, Da'im, Duha, Durrat Al Aroos, Eqaab, Emiran, Emiran Selar, Fayroz, Fayyad, Fikrah, Ghala, Golden Honey, Granada, Hala, Hayat, House Of Oud, Kenz Al Malik, Layali, Lazuli, Lily, Marjaan, Massad Royale, Muheeb, Nada, the four Nawal gemstone fragrances, Oud Mystery Intense, Praline Toffee, Qasar Al Watan, Rawaee Elite / Monarch / Noble / Regina, Redaa, Rose Mystery Intense, Royal Oak I / II, Sabah Al Ward and its variants, Sahari, Sevilla, Shagaf Al Ward and Gardenia, Special Oud, Sugar Rush, Sultan Al Lail, Thahaani, Tiara Pink, Tibyan, Watani Intense Gold / Noir / Purple, White Chocolate Ganache and Ziyana.
+
+Official evidence is the relevant paginated product listing:
+- Page 1: https://www.alwataniah.com/collections/all
+- Page 2: https://www.alwataniah.com/collections/all?page=2
+- Page 3: https://www.alwataniah.com/collections/all?page=3
+- Page 4: https://www.alwataniah.com/collections/all?page=4
+
+These are listing-level identity records only. Product sizes, concentrations, GTINs and variants were not inferred from the collection cards. The family registry was synchronized to include all 95 Al Wataniah identities, including the 12 previously announced products.
+
+### Pass 27 result
+- New canonical identities: **73**.
+- New variants: **0**.
+- Al Wataniah branch count: **95** (previously 22).
+- Catalog snapshot: **1,891 canonical identities; 245 explicit variants**.
+- Air fresheners and perfumed body mists remain outside the perfume identity catalog.
+- A regression test checks all 73 names, page-specific source URLs, family-registry membership and missing size/concentration data.
+- CI for the latest Al Wataniah test must complete before marking this pass verified.
+
