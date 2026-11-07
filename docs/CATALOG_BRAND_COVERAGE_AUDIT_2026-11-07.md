@@ -1274,3 +1274,33 @@ A regression test asserts all 70 names, parent brand, exact collection attributi
 - The parent Paris Corner collection and the entire 252-item all-products feed still require complete pagination and classification. This is not an exhaustive Paris Corner completion claim.
 - The new regression test is committed; CI status for the latest branch head must be checked before describing it as passed.
 
+## Pass 11 — Pendora Veteran Oud and complete Paris Corner parent collection (2026-11-07)
+
+A deeper check of the dedicated Pendora gender collections found one additional official product not present in the main Pendora Scents listing text: **Veteran Oud**, shown in the official Pendora Scents - Men collection. Added it as a Paris Corner / Pendora Scents source-listed identity. The main Pendora collection reports 36 products but its currently rendered listing text exposes 32 named cards; the men collection exposes four cards (Veteran Oud, English Leather, Charuto Mysterious Tobacco and Rose de Nuit), and the women collection exposes three cards (La Nuit Pendora, Charuto Mysterious Tobacco and Rose de Nuit). All but Veteran Oud were already represented. The discrepancy between the main collection's 36-product counter and 32 visible names remains unresolved; no speculative products were added.
+
+The dedicated Paris Corner parent collection was also reconciled across all four pages. The current official collection reports **105 products**, and the catalog already contains the exact 105-name set:
+- Page 1: 32 identities.
+- Page 2: 32 identities.
+- Page 3: 32 identities.
+- Page 4: 9 identities.
+
+A regression test now asserts the complete 105-name set and exact page-level source counts. No parent-line products needed to be added in this pass.
+
+Official sources:
+- Pendora Scents - Men: https://www.pariscornerperfumes.com/collections/pendora-scents-men
+- Pendora Scents - Women: https://www.pariscornerperfumes.com/collections/pendora-scents-women
+- Paris Corner parent collection page 1: https://www.pariscornerperfumes.com/collections/paris-corner
+- Paris Corner parent collection page 2: https://www.pariscornerperfumes.com/collections/paris-corner?page=2
+- Paris Corner parent collection page 3: https://www.pariscornerperfumes.com/collections/paris-corner?page=3
+- Paris Corner parent collection page 4: https://www.pariscornerperfumes.com/collections/paris-corner?page=4
+
+### Pass 11 result
+- New canonical identities: **1** (Veteran Oud).
+- New variants: **0**.
+- Paris Corner branch count: **228** (previously 227).
+- Catalog snapshot: **1,750 canonical identities; 177 explicit variants**.
+- Parent Paris Corner collection: **105/105** current official listing names reconciled over four pages.
+- Pendora Scents: Veteran Oud added from the official men collection. Main collection's visible-name/count discrepancy remains open and is not represented as complete.
+- New tests cover Veteran Oud source attribution and all 105 parent collection identities.
+- CI for the latest catalog/test/docs commits must be checked before describing these tests as passed.
+
