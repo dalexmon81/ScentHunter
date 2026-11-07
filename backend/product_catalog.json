@@ -26119,6 +26119,22 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-iconic-estrait-de-parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ODYSSEY-SODA-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Soda Pop",
+      "name": "Odyssey Soda Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Soda Pop",
+      "aliases": [
+        "Odyssey Soda Pop",
+        "Armaf Odyssey Soda Pop"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=6",
+      "source_evidence_url": "https://armaf.com/products/odyssey-soda-pop"
     }
   ],
   "variants": [
