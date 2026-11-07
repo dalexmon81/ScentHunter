@@ -1220,6 +1220,105 @@
           "size_ml": 100
         }
       ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Nobilty",
+      "source_url": "https://shop-gulforchid.com/products/nobilty_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Shumookh",
+      "source_url": "https://shop-gulforchid.com/products/shumookh-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Layla",
+      "source_url": "https://shop-gulforchid.com/products/layla-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Fresh Oud",
+      "source_url": "https://shop-gulforchid.com/products/fresh-oud-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 110
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Riwaya",
+      "source_url": "https://shop-gulforchid.com/products/riwaya_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Awham",
+      "source_url": "https://shop-gulforchid.com/products/awham_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Almalek",
+      "source_url": "https://shop-gulforchid.com/products/almalek-by-gulf-orchid-eau-de-parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Angham",
+      "source_url": "https://shop-gulforchid.com/products/angham-by-gulf-orchid-eau-de-parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 110
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Legend",
+      "source_url": "https://shop-gulforchid.com/products/legend-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 110
+        }
+      ]
     }
   ]
 }
