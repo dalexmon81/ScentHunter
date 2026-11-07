@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1647
+    assert report["fragrances"] == 1645
     assert report["variants"] == 171
-    assert report["products_without_variants"] == 1498
+    assert report["products_without_variants"] == 1474
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,7 +391,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1647
+    assert len(products) == 1645
     assert len(variants) == 171
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
@@ -809,3 +809,66 @@ def test_maison_asrar_royal_collection_matches_current_official_nine_product_lis
     official_collection = "https://maisonasrar.com/collections/royal-collection"
     assert all(row.get("source_url") == official_collection for row in products)
     assert all(row.get("source_evidence_url") == official_collection for row in products)
+
+
+def test_armaf_official_collection_membership_and_missing_collaborations_are_reconciled():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Armaf"
+    }
+    official = {
+        "Club de Nuit": "https://armaf.com/collections/club-de-nuit",
+        "Odyssey": "https://armaf.com/collections/odyssey",
+        "Tres Nuit": "https://armaf.com/collections/armaf-tres-nuit-collection",
+        "Checkmate": "https://armaf.com/collections/checkmate",
+        "Eter": "https://armaf.com/collections/eter",
+        "Bucephalus": "https://armaf.com/collections/bucephalus",
+        "Tag": "https://armaf.com/collections/tag",
+        "Armaf Delights": "https://armaf.com/collections/armaf-delights",
+        "The Lion's Club": "https://armaf.com/collections/the-lions-club",
+        "Profumi D'Art": "https://armaf.com/collections/profumi-dart",
+        "ARMAF X Christian Provenzano": "https://armaf.com/collections/armaf-collection-for-christian-provenzano",
+        "ARMAF X SHK": "https://armaf.com/collections/shk",
+        "Oros": "https://armaf.com/collections/oros",
+        "ARMAF Niche": "https://armaf.com/collections/armaf-niche",
+        "The Inventor": "https://armaf.com/collections/armaf-the-inventor",
+    }
+    expected = {
+        "Club de Nuit Untold": "Club de Nuit",
+        "Odyssey Mandarin Sky": "Odyssey",
+        "Tres Nuit Man": "Tres Nuit",
+        "Checkmate King": "Checkmate",
+        "Eter Desert Star": "Eter",
+        "Bucephalus No. X": "Bucephalus",
+        "Tag Him Man": "Tag",
+        "The Lion's Club Courageux": "The Lion's Club",
+        "Profumi D'Art 13 Tanta Roba": "Profumi D'Art",
+        "Christian Provenzano I": "ARMAF X Christian Provenzano",
+        "Christian Provenzano II": "ARMAF X Christian Provenzano",
+        "Christian Provenzano III": "ARMAF X Christian Provenzano",
+        "Christian Provenzano IV": "ARMAF X Christian Provenzano",
+        "SHK I by Saoud Alkaabi": "ARMAF X SHK",
+        "SHK II by Saoud Alkaabi": "ARMAF X SHK",
+        "SHK III by Saoud Alkaabi": "ARMAF X SHK",
+        "SHK IV by Saoud Alkaabi": "ARMAF X SHK",
+        "Oros The Inventor Black": "The Inventor",
+        "Oros The Inventor Brown": "The Inventor",
+        "Oros": "Oros",
+        "Niche Purple Amethyst": "ARMAF Niche",
+    }
+    for name, line in expected.items():
+        row = products[name]
+        assert row["collection_name"] == line
+        assert row["source_url"] == official[line]
+        assert row["source_evidence_url"] == official[line]
+    assert len(products) == 303
+    # Regional source spellings were consolidated into their current official product identities.
+    assert "Odyssey Lichi Lush" in products["Odyssey Li'Chi Lush EDP"]["aliases"]
+    assert "Lion's Club Courageux" in products["The Lion's Club Courageux"]["aliases"]
+    assert "Profumi D'Art 13 E Tanta Roba" in products["Profumi D'Art 13 Tanta Roba"]["aliases"]
+    assert "Perfume Oasis For Eter" in products["Eter Perfume Oasis"]["aliases"]
+    assert "Desert Rose For Eter" in products["Eter Desert Rose"]["aliases"]
+    assert sum(1 for row in products.values() if row["canonical_name"] == "Odyssey Lichi Lush") == 0
+    assert sum(1 for row in products.values() if row["canonical_name"] == "Lion's Club Courageux") == 0
