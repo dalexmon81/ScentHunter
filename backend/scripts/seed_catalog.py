@@ -52,6 +52,44 @@ def stable_id(kind: str, source_id: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"{kind}:{source_id}")
 
 
+def merge_discovery_overlay(raw: dict, overlay: dict) -> int:
+    """Merge researched fragrance identities only; never infer variants or offers."""
+    products = raw.setdefault("products", [])
+    existing_ids = {
+        str(row.get("product_id") or "").strip()
+        for row in products if isinstance(row, dict)
+    }
+    existing_brands = {
+        normalize_brand(str(row.get("brand_name") or ""))
+        for row in raw.setdefault("brands", [])
+        if isinstance(row, dict)
+    }
+    added = 0
+    for brand in overlay.get("brands", []):
+        brand_name = str(brand.get("brand_name") or "").strip()
+        if not brand_name:
+            raise ValueError("discovery overlay brand_name is required")
+        normalized_brand = normalize_brand(brand_name)
+        if normalized_brand not in existing_brands:
+            raw["brands"].append({"brand_name": brand_name})
+            existing_brands.add(normalized_brand)
+        for product_name in brand.get("products", []):
+            product_name = str(product_name or "").strip()
+            if not product_name:
+                continue
+            product_id = f"discovery:{slugify(brand_name)}:{slugify(product_name)}"
+            if product_id in existing_ids:
+                continue
+            products.append({
+                "product_id": product_id,
+                "brand_name": brand_name,
+                "canonical_name": product_name,
+            })
+            existing_ids.add(product_id)
+            added += 1
+    return added
+
+
 def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Brand:
     """Resolve an existing brand by either canonical name or unique slug.
 
@@ -184,26 +222,10 @@ def main() -> int:
     if overlay_path is not None:
         with overlay_path.open(encoding="utf-8") as handle:
             overlay = json.load(handle)
-        for brand in overlay.get("brands", []):
-            brand_name = str(brand.get("brand_name") or "").strip()
-            if not brand_name:
-                raise SystemExit("STOP: discovery overlay contains a brand without brand_name")
-            for product_name in brand.get("products", []):
-                product_name = str(product_name or "").strip()
-                if not product_name:
-                    continue
-                product_id = f"discovery:{slugify(brand_name)}:{slugify(product_name)}"
-                raw.setdefault("products", []).append({
-                    "product_id": product_id,
-                    "brand_name": brand_name,
-                    "canonical_name": product_name,
-                })
-                overlay_product_count += 1
-        raw.setdefault("brands", []).extend(
-            {"brand_name": str(row.get("brand_name") or "").strip()}
-            for row in overlay.get("brands", [])
-            if str(row.get("brand_name") or "").strip()
-        )
+        try:
+            overlay_product_count = merge_discovery_overlay(raw, overlay)
+        except (TypeError, ValueError) as exc:
+            raise SystemExit(f"STOP: invalid discovery overlay: {exc}") from exc
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
