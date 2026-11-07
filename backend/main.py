@@ -13,6 +13,7 @@ from pathlib import Path
 
 from app.services.store_identity import normalize_store_key as _normalise_store
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
+from app.services.scraper_report import normalize_scraper_report
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
@@ -1213,32 +1214,8 @@ def _empty_report(store, status='error', elapsed=0.0, error=None):
 def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
 def normalise_report(raw):
-    """Normalize the native scraper contract without inventing a match."""
-    if isinstance(raw, dict):
-        results = raw.get('results')
-        if results is None: results = raw.get('products')
-        if not isinstance(results, list): results = []
-        status = str(raw.get('status') or '').strip().lower()
-        if status not in {'success','partial','error','timeout','blocked','unavailable'}: status = 'success'
-        details = raw.get('details') or {}
-        verified = bool(raw.get('verified')) if 'verified' in raw else (status == 'success')
-        if isinstance(details, dict) and 'verified' in details: verified = bool(details.get('verified'))
-        return {'status':status,'verified':verified,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':details}
-    if isinstance(raw, tuple): raw=list(raw)
-    if isinstance(raw, list):
-        rows=[r for r in raw if isinstance(r,dict)]
-        return {
-            'status':'success' if rows else 'unavailable',
-            'verified':bool(rows),
-            'results':rows,
-            'error':None if rows else 'legacy_scraper_returned_unverified_empty_list',
-            'details':{},
-        }
-    if raw is None: return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
-    try: values=list(raw)
-    except TypeError: values=[]
-    rows=[r for r in values if isinstance(r,dict)]
-    return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+    """Compatibility wrapper for the shared scraper report contract."""
+    return normalize_scraper_report(raw)
 
 WORKER_CODE = r'''
 import importlib, json, sys
@@ -1246,38 +1223,7 @@ store=sys.argv[1]; query=sys.argv[2]
 def emit(event, **payload):
     print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
 
-def normalise_report(raw):
-    if isinstance(raw, dict):
-        results = raw.get('results')
-        if results is None:
-            results = raw.get('products')
-        if not isinstance(results, list):
-            results = []
-        status = str(raw.get('status') or '').strip().lower()
-        if status not in {'success','partial','error','timeout','blocked','unavailable'}:
-            status = 'success'
-        details = raw.get('details') or {}
-        verified = bool(raw.get('verified')) if 'verified' in raw else (status == 'success')
-        if isinstance(details, dict) and 'verified' in details:
-            verified = bool(details.get('verified'))
-        return {'status':status,'verified':verified,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':details}
-    if isinstance(raw, (list, tuple)):
-        rows=[r for r in raw if isinstance(r,dict)]
-        return {
-            'status':'success' if rows else 'unavailable',
-            'verified':bool(rows),
-            'results':rows,
-            'error':None if rows else 'legacy_scraper_returned_unverified_empty_list',
-            'details':{},
-        }
-    if raw is None:
-        return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
-    try:
-        values=list(raw)
-    except TypeError:
-        values=[]
-    rows=[r for r in values if isinstance(r,dict)]
-    return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+from app.services.scraper_report import normalize_scraper_report
 
 try:
     module=importlib.import_module(f'scrapers.{store}.scraper')
@@ -1293,14 +1239,14 @@ try:
         # contract violation, not a verified empty search.
         if returned is None:
             raise RuntimeError('scraper_search_stream_returned_none')
-        report=normalise_report(returned)
+        report=normalize_scraper_report(returned)
         if report['results'] and not rows:
             for row in report['results']: emit('result',row=row)
         emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(rows) if rows else len(report['results']),streaming=True)
     else:
         search=getattr(module,'search',None)
         if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
-        report=normalise_report(search(query))
+        report=normalize_scraper_report(search(query))
         for row in report['results']: emit('result',row=row)
         emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(report['results']),streaming=False)
 except BaseException as exc:
