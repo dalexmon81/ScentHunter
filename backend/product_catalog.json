@@ -11144,7 +11144,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-dd9e74c4",
@@ -11160,7 +11163,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-52459698",
@@ -11208,7 +11214,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-78b2bc55",
@@ -11224,7 +11233,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-7de81646",
@@ -11240,7 +11252,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-2e47d8e0",
@@ -11256,7 +11271,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-92e7627a",
@@ -11272,7 +11290,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-678b254c",
@@ -11304,7 +11326,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-0eac5dbd",
@@ -11320,7 +11346,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-57056cb5",
@@ -11352,7 +11382,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-c024bc58",
@@ -11368,7 +11402,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-ae57a514",
@@ -11480,7 +11518,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-39050fe8",
@@ -11512,7 +11553,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-991a7472",
@@ -11528,7 +11573,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-dd8264d1",
@@ -11544,7 +11593,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-1b298ff6",
@@ -11848,7 +11900,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-ARMAF-88c7f40b",
@@ -13491,6 +13546,259 @@
         "Dreamscape 100 ml",
         "Mykonos Dreamscape 100 ml"
       ]
+    },
+    {
+      "product_id": "SH-MYKONOS-c024bc58",
+      "variant_id": "SHV-SH-MYKONOS-c024bc58-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Glitch 50 ml",
+        "Mykonos Glitch 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-c024bc58",
+      "variant_id": "SHV-SH-MYKONOS-c024bc58-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Glitch 100 ml",
+        "Mykonos Glitch 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-92e7627a",
+      "variant_id": "SHV-SH-MYKONOS-92e7627a-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Empire x RRQ 50 ml",
+        "Mykonos Empire x RRQ 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-92e7627a",
+      "variant_id": "SHV-SH-MYKONOS-92e7627a-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Empire x RRQ 100 ml",
+        "Mykonos Empire x RRQ 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-78b2bc55",
+      "variant_id": "SHV-SH-MYKONOS-78b2bc55-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Utopia 100 ml",
+        "Mykonos Utopia 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-e15a94f5",
+      "variant_id": "SHV-SH-MYKONOS-e15a94f5-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Sparkling Rosé 100 ml",
+        "Mykonos Sparkling Rosé 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-24a34991",
+      "variant_id": "SHV-SH-MYKONOS-24a34991-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Sorrento 50 ml",
+        "Mykonos Sorrento 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-24a34991",
+      "variant_id": "SHV-SH-MYKONOS-24a34991-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Sorrento 100 ml",
+        "Mykonos Sorrento 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-991a7472",
+      "variant_id": "SHV-SH-MYKONOS-991a7472-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Royal Ispahan 50 ml",
+        "Mykonos Royal Ispahan 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-991a7472",
+      "variant_id": "SHV-SH-MYKONOS-991a7472-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Royal Ispahan 100 ml",
+        "Mykonos Royal Ispahan 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-12074094",
+      "variant_id": "SHV-SH-MYKONOS-12074094-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Reflection 50 ml",
+        "Mykonos Reflection 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-12074094",
+      "variant_id": "SHV-SH-MYKONOS-12074094-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Reflection 100 ml",
+        "Mykonos Reflection 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-dd8264d1",
+      "variant_id": "SHV-SH-MYKONOS-dd8264d1-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "On The Rocks 100 ml",
+        "Mykonos On The Rocks 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-133fd300",
+      "variant_id": "SHV-SH-MYKONOS-133fd300-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Penthouse 50 ml",
+        "Mykonos Penthouse 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-133fd300",
+      "variant_id": "SHV-SH-MYKONOS-133fd300-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Penthouse 100 ml",
+        "Mykonos Penthouse 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-1713c194",
+      "variant_id": "SHV-SH-MYKONOS-1713c194-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Moroccan Vanilla 100 ml",
+        "Mykonos Moroccan Vanilla 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-dd9e74c4",
+      "variant_id": "SHV-SH-MYKONOS-dd9e74c4-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Musk Aura 100 ml",
+        "Mykonos Musk Aura 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-2e47d8e0",
+      "variant_id": "SHV-SH-MYKONOS-2e47d8e0-50-EDP",
+      "size_ml": 50,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Xoxo Rosy 50 ml",
+        "Mykonos Xoxo Rosy 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-accabf2b",
+      "variant_id": "SHV-SH-MYKONOS-accabf2b-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Verve 50 ml",
+        "Mykonos Verve 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-7de81646",
+      "variant_id": "SHV-SH-MYKONOS-7de81646-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Vanilla Clouds 50 ml",
+        "Mykonos Vanilla Clouds 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-0eac5dbd",
+      "variant_id": "SHV-SH-MYKONOS-0eac5dbd-50-EDP",
+      "size_ml": 50,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Slow Living 50 ml",
+        "Mykonos Slow Living 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+    },
+    {
+      "product_id": "SH-MYKONOS-0eac5dbd",
+      "variant_id": "SHV-SH-MYKONOS-0eac5dbd-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Slow Living 100 ml",
+        "Mykonos Slow Living 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+    },
+    {
+      "product_id": "SH-MYKONOS-339c777f",
+      "variant_id": "SHV-SH-MYKONOS-339c777f-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Reflection Elixir 50 ml",
+        "Mykonos Reflection Elixir 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
     }
   ]
 }
