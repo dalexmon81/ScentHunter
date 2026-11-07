@@ -1,6 +1,8 @@
 from pathlib import Path
 import asyncio
 
+import pytest
+
 from app.connectors.easycosmetic import EasycosmeticConnector
 
 FIXTURE = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "connectors" / "easycosmetic-product.html"
@@ -43,3 +45,49 @@ def test_easycosmetic_discovery_uses_injected_search():
         offers = await connector.fetch_offers(URL)
         assert len(offers) == 1
     asyncio.run(run())
+
+
+
+@pytest.mark.parametrize("status_code", [403, 429])
+def test_easycosmetic_does_not_use_browser_fallback_after_access_denial(
+    monkeypatch, status_code
+):
+    from types import ModuleType
+    from scrapers.easycosmetic import scraper
+
+    calls = {"http": 0, "browser": 0}
+
+    class Response:
+        url = URL
+        text = "<html></html>"
+
+        def __init__(self):
+            self.status_code = status_code
+
+        def close(self):
+            pass
+
+    def fake_get(*args, **kwargs):
+        calls["http"] += 1
+        return Response()
+
+    def forbidden_browser():
+        calls["browser"] += 1
+        raise AssertionError("browser fallback must not run after 403/429")
+
+    monkeypatch.setattr(scraper.requests, "get", fake_get)
+    playwright_package = ModuleType("playwright")
+    playwright_package.__path__ = []
+    playwright_sync_api = ModuleType("playwright.sync_api")
+    playwright_sync_api.sync_playwright = forbidden_browser
+    monkeypatch.setitem(__import__("sys").modules, "playwright", playwright_package)
+    monkeypatch.setitem(
+        __import__("sys").modules, "playwright.sync_api", playwright_sync_api
+    )
+
+    with pytest.raises(scraper.StoreRequestError) as caught:
+        scraper._request_html(URL)
+
+    assert caught.value.status == "blocked"
+    assert caught.value.http_status == status_code
+    assert calls == {"http": 1, "browser": 0}

@@ -47,6 +47,7 @@ on:
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
       - ".github/workflows/catalog-first-vertical-slice.yml"
+      - ".github/workflows/deploy-staging-worker.yml"
   push:
     branches:
       - phase2/catalog-first-vertical-slice
@@ -84,6 +85,7 @@ on:
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
       - ".github/workflows/catalog-first-vertical-slice.yml"
+      - ".github/workflows/deploy-staging-worker.yml"
 
 permissions:
   contents: read
@@ -255,6 +257,17 @@ jobs:
           PY
           pytest -q backend/tests/test_frontend_offer_transparency_contract.py
 
+
+      - name: Validate Fly staging migration gate uses current Alembic head
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path(".github/workflows/deploy-staging-worker.yml").read_text()
+          assert "ScriptDirectory.from_config" in source
+          assert "get_current_head()" in source
+          assert "0007_ingestion_dead_letters" not in source
+          print("FLY_STAGING_ALEMBIC_HEAD_GATE=PASS")
+          PY
 
       - name: Validate Phase 1 production diagnostic isolation
         run: pytest -q backend/tests/test_production_diagnostics_are_opt_in.py
