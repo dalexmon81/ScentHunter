@@ -22738,6 +22738,86 @@
       "concentration": null,
       "identity_status": "source_listed_name",
       "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-PATCHOULI-ON-FIRE-EXT01",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Patchouli On Fire",
+      "name": "Patchouli On Fire",
+      "family_id": "afnan_catalog",
+      "family_name": "Patchouli On Fire",
+      "aliases": [
+        "Patchouli On Fire",
+        "Afnan Patchouli On Fire"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/extrait-de-parfum"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-IV-EXT02",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness IV",
+      "name": "Highness IV",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness IV",
+      "aliases": [
+        "Highness IV",
+        "Afnan Highness IV"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/extrait-de-parfum"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-V-EXT03",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness V",
+      "name": "Highness V",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness V",
+      "aliases": [
+        "Highness V",
+        "Afnan Highness V"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/extrait-de-parfum"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-IX-EXT04",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness IX",
+      "name": "Highness IX",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness IX",
+      "aliases": [
+        "Highness IX",
+        "Afnan Highness IX"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/extrait-de-parfum"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-X-EXT05",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness X",
+      "name": "Highness X",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness X",
+      "aliases": [
+        "Highness X",
+        "Afnan Highness X"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/extrait-de-parfum"
     }
   ],
   "variants": [
