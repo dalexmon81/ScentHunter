@@ -98,17 +98,24 @@ def test_dead_letter_model_is_durable_and_unique_per_task():
 def test_periodic_discovery_uses_only_active_catalog_stores(tmp_path, monkeypatch):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from app.models import Base, Store
+    from app.models import Base, Store, StoreAuthorization
     from app.workers import ingestion_tasks
+    from datetime import datetime, timezone
 
     engine = create_engine(f"sqlite:///{tmp_path / 'active-stores.sqlite'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
-        session.add_all([
-            Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"),
-            Store(name="Notino", slug="notino", currency="EUR", status="inactive"),
-        ])
+        active = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
+        inactive = Store(name="Notino", slug="notino", currency="EUR", status="inactive")
+        session.add_all([active, inactive])
+        session.flush()
+        session.add(StoreAuthorization(
+            store_id=active.id, status="approved", collection_method="other",
+            scopes=["product_discovery", "offer_data"],
+            authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.commit()
     monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
     monkeypatch.setattr(ingestion_tasks, "build_connectors", lambda: {"bplatz": object(), "notino": object(), "sabina": object()})
