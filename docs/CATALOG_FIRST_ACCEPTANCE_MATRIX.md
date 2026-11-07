@@ -179,3 +179,12 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - The retailer's published terms restrict the service to personal/non-commercial use and prohibit reproduction, crawling, spidering and extraction without prior written consent. No product data, prices, images or offers are imported from this website.
 - Before implementation of a live adapter, obtain written permission for automated product/price/availability collection and commercial comparison, or an authorized Shopify product feed/API integration with the merchant's consent. Then add isolated contract tests and verify shipping/currency/market coverage.
 - This registration does not activate the store, create credentials, schedule discovery or publish offers. Store remains inactive; no offer records are seeded.
+
+
+## Retailer authorization control (implementation added 2026-11-07)
+
+- Added the auditable `store_authorizations` table through Alembic revision `0012_store_authorizations`. It records status, collection method, explicit scopes, authorization reference, evidence URL, approver, approval/validity/expiry/revocation timestamps and agreed terms.
+- Added a fail-closed worker gate. Discovery requires `product_discovery` and `offer_data`; offer staging/artifact persistence requires `offer_data`; price/stock refresh requires `price_stock`; the bounded Bplatz single-product path requires `single_product_fetch` and `offer_data` plus an exact matching authorization reference.
+- Missing, expired, revoked, pending, or insufficiently scoped authorization blocks collection. Authorization-policy blocks are not treated as connector outages and do not trigger connector quarantine.
+- Unit tests cover missing authorization, missing scope, mismatched reference and an explicitly granted scope.
+- This control is implemented in the worker/data path. A protected operator workflow for recording and reviewing grants, PostgreSQL migration execution and passing CI on the latest commit are still pending. No retailer is authorized merely because a row or connector exists.
