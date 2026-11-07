@@ -18,7 +18,7 @@ def test_phase2_declares_all_core_tables():
         "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
         "canonical_identity_reviews", "ingestion_artifacts", "ingestion_dead_letters",
         "store_authorizations", "store_shipping_rates",
-        "user_accounts", "user_delivery_destinations",
+        "user_accounts", "user_delivery_destinations", "user_sessions",
     }
 
 def test_account_and_delivery_destination_are_distinct_schema_entities():
