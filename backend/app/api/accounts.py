@@ -92,19 +92,28 @@ def clear_browser_session(response: Response) -> None:
 
 def require_same_origin(request: Request) -> None:
     origin = request.headers.get("origin")
-    host = request.headers.get("host", "").strip().lower()
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    host = host.split(",", 1)[0].strip()
     if not origin or not host:
         raise HTTPException(403, "csrf_origin_required")
-    # Fly terminates public TLS before forwarding HTTP to the app. Compare the
-    # Origin host to the original Host header and require HTTPS, rather than
-    # trusting request.url.scheme behind the TLS-terminating proxy.
+    # Fly terminates public TLS before forwarding HTTP to the app. Validate
+    # the browser Origin against the externally visible host, normalizing the
+    # implicit HTTPS port (443) while rejecting non-default ports.
     from urllib.parse import urlsplit
     parsed = urlsplit(origin)
+    expected = urlsplit("//" + host)
+    origin_port = parsed.port or (443 if parsed.scheme.lower() == "https" else None)
+    expected_port = expected.port or 443
     if (
         parsed.scheme.lower() != "https"
-        or parsed.netloc.lower() != host
+        or not parsed.hostname
+        or not expected.hostname
+        or parsed.hostname.lower() != expected.hostname.lower()
+        or origin_port != expected_port
         or parsed.username is not None
         or parsed.password is not None
+        or expected.username is not None
+        or expected.password is not None
         or parsed.path not in ("", "/")
         or parsed.query
         or parsed.fragment
