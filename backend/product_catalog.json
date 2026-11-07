@@ -21794,6 +21794,166 @@
       "concentration": null,
       "identity_status": "source_listed_name",
       "source_url": "https://armaf.uk/collections/all-armaf-products?page=7"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SENSUAL-VANILLA-SRC001",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Sensual Vanilla",
+      "name": "Sensual Vanilla",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Sensual Vanilla",
+      "aliases": [
+        "Sensual Vanilla",
+        "Maison Alhambra Sensual Vanilla"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-YOUR-TOUCH-AMBER-SRC002",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Your Touch Amber",
+      "name": "Your Touch Amber",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Your Touch Amber",
+      "aliases": [
+        "Your Touch Amber",
+        "Maison Alhambra Your Touch Amber"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-YEAH-MAN-SRC003",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Yeah! Man",
+      "name": "Yeah! Man",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Yeah! Man",
+      "aliases": [
+        "Yeah! Man",
+        "Maison Alhambra Yeah! Man"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-YOUR-TOUCH-FOR-WOMEN-SRC004",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Your Touch for Women",
+      "name": "Your Touch for Women",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Your Touch for Women",
+      "aliases": [
+        "Your Touch for Women",
+        "Maison Alhambra Your Touch for Women"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-JEAN-LOWE-MAITRE-SRC005",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Jean Lowe Maitre",
+      "name": "Jean Lowe Maitre",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Jean Lowe Maitre",
+      "aliases": [
+        "Jean Lowe Maitre",
+        "Maison Alhambra Jean Lowe Maitre"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-WINSOME-SRC006",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Winsome",
+      "name": "Winsome",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Winsome",
+      "aliases": [
+        "Winsome",
+        "Maison Alhambra Winsome"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-QUEENSTOWN-POUR-FEMME-INT-SRC007",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Queenstown Pour Femme Intense",
+      "name": "Queenstown Pour Femme Intense",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Queenstown Pour Femme Intense",
+      "aliases": [
+        "Queenstown Pour Femme Intense",
+        "Maison Alhambra Queenstown Pour Femme Intense"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SPECTRUM-SRC008",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Spectrum",
+      "name": "Spectrum",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Spectrum",
+      "aliases": [
+        "Spectrum",
+        "Maison Alhambra Spectrum"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-VICTORIA-FLOWER-ROSA-LILI-SRC009",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Victoria Flower Rosa Lilium",
+      "name": "Victoria Flower Rosa Lilium",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Victoria Flower Rosa Lilium",
+      "aliases": [
+        "Victoria Flower Rosa Lilium",
+        "Maison Alhambra Victoria Flower Rosa Lilium"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-VICTORIOSO-HEROIC-SRC010",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Victorioso Heroic",
+      "name": "Victorioso Heroic",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Victorioso Heroic",
+      "aliases": [
+        "Victorioso Heroic",
+        "Maison Alhambra Victorioso Heroic"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4"
     }
   ],
   "variants": [
