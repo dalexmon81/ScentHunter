@@ -1482,6 +1482,14 @@ function showSignedInProfile(data){
   document.getElementById("profileResidenceSummary").textContent="Residenza: "+(profileCountries[a.residence_country_code]||a.residence_country_code)+(a.residence_postal_code?" · "+a.residence_postal_code:"");
   const list=document.getElementById("profileDestinations");
   const destinations=Array.isArray(data.destinations)?data.destinations:[];
+  // Preserve an explicitly selected delivery country. If none is selected,
+  // use the saved default destination, then the account residence.
+  if(deliveryCountry&&!deliveryCountry.value){
+    const preferred=destinations.find(d=>d.is_default)||null;
+    deliveryCountry.value=preferred?.country_code||a.residence_country_code||"";
+    if(deliveryPostalCode)deliveryPostalCode.value=preferred?.postal_code||a.residence_postal_code||"";
+    if(deliveryCountry.value)saveDeliveryContext();
+  }
   list.innerHTML=destinations.length?destinations.map(d=>`<div class="profile-destination"><div><strong>${esc(d.label)}</strong><small>${esc(profileCountries[d.country_code]||d.country_code)}${d.postal_code?" · "+esc(d.postal_code):""}</small></div><div style="text-align:right">${d.is_default?'<span class="profile-pill">PREDEFINITA</span>':`<button class="profile-secondary" type="button" data-profile-default="${esc(d.id)}">Imposta predefinita</button>`}<br><button class="profile-secondary" type="button" data-profile-delete="${esc(d.id)}" style="margin-top:6px">Elimina</button></div></div>`).join(""):'<p>Nessuna destinazione salvata.</p>';
 }
 document.getElementById("profileMode").addEventListener("click",()=>setProfileMode(!profileRegisterMode));
