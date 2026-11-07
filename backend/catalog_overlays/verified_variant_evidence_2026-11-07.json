@@ -906,6 +906,10 @@
         {
           "concentration": "Eau de Parfum",
           "size_ml": 20
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
         }
       ]
     },
