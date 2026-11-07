@@ -82,6 +82,11 @@
       "brand": "Swiss Arabian",
       "url": "https://uae.swissarabian.com/products/shumoukh-al-ghutra",
       "note": "Official Swiss Arabian product page title explicitly identifies Shumoukh Al Ghutra Eau De Perfume 100ml; the catalog records the 100ml size and leaves normalized concentration unspecified."
+    },
+    {
+      "brand": "Al Haramain",
+      "url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "note": "Official Al Haramain EU catalog pages list fragrance identities with explicit sizes and concentration types. Only EDP/Extrait perfume listings are recorded; oils, deodorants and unspecified-size listings are excluded."
     }
   ],
   "products": [
@@ -2078,6 +2083,588 @@
         {
           "concentration": null,
           "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Junoon Rose",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Junoon Noir",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Maryam",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Amber Oud Bleu Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Amber Oud Ultra Violet",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 120
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain L'Aventure Rose",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Junoon",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain L'Aventure Femme",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 30
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Urbanist Femme",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Chateau De La Haramain Argent",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Jameela",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Manege Blanche",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Belle Rouge",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Rafia Gold",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Mystique Femme",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Mystique Homme",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Fall In Love Pink",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Khulasat Al Oud",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Belle",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Floral Fair",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Signature Red",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Story of my Life",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Loulou Rose",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Loulou Love",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Loulou Joy",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Loulou Noir",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Blanche French Collection",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Oudh Adam",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Farasha",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Oudh Musk",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Black Musk",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Amber Oud Private Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Belle Swim",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain L'Aventure Gold",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Amber Oud Ruby Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 200
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 120
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Detour Noir",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Amber Oud Carbon Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Amber Oud White Edition",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 60
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Platinum Oud",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Amber Musk",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Rose Oud",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Royal Musk",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Musk Collection",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Portfolio Cupid's Rose",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Portfolio Portrait Sandal",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Portfolio Oriental Forest",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Azure French Collection",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Noir French Collection",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Portfolio Euphoric Roots",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Al Haramain",
+      "fragrance": "Haramain Asrar Khafiya",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 50
         }
       ]
     }
