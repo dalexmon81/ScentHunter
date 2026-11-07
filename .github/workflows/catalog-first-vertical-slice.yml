@@ -152,6 +152,7 @@ jobs:
           backend/tests/test_phase2_runtime_db_identity.py
           backend/tests/test_phase2_sqlite_postgres_import.py
           backend/tests/test_phase2_bplatz_postgres.py
+          backend/tests/test_manage_store_authorization_cli.py
 
       - name: Validate canonical identity and normalization
         run: >-
