@@ -893,3 +893,52 @@ def test_armaf_official_us_first_four_all_fragrances_pages_resolve_to_existing_i
         assert row["source_evidence_url"] == url
         assert row["identity_status"] == "source_verified_name"
     assert len(products) == 303
+
+
+def test_khadlaj_six_additional_official_product_identities_have_verified_variants():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Khadlaj"
+    }
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "Bleu Glace": (
+            "https://khadlaj-perfumes.com/ar/collections/for-him/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+            100, "Extrait de Parfum",
+        ),
+        "Gaith": (
+            "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+            100, "Eau de Parfum",
+        ),
+        "Qarar": (
+            "https://khadlaj-perfumes.com/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
+            60, "Extrait de Parfum",
+        ),
+        "Sueño": (
+            "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/sueno-100ml-extrait-de-parfum-for-women",
+            100, "Extrait de Parfum",
+        ),
+        "Wow Oud": (
+            "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+            100, "Eau de Parfum",
+        ),
+        "Zayaan Silver": (
+            "https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
+            100, "Eau de Parfum",
+        ),
+    }
+    for name, (url, size, concentration) in expected.items():
+        row = products[name]
+        assert row["identity_status"] == "source_verified_name"
+        assert row["source_url"] == url
+        assert row["source_evidence_url"] == url
+        assert row["formats_ml"] == [size]
+        assert row["concentration"] == concentration
+        variant_id = f"SHV-{row['product_id']}-{size}-000"
+        assert variants[variant_id]["size_ml"] == size
+        assert variants[variant_id]["concentration"] == concentration
+
+    # The official Bleu Glace page establishes its 100 ml format but no GTIN.
+    assert "gtin" not in products["Bleu Glace"]
