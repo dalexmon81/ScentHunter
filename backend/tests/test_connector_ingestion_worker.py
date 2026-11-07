@@ -455,6 +455,7 @@ def test_celery_discovery_to_publication_executes_every_pipeline_task(monkeypatc
     engine = create_engine(f"sqlite:///{tmp_path / 'celery-lifecycle.sqlite'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
+    assert factory.kw["bind"] is engine
     with factory() as session:
         brand = Brand(
             name="Dior", slug="dior", normalized_name="christian dior",
