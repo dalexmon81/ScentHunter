@@ -103,7 +103,8 @@ def test_staging_fly_config_exposes_api_and_preserves_worker_isolation():
     config = tomllib.loads((root / "fly.staging-catalog.toml").read_text())
     assert config["app"] == "scenthunter-staging-workers"
     assert config["build"]["dockerfile"] == "backend/Dockerfile.worker"
-    assert set(config["processes"]) == {"app", "beat", "web"}
+    assert set(config["processes"]) == {"app", "web"}
+    assert "beat" not in config["processes"]
     assert config["http_service"]["processes"] == ["web"]
     assert config["env"]["SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL"] == "1"
     assert all(vm["processes"] for vm in config["vm"])
