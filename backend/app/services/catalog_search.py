@@ -8,10 +8,11 @@ import uuid
 from app.db import make_session_factory
 from app.repositories.catalog_search import fetch_catalog_search_rows, fetch_legacy_product_id
 from app.services.offer_ranking import rank_offers
+from app.services.shipping_quotes import quote_shipping
 
 
 
-def search_catalog(query: str, *, limit: int = 20, session_factory=None):
+def search_catalog(query: str, *, limit: int = 20, session_factory=None, destination_country_code: str | None = None, destination_postal_code: str | None = None):
     """Search canonical brand/fragrance identities and attach persisted offers."""
     term = str(query or "").strip()
     if len(term) < 2 or len(term) > 120:
@@ -81,7 +82,37 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
             for fragrance_id, product in products.items():
                 product["variants"] = list(product["variants"].values())
                 for variant in product["variants"]:
-                    variant["offers"] = rank_offers(variant["offers"])
+                    ranked = rank_offers(variant["offers"])
+                    for offer in ranked:
+                        if destination_country_code:
+                            quote = quote_shipping(
+                                session,
+                                store_slug=offer["store"],
+                                country_code=destination_country_code,
+                                postal_code=destination_postal_code,
+                                order_subtotal=offer["price"],
+                                currency=offer["currency"],
+                            )
+                            offer["shipping"] = quote
+                            offer["shipping_status"] = quote.get("status", "unknown")
+                            if quote.get("status") == "verified":
+                                offer["delivered_total"] = quote["total_cost"]
+                                offer["delivered_total_verified"] = True
+                            else:
+                                offer["delivered_total"] = None
+                                offer["delivered_total_verified"] = False
+                        else:
+                            offer["shipping"] = {"status": "destination_required"}
+                            offer["shipping_status"] = "destination_required"
+                            offer["delivered_total"] = None
+                            offer["delivered_total_verified"] = False
+                    # Verified delivered totals are comparable only within the
+                    # same currency. Unknown/estimated shipping never becomes zero.
+                    ranked.sort(key=lambda item: (
+                        not item.get("delivered_total_verified", False),
+                        item.get("delivered_total") if item.get("delivered_total_verified") else item.get("price", 0),
+                    ))
+                    variant["offers"] = ranked
                 legacy_product_id = fetch_legacy_product_id(session, uuid.UUID(fragrance_id))
                 product["catalog_id"] = legacy_product_id or fragrance_id
                 product["canonical_brand"] = product["brand"]
@@ -115,7 +146,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None):
 
 
 
-def search_catalog_for_frontend(query: str):
+def search_catalog_for_frontend(query: str, *, destination_country_code: str | None = None, destination_postal_code: str | None = None):
     """Return the legacy progressive-search response contract from PostgreSQL."""
     term = str(query or "").strip()
     if len(term) < 2:
@@ -133,7 +164,7 @@ def search_catalog_for_frontend(query: str):
             "status": "completed",
         }
 
-    payload = search_catalog(term)
+    payload = search_catalog(term, destination_country_code=destination_country_code, destination_postal_code=destination_postal_code)
     offers = [
         offer
         for product in payload["results"]
