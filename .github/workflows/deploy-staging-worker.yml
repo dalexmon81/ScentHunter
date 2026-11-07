@@ -77,10 +77,15 @@ jobs:
           if ! printf '%s\\n' "$ips" | grep -Eq '(^|[[:space:]])v6([[:space:]]|$)'; then
             flyctl ips allocate-v6 --app scenthunter-staging-workers
           fi
-          if ! printf '%s\\n' "$ips" | grep -q 'shared'; then
+          if ! printf '%s\\n' "$ips" | grep -Eq '(^|[[:space:]])v4([[:space:]]|$)'; then
             flyctl ips allocate-v4 --shared --yes --app scenthunter-staging-workers
           fi
-          flyctl ips list --app scenthunter-staging-workers
+          ips="$(flyctl ips list --app scenthunter-staging-workers)"
+          printf '%s\\n' "$ips"
+          if ! printf '%s\\n' "$ips" | grep -Eq '(^|[[:space:]])v4([[:space:]]|$)'; then
+            echo "::error::Fly.io did not allocate a shared IPv4 address; public HTTPS verification cannot proceed."
+            exit 1
+          fi
       - name: Keep staging footprint to one API, one worker and zero Beat machines
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
