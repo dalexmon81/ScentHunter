@@ -1412,3 +1412,7 @@ All three have one explicit 100 ml variant. They remain Unclassified because the
 - New regression coverage asserts the official detail URLs, sizes and variant relationships.
 - CI for the latest addition is pending.
 
+## Pass 18 — latest CI verification green (2026-11-07)
+
+GitHub Actions run **#42419497636** for test commit **1a2f65636640f3cda0a0695f2a14ad225b78635e** completed its Phase 2 schema-contract test command successfully: **39 passed, 1 warning**. This includes the three latest Paris Corner detail-page products (Empire de la Rouge, Vivant Sunlit and Wayfarer Infusion) and their explicit 100 ml variants.
+
