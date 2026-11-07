@@ -26971,6 +26971,90 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
       "source_evidence_url": "https://armaf.com/products/eter-desert-rose"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ETER-PERFUME-OASIS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Perfume Oasis",
+      "name": "Eter Perfume Oasis",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Perfume Oasis",
+      "aliases": [
+        "Eter Perfume Oasis",
+        "Armaf Eter Perfume Oasis"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/eter-perfume-oasis",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-DREAMS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Private Key To My Dreams",
+      "name": "Club de Nuit Private Key To My Dreams",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Private Key To My Dreams",
+      "aliases": [
+        "Club de Nuit Private Key To My Dreams",
+        "Armaf Club de Nuit Private Key To My Dreams"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-private-key-to-my-dreams-100ml",
+      "concentration": "Eau de Toilette"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SOUL",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Private Key To My Soul",
+      "name": "Club de Nuit Private Key To My Soul",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Private Key To My Soul",
+      "aliases": [
+        "Club de Nuit Private Key To My Soul",
+        "Armaf Club de Nuit Private Key To My Soul"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-private-key-to-my-soul-100ml",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-NICHE-SAPPHIRE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Niche Sapphire",
+      "name": "Niche Sapphire",
+      "family_id": "armaf_catalog",
+      "family_name": "Niche Sapphire",
+      "aliases": [
+        "Niche Sapphire",
+        "Armaf Niche Sapphire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/niche-saphire"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-PROFUMI-DART-13-TANTA-ROBA",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Profumi D'Art 13 Tanta Roba",
+      "name": "Profumi D'Art 13 Tanta Roba",
+      "family_id": "armaf_catalog",
+      "family_name": "Profumi D'Art 13 Tanta Roba",
+      "aliases": [
+        "Profumi D'Art 13 Tanta Roba",
+        "Armaf Profumi D'Art 13 Tanta Roba"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba",
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -28570,6 +28654,33 @@
       "aliases": [
         "Ombre Oud Intense Black 100 ml",
         "Armaf Ombre Oud Intense Black 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-DREAMS-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-DREAMS",
+      "size_ml": 100,
+      "aliases": [
+        "Club de Nuit Private Key To My Dreams 100 ml",
+        "Armaf Club de Nuit Private Key To My Dreams 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SOUL-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SOUL",
+      "size_ml": 100,
+      "aliases": [
+        "Club de Nuit Private Key To My Soul 100 ml",
+        "Armaf Club de Nuit Private Key To My Soul 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-PROFUMI-DART-13-TANTA-ROBA-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-PROFUMI-DART-13-TANTA-ROBA",
+      "size_ml": 100,
+      "aliases": [
+        "Profumi D'Art 13 Tanta Roba 100 ml",
+        "Armaf Profumi D'Art 13 Tanta Roba 100ml"
       ]
     }
   ]
