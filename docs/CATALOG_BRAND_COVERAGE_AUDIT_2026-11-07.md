@@ -1,0 +1,95 @@
+# Catalog brand coverage audit — 2026-11-07
+
+## Scope
+
+Requested fragrance houses and lines:
+- Velixir
+- Mykonos
+- Maison Asrar
+- Khadlaj
+- Bujairami
+- Paris Corner
+- Assaf
+- Al Wataniah
+- Armaf
+- French Avenue
+- Arabiyat Prestige
+- Gulf Orchid
+- Swiss Arabian
+- Games of Spades
+- Lattafa
+- Afnan
+- Aromatix
+- Maison Alhambra
+- Zimaya
+- Al Haramain
+
+Branch reviewed: `catalog/complete-brand-expansion-2026-11`
+Current catalog: 1153 canonical product identity records; 141 variant records.
+
+## Current counts (catalog records, not proof of completeness)
+
+Velixir: 28
+Mykonos: 72
+Maison Asrar: 121
+Khadlaj: 41
+Bujairami: 33
+Paris Corner: 33
+Assaf: 112
+Al Wataniah: 22
+Armaf: 190
+French Avenue: 19
+Arabiyat Prestige: 27
+Gulf Orchid: 10
+Swiss Arabian: 42
+Games of Spades: 4
+Lattafa: 19
+Afnan: 55
+Aromatix: 12
+Maison Alhambra: 203
+Zimaya: 71
+Al Haramain: 37
+
+## Findings from live public sources
+
+### Paris Corner
+- Official all-products collection page currently exposes **255 products**.
+- It also explicitly groups distinct labels/collections: Paris Corner, Ministry of Oud, North Stag, Pendora, Emir and Magic Oud Series.
+- The ScentHunter catalog currently has 33 records under the exact brand label `Paris Corner`.
+- Gap: a substantial reconciliation is still required. The 255 collection count must be filtered for fragrance products, gift sets, and non-perfume products before import. The product listing is paginated, so the visible first page is not the full product inventory.
+- Official source: https://www.pariscornerperfumes.com/collections/all
+
+### Khadlaj
+- Official collections page says **308 products** in “All Products”, but the same page separates air fresheners, bakhoor, perfume oils, gift sets, home fragrance and perfume sprays.
+- It lists **88 products** in the Khadlaj perfume-spray collection and additional EDP/extrait/collection categories.
+- ScentHunter currently has 41 exact-brand records.
+- Gap: inventory must be reconciled by fragrance SKU and format, excluding room/air products and de-duplicating repeated collection memberships.
+- Official source: https://khadlaj-perfumes.com/collections
+
+### Maison Asrar
+- Official site separates “Fragrances”, “Room Spray” and “Home Fragrances”; only the fragrance section should feed the perfume catalog.
+- An independent specialist index lists 116 Maison Asrar scents and explicitly says it is not the official brand site. It is useful as a cross-check, not a primary authority.
+- ScentHunter currently has 121 exact-brand records, so the difference is not evidence of better coverage: at least five names need reconciliation against official fragrance product pages and possible spelling/alias/duplicate issues.
+- Official source: https://maisonasrar.com/
+- Independent cross-check: https://maisonasrarperfumes.eu/perfumes/
+
+## Data quality warnings
+
+- Catalog records marked `source_listed_name` are candidate identities, not independently verified commercial SKUs.
+- A brand collection URL is not a product-level source URL. It does not prove the specific product, size, concentration, GTIN, or availability.
+- Do not create variant rows from assumed sizes. Populate GTIN, size, concentration and product URL only from product-level evidence.
+- Product identity records must not be confused with retailer offers or live prices.
+
+## Required next actions
+
+1. Crawl/paginate each brand's official fragrance collection where public and permitted.
+2. Save raw page/JSON snapshots as dated fixtures, with retrieval timestamp and source URL.
+3. Extract product-level title, product URL, SKU/GTIN, concentration and size only when actually present.
+4. Normalize and compare against the current catalog by brand + name + concentration + size; use GTIN for exact identity when present.
+5. Produce per-brand missing / matched / ambiguous / non-perfume reports.
+6. Add only source-supported missing perfume identities; put ambiguous names into a review queue.
+7. Keep this PR draft until reconciliation tests pass.
+
+## Current conclusion
+
+The catalog has expanded to 1153 identities, but it is **not yet defensible to call it complete**. The strongest immediate gaps are Paris Corner and Khadlaj. Maison Asrar needs a name-level reconciliation because the current count exceeds the independent index count.
