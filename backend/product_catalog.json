@@ -26294,6 +26294,515 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
       "source_evidence_url": "https://armaf.com/products/niche-purple-amethyst-fleur"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ART-DU-PARFUM-ABSTRACTO",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Art Du'Parfum Abstracto",
+      "name": "Art Du'Parfum Abstracto",
+      "family_id": "armaf_catalog",
+      "family_name": "Art Du'Parfum Abstracto",
+      "aliases": [
+        "Art Du'Parfum Abstracto",
+        "Armaf Art Du'Parfum Abstracto"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-THE-LION-S-CLUB-COURAGEUX",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "The Lion's Club Courageux",
+      "name": "The Lion's Club Courageux",
+      "family_id": "armaf_catalog",
+      "family_name": "The Lion's Club Courageux",
+      "aliases": [
+        "The Lion's Club Courageux",
+        "Armaf The Lion's Club Courageux"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-EL-CIELO-MAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "El Cielo Man",
+      "name": "El Cielo Man",
+      "family_id": "armaf_catalog",
+      "family_name": "El Cielo Man",
+      "aliases": [
+        "El Cielo Man",
+        "Armaf El Cielo Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-HUNTER-KILLER-MAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Hunter Killer Man",
+      "name": "Hunter Killer Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Hunter Killer Man",
+      "aliases": [
+        "Hunter Killer Man",
+        "Armaf Hunter Killer Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-PURE-CLOISONNE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Oros Pure Cloisonne",
+      "name": "Oros Pure Cloisonne",
+      "family_id": "armaf_catalog",
+      "family_name": "Oros Pure Cloisonne",
+      "aliases": [
+        "Oros Pure Cloisonne",
+        "Armaf Oros Pure Cloisonne"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-TAG-HER-DONNA-COLORATA-PURPLE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Tag Her Donna Colorata Purple",
+      "name": "Tag Her Donna Colorata Purple",
+      "family_id": "armaf_catalog",
+      "family_name": "Tag Her Donna Colorata Purple",
+      "aliases": [
+        "Tag Her Donna Colorata Purple",
+        "Armaf Tag Her Donna Colorata Purple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=17",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-VANITY-FEMME-ESSENCE-WOMAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Vanity Femme Essence Woman",
+      "name": "Vanity Femme Essence Woman",
+      "family_id": "armaf_catalog",
+      "family_name": "Vanity Femme Essence Woman",
+      "aliases": [
+        "Vanity Femme Essence Woman",
+        "Armaf Vanity Femme Essence Woman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=18",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=18",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-AMBER-ARABIA-OUD",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Amber Arabia Oud",
+      "name": "Amber Arabia Oud",
+      "family_id": "armaf_catalog",
+      "family_name": "Amber Arabia Oud",
+      "aliases": [
+        "Amber Arabia Oud",
+        "Armaf Amber Arabia Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=18",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=18",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ETER-DESERT-BREEZE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Desert Breeze",
+      "name": "Eter Desert Breeze",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Desert Breeze",
+      "aliases": [
+        "Eter Desert Breeze",
+        "Armaf Eter Desert Breeze"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-THE-INVENTOR-BLACK",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Oros The Inventor Black",
+      "name": "Oros The Inventor Black",
+      "family_id": "armaf_catalog",
+      "family_name": "Oros The Inventor Black",
+      "aliases": [
+        "Oros The Inventor Black",
+        "Armaf Oros The Inventor Black"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-PROFUMI-D-ART-03-LEGNI-DOLCI-BRUCIATI",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Profumi D'Art 03 Legni Dolci Bruciati",
+      "name": "Profumi D'Art 03 Legni Dolci Bruciati",
+      "family_id": "armaf_catalog",
+      "family_name": "Profumi D'Art 03 Legni Dolci Bruciati",
+      "aliases": [
+        "Profumi D'Art 03 Legni Dolci Bruciati",
+        "Armaf Profumi D'Art 03 Legni Dolci Bruciati"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=20",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=20",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ODYSSEY-WILD-ONE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Wild One",
+      "name": "Odyssey Wild One",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Wild One",
+      "aliases": [
+        "Odyssey Wild One",
+        "Armaf Odyssey Wild One"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ODYSSEY-AOUD",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Aoud",
+      "name": "Odyssey Aoud",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Aoud",
+      "aliases": [
+        "Odyssey Aoud",
+        "Armaf Odyssey Aoud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=19",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CONNOISSEUR-WOMAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Connoisseur Woman",
+      "name": "Connoisseur Woman",
+      "family_id": "armaf_catalog",
+      "family_name": "Connoisseur Woman",
+      "aliases": [
+        "Connoisseur Woman",
+        "Armaf Connoisseur Woman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=20",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=20",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-MAGNIFICENT-SATIN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Magnificent Satin",
+      "name": "Magnificent Satin",
+      "family_id": "armaf_catalog",
+      "family_name": "Magnificent Satin",
+      "aliases": [
+        "Magnificent Satin",
+        "Armaf Magnificent Satin"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=16",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=16",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ETERNIA-MAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eternia Man",
+      "name": "Eternia Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Eternia Man",
+      "aliases": [
+        "Eternia Man",
+        "Armaf Eternia Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ETERNIA-MAN-LIMITED-EDITION",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eternia Man Limited Edition",
+      "name": "Eternia Man Limited Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Eternia Man Limited Edition",
+      "aliases": [
+        "Eternia Man Limited Edition",
+        "Armaf Eternia Man Limited Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-RED-VELVET",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Red Velvet",
+      "name": "Red Velvet",
+      "family_id": "armaf_catalog",
+      "family_name": "Red Velvet",
+      "aliases": [
+        "Red Velvet",
+        "Armaf Red Velvet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-MISS-ARMAF-MAGNIFIQ",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Miss Armaf Magnifiq",
+      "name": "Miss Armaf Magnifiq",
+      "family_id": "armaf_catalog",
+      "family_name": "Miss Armaf Magnifiq",
+      "aliases": [
+        "Miss Armaf Magnifiq",
+        "Armaf Miss Armaf Magnifiq"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-SHK-IV-BY-SAOUD-ALKAABI",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "SHK IV by Saoud Alkaabi",
+      "name": "SHK IV by Saoud Alkaabi",
+      "family_id": "armaf_catalog",
+      "family_name": "SHK IV by Saoud Alkaabi",
+      "aliases": [
+        "SHK IV by Saoud Alkaabi",
+        "Armaf SHK IV by Saoud Alkaabi"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-RED-SKY",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Red Sky",
+      "name": "Red Sky",
+      "family_id": "armaf_catalog",
+      "family_name": "Red Sky",
+      "aliases": [
+        "Red Sky",
+        "Armaf Red Sky"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=22",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-BUCEPHALUS-NO-X",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Bucephalus No. X",
+      "name": "Bucephalus No. X",
+      "family_id": "armaf_catalog",
+      "family_name": "Bucephalus No. X",
+      "aliases": [
+        "Bucephalus No. X",
+        "Armaf Bucephalus No. X"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=20",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=20",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-NICHE-PLATINUM",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Niche Platinum",
+      "name": "Niche Platinum",
+      "family_id": "armaf_catalog",
+      "family_name": "Niche Platinum",
+      "aliases": [
+        "Niche Platinum",
+        "Armaf Niche Platinum"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=23",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=23",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-LE-PARFAIT-AZURE-FEMME",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Le Parfait Azure Femme",
+      "name": "Le Parfait Azure Femme",
+      "family_id": "armaf_catalog",
+      "family_name": "Le Parfait Azure Femme",
+      "aliases": [
+        "Le Parfait Azure Femme",
+        "Armaf Le Parfait Azure Femme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=23",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=23",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-MAGNIFICENT-POUR-FEMME",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Magnificent Pour Femme",
+      "name": "Magnificent Pour Femme",
+      "family_id": "armaf_catalog",
+      "family_name": "Magnificent Pour Femme",
+      "aliases": [
+        "Magnificent Pour Femme",
+        "Armaf Magnificent Pour Femme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=24",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=24",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-LET-S-MOVE-TANGO",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Let's Move Tango",
+      "name": "Let's Move Tango",
+      "family_id": "armaf_catalog",
+      "family_name": "Let's Move Tango",
+      "aliases": [
+        "Let's Move Tango",
+        "Armaf Let's Move Tango"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=24",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=24",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-MAGNIFICENT-JARDIN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Magnificent Jardin",
+      "name": "Magnificent Jardin",
+      "family_id": "armaf_catalog",
+      "family_name": "Magnificent Jardin",
+      "aliases": [
+        "Magnificent Jardin",
+        "Armaf Magnificent Jardin"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=24",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=24",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-INTENSE-MAN-PARFUM-EXTREME-EDITION",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Parfum Extreme Edition",
+      "name": "Club de Nuit Intense Man Parfum Extreme Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Parfum Extreme Edition",
+      "aliases": [
+        "Club de Nuit Intense Man Parfum Extreme Edition",
+        "Armaf Club de Nuit Intense Man Parfum Extreme Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-BLUE-SKY",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Blue Sky",
+      "name": "Blue Sky",
+      "family_id": "armaf_catalog",
+      "family_name": "Blue Sky",
+      "aliases": [
+        "Blue Sky",
+        "Armaf Blue Sky"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-BLUE-HOMME",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Blue Homme",
+      "name": "Blue Homme",
+      "family_id": "armaf_catalog",
+      "family_name": "Blue Homme",
+      "aliases": [
+        "Blue Homme",
+        "Armaf Blue Homme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
+      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
+      "concentration": "Eau de Toilette"
     }
   ],
   "variants": [
