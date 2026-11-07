@@ -1046,3 +1046,38 @@ No automatic gap-filling or deletions were made from the 464 listing count. The 
 Official source: https://armaf.com/collections/all-perfumes (current listing reports 464 products; filters visibly include fragrance and non-fragrance categories).
 
 This count is a scope signal, **not evidence that 159 perfumes are missing**.
+
+
+## Armaf official collection reconciliation — 2026-11-07
+
+The current Armaf US official site separates fragrance collections and collaborations in its navigation. The catalog's 305 Armaf records were therefore not treated as one undifferentiated line. This pass tagged existing products against official collection pages, preserving `brand: "Armaf"` and recording the line in `collection_name`.
+
+Verified collection pages used:
+- Club de Nuit — https://armaf.com/collections/club-de-nuit
+- Odyssey — https://armaf.com/collections/odyssey
+- Tres Nuit — https://armaf.com/collections/armaf-tres-nuit-collection
+- Checkmate — https://armaf.com/collections/checkmate
+- Eter — https://armaf.com/collections/eter
+- Bucephalus — https://armaf.com/collections/bucephalus
+- Tag — https://armaf.com/collections/tag
+- Armaf Delights — https://armaf.com/collections/armaf-delights
+- The Lion's Club — https://armaf.com/collections/the-lions-club
+- Profumi D'Art — https://armaf.com/collections/profumi-dart
+- ARMAF X Christian Provenzano — https://armaf.com/collections/armaf-collection-for-christian-provenzano
+- ARMAF X SHK — https://armaf.com/collections/shk
+- Oros — https://armaf.com/collections/oros
+- ARMAF Niche — https://armaf.com/collections/armaf-niche
+- The Inventor — https://armaf.com/collections/armaf-the-inventor
+
+The official ARMAF X Christian Provenzano page lists four products (I–IV), while the catalog previously contained only III and IV. Added I and II as source-listed canonical identities. The official ARMAF X SHK page lists I–IV, while the catalog previously contained I, III and IV. Added II. These new records have no size variants because the collection pages did not establish a specific size.
+
+Five cross-region duplicate identities were consolidated, retaining the current official US product record and moving the alternate regional spelling into aliases. No variants were lost; all five removed identities had zero variants:
+- Odyssey Lichi Lush → Odyssey Li'Chi Lush EDP (removed ID: SH-ARMAF-ODYSSEY-LICHI-LUSH-P333)
+- Lion's Club Courageux → The Lion's Club Courageux (removed ID: SH-ARMAF-LION-S-CLUB-COURAGEUX-P334)
+- Profumi D'Art 13 E Tanta Roba → Profumi D'Art 13 Tanta Roba (removed ID: SH-ARMAF-PROFUMI-D-ART-13-E-TANTA-RO-P015)
+- Perfume Oasis For Eter → Eter Perfume Oasis (removed ID: SH-ARMAF-PERFUME-OASIS-FOR-ETER-P017)
+- Desert Rose For Eter → Eter Desert Rose (removed ID: SH-ARMAF-DESERT-ROSE-FOR-ETER-P030)
+
+The catalog now contains **303 Armaf identities** and **1645 total canonical identities**, with 171 explicit variants. The new snapshot tests verify the additions, collection tags, source URLs and alias consolidation. The remaining regional-name candidate **Tres Nuit Lyric Pour Homme** has not been merged with **Tres Nuit Lyric Man**; it remains flagged for product-level identity verification rather than being guessed.
+
+Important scope note: the official `all-perfumes` page currently displays 464 listings, and the broader all-products page displays still more. Those are store listings, not a count of unique canonical perfume identities: they include product types, sets and sizes. Do not use those raw listing totals as the expected number of canonical fragrance records.
