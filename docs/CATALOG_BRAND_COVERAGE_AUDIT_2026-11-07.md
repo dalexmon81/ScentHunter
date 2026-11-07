@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,503 canonical product identity records; 141 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,572 canonical product identity records; 141 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -36,7 +36,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Velixir | 28 |
 | Mykonos | 72 |
 | Maison Asrar | 121 |
-| Khadlaj | 44 |
+| Khadlaj | 113 |
 | Bujairami | 40 |
 | Paris Corner | 120 |
 | Assaf | 115 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,503** |
+| **Total** | **1,572** |
 
 ## Findings from live public sources
 
@@ -574,3 +574,34 @@ Added two more regression tests to `tests/test_phase2_seed_catalog.py`:
 
 The assertions were cross-checked directly against the current JSON data in the GitHub branch. They are committed, but no passing CI run has been observed yet. These tests are snapshot guards, not a substitute for verifying that every brand's full current range is complete.
 
+
+
+## Official Khadlaj perfume-spray listing reconciliation — 2026-11-07
+
+Reviewed the official Khadlaj **Perfume Sprays** collection and its pagination. The collection page reports 101 products. The page reader exposed 96 product listings across pages 1–8; the final five listings on page 9 were not rendered in the retrieved page text and remain a known gap. The official site separately identifies perfume oils, home/ambiance, bakhoor, air fresheners and gift sets; those categories were not mixed into this perfume-spray pass.
+
+Compared the 96 visible official listing names against current canonical names and aliases in ScentHunter. Added **69 missing fragrance identity candidates** to `backend/product_catalog.json`; the remaining visible names were already represented by canonical names or aliases. The additions are marked `source_listed_name`, point to their corresponding official paginated collection URL, and deliberately contain no inferred size, concentration, GTIN, price, stock, or variant rows.
+
+The 69 added names include:
+- Icon, Strawberry Shake, Peach Velvet, Mansion, Private Blend, Azure Velvet, Maison L'Imaginaire, Saqr Al Badiya, Opus Reborn, Musk Pour Amber, Fursan Brown.
+- Le Prestige King/Royal/Empress/Bold; The Proposal Date Night/Special Occasion; Khadlaj 25 Experience/Trust/Loyalty/Heritage/Integrity.
+- Valor Mystique/Honor/Chivalry/Enigma; Empire Empress/Crown/Regent; Karus Blu Spice/Oud Fire/Amber Gold.
+- Maison Creation De Reve, Maison Epoque Artistique, Maison L'Or Noir, Maison Flor Oud, Wild Indonesian Oud, Mystical Indian Oud Pure, Oud Pour Noble/Shaikh/Rouge/Blueberry, Musk Pour Narcis, and additional listed spray fragrances.
+
+Updated exact branch snapshot after this pass:
+- Product identities: **1,572** (was 1,503)
+- Explicit variant records: **141** (unchanged)
+- Khadlaj identities: **113** (was 44)
+- Products without explicitly declared variants: **1,453** (was 1,384)
+
+The catalog remains a list of canonical identity candidates, not proof that the whole Khadlaj range is complete. In particular, the five not-extracted page-9 products and the separate Khadlaj perfume-oil collections remain unreviewed. No retailer offers or production data were changed.
+
+Official sources:
+- https://khadlaj-perfumes.com/collections/perfumes-spray
+- https://khadlaj-perfumes.com/collections/perfumes-spray?page=2
+- https://khadlaj-perfumes.com/collections/perfumes-spray?page=3
+- https://khadlaj-perfumes.com/collections/perfumes-spray?page=4
+- https://khadlaj-perfumes.com/collections/perfumes-spray?page=5
+- https://khadlaj-perfumes.com/collections/perfumes-spray?page=6
+- https://khadlaj-perfumes.com/collections/perfumes-spray?page=7
+- https://khadlaj-perfumes.com/collections/perfumes-spray?page=8
