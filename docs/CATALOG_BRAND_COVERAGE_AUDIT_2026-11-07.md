@@ -1217,3 +1217,32 @@ The following candidates remain **not added**: Code Viola Nectar (currently only
 - Catalog snapshot: **1,651 canonical identities; 177 explicit variants**.
 - These additions are product identity/variant records only. They are not retailer offers and do not imply current purchasable stock.
 - A dedicated regression test was added for all six official product URLs, sizes, concentrations and variant links. CI for the resulting commit has not yet been observed; do not describe this pass as CI-verified until Actions completes.
+
+## Pass 9 — Paris Corner official sub-line reconciliation (2026-11-07)
+
+Reconciled additional entries against the current official Paris Corner collection pages. Added **28 source-listed fragrance identities** with explicit parent-brand and collection attribution:
+
+- **Magic Oud Series — 4:** Magic Oud Dark Roses, Magic Oud In Pure Zaffron, Magic Oud Kalimath, Magic Oud Kashmir Musk. The existing Magic Oud Sandal Wood identity was retained.
+- **North Stag — 8:** Quatre IV Expressions, Trois III Expressions, Deux II Expressions, Un I Expressions, Hypnotic Oud Quinze XV, Phenomenal Quatorze XIV, Huit VIII and Sept VII. The existing Neuf IX identity was retained. The North Stag Set of Three was excluded as a set.
+- **Ministry of Oud — 12:** Amber Oud, Oud Indonesian, Oud Royal, Oud Satin, Strictly Oud, Thailand Oud in Cairo, Greatest, Gladiators Oath, Maestro's Symphony, Nile Whispers, Oud Beyond the Wall and Romance Reverie. The Ministry of Oud 50 ml Signature Set was excluded as a set.
+- **Ministry of Gourmand — 4:** Creamy Biscuit, Mango Jugoso, Strawberry Pound Cake and Tiramisu Speculoos.
+
+All 28 records use the official collection page as listing-level evidence and retain identity_status=source_listed_name. Size, concentration, GTIN and variants were deliberately left unset because the collection listings did not establish those product-level facts. No product-detail URL, offer, price, stock or shipping data was invented.
+
+Official sources:
+- Magic Oud Series: https://www.pariscornerperfumes.com/collections/magic-oud-series
+- North Stag: https://www.pariscornerperfumes.com/collections/north-stag-1
+- Ministry of Oud: https://www.pariscornerperfumes.com/collections/ministry-of-oud
+- Ministry of Gourmand: https://www.pariscornerperfumes.com/collections/ministry-of-gourmand
+
+Regression coverage was added for all 28 names, their official collection membership and source URLs, and the deliberate absence of unsupported size/concentration data.
+
+### Pass 9 result
+- New canonical identities: **28**.
+- New variants: **0**.
+- Paris Corner branch count: **157** (previously 129).
+- Catalog snapshot: **1,679 canonical identities; 177 explicit variants**.
+- Product IDs and variant IDs remain unique; orphan variants: **0**.
+- This is a partial line-level reconciliation, not a claim that all Paris Corner products are complete. Pendora Scents, Emir and the parent Paris Corner collection still require full page-by-page reconciliation, including product detail verification and classification of sets/other formats.
+- The new regression test is committed; CI has not yet been observed for the updated branch head.
+
