@@ -40,6 +40,11 @@ class IngestionTask(celery_app.Task):
     max_retries = 5
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
+        if isinstance(exc, PermissionError):
+            # Missing/expired/revoked permission is a policy block, not a
+            # connector outage: never retry or quarantine the retailer for it.
+            logger.warning("Retailer ingestion blocked by authorization policy: %s", exc)
+            return
         try:
             record_dead_letter.apply_async(
                 kwargs={
