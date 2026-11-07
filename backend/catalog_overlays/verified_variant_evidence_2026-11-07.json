@@ -1647,6 +1647,94 @@
           "size_ml": 100
         }
       ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Sceptre Malachite",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-malachite-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Your Touch",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-your-touch-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Jean Lowe Immortal",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-immortal-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Philos Rosso",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-philos-rosso-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Victorioso Nero",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-nero-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Glacier Bold",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-bold-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Glacier Le Noir",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-le-noir-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance": "Infini Oud",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-infini-oud-eau-de-parfum-for-everyone",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
     }
   ]
 }
