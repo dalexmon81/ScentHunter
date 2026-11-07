@@ -127,6 +127,16 @@
       "brand": "Paris Corner",
       "url": "https://www.parfum-paris-corner.com/boutique/",
       "note": "Third-party French retailer catalog listing Paris Corner fragrances with explicit Eau de Parfum concentration and size. Used as secondary source evidence, not as an official manufacturer source; out-of-stock status is not copied into ScentHunter catalog."
+    },
+    {
+      "brand": "Lattafa",
+      "url": "https://www.lattafa-usa.com/collections/eau-de-parfum-edp",
+      "note": "Official Lattafa USA EDP collection. Product identities are taken from visible product cards; size and exact concentration are not attached to individual entries because collection-level facets include non-EDP formats and multiple sizes."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/collections/all",
+      "note": "Official Maison Asrar all-products collection; product names are taken from visible fragrance cards. Collection also includes home-fragrance categories, excluded. No concentration/size variants inferred from the collection cards."
     }
   ],
   "products": [
