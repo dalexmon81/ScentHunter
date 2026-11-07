@@ -19842,6 +19842,150 @@
       "identity_status": "source_listed_name",
       "source_url": "https://om.swissarabian.com/products/",
       "source_evidence_url": "https://om.swissarabian.com/products/"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ATOMISE-INTENSIVE-MEN-OFF01",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Atomise Intensive Men",
+      "name": "Atomise Intensive Men",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Atomise Intensive Men",
+      "aliases": [
+        "Atomise Intensive Men",
+        "Paris Corner Atomise Intensive Men"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ATTRACTUS-OFF02",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Attractus",
+      "name": "Attractus",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Attractus",
+      "aliases": [
+        "Attractus",
+        "Paris Corner Attractus"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CAMARO-HOMME-INTENSE-OFF03",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Camaro Homme Intense",
+      "name": "Camaro Homme Intense",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Camaro Homme Intense",
+      "aliases": [
+        "Camaro Homme Intense",
+        "Paris Corner Camaro Homme Intense"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHARUTO-MYSTERIOUS-TOBACCO-OFF04",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Charuto Mysterious Tobacco",
+      "name": "Charuto Mysterious Tobacco",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Charuto Mysterious Tobacco",
+      "aliases": [
+        "Charuto Mysterious Tobacco",
+        "Paris Corner Charuto Mysterious Tobacco"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHERRY-GOSSIP-OFF05",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cherry Gossip",
+      "name": "Cherry Gossip",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Cherry Gossip",
+      "aliases": [
+        "Cherry Gossip",
+        "Paris Corner Cherry Gossip"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHOCO-CULT-OFF06",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Choco Cult",
+      "name": "Choco Cult",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Choco Cult",
+      "aliases": [
+        "Choco Cult",
+        "Paris Corner Choco Cult"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CORNFLOWER-DELIGHT-OFF07",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cornflower Delight",
+      "name": "Cornflower Delight",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Cornflower Delight",
+      "aliases": [
+        "Cornflower Delight",
+        "Paris Corner Cornflower Delight"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-DUBAI-OFF08",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cosmopolitan Dubai",
+      "name": "Cosmopolitan Dubai",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Cosmopolitan Dubai",
+      "aliases": [
+        "Cosmopolitan Dubai",
+        "Paris Corner Cosmopolitan Dubai"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-LONDON-OFF09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cosmopolitan London",
+      "name": "Cosmopolitan London",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Cosmopolitan London",
+      "aliases": [
+        "Cosmopolitan London",
+        "Paris Corner Cosmopolitan London"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all"
     }
   ],
   "variants": [
