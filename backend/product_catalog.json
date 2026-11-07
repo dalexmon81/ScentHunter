@@ -10174,5 +10174,190 @@
       "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
     }
   ],
-  "variants": []
+  "variants": [
+    {
+      "product_id": "SH-KHADLAJ-5fee5359",
+      "size_ml": 100,
+      "aliases": [
+        "Island Dreams 100 ml",
+        "Khadlaj Island Dreams 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-f492c4b4",
+      "size_ml": 35,
+      "aliases": [
+        "Hareem Al Sultan Gold 35 ml",
+        "Khadlaj Hareem Al Sultan Gold 35ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-d348f0b3",
+      "size_ml": 100,
+      "aliases": [
+        "Island 100 ml",
+        "Khadlaj Island 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-cdaa81f2",
+      "size_ml": 100,
+      "aliases": [
+        "Fursan White 100 ml",
+        "Khadlaj Fursan White 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-04832397",
+      "size_ml": 60,
+      "aliases": [
+        "Musk Pure Musk Blend 60 ml",
+        "Khadlaj Musk Pure Musk Blend 60ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-263fcf43",
+      "size_ml": 100,
+      "aliases": [
+        "Caffe Latte 100 ml",
+        "Khadlaj Caffe Latte 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-dd1434f1",
+      "size_ml": 100,
+      "aliases": [
+        "Private Blend Musk Ice 100 ml",
+        "Khadlaj Private Blend Musk Ice 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-935bcf95",
+      "size_ml": 100,
+      "aliases": [
+        "Empire Victor 100 ml",
+        "Khadlaj Empire Victor 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-c7ff964c",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Pour Klassik 100 ml",
+        "Khadlaj Oud Pour Klassik 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-70d32855",
+      "size_ml": 100,
+      "aliases": [
+        "Nafais Sharq 100 ml",
+        "Khadlaj Nafais Sharq 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-baaea0ac",
+      "size_ml": 100,
+      "aliases": [
+        "Karus Gold Absolu 100 ml",
+        "Khadlaj Karus Gold Absolu 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-a1c6306a",
+      "size_ml": 100,
+      "aliases": [
+        "Ria 100 ml",
+        "Khadlaj Ria 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-ce6dbd60",
+      "size_ml": 100,
+      "aliases": [
+        "Titan 100 ml",
+        "Khadlaj Titan 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-75815e2a",
+      "size_ml": 100,
+      "aliases": [
+        "Biscotti Date Toffee 100 ml",
+        "Khadlaj Biscotti Date Toffee 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-93c5a51d",
+      "size_ml": 100,
+      "aliases": [
+        "Island Sun 100 ml",
+        "Khadlaj Island Sun 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-20646841",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka Blue 100 ml",
+        "Khadlaj Shiyaaka Blue 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-0aefd15f",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka Gold 100 ml",
+        "Khadlaj Shiyaaka Gold 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-b9170594",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka For Men 100 ml",
+        "Khadlaj Shiyaaka For Men 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-a56e7c92",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka White 100 ml",
+        "Khadlaj Shiyaaka White 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-afe1f6d4",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka Rose Gold 100 ml",
+        "Khadlaj Shiyaaka Rose Gold 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-04a500ea",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka Sky 100 ml",
+        "Khadlaj Shiyaaka Sky 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-b23ae855",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka Shadow 100 ml",
+        "Khadlaj Shiyaaka Shadow 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-bbb43d66",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka Snow 100 ml",
+        "Khadlaj Shiyaaka Snow 100ml"
+      ]
+    }
+  ]
 }
