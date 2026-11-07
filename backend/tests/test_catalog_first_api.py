@@ -110,3 +110,30 @@ def test_staging_fly_config_exposes_api_and_preserves_worker_isolation():
     assert config["env"]["SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL"] == "1"
     assert all(vm["processes"] for vm in config["vm"])
     assert (root / "backend" / "start_api.sh").is_file()
+
+
+
+def test_search_start_passes_delivery_country_and_postal_code(monkeypatch):
+    captured = {}
+
+    def fake_search(query, **destination):
+        captured["query"] = query
+        captured.update(destination)
+        return {
+            "query": query, "count": 0, "offer_count": 0, "results": [],
+            "unresolved_offers": [], "identity_scope": [], "errors": {},
+            "stores": {}, "dedupe_diagnostics": [], "completed": True,
+            "status": "completed",
+        }
+
+    monkeypatch.setattr(catalog_first_api, "search_catalog_for_frontend", fake_search)
+    response = TestClient(catalog_first_api.app).get(
+        "/search-start",
+        params={"q": "Sauvage", "country_code": "IT", "postal_code": "00100"},
+    )
+    assert response.status_code == 200
+    assert captured == {
+        "query": "Sauvage",
+        "destination_country_code": "IT",
+        "destination_postal_code": "00100",
+    }
