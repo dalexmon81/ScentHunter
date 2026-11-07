@@ -28,7 +28,11 @@ def test_frontend_account_profile_connects_auth_and_saved_destinations():
     assert 'profileApi("/account/destinations"' in source
     assert 'data-profile-default' in source
     assert 'data-profile-delete' in source
-    assert 'scentHunterAccessToken=""' in source
+    assert '__Host-scenthunter_csrf' in source
+    assert 'credentials:"same-origin"' in source
+    assert 'X-CSRF-Token' in source
+    assert 'void loadProfile()' in source
+    assert 'scentHunterAccessToken' not in source
 
 
 def test_signed_in_search_uses_default_destination_then_residence_fallback():
@@ -38,3 +42,13 @@ def test_signed_in_search_uses_default_destination_then_residence_fallback():
     assert 'preferred?.country_code||a.residence_country_code' in source
     assert 'preferred?.postal_code||a.residence_postal_code' in source
     assert 'if(deliveryCountry&&!deliveryCountry.value)' in source
+
+
+def test_frontend_uses_same_origin_cookie_session_and_csrf_header():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert '__Host-scenthunter_csrf' in source
+    assert 'credentials:"same-origin"' in source
+    assert 'headers["X-CSRF-Token"]=csrf' in source
+    assert 'void loadProfile()' in source
+    assert 'scentHunterAccessToken' not in source
