@@ -706,15 +706,25 @@ def record_dead_letter(task_name: str, task_id: str, args_repr: str, kwargs_repr
         factory.kw["bind"].dispose()
 
 def _configured_store_keys():
-    """Schedule only connectors whose Phase 2 store row is explicitly active."""
+    """Schedule only active connectors with current discovery and offer-data grants."""
     connector_keys = set(build_connectors().keys())
     factory = make_session_factory()
     try:
         with factory() as session:
-            active_store_keys = set(session.scalars(
-                select(Store.slug).where(Store.status == "active")
-            ).all())
-        return sorted(connector_keys & active_store_keys)
+            stores = session.scalars(
+                select(Store).where(Store.status == "active")
+            ).all()
+            authorized = set()
+            for store in stores:
+                if store.slug not in connector_keys:
+                    continue
+                try:
+                    _require_store_authorization(session, store, "product_discovery")
+                    _require_store_authorization(session, store, "offer_data")
+                except PermissionError:
+                    continue
+                authorized.add(store.slug)
+        return sorted(authorized)
     finally:
         factory.kw["bind"].dispose()
 
@@ -743,7 +753,19 @@ def enqueue_offer_collection_for_configured_stores():
             ).all()
             queued = 0
             seen = set()
+            authorization_cache = {}
             for external_product_id, store_key in rows:
+                if store_key not in authorization_cache:
+                    store = session.scalar(select(Store).where(Store.slug == store_key))
+                    try:
+                        if store is None:
+                            raise PermissionError("store_not_configured")
+                        _require_store_authorization(session, store, "price_stock")
+                        authorization_cache[store_key] = True
+                    except PermissionError:
+                        authorization_cache[store_key] = False
+                if not authorization_cache[store_key]:
+                    continue
                 key = (store_key, external_product_id)
                 if key in seen:
                     continue
