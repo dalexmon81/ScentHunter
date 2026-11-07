@@ -61,7 +61,7 @@
     {
       "brand": "Gulf Orchid",
       "url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume",
-      "note": "Official Gulf Orchid perfume shop product pages explicitly identify the listed products and sizes: Vanilla Addiction 100ml EDP, Mango Ice 100ml EDP, Sweet Heaven 20ml EDP, Cookie Bite 100ml EDP, Exotic Oud 100ml EDP and Sweet Like Candy 100ml EDP."
+      "note": "Official Gulf Orchid perfume shop product pages explicitly identify the listed products and sizes: Vanilla Addiction 100ml EDP, Mango Ice 100ml EDP, Sweet Heaven 20ml EDP, Cookie Bite 100ml EDP, Exotic Oud 100ml EDP and Sweet Like Candy 100ml EDP. Additional official product pages confirm Sweet Heaven 100ml EDP (alongside its separately listed 20ml variant), Rahaf 100ml EDP, Romantic For Her 100ml EDP, Romantic For Him 100ml EDP and Widian 100ml EDP."
     },
     {
       "brand": "Assaf",
@@ -1166,6 +1166,50 @@
       "brand": "Bujairami",
       "fragrance": "Beautiful Lady",
       "source_url": "https://bujairami.com.au/products/beautiful-lady-inspired-by-libre-yves-saint-laurent",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Rahaf",
+      "source_url": "https://shop-gulforchid.com/products/rahaf-gulf-orchid-eau-de-parfum-100-ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Romantic For Her",
+      "source_url": "https://shop-gulforchid.com/products/romantic-perfume-by-gulf-orchid-eau-de-parfum-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Romantic For Him",
+      "source_url": "https://shop-gulforchid.com/products/romantic-perfume-by-gulf-orchid-eau-de-parfum-for-men",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Widian",
+      "source_url": "https://shop-gulforchid.com/products/widian_eau_de_parfum",
       "variants": [
         {
           "concentration": "Eau de Parfum",
