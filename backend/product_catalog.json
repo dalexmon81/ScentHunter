@@ -3670,6 +3670,666 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-370cb2f2",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Gold Coast Shiraz",
+      "name": "Gold Coast Shiraz",
+      "family_id": "bujairami_catalog",
+      "family_name": "Gold Coast Shiraz",
+      "aliases": [
+        "Gold Coast Shiraz",
+        "Bujairami Gold Coast Shiraz"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairami.eu/shop/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ee29a117",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "G’Day",
+      "name": "G’Day",
+      "family_id": "bujairami_catalog",
+      "family_name": "G’Day",
+      "aliases": [
+        "G’Day",
+        "Bujairami G’Day"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairami.eu/shop/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-6110beb5",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Midnight in Melbourne",
+      "name": "Midnight in Melbourne",
+      "family_id": "bujairami_catalog",
+      "family_name": "Midnight in Melbourne",
+      "aliases": [
+        "Midnight in Melbourne",
+        "Bujairami Midnight in Melbourne"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairami.eu/shop/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-e55dcd47",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Sunrise in Sydney",
+      "name": "Sunrise in Sydney",
+      "family_id": "bujairami_catalog",
+      "family_name": "Sunrise in Sydney",
+      "aliases": [
+        "Sunrise in Sydney",
+        "Bujairami Sunrise in Sydney"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairami.eu/shop/"
+    },
+    {
+      "product_id": "SH-ASSAF-9c4d699d",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "90s",
+      "name": "90s",
+      "family_id": "assaf_catalog",
+      "family_name": "90s",
+      "aliases": [
+        "90s",
+        "Assaf 90s"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-10bfc454",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Addict Blue",
+      "name": "Addict Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Addict Blue",
+      "aliases": [
+        "Addict Blue",
+        "Assaf Addict Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-342a7ff8",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Alex Enable",
+      "name": "Alex Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "Alex Enable",
+      "aliases": [
+        "Alex Enable",
+        "Assaf Alex Enable"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-004d8117",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Alexandra",
+      "name": "Alexandra",
+      "family_id": "assaf_catalog",
+      "family_name": "Alexandra",
+      "aliases": [
+        "Alexandra",
+        "Assaf Alexandra"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-bc16d798",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arkle",
+      "name": "Arkle",
+      "family_id": "assaf_catalog",
+      "family_name": "Arkle",
+      "aliases": [
+        "Arkle",
+        "Assaf Arkle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-78a3a8a3",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Addict",
+      "name": "Arrogate Addict",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Addict",
+      "aliases": [
+        "Arrogate Addict",
+        "Assaf Arrogate Addict"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-f67c896e",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Tobacco Jam 60",
+      "name": "Tobacco Jam 60",
+      "family_id": "assaf_catalog",
+      "family_name": "Tobacco Jam 60",
+      "aliases": [
+        "Tobacco Jam 60",
+        "Assaf Tobacco Jam 60"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-df03f113",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Tobacco Pacha",
+      "name": "Tobacco Pacha",
+      "family_id": "assaf_catalog",
+      "family_name": "Tobacco Pacha",
+      "aliases": [
+        "Tobacco Pacha",
+        "Assaf Tobacco Pacha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-4a0cf8d6",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Tobacco Rage 32",
+      "name": "Tobacco Rage 32",
+      "family_id": "assaf_catalog",
+      "family_name": "Tobacco Rage 32",
+      "aliases": [
+        "Tobacco Rage 32",
+        "Assaf Tobacco Rage 32"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-1e1edc5e",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Troy Enable",
+      "name": "Troy Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "Troy Enable",
+      "aliases": [
+        "Troy Enable",
+        "Assaf Troy Enable"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-d981a71a",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wanted Lady",
+      "name": "Wanted Lady",
+      "family_id": "assaf_catalog",
+      "family_name": "Wanted Lady",
+      "aliases": [
+        "Wanted Lady",
+        "Assaf Wanted Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-0bc20939",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Warrior",
+      "name": "Warrior",
+      "family_id": "assaf_catalog",
+      "family_name": "Warrior",
+      "aliases": [
+        "Warrior",
+        "Assaf Warrior"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-05c40179",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt",
+      "name": "Wild Colt",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt",
+      "aliases": [
+        "Wild Colt",
+        "Assaf Wild Colt"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-3887c2b6",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt Bakhur",
+      "name": "Wild Colt Bakhur",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt Bakhur",
+      "aliases": [
+        "Wild Colt Bakhur",
+        "Assaf Wild Colt Bakhur"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-a4751bca",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt Boss",
+      "name": "Wild Colt Boss",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt Boss",
+      "aliases": [
+        "Wild Colt Boss",
+        "Assaf Wild Colt Boss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-dd5cfa1c",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt Elixir",
+      "name": "Wild Colt Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt Elixir",
+      "aliases": [
+        "Wild Colt Elixir",
+        "Assaf Wild Colt Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-ec7f49a9",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt Exclusive",
+      "name": "Wild Colt Exclusive",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt Exclusive",
+      "aliases": [
+        "Wild Colt Exclusive",
+        "Assaf Wild Colt Exclusive"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-f8b50f91",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt Outlast",
+      "name": "Wild Colt Outlast",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt Outlast",
+      "aliases": [
+        "Wild Colt Outlast",
+        "Assaf Wild Colt Outlast"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-70daf398",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt Smoky",
+      "name": "Wild Colt Smoky",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt Smoky",
+      "aliases": [
+        "Wild Colt Smoky",
+        "Assaf Wild Colt Smoky"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-22321d56",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Colt Tobacco",
+      "name": "Wild Colt Tobacco",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Colt Tobacco",
+      "aliases": [
+        "Wild Colt Tobacco",
+        "Assaf Wild Colt Tobacco"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-ASSAF-0b28a1d9",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Wild Pegasus",
+      "name": "Wild Pegasus",
+      "family_id": "assaf_catalog",
+      "family_name": "Wild Pegasus",
+      "aliases": [
+        "Wild Pegasus",
+        "Assaf Wild Pegasus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assaf.ae/"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-89eb9e9b",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Kayaan Classic",
+      "name": "Kayaan Classic",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Kayaan Classic",
+      "aliases": [
+        "Kayaan Classic",
+        "Al Wataniah Kayaan Classic"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-72f22b5d",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Kayaan Terra",
+      "name": "Kayaan Terra",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Kayaan Terra",
+      "aliases": [
+        "Kayaan Terra",
+        "Al Wataniah Kayaan Terra"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-aa339eab",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Kayaan Gold",
+      "name": "Kayaan Gold",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Kayaan Gold",
+      "aliases": [
+        "Kayaan Gold",
+        "Al Wataniah Kayaan Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-22a0e569",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Kayaan Midnight",
+      "name": "Kayaan Midnight",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Kayaan Midnight",
+      "aliases": [
+        "Kayaan Midnight",
+        "Al Wataniah Kayaan Midnight"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ccc7d2db",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Lemon Souffle",
+      "name": "Lemon Souffle",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Lemon Souffle",
+      "aliases": [
+        "Lemon Souffle",
+        "Al Wataniah Lemon Souffle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-5acf0b9a",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Choco Truffle",
+      "name": "Choco Truffle",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Choco Truffle",
+      "aliases": [
+        "Choco Truffle",
+        "Al Wataniah Choco Truffle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-2df06238",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Rose Eclat",
+      "name": "Rose Eclat",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Rose Eclat",
+      "aliases": [
+        "Rose Eclat",
+        "Al Wataniah Rose Eclat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-3546ccd8",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Milele",
+      "name": "Milele",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Milele",
+      "aliases": [
+        "Milele",
+        "Al Wataniah Milele"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-089f9d20",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Turquois",
+      "name": "Turquois",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Turquois",
+      "aliases": [
+        "Turquois",
+        "Al Wataniah Turquois"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-d8263b7b",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Cloud",
+      "name": "Cloud",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Cloud",
+      "aliases": [
+        "Cloud",
+        "Al Wataniah Cloud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-43ebcbc7",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Liquid Brun",
+      "name": "Liquid Brun",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Liquid Brun",
+      "aliases": [
+        "Liquid Brun",
+        "French Avenue Liquid Brun"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-620eee27",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Liquid Brun Limited Edition",
+      "name": "Liquid Brun Limited Edition",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Liquid Brun Limited Edition",
+      "aliases": [
+        "Liquid Brun Limited Edition",
+        "French Avenue Liquid Brun Limited Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-7ab73d00",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Azzure Aoud",
+      "name": "Azzure Aoud",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Azzure Aoud",
+      "aliases": [
+        "Azzure Aoud",
+        "French Avenue Azzure Aoud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-7a27edc4",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Royal Blend",
+      "name": "Royal Blend",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Royal Blend",
+      "aliases": [
+        "Royal Blend",
+        "French Avenue Royal Blend"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-21a731ff",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Spectre Ghost",
+      "name": "Spectre Ghost",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Spectre Ghost",
+      "aliases": [
+        "Spectre Ghost",
+        "French Avenue Spectre Ghost"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-a8d582fb",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "After Effect",
+      "name": "After Effect",
+      "family_id": "french_avenue_catalog",
+      "family_name": "After Effect",
+      "aliases": [
+        "After Effect",
+        "French Avenue After Effect"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-89654a23",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Vulcan Feu",
+      "name": "Vulcan Feu",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Vulcan Feu",
+      "aliases": [
+        "Vulcan Feu",
+        "French Avenue Vulcan Feu"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Marwa",
+      "name": "Marwa",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Marwa",
+      "aliases": [
+        "Marwa",
+        "Arabiyat Prestige Marwa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://arabiyatprestige.com/collections/all"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-2e9b4429",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Vanilla Aura",
+      "name": "Vanilla Aura",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Vanilla Aura",
+      "aliases": [
+        "Vanilla Aura",
+        "Gulf Orchid Vanilla Aura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/vanilla-aura"
     }
   ],
   "variants": []
