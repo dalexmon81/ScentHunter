@@ -267,3 +267,38 @@ Sources: https://b2b.perfumecenter.eu/brand.aspx?id=4 and pages `?page=2`, `?pag
 - Variants: 141
 - Duplicate product IDs: 0
 - Duplicate brand + canonical-name pairs: 0
+
+
+## Priority-brand reconciliation pass 6 — Paris Corner first-page gap and Afnan Europe catalogue
+
+### Paris Corner
+
+Reopened the official core-brand collection: it currently reports 105 products, with the product list visible across the collection's paginated pages. The first-page listing includes a group of names absent from the existing catalog; added 14 exact names: Eshal Musk, Eshal Vanilla, Eternal Coffee, Eternal Meadows, Eternal Musk, Farah, Fatal Embrace, Fayora, Fayora Oshino, Green Bet, Heer, Hurriya, Ibisco Nirvana and Indomitable. Source: https://www.pariscornerperfumes.com/collections/paris-corner .
+
+Important reconciliation issue: the ScentHunter Paris Corner bucket now contains 120 names, which is higher than the live official collection's 105-item count. This is not automatically an error because prior pages and retailer listings may include discontinued products or names listed in different product-line groupings, but it means the Paris Corner bucket cannot be called reconciled or complete. Next pass must compare all 105 current official product names one by one, identify stale/discontinued entries and distinguish product-line ownership. The 105 count is current as observed; it may change.
+
+### Afnan Europe
+
+Used the official European Afnan shop, whose all-products page currently shows 64 products. It separates EDP, Extrait and concentrated perfume oil, and separately exposes home fragrances and gift sets. Added 11 absent perfume identities visible in the catalogue: Stardust, Historic Sahara, Tobacco Rush, Portrait Revival, Ornament Pour Homme, Kiaana Angel, Edict Amberhythm, Edict Ouddiction, Supremacy Tapis Rouge, Oud Rising and Fakhar Al Jamaal. Source: https://www.it.afnan.com/collections/all-products .
+
+The 64-item total is not a unique perfume-only count: the page includes gift sets and discovery sets. The current ScentHunter Afnan bucket is still only a partial match to the official product assortment. The oil-format products are not automatically merged into EDP identities; a future schema field should preserve concentration/type explicitly.
+
+### Lattafa check
+
+The official Lattafa perfume category shows three pages. The visible first-page names (Fahad, Khamrah Waha, Sheikh Al Shuyukh Supreme, Jouri, Ana Abiyedh Passion, Ameerat Al Arab Sugar Crown, Lattafa Mishlah, Angham Second Song, Maahir Honor, Dalal, Yara Elixir, Asad Elixir) are already present in the ScentHunter Lattafa bucket. No additions were made from this first-page sample. Source: https://lattafa.com/product-category/perfumes/ . A full second- and third-page reconciliation is still required.
+
+### Pass 6 outcome
+
+- Added 25 names: 14 Paris Corner, 11 Afnan.
+- Paris Corner official current collection count: 105; catalog bucket: 120; exact one-to-one reconciliation remains open.
+- Afnan official Europe all-products count: 64 mixed items; catalog bucket after additions: 66; full fragrance-only reconciliation remains open.
+- Lattafa first-page spot-check: 12/12 visible names already represented; pages 2–3 pending.
+- No brand completeness claim is made.
+
+
+## Updated catalog totals after pass 6
+
+- Product identities: 1379
+- Variants: 141
+- Duplicate product IDs: 0
+- Duplicate brand + canonical-name pairs: 0
