@@ -376,3 +376,44 @@ def test_seed_consolidates_duplicate_canonical_names_and_preserves_all_legacy_id
         assert [(row[0], row[1]) for row in variant_rows] == [(75, 0), (100, 1), (125, 0)]
         assert {row[2] for row in variant_rows} == {mapped["ARMANI-PROFONDO-A"]}
 
+
+
+def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
+    """Guard against dropping requested perfume houses during catalog expansion."""
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products, variants = raw["products"], raw["variants"]
+    requested = {
+        "Velixir", "Mykonos", "Maison Asrar", "Khadlaj", "Bujairami",
+        "Paris Corner", "Assaf", "Al Wataniah", "Armaf", "French Avenue",
+        "Arabiyat Prestige", "Gulf Orchid", "Swiss Arabian", "Games of Spades",
+        "Lattafa", "Afnan", "Aromatix", "Maison Alhambra", "Zimaya",
+        "Al Haramain",
+    }
+    brands = {row["brand_name"] for row in products}
+    assert requested <= brands
+    assert len(products) == 1503
+    assert len(variants) == 141
+    assert len({row["product_id"] for row in products}) == len(products)
+    assert len({row["variant_id"] for row in variants}) == len(variants)
+    ids = {row["product_id"] for row in products}
+    assert all(row["product_id"] in ids for row in variants)
+    assert all(str(row.get("source_url") or "").startswith("https://") for row in products)
+    assert all(row.get("identity_status") in {"source_verified_name", "source_listed_name"} for row in products)
+    assert all("price" not in row and "stock" not in row for row in products)
+    assert "offers" not in raw or raw["offers"] == []
+
+
+def test_maison_asrar_royal_collection_is_present_without_duplicate_names():
+    """The nine official standalone Royal Collection names must remain discoverable."""
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    names = [
+        row["canonical_name"].casefold()
+        for row in raw["products"]
+        if row["brand_name"] == "Maison Asrar"
+    ]
+    royal = {
+        "belgravia", "legacy", "vanguard", "regent", "majesty",
+        "heritage", "monarch", "treasure", "imperial",
+    }
+    assert all(names.count(name) == 1 for name in royal)
+
