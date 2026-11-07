@@ -4330,6 +4330,1142 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://shop-gulforchid.com/products/vanilla-aura"
+    },
+    {
+      "product_id": "SH-AFNAN-dd53546f",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 PM Night Out",
+      "name": "9 PM Night Out",
+      "family_id": "afnan_catalog",
+      "family_name": "9 PM Night Out",
+      "aliases": [
+        "9 PM Night Out",
+        "Afnan 9 PM Night Out"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-ab1ea63f",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 PM Rare",
+      "name": "9 PM Rare",
+      "family_id": "afnan_catalog",
+      "family_name": "9 PM Rare",
+      "aliases": [
+        "9 PM Rare",
+        "Afnan 9 PM Rare"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-be149290",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 AM",
+      "name": "9 AM",
+      "family_id": "afnan_catalog",
+      "family_name": "9 AM",
+      "aliases": [
+        "9 AM",
+        "Afnan 9 AM"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-5de78540",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 AM Pour Femme",
+      "name": "9 AM Pour Femme",
+      "family_id": "afnan_catalog",
+      "family_name": "9 AM Pour Femme",
+      "aliases": [
+        "9 AM Pour Femme",
+        "Afnan 9 AM Pour Femme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-9e3c80fa",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 AM Dive",
+      "name": "9 AM Dive",
+      "family_id": "afnan_catalog",
+      "family_name": "9 AM Dive",
+      "aliases": [
+        "9 AM Dive",
+        "Afnan 9 AM Dive"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-816ce12c",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Gold",
+      "name": "Supremacy Gold",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Gold",
+      "aliases": [
+        "Supremacy Gold",
+        "Afnan Supremacy Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-d1fee769",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Not Only Intense",
+      "name": "Supremacy Not Only Intense",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Not Only Intense",
+      "aliases": [
+        "Supremacy Not Only Intense",
+        "Afnan Supremacy Not Only Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-e408d61b",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Rare Reef",
+      "name": "Rare Reef",
+      "family_id": "afnan_catalog",
+      "family_name": "Rare Reef",
+      "aliases": [
+        "Rare Reef",
+        "Afnan Rare Reef"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-068d05a5",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 PM Rebel",
+      "name": "9 PM Rebel",
+      "family_id": "afnan_catalog",
+      "family_name": "9 PM Rebel",
+      "aliases": [
+        "9 PM Rebel",
+        "Afnan 9 PM Rebel"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-5cdc0bae",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Turathi Brown Homme",
+      "name": "Turathi Brown Homme",
+      "family_id": "afnan_catalog",
+      "family_name": "Turathi Brown Homme",
+      "aliases": [
+        "Turathi Brown Homme",
+        "Afnan Turathi Brown Homme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-13721551",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Kiaana Vibes",
+      "name": "Kiaana Vibes",
+      "family_id": "afnan_catalog",
+      "family_name": "Kiaana Vibes",
+      "aliases": [
+        "Kiaana Vibes",
+        "Afnan Kiaana Vibes"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-adcd7b58",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Lynked Freedom",
+      "name": "Lynked Freedom",
+      "family_id": "afnan_catalog",
+      "family_name": "Lynked Freedom",
+      "aliases": [
+        "Lynked Freedom",
+        "Afnan Lynked Freedom"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-62b409e4",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Historic Olmeda",
+      "name": "Historic Olmeda",
+      "family_id": "afnan_catalog",
+      "family_name": "Historic Olmeda",
+      "aliases": [
+        "Historic Olmeda",
+        "Afnan Historic Olmeda"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-c1d3f6f1",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Historic Doria",
+      "name": "Historic Doria",
+      "family_id": "afnan_catalog",
+      "family_name": "Historic Doria",
+      "aliases": [
+        "Historic Doria",
+        "Afnan Historic Doria"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-4e32c3b3",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Mystique Bouquet",
+      "name": "Mystique Bouquet",
+      "family_id": "afnan_catalog",
+      "family_name": "Mystique Bouquet",
+      "aliases": [
+        "Mystique Bouquet",
+        "Afnan Mystique Bouquet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-bdb31951",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Souvenir Floral Bouquet",
+      "name": "Souvenir Floral Bouquet",
+      "family_id": "afnan_catalog",
+      "family_name": "Souvenir Floral Bouquet",
+      "aliases": [
+        "Souvenir Floral Bouquet",
+        "Afnan Souvenir Floral Bouquet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-d587de8a",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Pink",
+      "name": "Supremacy Pink",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Pink",
+      "aliases": [
+        "Supremacy Pink",
+        "Afnan Supremacy Pink"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-aa93308c",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Purple",
+      "name": "Supremacy Purple",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Purple",
+      "aliases": [
+        "Supremacy Purple",
+        "Afnan Supremacy Purple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-387345b5",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Gala",
+      "name": "Supremacy Gala",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Gala",
+      "aliases": [
+        "Supremacy Gala",
+        "Afnan Supremacy Gala"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-823a97f5",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 PM",
+      "name": "9 PM",
+      "family_id": "afnan_catalog",
+      "family_name": "9 PM",
+      "aliases": [
+        "9 PM",
+        "Afnan 9 PM"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-dec689ab",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 PM Pour Femme",
+      "name": "9 PM Pour Femme",
+      "family_id": "afnan_catalog",
+      "family_name": "9 PM Pour Femme",
+      "aliases": [
+        "9 PM Pour Femme",
+        "Afnan 9 PM Pour Femme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-f8622945",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Lynked Forever",
+      "name": "Lynked Forever",
+      "family_id": "afnan_catalog",
+      "family_name": "Lynked Forever",
+      "aliases": [
+        "Lynked Forever",
+        "Afnan Lynked Forever"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-fbf16414",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy in Heaven",
+      "name": "Supremacy in Heaven",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy in Heaven",
+      "aliases": [
+        "Supremacy in Heaven",
+        "Afnan Supremacy in Heaven"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-e9bc6ab8",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Turathi Blue",
+      "name": "Turathi Blue",
+      "family_id": "afnan_catalog",
+      "family_name": "Turathi Blue",
+      "aliases": [
+        "Turathi Blue",
+        "Afnan Turathi Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-dc43e01b",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Turathi Electric",
+      "name": "Turathi Electric",
+      "family_id": "afnan_catalog",
+      "family_name": "Turathi Electric",
+      "aliases": [
+        "Turathi Electric",
+        "Afnan Turathi Electric"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-d0bee594",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Rare Carbon",
+      "name": "Rare Carbon",
+      "family_id": "afnan_catalog",
+      "family_name": "Rare Carbon",
+      "aliases": [
+        "Rare Carbon",
+        "Afnan Rare Carbon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-e9a9f75b",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Cherry Bouquet",
+      "name": "Cherry Bouquet",
+      "family_id": "afnan_catalog",
+      "family_name": "Cherry Bouquet",
+      "aliases": [
+        "Cherry Bouquet",
+        "Afnan Cherry Bouquet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-ca13dada",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Tribute Blue",
+      "name": "Tribute Blue",
+      "family_id": "afnan_catalog",
+      "family_name": "Tribute Blue",
+      "aliases": [
+        "Tribute Blue",
+        "Afnan Tribute Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-5551000b",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Pure Musk",
+      "name": "Pure Musk",
+      "family_id": "afnan_catalog",
+      "family_name": "Pure Musk",
+      "aliases": [
+        "Pure Musk",
+        "Afnan Pure Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-d6bdf95c",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Souvenir Blooming Bliss",
+      "name": "Souvenir Blooming Bliss",
+      "family_id": "afnan_catalog",
+      "family_name": "Souvenir Blooming Bliss",
+      "aliases": [
+        "Souvenir Blooming Bliss",
+        "Afnan Souvenir Blooming Bliss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-36d86a43",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Kiaana Crush",
+      "name": "Kiaana Crush",
+      "family_id": "afnan_catalog",
+      "family_name": "Kiaana Crush",
+      "aliases": [
+        "Kiaana Crush",
+        "Afnan Kiaana Crush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-0c713396",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Portrait Abstract",
+      "name": "Portrait Abstract",
+      "family_id": "afnan_catalog",
+      "family_name": "Portrait Abstract",
+      "aliases": [
+        "Portrait Abstract",
+        "Afnan Portrait Abstract"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-65e95976",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Souvenir Desert Rose",
+      "name": "Souvenir Desert Rose",
+      "family_id": "afnan_catalog",
+      "family_name": "Souvenir Desert Rose",
+      "aliases": [
+        "Souvenir Desert Rose",
+        "Afnan Souvenir Desert Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-985458b7",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Rare",
+      "name": "Rare",
+      "family_id": "afnan_catalog",
+      "family_name": "Rare",
+      "aliases": [
+        "Rare",
+        "Afnan Rare"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-0e31617f",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Ornament Purple",
+      "name": "Ornament Purple",
+      "family_id": "afnan_catalog",
+      "family_name": "Ornament Purple",
+      "aliases": [
+        "Ornament Purple",
+        "Afnan Ornament Purple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-8793590d",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Modest Une",
+      "name": "Modest Une",
+      "family_id": "afnan_catalog",
+      "family_name": "Modest Une",
+      "aliases": [
+        "Modest Une",
+        "Afnan Modest Une"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-5971cbd6",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Turathi Purple",
+      "name": "Turathi Purple",
+      "family_id": "afnan_catalog",
+      "family_name": "Turathi Purple",
+      "aliases": [
+        "Turathi Purple",
+        "Afnan Turathi Purple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-779646c3",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Mirsaal of Trust",
+      "name": "Mirsaal of Trust",
+      "family_id": "afnan_catalog",
+      "family_name": "Mirsaal of Trust",
+      "aliases": [
+        "Mirsaal of Trust",
+        "Afnan Mirsaal of Trust"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-ad5cd204",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Mirsaal with Love",
+      "name": "Mirsaal with Love",
+      "family_id": "afnan_catalog",
+      "family_name": "Mirsaal with Love",
+      "aliases": [
+        "Mirsaal with Love",
+        "Afnan Mirsaal with Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-5f529cde",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Tribute Pink",
+      "name": "Tribute Pink",
+      "family_id": "afnan_catalog",
+      "family_name": "Tribute Pink",
+      "aliases": [
+        "Tribute Pink",
+        "Afnan Tribute Pink"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-6a2a503b",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Inara White",
+      "name": "Inara White",
+      "family_id": "afnan_catalog",
+      "family_name": "Inara White",
+      "aliases": [
+        "Inara White",
+        "Afnan Inara White"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-601f9979",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Inara Black",
+      "name": "Inara Black",
+      "family_id": "afnan_catalog",
+      "family_name": "Inara Black",
+      "aliases": [
+        "Inara Black",
+        "Afnan Inara Black"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-c2cbb081",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "His Highness White",
+      "name": "His Highness White",
+      "family_id": "afnan_catalog",
+      "family_name": "His Highness White",
+      "aliases": [
+        "His Highness White",
+        "Afnan His Highness White"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-69527fa0",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "9 PM Elixir",
+      "name": "9 PM Elixir",
+      "family_id": "afnan_catalog",
+      "family_name": "9 PM Elixir",
+      "aliases": [
+        "9 PM Elixir",
+        "Afnan 9 PM Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-583391fb",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Silver",
+      "name": "Supremacy Silver",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Silver",
+      "aliases": [
+        "Supremacy Silver",
+        "Afnan Supremacy Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-544372b1",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Collector's Edition",
+      "name": "Supremacy Collector's Edition",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Collector's Edition",
+      "aliases": [
+        "Supremacy Collector's Edition",
+        "Afnan Supremacy Collector's Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-fc437465",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy in Oud",
+      "name": "Supremacy in Oud",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy in Oud",
+      "aliases": [
+        "Supremacy in Oud",
+        "Afnan Supremacy in Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-6dfb292a",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Fahad",
+      "name": "Fahad",
+      "family_id": "lattafa_catalog",
+      "family_name": "Fahad",
+      "aliases": [
+        "Fahad",
+        "Lattafa Fahad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-714d697b",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah Waha",
+      "name": "Khamrah Waha",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khamrah Waha",
+      "aliases": [
+        "Khamrah Waha",
+        "Lattafa Khamrah Waha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ab0d850b",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Sheikh Al Shuyukh Supreme",
+      "name": "Sheikh Al Shuyukh Supreme",
+      "family_id": "lattafa_catalog",
+      "family_name": "Sheikh Al Shuyukh Supreme",
+      "aliases": [
+        "Sheikh Al Shuyukh Supreme",
+        "Lattafa Sheikh Al Shuyukh Supreme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-63f6f54f",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Jouri",
+      "name": "Jouri",
+      "family_id": "lattafa_catalog",
+      "family_name": "Jouri",
+      "aliases": [
+        "Jouri",
+        "Lattafa Jouri"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-c6a646f7",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ana Abiyedh Passion",
+      "name": "Ana Abiyedh Passion",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ana Abiyedh Passion",
+      "aliases": [
+        "Ana Abiyedh Passion",
+        "Lattafa Ana Abiyedh Passion"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-33d27bf9",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ameerat Al Arab Sugar Crown",
+      "name": "Ameerat Al Arab Sugar Crown",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ameerat Al Arab Sugar Crown",
+      "aliases": [
+        "Ameerat Al Arab Sugar Crown",
+        "Lattafa Ameerat Al Arab Sugar Crown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-7eca557a",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mishlah",
+      "name": "Mishlah",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mishlah",
+      "aliases": [
+        "Mishlah",
+        "Lattafa Mishlah"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-486f7f23",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Angham Second Song",
+      "name": "Angham Second Song",
+      "family_id": "lattafa_catalog",
+      "family_name": "Angham Second Song",
+      "aliases": [
+        "Angham Second Song",
+        "Lattafa Angham Second Song"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-7a1f69a0",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Maahir Honor",
+      "name": "Maahir Honor",
+      "family_id": "lattafa_catalog",
+      "family_name": "Maahir Honor",
+      "aliases": [
+        "Maahir Honor",
+        "Lattafa Maahir Honor"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-57564860",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Dalal",
+      "name": "Dalal",
+      "family_id": "lattafa_catalog",
+      "family_name": "Dalal",
+      "aliases": [
+        "Dalal",
+        "Lattafa Dalal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-309bfd56",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Yara Elixir",
+      "name": "Yara Elixir",
+      "family_id": "lattafa_catalog",
+      "family_name": "Yara Elixir",
+      "aliases": [
+        "Yara Elixir",
+        "Lattafa Yara Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-9c91c81c",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad Elixir",
+      "name": "Asad Elixir",
+      "family_id": "lattafa_catalog",
+      "family_name": "Asad Elixir",
+      "aliases": [
+        "Asad Elixir",
+        "Lattafa Asad Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-AROMATIX-e1d337d3",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Carnal Desire",
+      "name": "Carnal Desire",
+      "family_id": "aromatix_catalog",
+      "family_name": "Carnal Desire",
+      "aliases": [
+        "Carnal Desire",
+        "Aromatix Carnal Desire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-17e61069",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Forbidden Fruit",
+      "name": "Forbidden Fruit",
+      "family_id": "aromatix_catalog",
+      "family_name": "Forbidden Fruit",
+      "aliases": [
+        "Forbidden Fruit",
+        "Aromatix Forbidden Fruit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-7f0d8a66",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Frostbite",
+      "name": "Frostbite",
+      "family_id": "aromatix_catalog",
+      "family_name": "Frostbite",
+      "aliases": [
+        "Frostbite",
+        "Aromatix Frostbite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-c6528f4e",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Magnetiq",
+      "name": "Magnetiq",
+      "family_id": "aromatix_catalog",
+      "family_name": "Magnetiq",
+      "aliases": [
+        "Magnetiq",
+        "Aromatix Magnetiq"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-631ddd97",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Naughty Dates",
+      "name": "Naughty Dates",
+      "family_id": "aromatix_catalog",
+      "family_name": "Naughty Dates",
+      "aliases": [
+        "Naughty Dates",
+        "Aromatix Naughty Dates"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-76ef1806",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Ora",
+      "name": "Ora",
+      "family_id": "aromatix_catalog",
+      "family_name": "Ora",
+      "aliases": [
+        "Ora",
+        "Aromatix Ora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-3bc29bed",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Platine Blanc",
+      "name": "Platine Blanc",
+      "family_id": "aromatix_catalog",
+      "family_name": "Platine Blanc",
+      "aliases": [
+        "Platine Blanc",
+        "Aromatix Platine Blanc"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-2f9332cc",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Royal Taboo",
+      "name": "Royal Taboo",
+      "family_id": "aromatix_catalog",
+      "family_name": "Royal Taboo",
+      "aliases": [
+        "Royal Taboo",
+        "Aromatix Royal Taboo"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-c491f510",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Roza",
+      "name": "Roza",
+      "family_id": "aromatix_catalog",
+      "family_name": "Roza",
+      "aliases": [
+        "Roza",
+        "Aromatix Roza"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-5cc0e8bf",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Sun Kissed",
+      "name": "Sun Kissed",
+      "family_id": "aromatix_catalog",
+      "family_name": "Sun Kissed",
+      "aliases": [
+        "Sun Kissed",
+        "Aromatix Sun Kissed"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-c1bc4bf5",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "Teas Me",
+      "name": "Teas Me",
+      "family_id": "aromatix_catalog",
+      "family_name": "Teas Me",
+      "aliases": [
+        "Teas Me",
+        "Aromatix Teas Me"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-672bf656",
+      "brand": "Aromatix",
+      "brand_name": "Aromatix",
+      "canonical_name": "X Xandal",
+      "name": "X Xandal",
+      "family_id": "aromatix_catalog",
+      "family_name": "X Xandal",
+      "aliases": [
+        "X Xandal",
+        "Aromatix X Xandal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.notino.be/french-avenue/aromatix/",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
     }
   ],
   "variants": []
