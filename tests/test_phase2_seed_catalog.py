@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1643
-    assert report["variants"] == 160
-    assert report["products_without_variants"] == 1505
+    assert report["fragrances"] == 1647
+    assert report["variants"] == 165
+    assert report["products_without_variants"] == 1504
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1643
-    assert len(variants) == 160
+    assert len(products) == 1647
+    assert len(variants) == 165
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -644,3 +644,30 @@ def test_armaf_pages_13_to_20_missing_official_products_and_100ml_variants():
         "SHV-SH-ARMAF-OFFICIAL-PROFUMI-DART-13-TANTA-ROBA-100-000",
     ):
         assert variants[variant_id]["size_ml"] == 100
+
+
+
+def test_armaf_pages_22_to_24_new_fragrances_and_large_sizes_are_traceable():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["product_id"]: row for row in raw["products"]}
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "SH-ARMAF-OFFICIAL-OROS-UOMO": ("Oros Uomo", "Eau de Parfum", "https://armaf.com/products/oros-uomo"),
+        "SH-ARMAF-OFFICIAL-ART-DU-PARFUM-POUR-HOMME": ("Art Du' Parfum Pour Homme", "Eau de Parfum", "https://armaf.com/products/art-du-parfum"),
+        "SH-ARMAF-OFFICIAL-RADICAL-BLUE-MAN": ("Radical Blue Man", "Eau de Parfum", "https://armaf.com/products/radical-edp-for-men-slate-blue-btl"),
+        "SH-ARMAF-OFFICIAL-OROS-OUD": ("Oros Oud", "Eau de Parfum", "https://armaf.com/products/oros-oud"),
+    }
+    for product_id, (name, concentration, evidence_url) in expected.items():
+        row = products[product_id]
+        assert row["canonical_name"] == name
+        assert row["concentration"] == concentration
+        assert row["source_evidence_url"] == evidence_url
+        assert row["identity_status"] == "source_verified_name"
+    for variant_id, size_ml in {
+        "SHV-SH-ARMAF-OFFICIAL-OROS-UOMO-100-000": 100,
+        "SHV-SH-ARMAF-OFFICIAL-RADICAL-BLUE-MAN-100-000": 100,
+        "SHV-SH-ARMAF-OFFICIAL-OROS-OUD-85-000": 85,
+        "SHV-SH-ARMAF-6a665a32-200-000": 200,
+        "SHV-SH-ARMAF-OFFICIAL-LE-PARFAIT-AZURE-FEMME-200-000": 200,
+    }.items():
+        assert variants[variant_id]["size_ml"] == size_ml
