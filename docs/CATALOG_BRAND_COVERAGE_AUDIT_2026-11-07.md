@@ -1128,3 +1128,33 @@ GitHub Actions run #42417983773 on the current PR head completed successfully. T
 
 ### Production and offer boundary
 This catalog expansion contains product identity candidates and explicit variants only. It must not create retailer offers, prices, stock, shipping costs, commission data, or manually inserted values. The later Liquid Brun acceptance test must independently collect actual accessible retailer data, persist provenance and timestamps, and prove that ScentHunter search retrieves those worker-ingested offers.\n
+
+## Follow-up source check — current official catalogue snapshots (2026-11-07)
+
+This follow-up checks the official storefront collection indexes again. These totals are listing counts, not canonical perfume identity counts, and must not be copied directly into the catalog as product records.
+
+### Paris Corner
+- Official all-products page currently exposes **252 products** in the crawled snapshot: https://www.pariscornerperfumes.com/collections/all
+- Its navigation explicitly separates Ministry of Oud, Paris Corner, North Stag, Pendora, Emir and Magic Oud Series. These must remain distinguishable as labels/collections rather than flattened into unrelated brand names.
+- The catalog's current **129 Paris Corner parent-brand records** therefore cannot be considered complete from the storefront total alone. It needs a full listing export and classification pass, including sub-brand membership, duplicate display names, sizes/variants, gift sets and non-perfume products.
+- The official collection index also exposes the relevant series navigation: https://www.pariscornerperfumes.com/collections
+
+### Khadlaj
+- The official collections index currently reports **303 All Products**: https://khadlaj-perfumes.com/collections
+- The same index separately lists perfume spray, perfume oils, bakhoor, air fresheners, home/ambiance and gift-set groupings. This confirms that the 303 count is a mixed-product count and cannot be used as the expected number of perfumes.
+- A dedicated official premium-range page exposes **20 products**, including named perfume sprays and sizes: https://khadlaj-perfumes.com/collections/khadlaj-premium-range/perfume-spray
+- The official perfume spray collection reports **88 products**: https://khadlaj-perfumes.com/collections/khadlaj-perfume-spray
+- Next action: enumerate perfume spray and EDP/extrait collections separately, then reconcile names and sizes against the 113 Khadlaj identities already in the catalog. Exclude home fragrance, bakhoor, air freshener and gift sets from standalone perfume identities unless a distinct product type is intentionally modeled.
+
+### Maison Asrar
+- The official all-products page currently reports **129 products**: https://maisonasrar.com/collections/all
+- The site navigation explicitly separates **Fragrances**, **Room Spray** and **Home Fragrances**. Therefore the 129 all-products total is mixed and cannot be treated as 129 standalone perfumes.
+- The current catalog has 121 Maison Asrar identities, but a product-name reconciliation against the fragrance-only collection is still required. Do not add the eight-record numerical difference as eight presumed missing perfumes.
+- Official collections index: https://maisonasrar.com/collections
+
+### ARMAF
+- The official All Fragrances page currently reports **464 listings** and includes filters for Eau de Parfum, Eau de Toilette, Extrait/Parfum, body mist, body spray, deodorants, roll-ons, shampoo, shower gel and soap: https://armaf.com/collections/all-perfumes
+- This confirms again that 464 is not a unique perfume identity count. Continue the existing fragrance-only product-detail reconciliation; preserve concentration differences as variants and exclude body care and sets from the perfume identity total.
+
+### Interpretation and next action
+These fresh snapshots strengthen the need for a product-type-aware reconciliation rather than raw count matching. The next implementation pass should extract listing titles and detail URLs page by page for one official source at a time, compare normalized names with the seed, and emit explicit matched/missing/ambiguous/excluded results. No missing products are inferred solely from count differences, and no retailer offers/prices/stock/shipping data are added by this catalog task.
