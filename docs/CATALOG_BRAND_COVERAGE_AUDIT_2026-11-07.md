@@ -1465,3 +1465,24 @@ All three are assigned to the Uno Range within the Khadlaj house, with one expli
 
 GitHub Actions run **#42419757178** for test commit **f8f4fa359956e4dc9f9fd71433d610f6ae9cb3a5** passed the Phase 2 schema-contract suite: **41 passed, 1 warning**. The run includes the three added Uno Range product-detail records and their 100 ml Eau de Parfum variants.
 
+## Pass 23 — La Fede Eau De Parfum collection reconciliation (2026-11-07)
+
+Reconciled the official **La Fede Eau De Parfum** collection, which currently reports 42 perfume-spray products. Five of those identities were already represented in the catalog (Code Viola Nectar and the four Uno Range products). Added the remaining **37 identities** from the official collection listing, preserving the displayed names, size and concentration:
+
+- 100 ml Extrait de Parfum: La Fede Intoxicate Mystique.
+- 100 ml Eau de Parfum: Edge Intense, Edge Original, Symbol of Love, Symbol of Power, Choco Brown, White Forest Strawberry, Celeste Toffee, Celeste Fluer, Celeste Joice, Celeste Aqua, Intoxicate Blue Elixir, Intoxicate, Aura Manga Splash, Aura Pista Dessert, Opera Noir L'Or, Opera Rose L'Or, Crystallia Imperio, Crystallia Primaso, Magnum Extreme Blue, Magnum Wild Green, Magnum Gold Edition, Magnum Silver Edition, Aura Kiss of Rose, Aura Crisp Flower, Belle Reve Segrato Viola, Bella Reve Dolce Flore, Code Marron Oud, Code Rouge Amour, Code Verde Sublime, Lavish Luna, Lavish Rouge and Lavish Blush.
+- 75 ml Eau de Parfum: Statesman, First Lady, Kingsman and Miss Premiere.
+
+Official collection listing: https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume
+
+All 37 records use collection-level evidence and retain the status source_listed_name. Size and concentration are copied only where shown in the official collection card title. No product-specific URL or GTIN was invented. Existing Code Viola and Uno records remain distinct and are not duplicated.
+
+### Pass 23 result
+- New canonical identities: **37**.
+- New explicit variants: **37**.
+- Khadlaj branch count: **162** (previously 125).
+- Catalog snapshot: **1,818 canonical identities; 245 explicit variants**.
+- La Fede Eau De Parfum collection: **42/42 listing identities accounted for** (37 new + 5 existing).
+- Regression coverage checks all 37 names, official collection evidence, sizes, concentrations and variant links.
+- CI for the latest additions must complete before marking them verified.
+
