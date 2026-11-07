@@ -14,7 +14,7 @@ class FakeThread:
 def test_runtime_thread_snapshot_includes_python_and_native_identity(tmp_path):
     task = tmp_path / "202"
     task.mkdir()
-    (task / "comm").write_text("python-worker\\n")
+    (task / "comm").write_text("python-worker\n")
 
     assert runtime_thread_snapshot(FakeThread(), str(tmp_path)) == {
         "name": "scenthunter-search-worker",
