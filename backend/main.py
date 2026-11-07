@@ -10,6 +10,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
+from app.services.runtime_memory_snapshot import runtime_memory_snapshot
 
 from app.services.store_identity import normalize_store_key as _normalise_store
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
@@ -3079,16 +3080,7 @@ def _runtime_diag_event(event, **data):
         pass
 
 def _runtime_diag_memory():
-    out = {}
-    try:
-        with open("/proc/self/status", "r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith(("VmRSS:", "VmSize:", "Threads:")):
-                    k, v = line.split(":", 1)
-                    out[k] = v.strip()
-    except Exception:
-        pass
-    return out
+    return runtime_memory_snapshot("/proc/self/status")
 
 def _runtime_thread_snapshot(t):
     """Return Python and native Linux thread identity for read-only diagnostics."""
