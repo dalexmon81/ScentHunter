@@ -12,6 +12,7 @@ except Exception as exc:
 from pathlib import Path
 
 from app.services.store_identity import normalize_store_key as _normalise_store
+from app.services.catalog_index_status import catalog_indexed_flags
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
@@ -1510,34 +1511,14 @@ def _run_controlled_store(store,query,on_report,on_result=None,cancel_event=None
     on_report(report)
 
 def _catalog_indexed_flags(stores):
-    """Check whether each store has at least one active catalog URL.
-
-    This is deliberately much cheaper than catalog_store_status(). It is used
-    on the normal search path only to distinguish an indexed store with zero
-    matching candidates from a store whose catalog is actually empty. It never
-    joins store_urls with store_products and never calculates hydration state.
-    """
-    wanted = [str(store).strip() for store in (stores or []) if str(store).strip()]
-    if not wanted or not callable(catalog_db):
-        return {store: False for store in wanted}
-    conn = None
-    try:
-        conn = catalog_db()
-        flags = {}
-        for store in wanted:
-            row = conn.execute(
-                'SELECT 1 FROM store_urls WHERE store=? AND active=1 LIMIT 1',
-                (store,),
-            ).fetchone()
-            flags[store] = bool(row)
-        return flags
-    except Exception as exc:
-        print(f'CATALOG INDEXED STATUS ERROR: {type(exc).__name__}: {exc}', flush=True)
-        return {store: False for store in wanted}
-    finally:
-        if conn is not None:
-            conn.close()
-
+    return catalog_indexed_flags(
+        stores,
+        catalog_db,
+        on_error=lambda exc: print(
+            f'CATALOG INDEXED STATUS ERROR: {type(exc).__name__}: {exc}',
+            flush=True,
+        ),
+    )
 
 def _catalog_search_terms(query):
     return _expand_catalog_search_terms(query, PRODUCT_MATCHER)
