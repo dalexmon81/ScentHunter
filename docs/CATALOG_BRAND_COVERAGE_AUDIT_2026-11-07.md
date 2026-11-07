@@ -405,3 +405,77 @@ Official sources:
 - Variant records retained: 141.
 - Product IDs remain unique; no new duplicate brand + normalized-name pairs introduced.
 - Page 9 remains open; no completeness claim is made.
+
+
+
+## Latest independent validation and live-source review — 2026-11-07
+
+### Exact branch snapshot revalidated
+
+Re-read `backend/product_catalog.json` from branch `catalog/complete-brand-expansion-2026-11` and parsed the complete JSON payload.
+
+- Product identity records: **1,503**
+- Variant records: **141**
+- Brand labels represented: **21** (20 requested brands/lines plus the pre-existing Giorgio Armani records)
+- Product IDs duplicated: **0**
+- Records without `source_url`: **0**
+- Identity status: **33 source_verified_name**, **1,470 source_listed_name**
+- Duplicate normalized brand + canonical-name keys: **3 pre-existing collisions**, listed below.
+
+The three collisions are not new additions from this expansion and must be resolved or explicitly represented as aliases before the catalog can be called duplicate-clean:
+1. Afnan — `9 AM Pour Femme`: `SH-AFNAN-5de78540` and `SH-AFNAN-9-AM-POUR-FEMME-E036`.
+2. Afnan — `9 PM Pour Femme`: `SH-AFNAN-dec689ab` and `SH-AFNAN-9-PM-POUR-FEMME-E035`.
+3. Giorgio Armani — `Acqua di Gio Profondo`: `SH-0043` and `SH-AUTO-0019`.
+
+The catalog has source URLs on every record, but a source URL alone does not prove that the specific product page was checked or that all commercial attributes are verified.
+
+### Additional live-source observations
+
+#### Paris Corner — incomplete / taxonomy reconciliation required
+
+- The official Paris Corner site separates distinct labels including **Paris Corner, North Stag, Emir, Ministry of Gourmand, Pendora Scents and Ministry of Oud**. These must not all be collapsed into the core Paris Corner brand without product-level attribution.
+- The official European shop also displays separate brands/labels (Paris Corner, Emir, Ministry of Gourmand and Ministry of Oud).
+- A current independent perfume index lists 205 Paris Corner fragrances, but it is a secondary database, not an official manufacturer inventory. It is useful as a gap-finding cross-check, not a target count.
+- Current ScentHunter core-brand bucket: 120 records. This is not reconciled and must not be called complete.
+
+Sources:
+- Official brand taxonomy and product listings: https://www.pariscornerperfumes.com/
+- Official Emir collection: https://www.pariscornerperfumes.com/collections/emir-1
+- Official European shop: https://it.pariscornereurope.com/en
+- Secondary cross-check only: https://www.fragrantica.com/designers/PARIS-CORNER.html
+
+#### Khadlaj — incomplete / mixed product formats
+
+- The official all-collections page reports 308 items across all products, but the same site separates air fresheners, bakhoor, home/ambience, gift sets, perfume oils, perfume sprays and other categories.
+- The official page separately lists 88 items in the Khadlaj perfume-spray collection and 43 items in a concentrated-perfume-oil collection. These are category counts, not a deduplicated count of unique perfume identities.
+- A current secondary fragrance database lists 147 Khadlaj perfumes. This is a useful cross-check but is not the manufacturer's master catalog.
+- Current ScentHunter Khadlaj bucket: 44 records. A complete reconciliation is still required across perfume sprays, EDP/extrait, oils and sub-collections, with format kept distinct.
+
+Sources:
+- Official collections: https://khadlaj-perfumes.com/collections
+- Official Saudi shop: https://khadlaj-perfumes.sa/
+- Secondary cross-check only: https://www.fragrantica.com/designers/Khadlaj-Perfumes.html
+
+#### Brand coverage status
+
+Status below describes evidence reviewed so far, not whether the brand label exists in the JSON.
+
+- **Partial / further source reconciliation required:** Paris Corner, Khadlaj, Maison Asrar, Armaf, Lattafa, Afnan, Swiss Arabian, Maison Alhambra, Assaf, Bujairami, French Avenue, Arabiyat Prestige, Gulf Orchid, Al Wataniah, Zimaya, Al Haramain.
+- **Present, but full official-range reconciliation not yet demonstrated:** Velixir, Mykonos, Games of Spades, Aromatix.
+- No requested brand should be marked **complete** based only on the present evidence.
+
+This status is deliberately conservative. It is better to report an open gap than to imply a complete global range from a partial page sample or a retailer's current stock.
+
+### Required next work before approval
+
+1. Reconcile the three duplicate normalized keys. Select one canonical record per identity and retain alternate spellings/IDs as aliases or migration mappings; do not delete IDs that may already be referenced by other data without checking dependencies.
+2. For Paris Corner, compare all paginated official product handles and product pages, with a separate namespace for each official sub-label.
+3. For Khadlaj, reconcile perfume spray, EDP/extrait, and oil formats independently; exclude home/ambience, air freshener, bakhoor and gift bundles from standalone perfume identities unless explicitly modeled as such.
+4. For Maison Asrar, finish a fragrance-only product-level reconciliation, explicitly checking Royal Collection members and excluding room/home fragrance.
+5. For the remaining requested brands, create a per-brand evidence table with official source, pages checked, product-level records matched, missing candidates, ambiguous records and excluded non-perfume formats.
+6. Run the catalog parser, seed dry-run validation, duplicate-key audit and connector-independent tests against this exact branch after any data change.
+7. Keep PR #426 in draft until these gates pass. Do not merge it, PR #424, or deploy catalog changes to production as part of this work.
+
+### Current conclusion
+
+The branch is a substantial catalog expansion and the JSON parses cleanly. It has **1,503 identities and 141 variants**, but still contains three normalized identity collisions and incomplete source reconciliation. It is suitable for continued review on the isolated branch, not yet for a claim of a complete, production-ready fragrance catalog.
