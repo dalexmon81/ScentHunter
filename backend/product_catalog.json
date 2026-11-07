@@ -20034,6 +20034,630 @@
       "concentration": null,
       "identity_status": "source_listed_name",
       "source_url": "https://armaf.uk/collections/all-armaf-products"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-JARDIN-DES-PAPILLONS-PG01",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Jardin Des Papillons",
+      "name": "Jardin Des Papillons",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Jardin Des Papillons",
+      "aliases": [
+        "Jardin Des Papillons",
+        "Paris Corner Jardin Des Papillons"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KAHEELA-PLATINUM-PG02",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Kaheela Platinum",
+      "name": "Kaheela Platinum",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Kaheela Platinum",
+      "aliases": [
+        "Kaheela Platinum",
+        "Paris Corner Kaheela Platinum"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-PG03",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Khair",
+      "name": "Khair",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Khair",
+      "aliases": [
+        "Khair",
+        "Paris Corner Khair"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-CONFECTION-PG04",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Khair Confection",
+      "name": "Khair Confection",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Khair Confection",
+      "aliases": [
+        "Khair Confection",
+        "Paris Corner Khair Confection"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-FELICITY-PG05",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Khair Felicity",
+      "name": "Khair Felicity",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Khair Felicity",
+      "aliases": [
+        "Khair Felicity",
+        "Paris Corner Khair Felicity"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-FUSION-PG06",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Khair Fusion",
+      "name": "Khair Fusion",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Khair Fusion",
+      "aliases": [
+        "Khair Fusion",
+        "Paris Corner Khair Fusion"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-PEACH-DELULU-PG07",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Khair Peach Delulu",
+      "name": "Khair Peach Delulu",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Khair Peach Delulu",
+      "aliases": [
+        "Khair Peach Delulu",
+        "Paris Corner Khair Peach Delulu"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-PISTACHIO-PG08",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Khair Pistachio",
+      "name": "Khair Pistachio",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Khair Pistachio",
+      "aliases": [
+        "Khair Pistachio",
+        "Paris Corner Khair Pistachio"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAYAL-PG09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Khayal",
+      "name": "Khayal",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Khayal",
+      "aliases": [
+        "Khayal",
+        "Paris Corner Khayal"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MANAAL-PG10",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Manaal",
+      "name": "Manaal",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Manaal",
+      "aliases": [
+        "Manaal",
+        "Paris Corner Manaal"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MARSHMALLOW-BLUSH-PG11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Marshmallow Blush",
+      "name": "Marshmallow Blush",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Marshmallow Blush",
+      "aliases": [
+        "Marshmallow Blush",
+        "Paris Corner Marshmallow Blush"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-APPLETINI-PG12",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Mawj Appletini",
+      "name": "Mawj Appletini",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Mawj Appletini",
+      "aliases": [
+        "Mawj Appletini",
+        "Paris Corner Mawj Appletini"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE-PG13",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Mawj Cognac Blaze",
+      "name": "Mawj Cognac Blaze",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Mawj Cognac Blaze",
+      "aliases": [
+        "Mawj Cognac Blaze",
+        "Paris Corner Mawj Cognac Blaze"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE-PG14",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Mawj Moscow Mule",
+      "name": "Mawj Moscow Mule",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Mawj Moscow Mule",
+      "aliases": [
+        "Mawj Moscow Mule",
+        "Paris Corner Mawj Moscow Mule"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MEHWISH-PG15",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Mehwish",
+      "name": "Mehwish",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Mehwish",
+      "aliases": [
+        "Mehwish",
+        "Paris Corner Mehwish"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MIDNIGHT-SIN-BY-DANIEL-REN-PG16",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Midnight Sin By Daniel Rene",
+      "name": "Midnight Sin By Daniel Rene",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Midnight Sin By Daniel Rene",
+      "aliases": [
+        "Midnight Sin By Daniel Rene",
+        "Paris Corner Midnight Sin By Daniel Rene"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MIEL-OBSCURA-PG17",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Miel Obscura",
+      "name": "Miel Obscura",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Miel Obscura",
+      "aliases": [
+        "Miel Obscura",
+        "Paris Corner Miel Obscura"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MIEL-VANILLE-PG18",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Miel Vanille",
+      "name": "Miel Vanille",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Miel Vanille",
+      "aliases": [
+        "Miel Vanille",
+        "Paris Corner Miel Vanille"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINYA-PG19",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Minya",
+      "name": "Minya",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Minya",
+      "aliases": [
+        "Minya",
+        "Paris Corner Minya"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINYA-CARAMEL-DULCE-PG20",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Minya Caramel Dulce",
+      "name": "Minya Caramel Dulce",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Minya Caramel Dulce",
+      "aliases": [
+        "Minya Caramel Dulce",
+        "Paris Corner Minya Caramel Dulce"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINYA-COCO-LUSH-PG21",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Minya Coco Lush",
+      "name": "Minya Coco Lush",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Minya Coco Lush",
+      "aliases": [
+        "Minya Coco Lush",
+        "Paris Corner Minya Coco Lush"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MISTY-DAWN-MUSK-COLLECTION-PG22",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Misty Dawn Musk Collection",
+      "name": "Misty Dawn Musk Collection",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Misty Dawn Musk Collection",
+      "aliases": [
+        "Misty Dawn Musk Collection",
+        "Paris Corner Misty Dawn Musk Collection"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MOLTEN-CARAMEL-PG23",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Molten Caramel",
+      "name": "Molten Caramel",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Molten Caramel",
+      "aliases": [
+        "Molten Caramel",
+        "Paris Corner Molten Caramel"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MYSTERIUM-PG24",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Mysterium",
+      "name": "Mysterium",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Mysterium",
+      "aliases": [
+        "Mysterium",
+        "Paris Corner Mysterium"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NADA-BLUMINGLE-PG25",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Nada Blumingle",
+      "name": "Nada Blumingle",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Nada Blumingle",
+      "aliases": [
+        "Nada Blumingle",
+        "Paris Corner Nada Blumingle"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NADA-WHIMSICAL-PG26",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Nada Whimsical",
+      "name": "Nada Whimsical",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Nada Whimsical",
+      "aliases": [
+        "Nada Whimsical",
+        "Paris Corner Nada Whimsical"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NADA-WINK-PG27",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Nada Wink",
+      "name": "Nada Wink",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Nada Wink",
+      "aliases": [
+        "Nada Wink",
+        "Paris Corner Nada Wink"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NOUF-PG28",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Nouf",
+      "name": "Nouf",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Nouf",
+      "aliases": [
+        "Nouf",
+        "Paris Corner Nouf"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OPHIDIAN-BLACK-CHERRY-PG29",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ophidian Black Cherry",
+      "name": "Ophidian Black Cherry",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ophidian Black Cherry",
+      "aliases": [
+        "Ophidian Black Cherry",
+        "Paris Corner Ophidian Black Cherry"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OPHIDIAN-MANGO-BLISS-PG30",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ophidian Mango Bliss",
+      "name": "Ophidian Mango Bliss",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ophidian Mango Bliss",
+      "aliases": [
+        "Ophidian Mango Bliss",
+        "Paris Corner Ophidian Mango Bliss"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OPHIDIAN-SWEET-SURRENDER-PG31",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ophidian Sweet Surrender",
+      "name": "Ophidian Sweet Surrender",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ophidian Sweet Surrender",
+      "aliases": [
+        "Ophidian Sweet Surrender",
+        "Paris Corner Ophidian Sweet Surrender"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ORAVEA-PG32",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Oravea",
+      "name": "Oravea",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Oravea",
+      "aliases": [
+        "Oravea",
+        "Paris Corner Oravea"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLATE-PG33",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Dubai Chocolate",
+      "name": "Odyssey Dubai Chocolate",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Dubai Chocolate",
+      "aliases": [
+        "Odyssey Dubai Chocolate",
+        "Armaf Odyssey Dubai Chocolate"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-EAU-DE-MONTAGNE-PG34",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Eau De Montagne",
+      "name": "Odyssey Eau De Montagne",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Eau De Montagne",
+      "aliases": [
+        "Odyssey Eau De Montagne",
+        "Armaf Odyssey Eau De Montagne"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-TYRANT-PG35",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Tyrant",
+      "name": "Odyssey Tyrant",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Tyrant",
+      "aliases": [
+        "Odyssey Tyrant",
+        "Armaf Odyssey Tyrant"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-PRIVATE-KEY-TO-MY-LOVE-PG36",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Private Key To My Love",
+      "name": "Private Key To My Love",
+      "family_id": "armaf_catalog",
+      "family_name": "Private Key To My Love",
+      "aliases": [
+        "Private Key To My Love",
+        "Armaf Private Key To My Love"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-PRIVATE-KEY-TO-MY-DREAMS-PG37",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Private Key To My Dreams",
+      "name": "Private Key To My Dreams",
+      "family_id": "armaf_catalog",
+      "family_name": "Private Key To My Dreams",
+      "aliases": [
+        "Private Key To My Dreams",
+        "Armaf Private Key To My Dreams"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-PRIVATE-KEY-TO-MY-SUCCESS-PG38",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Private Key To My Success",
+      "name": "Private Key To My Success",
+      "family_id": "armaf_catalog",
+      "family_name": "Private Key To My Success",
+      "aliases": [
+        "Private Key To My Success",
+        "Armaf Private Key To My Success"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-LIONHEART-HERITAGE-FOR-MEN-PG39",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Lionheart Heritage For Men",
+      "name": "Lionheart Heritage For Men",
+      "family_id": "armaf_catalog",
+      "family_name": "Lionheart Heritage For Men",
+      "aliases": [
+        "Lionheart Heritage For Men",
+        "Armaf Lionheart Heritage For Men"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=3"
     }
   ],
   "variants": [
