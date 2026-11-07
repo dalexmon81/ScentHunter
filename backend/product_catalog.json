@@ -27600,6 +27600,482 @@
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
       "gtin": "6298043070058"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-DARK-ROSES-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Magic Oud Dark Roses",
+      "name": "Magic Oud Dark Roses",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Magic Oud Dark Roses",
+      "aliases": [
+        "Magic Oud Dark Roses",
+        "Paris Corner Magic Oud Dark Roses"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "collection_name": "Magic Oud Series"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-PURE-ZAFFRON-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Magic Oud In Pure Zaffron",
+      "name": "Magic Oud In Pure Zaffron",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Magic Oud In Pure Zaffron",
+      "aliases": [
+        "Magic Oud In Pure Zaffron",
+        "Paris Corner Magic Oud In Pure Zaffron"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "collection_name": "Magic Oud Series"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-KALIMATH-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Magic Oud Kalimath",
+      "name": "Magic Oud Kalimath",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Magic Oud Kalimath",
+      "aliases": [
+        "Magic Oud Kalimath",
+        "Paris Corner Magic Oud Kalimath"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "collection_name": "Magic Oud Series"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-KASHMIR-MUSK-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Magic Oud Kashmir Musk",
+      "name": "Magic Oud Kashmir Musk",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Magic Oud Kashmir Musk",
+      "aliases": [
+        "Magic Oud Kashmir Musk",
+        "Paris Corner Magic Oud Kashmir Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+      "collection_name": "Magic Oud Series"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-QUATRE-IV-EXPRESSIONS-NORTH-STAG-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Quatre IV Expressions, North Stag",
+      "name": "Quatre IV Expressions, North Stag",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Quatre IV Expressions, North Stag",
+      "aliases": [
+        "Quatre IV Expressions, North Stag",
+        "Paris Corner Quatre IV Expressions, North Stag"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TROIS-III-EXPRESSIONS-NORTH-STAG-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Trois III Expressions, North Stag",
+      "name": "Trois III Expressions, North Stag",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Trois III Expressions, North Stag",
+      "aliases": [
+        "Trois III Expressions, North Stag",
+        "Paris Corner Trois III Expressions, North Stag"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-DEUX-II-EXPRESSIONS-NORTH-STAG-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Deux II Expressions, North Stag",
+      "name": "Deux II Expressions, North Stag",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Deux II Expressions, North Stag",
+      "aliases": [
+        "Deux II Expressions, North Stag",
+        "Paris Corner Deux II Expressions, North Stag"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-UN-I-EXPRESSIONS-NORTH-STAG-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Un I Expressions, North Stag",
+      "name": "Un I Expressions, North Stag",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Un I Expressions, North Stag",
+      "aliases": [
+        "Un I Expressions, North Stag",
+        "Paris Corner Un I Expressions, North Stag"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NORTH-STAG-HYPNOTIC-OUD-QUINZE-XV-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "North Stag Hypnotic Oud Quinze XV",
+      "name": "North Stag Hypnotic Oud Quinze XV",
+      "family_id": "paris_corner_catalog",
+      "family_name": "North Stag Hypnotic Oud Quinze XV",
+      "aliases": [
+        "North Stag Hypnotic Oud Quinze XV",
+        "Paris Corner North Stag Hypnotic Oud Quinze XV"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NORTH-STAG-PHENOMENAL-QUATORZE-XIV-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "North Stag Phenomenal Quatorze XIV",
+      "name": "North Stag Phenomenal Quatorze XIV",
+      "family_id": "paris_corner_catalog",
+      "family_name": "North Stag Phenomenal Quatorze XIV",
+      "aliases": [
+        "North Stag Phenomenal Quatorze XIV",
+        "Paris Corner North Stag Phenomenal Quatorze XIV"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NORTH-STAG-HUIT-VIII-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "North Stag Huit VIII",
+      "name": "North Stag Huit VIII",
+      "family_id": "paris_corner_catalog",
+      "family_name": "North Stag Huit VIII",
+      "aliases": [
+        "North Stag Huit VIII",
+        "Paris Corner North Stag Huit VIII"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-NORTH-STAG-SEPT-VII-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "North Stag Sept VII",
+      "name": "North Stag Sept VII",
+      "family_id": "paris_corner_catalog",
+      "family_name": "North Stag Sept VII",
+      "aliases": [
+        "North Stag Sept VII",
+        "Paris Corner North Stag Sept VII"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+      "collection_name": "North Stag"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-AMBER-OUD-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Amber Oud",
+      "name": "Ministry of Oud - Amber Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Amber Oud",
+      "aliases": [
+        "Ministry of Oud - Amber Oud",
+        "Paris Corner Ministry of Oud - Amber Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-INDONESIAN-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Indonesian",
+      "name": "Ministry of Oud - Oud Indonesian",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Indonesian",
+      "aliases": [
+        "Ministry of Oud - Oud Indonesian",
+        "Paris Corner Ministry of Oud - Oud Indonesian"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-ROYAL-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Royal",
+      "name": "Ministry of Oud - Oud Royal",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Royal",
+      "aliases": [
+        "Ministry of Oud - Oud Royal",
+        "Paris Corner Ministry of Oud - Oud Royal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-SATIN-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Satin",
+      "name": "Ministry of Oud - Oud Satin",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Satin",
+      "aliases": [
+        "Ministry of Oud - Oud Satin",
+        "Paris Corner Ministry of Oud - Oud Satin"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-STRICTLY-OUD-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Strictly Oud",
+      "name": "Ministry of Oud - Strictly Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Strictly Oud",
+      "aliases": [
+        "Ministry of Oud - Strictly Oud",
+        "Paris Corner Ministry of Oud - Strictly Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-THAILAND-OUD-IN-CAIRO-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Thailand Oud in Cairo",
+      "name": "Ministry of Oud - Thailand Oud in Cairo",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Thailand Oud in Cairo",
+      "aliases": [
+        "Ministry of Oud - Thailand Oud in Cairo",
+        "Paris Corner Ministry of Oud - Thailand Oud in Cairo"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-GREATEST-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud Greatest",
+      "name": "Ministry of Oud Greatest",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud Greatest",
+      "aliases": [
+        "Ministry of Oud Greatest",
+        "Paris Corner Ministry of Oud Greatest"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-GLADIATORS-OATH-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Gladiators Oath",
+      "name": "Ministry of Oud - Gladiators Oath",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Gladiators Oath",
+      "aliases": [
+        "Ministry of Oud - Gladiators Oath",
+        "Paris Corner Ministry of Oud - Gladiators Oath"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-MAESTRO-S-SYMPHONY-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Maestro's Symphony",
+      "name": "Ministry of Oud - Maestro's Symphony",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Maestro's Symphony",
+      "aliases": [
+        "Ministry of Oud - Maestro's Symphony",
+        "Paris Corner Ministry of Oud - Maestro's Symphony"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-NILE-WHISPERS-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Nile Whispers",
+      "name": "Ministry of Oud - Nile Whispers",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Nile Whispers",
+      "aliases": [
+        "Ministry of Oud - Nile Whispers",
+        "Paris Corner Ministry of Oud - Nile Whispers"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-BEYOND-THE-WALL-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Beyond the Wall",
+      "name": "Ministry of Oud - Oud Beyond the Wall",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Beyond the Wall",
+      "aliases": [
+        "Ministry of Oud - Oud Beyond the Wall",
+        "Paris Corner Ministry of Oud - Oud Beyond the Wall"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-ROMANCE-REVERIE-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Romance Reverie",
+      "name": "Ministry of Oud - Romance Reverie",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Romance Reverie",
+      "aliases": [
+        "Ministry of Oud - Romance Reverie",
+        "Paris Corner Ministry of Oud - Romance Reverie"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+      "collection_name": "Ministry of Oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CREAMY-BISCUIT-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Creamy Biscuit",
+      "name": "Creamy Biscuit",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Creamy Biscuit",
+      "aliases": [
+        "Creamy Biscuit",
+        "Paris Corner Creamy Biscuit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "collection_name": "Ministry of Gourmand"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MANGO-JUGOSO-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Mango Jugoso",
+      "name": "Mango Jugoso",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Mango Jugoso",
+      "aliases": [
+        "Mango Jugoso",
+        "Paris Corner Mango Jugoso"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "collection_name": "Ministry of Gourmand"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-STRAWBERRY-POUND-CAKE-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Strawberry Pound Cake",
+      "name": "Strawberry Pound Cake",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Strawberry Pound Cake",
+      "aliases": [
+        "Strawberry Pound Cake",
+        "Paris Corner Strawberry Pound Cake"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "collection_name": "Ministry of Gourmand"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS-LINE09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Tiramisu Speculoos",
+      "name": "Tiramisu Speculoos",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Tiramisu Speculoos",
+      "aliases": [
+        "Tiramisu Speculoos",
+        "Paris Corner Tiramisu Speculoos"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+      "collection_name": "Ministry of Gourmand"
     }
   ],
   "variants": [
