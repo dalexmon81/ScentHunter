@@ -795,3 +795,20 @@ def test_paris_corner_official_product_lines_are_tagged_without_changing_parent_
             assert row["collection_name"] == line
             assert row["source_url"] == source_urls[line]
             assert row["source_evidence_url"] == source_urls[line]
+
+
+def test_maison_asrar_royal_collection_matches_current_official_nine_product_listing():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = [
+        row for row in raw["products"]
+        if row.get("brand") == "Maison Asrar"
+        and row.get("collection_name") == "Royal Collection"
+    ]
+    names = {row["canonical_name"] for row in products}
+    assert names == {
+        "Belgravia", "Legacy", "Vanguard", "Regent", "Majesty",
+        "Monarch", "Heritage", "Imperial", "Treasure",
+    }
+    official_collection = "https://maisonasrar.com/collections/royal-collection"
+    assert all(row.get("source_url") == official_collection for row in products)
+    assert all(row.get("source_evidence_url") == official_collection for row in products)
