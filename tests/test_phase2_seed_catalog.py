@@ -154,8 +154,8 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1766
-    assert report["variants"] == 193
+    assert report["fragrances"] == 1772
+    assert report["variants"] == 199
     assert report["products_without_variants"] == 1595
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1766
-    assert len(variants) == 193
+    assert len(products) == 1772
+    assert len(variants) == 199
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -1161,6 +1161,34 @@ def test_paris_corner_sixteen_official_product_detail_pages_have_verified_varian
         "Frenetic Homme Intense": ("https://www.pariscornerperfumes.com/products/frenetichomme-intense", 80, "Unclassified"),
     }
     assert len(expected) == 16
+    for name, (url, size, line) in expected.items():
+        row = products[name]
+        assert row["identity_status"] == "source_verified_name"
+        assert row["source_product_url"] == url
+        assert row["source_evidence_url"] == url
+        assert row["collection_name"] == line
+        assert row["formats_ml"] == [size]
+        variant_id = f"SHV-{row['product_id']}-{size}-000"
+        assert variants[variant_id]["product_id"] == row["product_id"]
+        assert variants[variant_id]["size_ml"] == size
+
+def test_six_additional_paris_corner_product_detail_pages_have_verified_variants():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+    }
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "Harrier Absoulte": ("https://www.pariscornerperfumes.com/products/harrier-absoulte", 100, "Unclassified"),
+        "Wild and Tobacco Emir": ("https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir", 75, "Emir"),
+        "Lueur d'Espoir Noche": ("https://www.pariscornerperfumes.com/products/lueur-noche", 100, "Unclassified"),
+        "Lueur d'Espoir Arena": ("https://www.pariscornerperfumes.com/products/lueur-arena", 100, "Unclassified"),
+        "Lueur d'Espoir Ambre": ("https://www.pariscornerperfumes.com/products/lueur-ambre", 100, "Unclassified"),
+        "Wayfarer Eau de Parfum": ("https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum", 100, "Unclassified"),
+    }
+    assert len(expected) == 6
     for name, (url, size, line) in expected.items():
         row = products[name]
         assert row["identity_status"] == "source_verified_name"
