@@ -1067,3 +1067,19 @@ def test_paris_corner_emir_pendora_and_parent_official_listing_gaps_are_added():
             assert row.get("concentration") is None
     assert sum(map(len, expected.values())) == 70
 
+def test_pendora_scents_veteran_oud_is_in_official_men_collection():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+    }
+    row = products["Veteran Oud"]
+    official = "https://www.pariscornerperfumes.com/collections/pendora-scents-men"
+    assert row["collection_name"] == "Pendora Scents"
+    assert row["identity_status"] == "source_listed_name"
+    assert row["source_url"] == official
+    assert row["source_evidence_url"] == official
+    assert row.get("formats_ml") is None
+    assert row.get("concentration") is None
+
