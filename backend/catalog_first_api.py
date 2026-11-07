@@ -72,10 +72,12 @@ def healthz() -> dict:
 @app.get("/search-start")
 def search_start(
     q: str = Query(..., min_length=2, max_length=120),
+    country_code: str | None = Query(None, min_length=2, max_length=2),
+    postal_code: str | None = Query(None, max_length=24),
 ) -> dict:
     """Return a completed frontend search from persisted catalog data only."""
     try:
-        payload = search_catalog_for_frontend(q)
+        payload = search_catalog_for_frontend(q, destination_country_code=country_code, destination_postal_code=postal_code)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
