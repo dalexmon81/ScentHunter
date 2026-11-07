@@ -1012,3 +1012,59 @@ def test_paris_corner_core_collection_records_use_official_brand_collection_evid
     for row in products.values():
         if "/collections/paris-corner" in row.get("source_url", ""):
             assert row["collection_name"] == "Paris Corner"
+
+def test_paris_corner_emir_pendora_and_parent_official_listing_gaps_are_added():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+    }
+    expected = {
+        "Emir": {
+            "Cosmopolitan Newyork", "Elania Emir", "Fascination Emir",
+            "Fire Your Desire Emir", "Forbidden Sugar Emir", "Juicy Melange",
+            "Just Bergamot Emir Factory Edition", "La Serpiente Emir",
+            "Lueur D'Espoir Arena Intense", "Lueur D'Espoir Memories of Summer",
+            "Lueur D'Espoir Serene Grove", "Lueur D'Espoir Silhouette",
+            "Mango Punch", "Metalico Emir", "Opulentia Empyreal Emir",
+            "Opulentia Flame Emir", "Opulentia Inverno Emir", "Opulentia Primus Emir",
+            "Oud and Vanille Emir", "Pear Potion", "Pour Me Wild",
+            "Rich Santal Emir Factory Edition", "Super Crush Emir",
+            "Ultra Citrus Emir Factory Edition", "Valar Series A Chaos in the Ocean",
+            "Valar Series A Walk on Dirt", "Valar Series Smoky Leather",
+            "Vanilla and Roses Emir", "Vibrant Orange and Neroli Emir",
+            "Vibrant Sensual Saffron Emir", "Vibrant Spicy Tobacco Emir",
+            "Vibrant Vetiver Delight Emir", "Voux Blue Oud Emir", "Voux Alma Verde",
+            "Voux Elegante Emir", "Voux Patisserie", "Voux Spices Emir",
+            "Voux Turquoise Emir", "Voux Violette Emir", "Voux Zeste",
+            "Voux Zingy", "Warm Leather Emir Factory Edition", "Wayward Charlie Emir",
+            "When Soul Gets High Emir",
+        },
+        "Pendora Scents": {
+            "Doris Pink", "Dusky Vanilla", "Ecstatic Blanc Fleur", "English Leather",
+            "Enormity", "Fig Fete", "Hidden Halo", "Honeyed Fantasy",
+            "Intense Wayfarer", "Intima Red", "La Nuit Pendora", "Lullaby",
+            "Mango Flames", "Nectarine Haze", "Neon Star", "Noir D'Arabie",
+            "Oud Holidays", "Poppy Pulse", "Praise", "Precision", "Rose de Nuit",
+            "The Aoud", "The Green", "The Peace", "The Scent", "The Street",
+        },
+        "Paris Corner": {"Empire de la Rouge"},
+    }
+    source_urls = {
+        "Emir": "https://www.pariscornerperfumes.com/collections/emir-1",
+        "Pendora Scents": "https://www.pariscornerperfumes.com/collections/pendora-scents-1",
+        "Paris Corner": "https://www.pariscornerperfumes.com/collections/paris-corner",
+    }
+    for line, names in expected.items():
+        for name in names:
+            row = products[name]
+            assert row["brand"] == "Paris Corner"
+            assert row["collection_name"] == line
+            assert row["identity_status"] == "source_listed_name"
+            assert row["source_url"] == source_urls[line]
+            assert row["source_evidence_url"] == source_urls[line]
+            assert row.get("formats_ml") is None
+            assert row.get("concentration") is None
+    assert sum(map(len, expected.values())) == 71
+
