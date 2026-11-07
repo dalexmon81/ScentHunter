@@ -10495,6 +10495,48 @@
         100
       ],
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-0043",
+      "brand": "Giorgio Armani",
+      "brand_name": "Giorgio Armani",
+      "canonical_name": "Acqua di Gio Profondo",
+      "name": "Acqua di Gio Profondo",
+      "family_id": "giorgio_armani_catalog",
+      "family_name": "Acqua di Gio Profondo",
+      "aliases": [
+        "Acqua di Gio Profondo",
+        "Acqua di Giò Profondo",
+        "Giorgio Armani Acqua di Gio Profondo"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75,
+        125
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-125-ml-man_z771966/",
+      "source_evidence_url": "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en"
+    },
+    {
+      "product_id": "SH-AUTO-0019",
+      "brand": "Giorgio Armani",
+      "brand_name": "Giorgio Armani",
+      "canonical_name": "Acqua di Giò Profondo",
+      "name": "Acqua di Giò Profondo",
+      "family_id": "giorgio_armani_catalog",
+      "family_name": "Acqua di Giò Profondo",
+      "aliases": [
+        "Acqua di Giò Profondo",
+        "Acqua di Gio Profondo",
+        "Giorgio Armani Acqua di Gio Profondo"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
     }
   ],
   "variants": [
@@ -10989,6 +11031,36 @@
       "aliases": [
         "Liquid Brun Limited Edition Extrait de Parfum 150 ml",
         "French Avenue Liquid Brun Limited Edition 150ml"
+      ]
+    },
+    {
+      "product_id": "SH-0043",
+      "variant_id": "VAR-09a73d0a5594cf49",
+      "size_ml": 125,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Acqua di Gio Profondo Eau de Parfum 125 ml",
+        "Giorgio Armani Acqua di Gio Profondo EDP 125 ml"
+      ]
+    },
+    {
+      "product_id": "SH-0043",
+      "variant_id": "VAR-89c2a2a86bedb3c5",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Acqua di Gio Profondo Eau de Parfum 75 ml",
+        "Giorgio Armani Acqua di Gio Profondo EDP 75 ml"
+      ]
+    },
+    {
+      "product_id": "SH-AUTO-0019",
+      "variant_id": "VAR-46b03c1f1cff0a6e",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Acqua di Gio Profondo Eau de Parfum refillable bottle 100 ml",
+        "Giorgio Armani Acqua di Gio Profondo EDP 100 ml refillable bottle"
       ]
     }
   ]
