@@ -25859,6 +25859,141 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-VIRILIS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Virilis",
+      "name": "Virilis",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Virilis",
+      "aliases": [
+        "Virilis",
+        "Paris Corner Virilis"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZAHI",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zahi",
+      "name": "Zahi",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zahi",
+      "aliases": [
+        "Zahi",
+        "Paris Corner Zahi"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZAHRI-AMARA",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zahri Amara",
+      "name": "Zahri Amara",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zahri Amara",
+      "aliases": [
+        "Zahri Amara",
+        "Paris Corner Zahri Amara"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZAMAN-AL-ULA",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zaman Al Ula",
+      "name": "Zaman Al Ula",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zaman Al Ula",
+      "aliases": [
+        "Zaman Al Ula",
+        "Paris Corner Zaman Al Ula"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZARIYA",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zariya",
+      "name": "Zariya",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zariya",
+      "aliases": [
+        "Zariya",
+        "Paris Corner Zariya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZODIAC",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zodiac",
+      "name": "Zodiac",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zodiac",
+      "aliases": [
+        "Zodiac",
+        "Paris Corner Zodiac"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZODIAC-LUNARIS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zodiac Lunaris",
+      "name": "Zodiac Lunaris",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zodiac Lunaris",
+      "aliases": [
+        "Zodiac Lunaris",
+        "Paris Corner Zodiac Lunaris"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZODIAC-SOLMARIS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zodiac Solmaris",
+      "name": "Zodiac Solmaris",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zodiac Solmaris",
+      "aliases": [
+        "Zodiac Solmaris",
+        "Paris Corner Zodiac Solmaris"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-OFFICIAL-ZODIAC-STRATOS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zodiac Stratos",
+      "name": "Zodiac Stratos",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zodiac Stratos",
+      "aliases": [
+        "Zodiac Stratos",
+        "Paris Corner Zodiac Stratos"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
     }
   ],
   "variants": [
