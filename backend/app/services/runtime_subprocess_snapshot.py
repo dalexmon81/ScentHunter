@@ -15,7 +15,7 @@ def runtime_subprocess_snapshot(proc_root, current_pid):
                 cmdline = (
                     (entry / "cmdline")
                     .read_bytes()
-                    .replace(b"\\x00", b" ")
+                    .replace(b"\x00", b" ")
                     .decode("utf-8", "replace")
                     .strip()
                 )
