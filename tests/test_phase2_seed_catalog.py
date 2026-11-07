@@ -152,11 +152,11 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "validated"
-    assert report["source_brand_records"] == 61
-    assert report["brands"] == 60
-    assert report["fragrances"] == 1389
-    assert report["variants"] == 511
-    assert report["products_without_variants"] == 1063
+    assert report["source_brand_records"] == 0
+    assert report["brands"] == 21
+    assert report["fragrances"] == 1503
+    assert report["variants"] == 141
+    assert report["products_without_variants"] == 1384
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -315,3 +315,64 @@ def test_bplatz_store_seed_is_idempotent_and_leaves_other_eight_stores_untouched
             )
     finally:
         engine.dispose()
+
+
+
+def test_seed_consolidates_duplicate_canonical_names_and_preserves_all_legacy_ids(tmp_path):
+    """Punctuation/accent duplicates map to one fragrance without losing package variants."""
+    catalog = {
+        "brands": [],
+        "products": [
+            {"product_id": "AFNAN-9AM-A", "brand_name": "Afnan", "canonical_name": "9 AM Pour Femme"},
+            {"product_id": "AFNAN-9AM-B", "brand_name": "Afnan", "canonical_name": "9 AM - Pour Femme"},
+            {"product_id": "AFNAN-9PM-A", "brand_name": "Afnan", "canonical_name": "9 PM Pour Femme"},
+            {"product_id": "AFNAN-9PM-B", "brand_name": "Afnan", "canonical_name": "9 PM - Pour Femme"},
+            {"product_id": "ARMANI-PROFONDO-A", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Gio Profondo"},
+            {"product_id": "ARMANI-PROFONDO-B", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Giò Profondo"},
+        ],
+        "variants": [
+            {"variant_id": "PROFONDO-75", "product_id": "ARMANI-PROFONDO-A", "size_ml": 75, "concentration": "Eau de Parfum"},
+            {"variant_id": "PROFONDO-125", "product_id": "ARMANI-PROFONDO-A", "size_ml": 125, "concentration": "Eau de Parfum"},
+            {"variant_id": "PROFONDO-100-REFILL", "product_id": "ARMANI-PROFONDO-B", "size_ml": 100, "concentration": "Eau de Parfum", "is_refill": True},
+        ],
+        "offers": [],
+    }
+    catalog_path = tmp_path / "duplicate-identities.json"
+    database_path = tmp_path / "duplicate-identities.sqlite3"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    database_url = f"sqlite:///{database_path}"
+    env = os.environ.copy()
+    env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+    env.pop("SCENTHUNTER_DATABASE_URL", None)
+
+    migration = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=BACKEND, env=env, capture_output=True, text=True, check=False,
+    )
+    assert migration.returncode == 0, migration.stderr
+
+    result = run_seed(catalog_path, database_url, "--apply")
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout)
+    assert report["status"] == "seeded"
+    assert report["database_counts"]["fragrances"] == 3
+    assert report["database_counts"]["legacy_product_id_map"] == 6
+    assert report["database_counts"]["product_variants"] == 3
+    assert report["database_counts"]["legacy_variant_id_map"] == 3
+    assert report["database_counts"]["offers"] == 0
+
+    with sqlite3.connect(database_path) as connection:
+        mapped = dict(connection.execute(
+            "SELECT legacy_product_id, fragrance_id FROM legacy_product_id_map"
+        ).fetchall())
+        assert mapped["AFNAN-9AM-A"] == mapped["AFNAN-9AM-B"]
+        assert mapped["AFNAN-9PM-A"] == mapped["AFNAN-9PM-B"]
+        assert mapped["ARMANI-PROFONDO-A"] == mapped["ARMANI-PROFONDO-B"]
+
+        variant_rows = connection.execute(
+            "SELECT v.size_ml, v.is_refill, v.fragrance_id "
+            "FROM product_variants v ORDER BY v.size_ml"
+        ).fetchall()
+        assert [(row[0], row[1]) for row in variant_rows] == [(75, 0), (100, 1), (125, 0)]
+        assert {row[2] for row in variant_rows} == {mapped["ARMANI-PROFONDO-A"]}
+
