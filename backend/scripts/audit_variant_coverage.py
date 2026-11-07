@@ -74,6 +74,7 @@ def build_report(rows: list[dict]) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--csv", dest="csv_path", help="optional path for the missing-variant research queue")
+    parser.add_argument("--summary-only", action="store_true", help="omit the full missing-name list from stdout")
     args = parser.parse_args()
     engine = make_engine()
     try:
@@ -82,7 +83,8 @@ def main() -> int:
         with engine.connect() as connection:
             rows = [dict(row) for row in connection.execute(QUERY).mappings().all()]
         report = build_report(rows)
-        print(json.dumps(report, ensure_ascii=False, indent=2))
+        printable = {key: value for key, value in report.items() if key != "missing_variant_research"} if args.summary_only else report
+        print(json.dumps(printable, ensure_ascii=False, indent=2))
         if args.csv_path:
             path = Path(args.csv_path)
             path.parent.mkdir(parents=True, exist_ok=True)
