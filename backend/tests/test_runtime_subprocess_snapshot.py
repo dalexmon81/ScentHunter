@@ -9,8 +9,8 @@ def _process(root, pid, cmdline, stat):
 
 
 def test_snapshot_includes_python_process_and_skips_current_and_non_python(tmp_path):
-    _process(tmp_path, 10, b"python worker.py\\x00--queue\\x00", "10 (python) S 1 2")
-    _process(tmp_path, 11, b"/usr/bin/node server.js\\x00", "11 (node) S 1 2")
+    _process(tmp_path, 10, b"python worker.py\x00--queue\x00", "10 (python) S 1 2")
+    _process(tmp_path, 11, b"/usr/bin/node server.js\x00", "11 (node) S 1 2")
     _process(tmp_path, 12, b"python current.py", "12 (python) R 1 2")
 
     assert runtime_subprocess_snapshot(tmp_path, 12) == [
