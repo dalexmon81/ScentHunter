@@ -306,3 +306,43 @@ class StoreShippingRate(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class UserAccount(Base):
+    """Minimal account profile; passwords are stored only as secure hashes."""
+    __tablename__ = "user_accounts"
+    __table_args__ = (
+        CheckConstraint("email = lower(trim(email)) AND length(email) > 3", name="user_account_email_normalized"),
+        CheckConstraint("length(residence_country_code) = 2 AND residence_country_code = upper(residence_country_code)", name="user_account_residence_country_iso2"),
+        UniqueConstraint("email", name="uq_user_accounts_email"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    residence_country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    residence_postal_code: Mapped[str | None] = mapped_column(String(24))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class UserDeliveryDestination(Base):
+    """Saved delivery destination, distinct from the user's residence country."""
+    __tablename__ = "user_delivery_destinations"
+    __table_args__ = (
+        CheckConstraint("length(country_code) = 2 AND country_code = upper(country_code)", name="delivery_destination_country_iso2"),
+        Index("ix_user_delivery_destinations_user", "user_id"),
+        Index(
+            "uq_user_delivery_destinations_one_default", "user_id", unique=True,
+            postgresql_where=text("is_default = true"),
+            sqlite_where=text("is_default = 1"),
+        ),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    postal_code: Mapped[str | None] = mapped_column(String(24))
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
