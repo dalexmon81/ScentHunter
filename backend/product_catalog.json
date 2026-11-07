@@ -29747,6 +29747,132 @@
         80
       ],
       "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HARRIER-ABSOULTE-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Harrier Absoulte",
+      "name": "Harrier Absoulte",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Harrier Absoulte",
+      "aliases": [
+        "Harrier Absoulte",
+        "Paris Corner Harrier Absoulte"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WILD-AND-TOBACCO-EMIR-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Wild and Tobacco Emir",
+      "name": "Wild and Tobacco Emir",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Wild and Tobacco Emir",
+      "aliases": [
+        "Wild and Tobacco Emir",
+        "Paris Corner Wild and Tobacco Emir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir",
+      "formats_ml": [
+        75
+      ],
+      "collection_name": "Emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Lueur d'Espoir Noche",
+      "name": "Lueur d'Espoir Noche",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Lueur d'Espoir Noche",
+      "aliases": [
+        "Lueur d'Espoir Noche",
+        "Paris Corner Lueur d'Espoir Noche"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/lueur-noche",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/lueur-noche",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Lueur d'Espoir Arena",
+      "name": "Lueur d'Espoir Arena",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Lueur d'Espoir Arena",
+      "aliases": [
+        "Lueur d'Espoir Arena",
+        "Paris Corner Lueur d'Espoir Arena"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/lueur-arena",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/lueur-arena",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Lueur d'Espoir Ambre",
+      "name": "Lueur d'Espoir Ambre",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Lueur d'Espoir Ambre",
+      "aliases": [
+        "Lueur d'Espoir Ambre",
+        "Paris Corner Lueur d'Espoir Ambre"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/lueur-ambre",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/lueur-ambre",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Wayfarer Eau de Parfum",
+      "name": "Wayfarer Eau de Parfum",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Wayfarer Eau de Parfum",
+      "aliases": [
+        "Wayfarer Eau de Parfum",
+        "Paris Corner Wayfarer Eau de Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
     }
   ],
   "variants": [
@@ -31683,6 +31809,60 @@
         "Paris Corner Frenetic Homme Intense 80ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-HOMME-INTENSE-DETAIL11-80-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HARRIER-ABSOULTE-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Harrier Absoulte 100 ml",
+        "Paris Corner Harrier Absoulte 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-HARRIER-ABSOULTE-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WILD-AND-TOBACCO-EMIR-DETAIL11",
+      "size_ml": 75,
+      "aliases": [
+        "Wild and Tobacco Emir 75 ml",
+        "Paris Corner Wild and Tobacco Emir 75ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-WILD-AND-TOBACCO-EMIR-DETAIL11-75-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Lueur d'Espoir Noche 100 ml",
+        "Paris Corner Lueur d'Espoir Noche 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Lueur d'Espoir Arena 100 ml",
+        "Paris Corner Lueur d'Espoir Arena 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Lueur d'Espoir Ambre 100 ml",
+        "Paris Corner Lueur d'Espoir Ambre 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Wayfarer Eau de Parfum 100 ml",
+        "Paris Corner Wayfarer Eau de Parfum 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM-DETAIL11-100-000"
     }
   ]
 }
