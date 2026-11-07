@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,638 canonical product identity records; 157 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,643 canonical product identity records; 160 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 296 |
+| Armaf | 301 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,638** |
+| **Total** | **1,643** |
 
 ## Findings from live public sources
 
@@ -834,10 +834,45 @@ The page 17–20 listing sample surfaced two additional fragrance identities mis
 - **Ombre Oud Intense Black** — Eau de Parfum, 100ml
 - **Eter Desert Rose** — Eau de Parfum; the retrieved detail page did not state a size, so no variant was inferred.
 
-Both are now represented with official product evidence URLs. The catalog snapshot is now **1,638 identities, 157 variants, 296 Armaf identities**. Products without declared variants: **1,503**.
+Both are now represented with official product evidence URLs. The catalog snapshot is now **1,643 identities, 160 variants, 301 Armaf identities**. Products without declared variants: **1,505**.
 
 Official detail pages:
 - https://armaf.com/products/ombre-oud-intense-black
 - https://armaf.com/products/eter-desert-rose
 
 The Armaf audit remains a partial reconciliation; the source collection is dynamic and mixes fragrance products with body-care items and bundles.
+
+
+## Armaf official pages 13–20 — missing identities and explicit 100ml sizes
+
+Reviewed official collection pages 13–20 and compared fragrance listings with the current Armaf catalog. Most displayed fragrances were already represented. Five missing names were added with product-detail evidence:
+- **Eter Perfume Oasis** — Eau de Parfum
+- **Club de Nuit Private Key To My Dreams** — Eau de Toilette, 100ml
+- **Club de Nuit Private Key To My Soul** — Eau de Parfum, 100ml
+- **Niche Sapphire** — fragrance identity retained without an inferred concentration
+- **Profumi D'Art 13 Tanta Roba** — Eau de Parfum, 100ml
+
+Three explicit 100ml variant records were added for the two Private Key fragrances and Profumi D'Art 13. Eter Perfume Oasis and Niche Sapphire have no inferred size. No prices, stock or offers were imported.
+
+Current branch snapshot after this pass:
+- Product identities: **1,643**
+- Explicit variants: **160**
+- Armaf identities: **301**
+- Products without declared variants: **1,505**
+
+This remains a partial collection reconciliation. The official ARMAF collection mixes fragrances with body sprays, shower gels, deodorants and other body-care formats; only fragrance identities were included in this pass. Further pages and line-specific collections still require filtering and deduplication.
+
+Official sources:
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=13
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=14
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=15
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=16
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=17
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=18
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=19
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=20
+- https://armaf.com/products/eter-perfume-oasis
+- https://armaf.com/products/club-de-nuit-private-key-to-my-dreams-100ml
+- https://armaf.com/products/club-de-nuit-private-key-to-my-soul-100ml
+- https://armaf.com/products/niche-saphire
+- https://armaf.com/products/profumi-dart-13-e-tanta-roba
