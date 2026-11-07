@@ -92,10 +92,23 @@ def clear_browser_session(response: Response) -> None:
 
 def require_same_origin(request: Request) -> None:
     origin = request.headers.get("origin")
-    if not origin:
+    host = request.headers.get("host", "").strip().lower()
+    if not origin or not host:
         raise HTTPException(403, "csrf_origin_required")
-    expected = f"{request.url.scheme}://{request.url.netloc}"
-    if not hmac.compare_digest(origin.rstrip("/"), expected.rstrip("/")):
+    # Fly terminates public TLS before forwarding HTTP to the app. Compare the
+    # Origin host to the original Host header and require HTTPS, rather than
+    # trusting request.url.scheme behind the TLS-terminating proxy.
+    from urllib.parse import urlsplit
+    parsed = urlsplit(origin)
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.netloc.lower() != host
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path not in ("", "/")
+        or parsed.query
+        or parsed.fragment
+    ):
         raise HTTPException(403, "csrf_origin_mismatch")
 
 
