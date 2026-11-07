@@ -195,7 +195,7 @@ jobs:
 
       - name: Validate matcher and offer aggregation contracts
         run: |
-          pytest -q tests/test_canonical_matcher.py tests/test_catalog_offer_price_selection.py tests/test_offer_aggregator.py
+          pytest -q tests/test_canonical_matcher.py tests/test_catalog_offer_price_selection.py tests/test_offer_aggregator.py backend/tests/test_runtime_thread_snapshot.py
           if [ -f backend/tests/test_offer_ranking.py ]; then
             pytest -q backend/tests/test_offer_ranking.py
           fi
