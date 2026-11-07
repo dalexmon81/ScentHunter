@@ -871,3 +871,23 @@ def test_armaf_official_collection_membership_and_missing_collaborations_are_rec
     assert "Desert Rose For Eter" in products["Eter Desert Rose"]["aliases"]
     assert sum(1 for row in products.values() if row["canonical_name"] == "Odyssey Lichi Lush") == 0
     assert sum(1 for row in products.values() if row["canonical_name"] == "Lion's Club Courageux") == 0
+
+
+def test_armaf_official_us_first_four_all_fragrances_pages_resolve_to_existing_identities():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Armaf"
+    }
+    expected_detail_pages = {
+        "Club de Nuit Woman Extrait": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+        "Odyssey Pink Pop": "https://armaf.com/products/odyssey-pink-pop-edp",
+        "Spartacus": "https://armaf.com/products/spartacus-edp",
+    }
+    for name, url in expected_detail_pages.items():
+        row = products[name]
+        assert row["source_url"] == url
+        assert row["source_evidence_url"] == url
+        assert row["identity_status"] == "source_verified_name"
+    assert len(products) == 303
