@@ -26937,6 +26937,40 @@
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
       "source_evidence_url": "https://armaf.com/products/ego-tiger",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-OMBRE-OUD-INTENSE-BLACK",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Ombre Oud Intense Black",
+      "name": "Ombre Oud Intense Black",
+      "family_id": "armaf_catalog",
+      "family_name": "Ombre Oud Intense Black",
+      "aliases": [
+        "Ombre Oud Intense Black",
+        "Armaf Ombre Oud Intense Black"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/ombre-oud-intense-black"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ETER-DESERT-ROSE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Desert Rose",
+      "name": "Eter Desert Rose",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Desert Rose",
+      "aliases": [
+        "Eter Desert Rose",
+        "Armaf Eter Desert Rose"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/eter-desert-rose"
     }
   ],
   "variants": [
@@ -28527,6 +28561,15 @@
       "aliases": [
         "Ego Tigre 100 ml",
         "Armaf Ego Tigre 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-OMBRE-OUD-INTENSE-BLACK-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-OMBRE-OUD-INTENSE-BLACK",
+      "size_ml": 100,
+      "aliases": [
+        "Ombre Oud Intense Black 100 ml",
+        "Armaf Ombre Oud Intense Black 100ml"
       ]
     }
   ]
