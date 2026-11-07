@@ -7243,7 +7243,15 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-afro-leather-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum",
+      "gtins": [
+        "6291108736081"
+      ],
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-afro-leather-eau-de-parfum-for-everyone"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-35f825e0",
@@ -7355,7 +7363,15 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-anarch-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gtins": [
+        "6291107459080"
+      ],
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-anarch-eau-de-parfum-for-everyone"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-482df3c5",
@@ -7435,7 +7451,15 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-athena-eau-de-parfum-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gtins": [
+        "6290360599243"
+      ],
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-athena-eau-de-parfum-for-women"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7c1ece5a",
@@ -10549,6 +10573,30 @@
       "aliases": [
         "Shiyaaka Snow 100 ml",
         "Khadlaj Shiyaaka Snow 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-29189f4e",
+      "size_ml": 80,
+      "aliases": [
+        "Afro Leather 80 ml",
+        "Maison Alhambra Afro Leather 80 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-61a3375c",
+      "size_ml": 100,
+      "aliases": [
+        "Anarch 100 ml",
+        "Maison Alhambra Anarch 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-2fc0bad4",
+      "size_ml": 100,
+      "aliases": [
+        "Athena 100 ml",
+        "Maison Alhambra Athena 100 ml"
       ]
     }
   ]
