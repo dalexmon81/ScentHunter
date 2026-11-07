@@ -27,6 +27,16 @@
       "brand": "Paris Corner",
       "url": "https://www.pariscornerperfumes.com/",
       "note": "Official brand product pages used for each individual fragrance; where concentration is not explicit, it is left null."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "url": "https://arabiyatprestige.com/collections/arabiyat-prestige",
+      "note": "Official collection listing confirms listed EDP concentrations and 100ml sizes; individual product pages used where available."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/sabah-al-ward",
+      "note": "Official product pages identify Sabah Al Ward and Special Oud as Eau de Parfum 100ml."
     }
   ],
   "products": [
@@ -504,6 +514,94 @@
       "brand": "Paris Corner",
       "fragrance": "Wayfarer",
       "source_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Aariz",
+      "source_url": "https://arabiyatprestige.com/products/aariz-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Aariz Intense",
+      "source_url": "https://arabiyatprestige.com/collections/arabiyat-prestige/products/aariz-intense-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Aariz L’Absolu",
+      "source_url": "https://arabiyatprestige.com/collections/arabiyat-prestige",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Nashwa",
+      "source_url": "https://arabiyatprestige.com/products/nashwa-edp-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Yumun",
+      "source_url": "https://arabiyatprestige.com/products/arabiyat-prestige-yumun-edp-100ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Uhud",
+      "source_url": "https://arabiyatprestige.com/products/arabiyat-prestige-uhud-edp-100ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Sabah Al Ward",
+      "source_url": "https://www.alwataniah.com/products/sabah-al-ward",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Special Oud",
+      "source_url": "https://www.alwataniah.com/products/special-oud",
       "variants": [
         {
           "concentration": "Eau de Parfum",
