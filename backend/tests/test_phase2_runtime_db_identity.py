@@ -14,6 +14,9 @@ def test_configuration_source_reports_only_variable_name():
     assert configuration_source({
         "SCENTHUNTER_DATABASE_URL": "sqlite:////secret/second.db",
     }) == "SCENTHUNTER_DATABASE_URL"
+    assert configuration_source({
+        "DATABASE_URL": "postgresql://user:secret@host/db",
+    }) == "DATABASE_URL"
     assert configuration_source({}) == "application_default"
 
 

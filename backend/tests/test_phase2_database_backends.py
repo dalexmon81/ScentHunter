@@ -137,6 +137,9 @@ class Phase2DatabaseConfigurationTests(unittest.TestCase):
         self.assertEqual(configuration_source({
             "SCENTHUNTER_CATALOG_DATABASE_URL": "postgresql://user:secret@host/db",
         }), "SCENTHUNTER_CATALOG_DATABASE_URL")
+        self.assertEqual(configuration_source({
+            "DATABASE_URL": "postgresql://user:secret@host/db",
+        }), "DATABASE_URL")
         self.assertEqual(configuration_source({}), "application_default")
 
 

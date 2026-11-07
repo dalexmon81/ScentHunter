@@ -38,6 +38,9 @@ def database_url() -> str:
     value = (
         os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL")
         or os.environ.get("SCENTHUNTER_DATABASE_URL")
+        # Fly.io Postgres attachments expose the standard DATABASE_URL secret.
+        # Accept it only after the explicit ScentHunter-specific settings.
+        or os.environ.get("DATABASE_URL")
         or DEFAULT_DATABASE_URL
     ).strip()
     try:

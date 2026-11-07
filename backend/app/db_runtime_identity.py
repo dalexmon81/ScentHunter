@@ -13,6 +13,8 @@ def configuration_source(environ=None):
         return "SCENTHUNTER_CATALOG_DATABASE_URL"
     if env.get("SCENTHUNTER_DATABASE_URL"):
         return "SCENTHUNTER_DATABASE_URL"
+    if env.get("DATABASE_URL"):
+        return "DATABASE_URL"
     return "application_default"
 
 
