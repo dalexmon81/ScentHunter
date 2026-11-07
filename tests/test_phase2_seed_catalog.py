@@ -1140,22 +1140,22 @@ def test_paris_corner_sixteen_official_product_detail_pages_have_verified_varian
     }
     variants = {row["variant_id"]: row for row in raw["variants"]}
     expected = {
-        "Frenetic Men": ("https://www.pariscornerperfumes.com/products/frenetic-men", 100, "Paris Corner"),
-        "Frenetic Red Tempt": ("https://www.pariscornerperfumes.com/products/frenetic-red-tempt", 80, "Paris Corner"),
+        "Frenetic Men": ("https://www.pariscornerperfumes.com/products/frenetic-men", 100, "Unclassified"),
+        "Frenetic Red Tempt": ("https://www.pariscornerperfumes.com/products/frenetic-red-tempt", 80, "Unclassified"),
         "Frenetic Tobacco Honey": ("https://www.pariscornerperfumes.com/products/frenetic-tobacco-honey", 100, "Emir"),
-        "Identity Oud Crescent": ("https://www.pariscornerperfumes.com/products/identity-oud-crescent", 100, "Paris Corner"),
-        "Identity Rose & Leather": ("https://www.pariscornerperfumes.com/products/identity-rose-leather", 100, "Paris Corner"),
-        "Identity Unique Portrait": ("https://www.pariscornerperfumes.com/products/identity-unique-portrait", 100, "Paris Corner"),
-        "Intense Oud": ("https://www.pariscornerperfumes.com/products/intense-oud-arabian", 100, "Paris Corner"),
-        "Intense Oud Saffron": ("https://www.pariscornerperfumes.com/products/intense-oud-saffron", 100, "Paris Corner"),
+        "Identity Oud Crescent": ("https://www.pariscornerperfumes.com/products/identity-oud-crescent", 100, "Unclassified"),
+        "Identity Rose & Leather": ("https://www.pariscornerperfumes.com/products/identity-rose-leather", 100, "Unclassified"),
+        "Identity Unique Portrait": ("https://www.pariscornerperfumes.com/products/identity-unique-portrait", 100, "Unclassified"),
+        "Intense Oud": ("https://www.pariscornerperfumes.com/products/intense-oud-arabian", 100, "Unclassified"),
+        "Intense Oud Saffron": ("https://www.pariscornerperfumes.com/products/intense-oud-saffron", 100, "Unclassified"),
         "Le Charme": ("https://www.pariscornerperfumes.com/products/la-charme-emir", 100, "Emir"),
         "Protocol Edition": ("https://www.pariscornerperfumes.com/products/protocol-edition", 100, "Pendora Scents"),
         "Resurrection": ("https://www.pariscornerperfumes.com/products/resurrection", 100, "Emir"),
-        "The Triumphant Sapphire": ("https://www.pariscornerperfumes.com/products/the-triumphant-sapphire", 100, "Paris Corner"),
-        "Toxic Heart": ("https://www.pariscornerperfumes.com/products/toxic-heart", 100, "Paris Corner"),
+        "The Triumphant Sapphire": ("https://www.pariscornerperfumes.com/products/the-triumphant-sapphire", 100, "Unclassified"),
+        "Toxic Heart": ("https://www.pariscornerperfumes.com/products/toxic-heart", 100, "Unclassified"),
         "You're Drugged Emir": ("https://www.pariscornerperfumes.com/products/youre-drugged-emir", 100, "Emir"),
-        "Frenetic Delicieuse": ("https://www.pariscornerperfumes.com/products/frenetic-delicieuse", 80, "Paris Corner"),
-        "Frenetic Homme Intense": ("https://www.pariscornerperfumes.com/products/frenetichomme-intense", 80, "Paris Corner"),
+        "Frenetic Delicieuse": ("https://www.pariscornerperfumes.com/products/frenetic-delicieuse", 80, "Unclassified"),
+        "Frenetic Homme Intense": ("https://www.pariscornerperfumes.com/products/frenetichomme-intense", 80, "Unclassified"),
     }
     assert len(expected) == 16
     for name, (url, size, line) in expected.items():
