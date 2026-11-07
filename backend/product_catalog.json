@@ -949,11 +949,13 @@
       "family_name": "Mohra",
       "aliases": [
         "Mohra",
-        "Maison Asrar Mohra"
+        "Maison Asrar Mohra",
+        "Mohra Oud"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "source_evidence_url": "https://maisonasrar.com/products/mohrab",
+      "source_product_url": "https://maisonasrar.com/products/mohrab"
     },
     {
       "product_id": "SH-MAISON-ASRAR-e471ac92",
