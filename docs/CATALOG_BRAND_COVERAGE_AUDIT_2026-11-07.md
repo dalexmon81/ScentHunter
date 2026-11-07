@@ -999,3 +999,24 @@ Official sources:
 - Product IDs unique; variant IDs unique; no orphan variants.
 
 The first CI run after adding the six Khadlaj variants failed because two existing tests still asserted the previous snapshot (165 variants and 1,504 products without variants). Those assertions were updated to the actual catalog snapshot (171 and 1,498). A new CI run for the corrected test commit is pending/not yet visible at the time of this note. Do not report the new CI as passing until its run completes successfully.
+
+
+## Paris Corner official product-line tagging — 2026-11-07
+
+A direct review of the official line collections confirms that **Emir, Pendora Scents, Ministry of Gourmand and North Stag are product lines/series under the Paris Corner parent brand**, not reasons to overwrite the parent brand field. The catalog therefore preserves `brand: "Paris Corner"` and records the verified line in `collection_name`.
+
+This pass tagged 21 existing canonical identities using official collection membership:
+- **Emir:** 10 identities — Acadia Intenso Emir, Arcana, Atomise Intensive Men, Camp Fire Emir Factory Edition, Cedrat Essence Emir, Celestial Emir, Cherry Cola, Cherry Gossip, Cosmopolitan Dubai, Cosmopolitan London.
+- **Pendora Scents:** 6 identities — Attractus, Blackberry Wish, Camaro Homme Intense, Charuto Mysterious Tobacco, Charuto Regal Reserve, Cornflower Delight.
+- **Ministry of Gourmand:** 4 identities — Banana Bliss, Cake Temptation, Choco Cult, Coconut Lagoon.
+- **North Stag:** 1 identity — North Stag Neuf IX.
+
+Each tagged identity now points to the corresponding official line collection as source and evidence. Regression coverage asserts the line tag, parent brand and official source URL. No product identity was added, removed or renamed in this pass.
+
+Official collection sources:
+- Emir: https://www.pariscornerperfumes.com/collections/emir-1
+- Pendora Scents: https://www.pariscornerperfumes.com/collections/pendora-scents-1
+- Ministry of Gourmand: https://www.pariscornerperfumes.com/collections/ministry-of-gourmand
+- North Stag: https://www.pariscornerperfumes.com/collections/north-stag-1
+
+This is a **partial line reconciliation**, not a claim that all 129 Paris Corner-labelled identities have been assigned to a verified product line. Other identities remain in the parent brand until their line membership is verified.
