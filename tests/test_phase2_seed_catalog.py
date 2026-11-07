@@ -756,3 +756,42 @@ def test_khadlaj_official_perfume_spray_detail_pages_and_sizes_are_traceable():
     wild_variant_id = f"SHV-{wild['product_id']}-60-000"
     assert variants[wild_variant_id]["size_ml"] == 60
     assert variants[wild_variant_id]["concentration"] == "Eau de Parfum"
+
+
+def test_paris_corner_official_product_lines_are_tagged_without_changing_parent_brand():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+    }
+    expected = {
+        "Emir": {
+            "Acadia Intenso Emir", "Arcana", "Atomise Intensive Men",
+            "Camp Fire Emir Factory Edition", "Cedrat Essence Emir",
+            "Celestial Emir", "Cherry Cola", "Cherry Gossip",
+            "Cosmopolitan Dubai", "Cosmopolitan London",
+        },
+        "Pendora Scents": {
+            "Attractus", "Blackberry Wish", "Camaro Homme Intense",
+            "Charuto Mysterious Tobacco", "Charuto Regal Reserve",
+            "Cornflower Delight",
+        },
+        "Ministry of Gourmand": {
+            "Banana Bliss", "Cake Temptation", "Choco Cult", "Coconut Lagoon",
+        },
+        "North Stag": {"North Stag Neuf IX"},
+    }
+    source_urls = {
+        "Emir": "https://www.pariscornerperfumes.com/collections/emir-1",
+        "Pendora Scents": "https://www.pariscornerperfumes.com/collections/pendora-scents-1",
+        "Ministry of Gourmand": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+        "North Stag": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+    }
+    for line, names in expected.items():
+        for name in names:
+            row = products[name]
+            assert row["brand"] == "Paris Corner"
+            assert row["collection_name"] == line
+            assert row["source_url"] == source_urls[line]
+            assert row["source_evidence_url"] == source_urls[line]
