@@ -36,15 +36,7 @@ jobs:
         env:
           PYTHONPATH: backend
         run: |
-          pytest -q \
-            backend/tests/test_celery_ingestion_pipeline.py \
-            backend/tests/test_connector_ingestion_worker.py \
-            backend/tests/test_offer_matching_worker.py \
-            backend/tests/test_offer_promotion_worker.py \
-            backend/tests/test_product_normalization.py \
-            backend/tests/test_store_connector_contract.py \
-            backend/tests/test_seed_catalog_store_safety.py \\
-            backend/tests/test_catalog_first_api.py
+          pytest -q backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py backend/tests/test_product_normalization.py backend/tests/test_store_connector_contract.py backend/tests/test_seed_catalog_store_safety.py backend/tests/test_catalog_first_api.py
       - name: Verify PostgreSQL fail-closed startup policy
         env:
           PYTHONPATH: backend
