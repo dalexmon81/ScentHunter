@@ -199,6 +199,14 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - The staging search endpoint `/search-start?q=Sauvage` returned `status=completed`, 4 product identities, and included Dior Sauvage. The public HTTPS frontend and `/healthz` returned HTTP 200. This verifies catalog identity search, not purchasable offers or retailer coverage.
 - Fly process topology verified: one API machine, one worker machine, zero Beat machines. Worker runs non-root; broker ping and queued-task smoke passed.
 - No live retailer credentials were configured, no retailer was activated, and no offer data was fabricated. Public staging currently demonstrates a populated product catalog but cannot yet compare prices.
-- The authorization gate implementation and migration are deployed to isolated staging. A protected operator workflow for entering/reviewing written grants remains open; do not add an unauthenticated grant-management endpoint.
+- The authorization gate implementation and migration are deployed to isolated staging. Added a local operator-only CLI for listing, recording and revoking grants; mutation requires PostgreSQL, HTTPS evidence, timezone-aware validity, explicit allowed scopes and a deliberate environment confirmation. It is not an HTTP endpoint. An authenticated multi-user admin UI/role model remains open; do not add an unauthenticated grant-management endpoint. CLI regression tests have been added and are awaiting the latest CI run.
 - PR #424 remains open and draft, not merged. No production configuration, production database, production traffic, or production deployment was changed.
 - These checks prove this isolated staging snapshot only. They do not complete the remaining live-retailer authorization/coverage, freshness, alert/recovery, measured match precision/recall, real shadow comparison or traffic rollout work. Do not mark the entire catalog-first migration complete.
+
+
+## Operator authorization workflow follow-up (2026-11-07)
+
+- Added `backend/scripts/manage_store_authorization.py` with read-only listing and operator-only approve/revoke commands. Mutations refuse non-PostgreSQL databases and require the explicit `SCENTHUNTER_OPERATOR_CONFIRM` acknowledgement.
+- Approval requires an exact store slug, permitted collection method, one or more enumerated scopes, written authorization reference, HTTPS evidence URL and approver identity. Optional validity timestamps must include a timezone; expiry must be later than validity start. `price_stock` and `product_discovery` each require `offer_data`. Revocation changes status and timestamp while preserving the record.
+- Added validation tests in `backend/tests/test_manage_store_authorization_cli.py` and included them in vertical-slice CI and the staging pre-deploy test suite. Latest CI results are pending; this CLI has not yet been used to grant any retailer permission.
+- The CLI is intended for a trusted operator shell only. No unauthenticated HTTP grant-management endpoint was added. An authenticated role-based admin UI remains future work.
