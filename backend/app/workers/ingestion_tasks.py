@@ -79,7 +79,7 @@ def _json_safe(value: Any):
         return value
     return repr(value)[:2000]
 
-def _require_store_authorization(session, store: Store, scope: str) -> StoreAuthorization:
+def _require_store_authorization(session, store: Store, scope: str, reference: str | None = None) -> StoreAuthorization:
     """Fail closed unless a current, approved permission explicitly grants scope."""
     now = datetime.now(timezone.utc)
     grant = session.scalar(
@@ -101,6 +101,8 @@ def _require_store_authorization(session, store: Store, scope: str) -> StoreAuth
         raise PermissionError(f"store_authorization_scope_missing:{store.slug}:{scope}")
     if not (grant.authorization_reference or "").strip():
         raise PermissionError(f"store_authorization_reference_missing:{store.slug}")
+    if reference is not None and grant.authorization_reference != reference:
+        raise PermissionError(f"store_authorization_reference_mismatch:{store.slug}")
     return grant
 
 
@@ -115,6 +117,7 @@ def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[d
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 raise ValueError(f"connector_store_not_active:{store_key}")
+            _require_store_authorization(session, store, "offer_data")
             for artifact in artifacts:
                 raw = artifact.get("data")
                 fmt = str(artifact.get("format") or "json").lower()
@@ -162,6 +165,7 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 raise ValueError(f"connector_store_not_active:{store_key}")
+            _require_store_authorization(session, store, "offer_data")
             payload = record.to_dict()
             # Keep fields at the root for existing matcher/promotion contracts;
             # preserve source evidence separately for replay and audit.
@@ -268,6 +272,8 @@ def ingest_bounded_bplatz_product_url(self, product_url: str, authorization_refe
                 raise ValueError("connector_store_not_configured:bplatz")
             if store.status != "active":
                 return {"store": store_key, "status": "inactive", "staged": 0}
+            _require_store_authorization(session, store, "single_product_fetch", authorization_reference)
+            _require_store_authorization(session, store, "offer_data", authorization_reference)
             run = IngestionRun(store_id=store.id, status="running", errors=[])
             session.add(run)
             session.flush()
@@ -360,6 +366,8 @@ def discover_store_products(self, store_key: str):
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 return {"store": store_key, "status": "inactive", "queued": 0}
+            _require_store_authorization(session, store, "product_discovery")
+            _require_store_authorization(session, store, "offer_data")
             run = IngestionRun(store_id=store.id, status="running", errors=[])
             session.add(run)
             session.flush()
@@ -430,6 +438,15 @@ def discover_store_products(self, store_key: str):
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.fetch_store_offers")
 def fetch_store_offers(self, store_key: str, product_key: str, discovery_evidence: dict | None = None):
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_key))
+            if store is None or store.status != "active":
+                raise PermissionError(f"connector_store_not_active_or_configured:{store_key}")
+            _require_store_authorization(session, store, "offer_data")
+    finally:
+        factory.kw["bind"].dispose()
     connector = get_connector(store_key)
     records = _run(connector.fetch_offers(product_key))
     ids = []
@@ -571,6 +588,10 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
             ).first()
         if refreshable is None:
             return {"store": store_key, "offer_id": offer_id, "status": "not_refreshable"}
+        store_row = session.scalar(select(Store).where(Store.slug == store_key))
+        if store_row is None:
+            raise ValueError(f"connector_store_not_configured:{store_key}")
+        _require_store_authorization(session, store_row, "price_stock")
         external_product_id, product_url = refreshable
     finally:
         factory.kw["bind"].dispose()
