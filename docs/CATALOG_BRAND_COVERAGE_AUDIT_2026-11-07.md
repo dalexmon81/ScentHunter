@@ -1304,3 +1304,39 @@ Official sources:
 - New tests cover Veteran Oud source attribution and all 105 parent collection identities.
 - CI for the latest catalog/test/docs commits must be checked before describing these tests as passed.
 
+## Pass 12 — Paris Corner official product-detail verification (2026-11-07)
+
+The official 252-item all-products feed exposed additional fragrances not represented in the previous catalog snapshot. Verified 16 of these directly on official Paris Corner product-detail pages and added each with one source-confirmed size variant:
+
+| Identity | Size | Official detail page |
+|---|---:|---|
+| Frenetic Men | 100 ml | https://www.pariscornerperfumes.com/products/frenetic-men |
+| Frenetic Red Tempt | 80 ml | https://www.pariscornerperfumes.com/products/frenetic-red-tempt |
+| Frenetic Tobacco Honey | 100 ml | https://www.pariscornerperfumes.com/products/frenetic-tobacco-honey |
+| Identity Oud Crescent | 100 ml | https://www.pariscornerperfumes.com/products/identity-oud-crescent |
+| Identity Rose & Leather | 100 ml | https://www.pariscornerperfumes.com/products/identity-rose-leather |
+| Identity Unique Portrait | 100 ml | https://www.pariscornerperfumes.com/products/identity-unique-portrait |
+| Intense Oud | 100 ml | https://www.pariscornerperfumes.com/products/intense-oud-arabian |
+| Intense Oud Saffron | 100 ml | https://www.pariscornerperfumes.com/products/intense-oud-saffron |
+| Le Charme | 100 ml | https://www.pariscornerperfumes.com/products/la-charme-emir |
+| Protocol Edition | 100 ml | https://www.pariscornerperfumes.com/products/protocol-edition |
+| Resurrection | 100 ml | https://www.pariscornerperfumes.com/products/resurrection |
+| The Triumphant Sapphire | 100 ml | https://www.pariscornerperfumes.com/products/the-triumphant-sapphire |
+| Toxic Heart | 100 ml | https://www.pariscornerperfumes.com/products/toxic-heart |
+| You're Drugged Emir | 100 ml | https://www.pariscornerperfumes.com/products/youre-drugged-emir |
+| Frenetic Delicieuse | 80 ml | https://www.pariscornerperfumes.com/products/frenetic-delicieuse |
+| Frenetic Homme Intense | 80 ml | https://www.pariscornerperfumes.com/products/frenetichomme-intense |
+
+Collection attribution is limited to evidence available on the official page: Frenetic Tobacco Honey, Le Charme, Resurrection and You're Drugged Emir are assigned to Emir; Protocol Edition is assigned to Pendora Scents; the remaining items are attributed to the Paris Corner parent collection. The source detail pages establish the listed sizes. Concentration and GTIN remain unset where the pages did not establish them. No commercial offers, prices or stock were created.
+
+A regression test checks all 16 product-detail URLs, line attribution, sizes and variant relationships.
+
+### Pass 12 result
+- New canonical identities: **16**.
+- New explicit variants: **16**.
+- Paris Corner branch count: **244** (previously 228).
+- Catalog snapshot: **1,766 canonical identities; 193 explicit variants**.
+- These are product identity/variant records only; they do not establish current retailer availability.
+- The official all-products feed still needs a full name-by-name reconciliation. The 252 feed count includes product types and lines that require classification; not every listing should become a standalone perfume identity.
+- CI for the latest branch head must complete before treating the new regression test as passed.
+
