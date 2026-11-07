@@ -389,3 +389,176 @@ def test_legacy_sync_runner_is_not_part_of_the_production_celery_worker():
         "connector_ingestion" not in task_name
         for task_name in celery_app.conf.task_routes
     )
+
+
+def test_celery_validation_task_resolves_string_raw_uuid_and_queues_matching(monkeypatch, tmp_path):
+    from datetime import datetime, timezone
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'validation-task.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        store = Store(name="Fake Store", slug="fake-store", currency="EUR", status="active")
+        session.add(store)
+        session.flush()
+        raw = IngestionRaw(
+            store_id=store.id,
+            external_product_id="sku-validation-1",
+            status="pending",
+            raw_payload={
+                "store": "fake-store",
+                "externalProductId": "sku-validation-1",
+                "brand": "Dior",
+                "fragrance": "Sauvage",
+                "concentration": "edp",
+                "sizeMl": 100,
+                "title": "Dior Sauvage Eau de Parfum 100 ml",
+                "url": "https://shop.example/sauvage-100",
+                "price": 95.0,
+                "currency": "EUR",
+                "availability": "in_stock",
+                "capturedAt": datetime.now(timezone.utc).isoformat(),
+                "source": "fixture",
+            },
+        )
+        session.add(raw)
+        session.commit()
+        raw_id = str(raw.id)
+
+    queued = []
+    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    monkeypatch.setattr(
+        ingestion_tasks.match_offer_to_variant,
+        "apply_async",
+        lambda **kwargs: queued.append(kwargs),
+    )
+
+    result = ingestion_tasks.validate_offer.run(raw_id)
+
+    assert result == {"raw_id": raw_id, "status": "validated"}
+    assert queued == [{"args": [raw_id], "queue": "matching"}]
+    with factory() as session:
+        persisted = session.get(IngestionRaw, __import__("uuid").UUID(raw_id))
+        assert persisted.status == "pending"
+        assert persisted.rejection_reason is None
+    engine.dispose()
+
+
+def test_celery_discovery_to_publication_executes_every_pipeline_task(monkeypatch, tmp_path):
+    """Exercise the production Celery task chain against an isolated fixture DB."""
+    from app.models import (
+        Brand, Fragrance, MatchAudit, Offer, PriceHistory, ProductVariant,
+    )
+    from app.workers import ingestion_tasks
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'celery-lifecycle.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    assert factory.kw["bind"] is engine
+    with factory() as session:
+        brand = Brand(
+            name="Dior", slug="dior", normalized_name="christian dior",
+        )
+        session.add(brand)
+        session.flush()
+        fragrance = Fragrance(
+            brand_id=brand.id, name="Sauvage", slug="sauvage",
+        )
+        session.add(fragrance)
+        session.flush()
+        variant = ProductVariant(
+            fragrance_id=fragrance.id,
+            concentration="edp",
+            size_ml=100,
+            canonical_key="christian-dior|sauvage|edp|100|standard",
+        )
+        store = Store(
+            name="Fake Store", slug="fake-store", domain="shop.example",
+            country="FR", currency="EUR", offer_ttl_minutes=1440,
+            status="active",
+        )
+        session.add_all([variant, store])
+        session.commit()
+        variant_id = variant.id
+
+    queued = {"normalize": [], "validate": [], "match": [], "promote": []}
+    created_factories = []
+
+    def make_fixture_session_factory():
+        created_factories.append(factory)
+        return factory
+
+    monkeypatch.setattr(
+        ingestion_tasks, "make_session_factory", make_fixture_session_factory,
+    )
+    monkeypatch.setattr(ingestion_tasks, "get_connector", lambda _key: FakeConnector())
+    monkeypatch.setattr(ingestion_tasks, "_run", lambda coroutine: asyncio.run(coroutine))
+    monkeypatch.setattr(
+        ingestion_tasks.normalize_offer, "apply_async",
+        lambda **kwargs: queued["normalize"].append(kwargs),
+    )
+    monkeypatch.setattr(
+        ingestion_tasks.validate_offer, "apply_async",
+        lambda **kwargs: queued["validate"].append(kwargs),
+    )
+    monkeypatch.setattr(
+        ingestion_tasks.match_offer_to_variant, "apply_async",
+        lambda **kwargs: queued["match"].append(kwargs),
+    )
+    monkeypatch.setattr(
+        ingestion_tasks.promote_matched_offers_task, "apply_async",
+        lambda **kwargs: queued["promote"].append(kwargs),
+    )
+
+    discovery = ingestion_tasks.discover_store_products.run("fake-store")
+    assert discovery["discovered"] == 1
+    assert discovery["offers_staged"] == 1
+    assert len(discovery["raw_ids"]) == 1
+    raw_id = discovery["raw_ids"][0]
+    assert queued["normalize"] == [
+        {"args": [raw_id], "queue": "validation"},
+    ]
+
+    normalized = ingestion_tasks.normalize_offer.run(raw_id)
+    assert normalized == {"raw_id": raw_id, "status": "normalized"}
+    assert queued["validate"] == [
+        {"args": [raw_id], "queue": "validation"},
+    ]
+
+    validated = ingestion_tasks.validate_offer.run(raw_id)
+    assert validated == {"raw_id": raw_id, "status": "validated"}
+    assert queued["match"] == [
+        {"args": [raw_id], "queue": "matching"},
+    ]
+
+    matched = ingestion_tasks.match_offer_to_variant.run(raw_id)
+    assert matched == {"raw_id": raw_id, "status": "matched"}
+    assert queued["promote"] == [{"queue": "offers"}]
+
+    factory_count_before_promotion = len(created_factories)
+    promoted = ingestion_tasks.promote_matched_offers_task.run()
+    assert promoted == {"processed": 1, "published": 1, "blocked": 0}
+    # Promotion must construct exactly one sessionmaker for its own task.
+    assert len(created_factories) == factory_count_before_promotion + 1
+    assert created_factories[-1] is factory
+
+    with factory() as session:
+        raw = session.get(IngestionRaw, __import__("uuid").UUID(raw_id))
+        offer = session.scalar(select(Offer))
+        assert raw.status == "promoted"
+        assert raw.product_variant_id == variant_id
+        assert offer is not None
+        assert offer.status == "active"
+        assert offer.product_variant_id == variant_id
+        assert offer.external_product_id == "sku-1"
+        assert offer.price == Decimal("95.00")
+        assert offer.currency == "EUR"
+        assert offer.availability == "in_stock"
+        assert offer.url == "https://shop.example/product/sku-1"
+        assert len(list(session.scalars(select(PriceHistory)))) == 1
+        assert len(list(session.scalars(select(MatchAudit)))) == 1
+        run = session.scalar(select(IngestionRun))
+        assert run.status == "completed"
+        assert run.products_discovered == 1
+    engine.dispose()

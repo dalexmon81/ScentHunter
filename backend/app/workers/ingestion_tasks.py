@@ -463,8 +463,9 @@ def normalize_offer(self, raw_id: str):
 def validate_offer(self, raw_id: str):
     factory = make_session_factory()
     try:
+        raw_uuid = UUID(str(raw_id))
         with factory() as session:
-            raw = session.get(IngestionRaw, raw_id)
+            raw = session.get(IngestionRaw, raw_uuid)
             if raw is None or raw.status not in {"pending", "unmatched"}:
                 return {"raw_id": raw_id, "status": "skipped"}
             payload = raw.raw_payload or {}
@@ -507,7 +508,13 @@ def match_offer_to_variant(self, raw_id: str):
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.promote_matched_offers_task")
 def promote_matched_offers_task(self, limit: int = 100):
     from app.workers.offer_promotion import promote_matched_offers
-    return promote_matched_offers(make_session_factory, limit=limit)
+    # Promotion expects a SQLAlchemy sessionmaker, not the factory function.
+    # Keep the same per-task engine lifecycle used by the other ingestion tasks.
+    factory = make_session_factory()
+    try:
+        return promote_matched_offers(factory, limit=limit)
+    finally:
+        factory.kw["bind"].dispose()
 
 def enqueue_product_detail_refresh(store_key: str, offer_id: str) -> str:
     """Queue a fresh price/stock check when a product detail is opened."""
