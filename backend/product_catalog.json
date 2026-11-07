@@ -29873,6 +29873,69 @@
         100
       ],
       "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Empire de la Rouge",
+      "name": "Empire de la Rouge",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Empire de la Rouge",
+      "aliases": [
+        "Empire de la Rouge",
+        "Paris Corner Empire de la Rouge"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/empire-de-la-rouge",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/empire-de-la-rouge",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIVANT-SUNLIT-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Vivant Sunlit",
+      "name": "Vivant Sunlit",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Vivant Sunlit",
+      "aliases": [
+        "Vivant Sunlit",
+        "Paris Corner Vivant Sunlit"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/vivant-sunlit",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vivant-sunlit",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WAYFARER-INFUSION-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Wayfarer Infusion",
+      "name": "Wayfarer Infusion",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Wayfarer Infusion",
+      "aliases": [
+        "Wayfarer Infusion",
+        "Paris Corner Wayfarer Infusion"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/wayfarer-infusion",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wayfarer-infusion",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Unclassified"
     }
   ],
   "variants": [
@@ -31863,6 +31926,33 @@
         "Paris Corner Wayfarer Eau de Parfum 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Empire de la Rouge 100 ml",
+        "Paris Corner Empire de la Rouge 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIVANT-SUNLIT-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Vivant Sunlit 100 ml",
+        "Paris Corner Vivant Sunlit 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-VIVANT-SUNLIT-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WAYFARER-INFUSION-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Wayfarer Infusion 100 ml",
+        "Paris Corner Wayfarer Infusion 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-DETAIL11-100-000"
     }
   ]
 }
