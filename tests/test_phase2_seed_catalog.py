@@ -862,6 +862,8 @@ def test_armaf_official_collection_membership_and_missing_collaborations_are_rec
         row = products[name]
         assert row["collection_name"] == line
         assert row["collection_source_url"] == official[line]
+    assert products["Club de Nuit Intense Man"]["source_url"] == "https://armaf.com/products/club-de-nuit-intense-for-man"
+    assert products["Club de Nuit Intense Man"]["source_evidence_url"] == "https://armaf.com/products/club-de-nuit-intense-for-man"
     assert len(products) == 303
     # Regional source spellings were consolidated into their current official product identities.
     assert "Odyssey Lichi Lush" in products["Odyssey Li'Chi Lush EDP"]["aliases"]
