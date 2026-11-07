@@ -1,9 +1,9 @@
-name: Deploy staging worker # verify refreshed Fly secrets
+name: Deploy staging catalog API and worker
 on:
   workflow_dispatch:
     inputs:
       confirm_staging_deploy:
-        description: "Type yes to deploy the isolated staging worker"
+        description: "Type yes to deploy the isolated staging API and worker"
         required: true
         type: choice
         options:
@@ -35,7 +35,8 @@ jobs:
             backend/tests/test_offer_promotion_worker.py \
             backend/tests/test_product_normalization.py \
             backend/tests/test_store_connector_contract.py \
-            backend/tests/test_seed_catalog_store_safety.py
+            backend/tests/test_seed_catalog_store_safety.py \\
+            backend/tests/test_catalog_first_api.py
       - name: Verify PostgreSQL fail-closed startup policy
         env:
           PYTHONPATH: backend
@@ -60,16 +61,16 @@ jobs:
         run: |
           flyctl secrets list --app scenthunter-staging-workers
           flyctl secrets deploy --app scenthunter-staging-workers
-      - name: Deploy isolated worker
+      - name: Deploy isolated catalog API and worker
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-        run: flyctl deploy --config fly.staging-workers.toml --remote-only --yes
-      - name: Keep staging footprint to one worker and zero Beat machines
+        run: flyctl deploy --config fly.staging-catalog.toml --remote-only --yes
+      - name: Keep staging footprint to one API, one worker and zero Beat machines
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-        run: flyctl scale count app=1 beat=0 --app scenthunter-staging-workers --yes
+        run: flyctl scale count app=1 beat=0 web=1 --app scenthunter-staging-workers --yes
       - name: Allow worker startup and broker connection
         run: sleep 10
       - name: Read-only staging catalog schema and store safety audit
@@ -78,7 +79,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
         run: |
           set -euo pipefail
-          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started")][0].id')"
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
             echo "::error::No started machine for read-only catalog audit."
             exit 1
@@ -116,14 +117,6 @@ jobs:
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/seed_catalog.py --apply"
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; q=\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand AND f.slug=:slug AND pv.canonical_key=:key\"; dior=c.execute(text(q),{\"brand\":\"christian dior\",\"slug\":\"sauvage\",\"key\":\"christian-dior|sauvage|edp|100|standard\"}).scalar_one(); print({\"counts\":counts,\"dior_sauvage_edp_100ml_matches\":dior}); assert counts[\"brands\"]==60 and counts[\"fragrances\"]>0 and counts[\"product_variants\"]==512 and counts[\"legacy_product_id_map\"]==1389 and counts[\"legacy_variant_id_map\"]==512 and counts[\"stores\"]==0 and counts[\"offers\"]==0 and dior==1; c.close(); e.dispose()'"
-      - name: Report Notino credential presence without exposing values or calling the feed
-        env:
-          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
-          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import os; keys=(\"NOTINO_CJ_FEED_URL\",\"NOTINO_CJ_FEED_USERNAME\",\"NOTINO_CJ_FEED_PASSWORD\"); print({key:bool(os.environ.get(key)) for key in keys})'"
       - name: Verify one non-root worker and zero Beat machines
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
@@ -133,10 +126,12 @@ jobs:
           machines="$(flyctl machines list --app scenthunter-staging-workers --json)"
           app_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")] | length')"
           beat_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "beat")] | length')"
-          if [ "$app_count" -ne 1 ] || [ "$beat_count" -ne 0 ]; then
-            echo "::error::Expected exactly one started worker and no started Beat machine."
+          web_count="$(printf '%s' "$machines" | jq '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "web")] | length')"
+          if [ "$app_count" -ne 1 ] || [ "$beat_count" -ne 0 ] || [ "$web_count" -ne 1 ]; then
+            echo "::error::Expected one API, one worker and zero Beat machines."
             exit 1
           fi
+          echo "Staging process counts: web=$web_count app=$app_count beat=$beat_count"
           worker_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           process_info="$(flyctl ssh console --app scenthunter-staging-workers --machine "$worker_id" --command "python -c 'import glob,os,sys; entries=[(p,open(p,\"rb\").read().replace(bytes([0]),b\" \").decode(errors=\"ignore\"),open(\"/proc/\"+p.split(\"/\")[2]+\"/status\").read()) for p in glob.glob(\"/proc/[0-9]*/cmdline\") if p.split(\"/\")[2]!=str(os.getpid())]; found=[(p.split(\"/\")[2],next(x.split()[1] for x in st.splitlines() if x.startswith(\"Uid:\")),cmd) for p,cmd,st in entries if \"app.workers.celery_app:celery_app worker\" in cmd]; print(found); sys.exit(0 if found and all(uid==\"10001\" for _,uid,_ in found) else 1)'")"
           printf '%s\\n' "$process_info"
@@ -174,6 +169,18 @@ jobs:
             echo "::error::Queued Celery smoke task did not return a successful result."
             exit 1
           fi
+      - name: Verify the staging frontend and PostgreSQL search API
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          web_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "web")][0].id')"
+          if [ -z "$web_id" ] || [ "$web_id" = "null" ]; then
+            echo "::error::No started staging API machine."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$web_id" --command "python -c 'import json,urllib.request; base=\"http://127.0.0.1:8080\"; health=json.load(urllib.request.urlopen(base+\"/healthz\",timeout=10)); print({\"health\":health}); assert health[\"ok\"] and health[\"database_dialect\"]==\"postgresql\"; page=urllib.request.urlopen(base+\"/\",timeout=10).read().decode(); assert \"ScentHunter\" in page; result=json.load(urllib.request.urlopen(base+\"/search-start?q=Sauvage\",timeout=20)); products=result.get(\"results\",[]); match=next((x for x in products if str(x.get(\"brand\",\"\")).lower()==\"dior\" and str(x.get(\"fragrance\",\"\")).lower()==\"sauvage\"),None); print({\"search_status\":result.get(\"status\"),\"product_count\":result.get(\"count\"),\"offer_count\":result.get(\"offer_count\"),\"dior_sauvage_found\":bool(match)}); assert result.get(\"status\")==\"completed\" and match is not None' "
       - name: Inspect worker logs and machine state
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
