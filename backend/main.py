@@ -10,6 +10,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
+from app.services.runtime_thread_snapshot import runtime_thread_snapshot
 
 from app.services.store_identity import normalize_store_key as _normalise_store
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
@@ -3091,26 +3092,7 @@ def _runtime_diag_memory():
     return out
 
 def _runtime_thread_snapshot(t):
-    """Return Python and native Linux thread identity for read-only diagnostics."""
-    native_id = getattr(t, "native_id", None)
-    item = {
-        "name": t.name,
-        "ident": t.ident,
-        "native_id": native_id,
-        "alive": t.is_alive(),
-        "daemon": t.daemon,
-    }
-    if native_id is not None:
-        try:
-            with open(
-                f"/proc/self/task/{int(native_id)}/comm",
-                "r",
-                encoding="utf-8",
-            ) as handle:
-                item["os_comm"] = handle.read().strip()
-        except (OSError, TypeError, ValueError) as exc:
-            item["os_comm_error"] = f"{type(exc).__name__}: {exc}"
-    return item
+    return runtime_thread_snapshot(t)
 
 
 def _runtime_diag_stacks():
