@@ -14,6 +14,7 @@ on:
       - "backend/scripts/verify_postgres_backup_restore.sh"
       - "backend/app/api/admin_catalog.py"
       - "backend/main.py"
+      - "fly.toml"
       - "backend/app/services/catalog_rollout.py"
       - "frontend/index.html"
       - "backend/app/services/**"
@@ -53,6 +54,7 @@ on:
       - phase10/ops-phase11-integrated
     paths:
       - "backend/scripts/verify_postgres_backup_restore.sh"
+      - "fly.toml"
       - "backend/app/api/legacy_catalog.py"
       - "backend/catalog_engine.py"
       - "backend/app/connectors/notino.py"
