@@ -21266,6 +21266,534 @@
       "concentration": null,
       "identity_status": "source_listed_name",
       "source_url": "https://armaf.uk/collections/all-armaf-products?page=4"
+    },
+    {
+      "product_id": "SH-ARMAF-SPACE-AGE-P001",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Space Age",
+      "name": "Space Age",
+      "family_id": "armaf_catalog",
+      "family_name": "Space Age",
+      "aliases": [
+        "Space Age",
+        "Armaf Space Age"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-SACRE-BLEU-P002",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Sacre Bleu",
+      "name": "Sacre Bleu",
+      "family_id": "armaf_catalog",
+      "family_name": "Sacre Bleu",
+      "aliases": [
+        "Sacre Bleu",
+        "Armaf Sacre Bleu"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-MISS-VOCE-VIVE-P003",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Miss Voce Vive",
+      "name": "Miss Voce Vive",
+      "family_id": "armaf_catalog",
+      "family_name": "Miss Voce Vive",
+      "aliases": [
+        "Miss Voce Vive",
+        "Armaf Miss Voce Vive"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-MISS-MAGNIFIQ-P004",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Miss Magnifiq",
+      "name": "Miss Magnifiq",
+      "family_id": "armaf_catalog",
+      "family_name": "Miss Magnifiq",
+      "aliases": [
+        "Miss Magnifiq",
+        "Armaf Miss Magnifiq"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-MISS-DAZZLING-P005",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Miss Dazzling",
+      "name": "Miss Dazzling",
+      "family_id": "armaf_catalog",
+      "family_name": "Miss Dazzling",
+      "aliases": [
+        "Miss Dazzling",
+        "Armaf Miss Dazzling"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-MAGICAL-OUD-FOR-ETER-P006",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Magical Oud For Eter",
+      "name": "Magical Oud For Eter",
+      "family_id": "armaf_catalog",
+      "family_name": "Magical Oud For Eter",
+      "aliases": [
+        "Magical Oud For Eter",
+        "Armaf Magical Oud For Eter"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-LE-FEMME-P007",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Le Femme",
+      "name": "Le Femme",
+      "family_id": "armaf_catalog",
+      "family_name": "Le Femme",
+      "aliases": [
+        "Le Femme",
+        "Armaf Le Femme"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-LA-ROSA-P008",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "La Rosa",
+      "name": "La Rosa",
+      "family_id": "armaf_catalog",
+      "family_name": "La Rosa",
+      "aliases": [
+        "La Rosa",
+        "Armaf La Rosa"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=5"
+    },
+    {
+      "product_id": "SH-ARMAF-TRES-NUIT-LYRIC-POUR-HOMME-P009",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Tres Nuit Lyric Pour Homme",
+      "name": "Tres Nuit Lyric Pour Homme",
+      "family_id": "armaf_catalog",
+      "family_name": "Tres Nuit Lyric Pour Homme",
+      "aliases": [
+        "Tres Nuit Lyric Pour Homme",
+        "Armaf Tres Nuit Lyric Pour Homme"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-MISS-GRANDEUR-P010",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Miss Grandeur",
+      "name": "Miss Grandeur",
+      "family_id": "armaf_catalog",
+      "family_name": "Miss Grandeur",
+      "aliases": [
+        "Miss Grandeur",
+        "Armaf Miss Grandeur"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-PROFUMI-D-ART-14-LATTE-DI-T-P011",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Profumi D'Art 14 Latte Di Tuberosa",
+      "name": "Profumi D'Art 14 Latte Di Tuberosa",
+      "family_id": "armaf_catalog",
+      "family_name": "Profumi D'Art 14 Latte Di Tuberosa",
+      "aliases": [
+        "Profumi D'Art 14 Latte Di Tuberosa",
+        "Armaf Profumi D'Art 14 Latte Di Tuberosa"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-PROFUMI-D-ART-06-VANIGLIA-E-P012",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Profumi D'Art 06 Vaniglia Esotica",
+      "name": "Profumi D'Art 06 Vaniglia Esotica",
+      "family_id": "armaf_catalog",
+      "family_name": "Profumi D'Art 06 Vaniglia Esotica",
+      "aliases": [
+        "Profumi D'Art 06 Vaniglia Esotica",
+        "Armaf Profumi D'Art 06 Vaniglia Esotica"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-TWIST-DEBOIS-P013",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Twist Debois",
+      "name": "Twist Debois",
+      "family_id": "armaf_catalog",
+      "family_name": "Twist Debois",
+      "aliases": [
+        "Twist Debois",
+        "Armaf Twist Debois"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-SAPPHIRE-NICHE-P014",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Sapphire Niche",
+      "name": "Sapphire Niche",
+      "family_id": "armaf_catalog",
+      "family_name": "Sapphire Niche",
+      "aliases": [
+        "Sapphire Niche",
+        "Armaf Sapphire Niche"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-PROFUMI-D-ART-13-E-TANTA-RO-P015",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Profumi D'Art 13 E Tanta Roba",
+      "name": "Profumi D'Art 13 E Tanta Roba",
+      "family_id": "armaf_catalog",
+      "family_name": "Profumi D'Art 13 E Tanta Roba",
+      "aliases": [
+        "Profumi D'Art 13 E Tanta Roba",
+        "Armaf Profumi D'Art 13 E Tanta Roba"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-PROFUMI-D-ART-01-ACQUA-MIA-P016",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Profumi D'Art 01 Acqua Mia",
+      "name": "Profumi D'Art 01 Acqua Mia",
+      "family_id": "armaf_catalog",
+      "family_name": "Profumi D'Art 01 Acqua Mia",
+      "aliases": [
+        "Profumi D'Art 01 Acqua Mia",
+        "Armaf Profumi D'Art 01 Acqua Mia"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-PERFUME-OASIS-FOR-ETER-P017",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Perfume Oasis For Eter",
+      "name": "Perfume Oasis For Eter",
+      "family_id": "armaf_catalog",
+      "family_name": "Perfume Oasis For Eter",
+      "aliases": [
+        "Perfume Oasis For Eter",
+        "Armaf Perfume Oasis For Eter"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-LION-S-CLUB-RUGIR-P018",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Lion's Club Rugir",
+      "name": "Lion's Club Rugir",
+      "family_id": "armaf_catalog",
+      "family_name": "Lion's Club Rugir",
+      "aliases": [
+        "Lion's Club Rugir",
+        "Armaf Lion's Club Rugir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-LIONHEART-HERITAGE-FOR-WOME-P019",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Lionheart Heritage For Women",
+      "name": "Lionheart Heritage For Women",
+      "family_id": "armaf_catalog",
+      "family_name": "Lionheart Heritage For Women",
+      "aliases": [
+        "Lionheart Heritage For Women",
+        "Armaf Lionheart Heritage For Women"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-LEGASI-FOR-WOMEN-P020",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Legasi For Women",
+      "name": "Legasi For Women",
+      "family_id": "armaf_catalog",
+      "family_name": "Legasi For Women",
+      "aliases": [
+        "Legasi For Women",
+        "Armaf Legasi For Women"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-LE-PARFAIT-AZURE-P021",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Le Parfait Azure",
+      "name": "Le Parfait Azure",
+      "family_id": "armaf_catalog",
+      "family_name": "Le Parfait Azure",
+      "aliases": [
+        "Le Parfait Azure",
+        "Armaf Le Parfait Azure"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-FADE-DENIM-EDIT-P022",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Fade Denim Edit",
+      "name": "Fade Denim Edit",
+      "family_id": "armaf_catalog",
+      "family_name": "Fade Denim Edit",
+      "aliases": [
+        "Fade Denim Edit",
+        "Armaf Fade Denim Edit"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-EVENING-ROSE-P023",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Evening Rose",
+      "name": "Evening Rose",
+      "family_id": "armaf_catalog",
+      "family_name": "Evening Rose",
+      "aliases": [
+        "Evening Rose",
+        "Armaf Evening Rose"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-ETERNIA-ITALIA-P024",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eternia Italia",
+      "name": "Eternia Italia",
+      "family_id": "armaf_catalog",
+      "family_name": "Eternia Italia",
+      "aliases": [
+        "Eternia Italia",
+        "Armaf Eternia Italia"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-ETERNIA-IMPERIA-P025",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eternia Imperia",
+      "name": "Eternia Imperia",
+      "family_id": "armaf_catalog",
+      "family_name": "Eternia Imperia",
+      "aliases": [
+        "Eternia Imperia",
+        "Armaf Eternia Imperia"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-CLOISONNE-P026",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Cloisonne",
+      "name": "Cloisonne",
+      "family_id": "armaf_catalog",
+      "family_name": "Cloisonne",
+      "aliases": [
+        "Cloisonne",
+        "Armaf Cloisonne"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-BLOOMING-MAGUEY-P027",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Blooming Maguey",
+      "name": "Blooming Maguey",
+      "family_id": "armaf_catalog",
+      "family_name": "Blooming Maguey",
+      "aliases": [
+        "Blooming Maguey",
+        "Armaf Blooming Maguey"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-AFFECTE-P028",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Affecte",
+      "name": "Affecte",
+      "family_id": "armaf_catalog",
+      "family_name": "Affecte",
+      "aliases": [
+        "Affecte",
+        "Armaf Affecte"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=6"
+    },
+    {
+      "product_id": "SH-ARMAF-EGO-PANTHERA-P029",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Ego Panthera",
+      "name": "Ego Panthera",
+      "family_id": "armaf_catalog",
+      "family_name": "Ego Panthera",
+      "aliases": [
+        "Ego Panthera",
+        "Armaf Ego Panthera"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=7"
+    },
+    {
+      "product_id": "SH-ARMAF-DESERT-ROSE-FOR-ETER-P030",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Desert Rose For Eter",
+      "name": "Desert Rose For Eter",
+      "family_id": "armaf_catalog",
+      "family_name": "Desert Rose For Eter",
+      "aliases": [
+        "Desert Rose For Eter",
+        "Armaf Desert Rose For Eter"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=7"
+    },
+    {
+      "product_id": "SH-ARMAF-DESERT-FLOWER-FOR-ETER-P031",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Desert Flower For Eter",
+      "name": "Desert Flower For Eter",
+      "family_id": "armaf_catalog",
+      "family_name": "Desert Flower For Eter",
+      "aliases": [
+        "Desert Flower For Eter",
+        "Armaf Desert Flower For Eter"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=7"
+    },
+    {
+      "product_id": "SH-ARMAF-CRAZE-FOR-MEN-P032",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Craze For Men",
+      "name": "Craze For Men",
+      "family_id": "armaf_catalog",
+      "family_name": "Craze For Men",
+      "aliases": [
+        "Craze For Men",
+        "Armaf Craze For Men"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=7"
+    },
+    {
+      "product_id": "SH-ARMAF-BUCEPHALUS-X-P033",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Bucephalus X",
+      "name": "Bucephalus X",
+      "family_id": "armaf_catalog",
+      "family_name": "Bucephalus X",
+      "aliases": [
+        "Bucephalus X",
+        "Armaf Bucephalus X"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=7"
     }
   ],
   "variants": [
