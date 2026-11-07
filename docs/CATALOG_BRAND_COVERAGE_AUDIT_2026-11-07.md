@@ -923,3 +923,17 @@ That official page lists six individual fragrances — Belgravia, Legacy, Vangua
 Monarch, Treasure and Imperial remain in the Maison Asrar identity catalog, but are no longer tagged as confirmed members of the official collection based on that page. They are retained as source-listed Maison Asrar names; their collection membership needs separate product-level confirmation. This avoids turning retailer taxonomy or an unverified URL into an official brand claim.
 
 The previous `maisonasrar.com/collections/royal-collection` URL was not substantiated and has been removed from these records. This correction supersedes the earlier nine-name Royal Collection assertion.
+
+
+## Maison Asrar Royal Collection — product-level correction, 2026-11-07
+
+A deeper check of the official UK collection page and its linked product pages supersedes the prior six-fragrance note above. The page currently contains **seven individual fragrance identities**: Belgravia, Legacy, Vanguard, Regent, Majesty, Heritage and Treasure. Treasure is confirmed separately by its product detail page as a 100 ml Eau de Parfum. It is now tagged as part of Royal Collection, with its product page as `source_url` and the official collection page as `source_evidence_url`.
+
+The other three entries on the collection page are not additional individual fragrance identities: **The Royal** is a bundle of Legacy, Majesty and Vanguard; **Royal Collection Discovery Set** is a discovery set; **The Royal Duo** is a bundle. They must not be imported as standalone canonical fragrances.
+
+The earlier six-name claim omitted Treasure; the earlier nine-name claim included unsupported Monarch and Imperial and wrongly omitted Treasure. The corrected official collection count for individual fragrances is seven. Source pages:
+- https://maisonasrar.co.uk/collections/royal-collection
+- https://maisonasrar.co.uk/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex
+- https://maisonasrar.co.uk/products/the-royal
+- https://maisonasrar.co.uk/products/royal-collection-discovery-set
+- https://maisonasrar.co.uk/products/the-royal-duo
