@@ -790,3 +790,39 @@ The eight records have official product-detail evidence URLs. Concentrations and
 - https://armaf.com/products/dubai-nights-umbra-spr
 - https://armaf.com/products/the-inventor
 - https://armaf.com/products/ego-tiger
+
+
+## Armaf official US collection pages 13–16 — further detail-page reconciliation
+
+Continued the official ARMAF US “All Fragrances (Not Gift Set)” review. The listing mixes fragrance products with body sprays, roll-ons, shower gels and other care products; those non-perfume formats are not automatically imported as canonical fragrance identities.
+
+Added eight missing fragrance identities after confirming their official product-detail pages:
+- Club de Nuit Private Key To My Success — Eau de Parfum, 100ml
+- Miss Armaf Dazzling — Eau de Parfum, 100ml
+- Checkmate White Knight — Eau de Parfum (size not stated on the retrieved detail page)
+- Tag Him Prestige — identity verified; concentration and size not stated
+- Club de Nuit Private Key To My Love — Eau de Toilette, 100ml
+- Dubai Nights Umbra — identity verified; concentration and size not stated on the retrieved detail page
+- Oros The Inventor Brown — Eau de Parfum, 85ml
+- Ego Tigre — Eau de Parfum, 100ml
+
+The official product page for Ego Tigre has an inconsistent SEO title/slug, but its page heading and product content identify the fragrance as **Ego Tigre**; the canonical name follows the on-page product heading. No unsupported concentration or size was assigned to Tag Him Prestige or Dubai Nights Umbra.
+
+Updated snapshot:
+- Product identities: **1,636** (up from 1,628)
+- Explicit variants: **156** (up from 151)
+- Armaf identities: **294** (up from 286)
+- Products without declared variants: **1,502**
+- No orphan variants; product IDs and variant IDs remain unique.
+
+Official detail pages:
+- https://armaf.com/products/copy-of-club-de-nuit-private-key-to-my-success-100ml
+- https://armaf.com/products/miss-armaf-dazzling
+- https://armaf.com/products/checkmate-white-knight-1
+- https://armaf.com/products/tag-him-prestige
+- https://armaf.com/products/club-de-nuit-private-key-to-my-love-100ml
+- https://armaf.com/products/dubai-nights-umbra-spr
+- https://armaf.com/products/the-inventor
+- https://armaf.com/products/ego-tiger
+
+This extends the sample, but does not prove that all Armaf fragrance pages or variants have been captured.
