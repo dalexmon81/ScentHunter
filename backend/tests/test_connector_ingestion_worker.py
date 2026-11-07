@@ -482,7 +482,15 @@ def test_celery_discovery_to_publication_executes_every_pipeline_task(monkeypatc
         variant_id = variant.id
 
     queued = {"normalize": [], "validate": [], "match": [], "promote": []}
-    monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
+    created_factories = []
+
+    def make_fixture_session_factory():
+        created_factories.append(factory)
+        return factory
+
+    monkeypatch.setattr(
+        ingestion_tasks, "make_session_factory", make_fixture_session_factory,
+    )
     monkeypatch.setattr(ingestion_tasks, "get_connector", lambda _key: FakeConnector())
     monkeypatch.setattr(ingestion_tasks, "_run", lambda coroutine: asyncio.run(coroutine))
     monkeypatch.setattr(
@@ -529,6 +537,9 @@ def test_celery_discovery_to_publication_executes_every_pipeline_task(monkeypatc
 
     promoted = ingestion_tasks.promote_matched_offers_task.run()
     assert promoted == {"processed": 1, "published": 1, "blocked": 0}
+    # The task must construct and pass the sessionmaker returned by the DB
+    # factory, not pass the factory function itself to the promotion service.
+    assert created_factories == [factory]
 
     with factory() as session:
         raw = session.get(IngestionRaw, __import__("uuid").UUID(raw_id))
