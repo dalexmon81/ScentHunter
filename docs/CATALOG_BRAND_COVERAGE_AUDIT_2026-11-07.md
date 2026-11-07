@@ -93,3 +93,56 @@ Al Haramain: 37
 ## Current conclusion
 
 The catalog has expanded to 1153 identities, but it is **not yet defensible to call it complete**. The strongest immediate gaps are Paris Corner and Khadlaj. Maison Asrar needs a name-level reconciliation because the current count exceeds the independent index count.
+
+
+## Additional product-level listing reconciliation — 2026-11-07 evening
+
+Cross-checked current catalog identities against visible product listings in a European specialist retailer/distributor collection. Added only exact names visibly listed and absent from ScentHunter; no duplicate brand + name pair was added.
+
+New identities added in this pass: 34.
+- Khadlaj: Karus Secret Musk; Rose And Romance; Hareem Al Sultan Blue.
+- French Avenue: Jade Giallo; Grecia Rosa; Vulcan Baie; Vulcan Sable; Grecia; Diwani Rabat; Diwani Cairo.
+- Gulf Orchid: Tahiti Colada; Cookie Bite; Marshmallow; Baklava Bite; Sweet Like Candy; Naughty Vanilla; Banana Split; Pink Marshmallow; Heavenly Lychee.
+- Bujairami: Next Level; Sovereign; Candy Crush; High Roller; Madness Extreme; Unforgettable; Vanilla Dreams.
+- Assaf: Miss Sakura; Frankel Black Elixir; Copacabana.
+- Arabiyat Prestige: Sugarcane Vanilla; Noirè Absolu; Noire; Swar Venin; Gelato Black Currant Lolly.
+
+Source collection pages:
+- Khadlaj: https://www.orientfragance.com/en/collections/khadlaj-perfumes
+- French Avenue: https://www.orientfragance.com/en/collections/french-avenue
+- Gulf Orchid: https://www.orientfragance.com/en/collections/perfumes-gulf-orchid
+- Bujairami: https://www.orientfragance.com/en/collections/bujairami
+- Assaf: https://www.orientfragance.com/en/collections/assaf
+- Arabiyat Prestige: https://www.orientfragance.com/en/collections/arabiyat-prestige-distribuidor-oficial-perfumes-arabes
+
+Important: these are product-listing observations from a retailer/distributor, not official brand master catalogs. Collection pagination, availability and product ranges can vary by country and date. These names are source-listed identity candidates only. No unverified sizes, concentrations, GTINs or retailer offers were inferred.
+
+## Updated totals
+
+- Canonical product identities: 1187
+- Variant records retained: 141
+- Duplicate product IDs: 0
+- Duplicate brand + canonical-name pairs: 0
+
+### Updated counts by requested brand
+
+- Velixir: 28
+- Mykonos: 72
+- Maison Asrar: 121
+- Khadlaj: 44
+- Bujairami: 40
+- Paris Corner: 33
+- Assaf: 115
+- Al Wataniah: 22
+- Armaf: 190
+- French Avenue: 26
+- Arabiyat Prestige: 32
+- Gulf Orchid: 19
+- Swiss Arabian: 42
+- Games of Spades: 4
+- Lattafa: 19
+- Afnan: 55
+- Aromatix: 12
+- Maison Alhambra: 203
+- Zimaya: 71
+- Al Haramain: 37
