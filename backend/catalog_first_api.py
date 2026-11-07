@@ -76,6 +76,10 @@ def search_start(
     postal_code: str | None = Query(None, max_length=24),
 ) -> dict:
     """Return a completed frontend search from persisted catalog data only."""
+    if country_code is not None:
+        country_code = country_code.strip().upper()
+        if len(country_code) != 2 or not country_code.isalpha():
+            raise HTTPException(status_code=400, detail="invalid_delivery_country_code")
     try:
         payload = search_catalog_for_frontend(q, destination_country_code=country_code, destination_postal_code=postal_code)
     except ValueError as exc:
