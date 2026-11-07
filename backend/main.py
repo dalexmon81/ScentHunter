@@ -12,6 +12,7 @@ except Exception as exc:
 from pathlib import Path
 
 from app.services.store_identity import normalize_store_key as _normalise_store
+from app.services.store_report import empty_store_report
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
@@ -1208,7 +1209,7 @@ def _aggregate_identity_results(offers):
     return result, unresolved
 
 def _empty_report(store, status='error', elapsed=0.0, error=None):
-    return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error,'verified':False}
+    return empty_store_report(store, status=status, elapsed=elapsed, error=error)
 
 def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
