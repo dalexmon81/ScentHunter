@@ -1246,3 +1246,31 @@ Regression coverage was added for all 28 names, their official collection member
 - This is a partial line-level reconciliation, not a claim that all Paris Corner products are complete. Pendora Scents, Emir and the parent Paris Corner collection still require full page-by-page reconciliation, including product detail verification and classification of sets/other formats.
 - The new regression test is committed; CI has not yet been observed for the updated branch head.
 
+## Pass 10 — Paris Corner Emir and Pendora Scents reconciliation (2026-11-07)
+
+Compared the current official collection listings with the existing Paris Corner identities and aliases. Added **70 source-listed fragrance identities**:
+
+- **Emir — 44 new identities.** The official Emir collection reports 54 products; 10 identities were already represented in the catalog and the remaining 44 visible names have now been added. Names include Cosmopolitan Newyork, Elania Emir, Fascination Emir, Fire Your Desire Emir, the Lueur d'Espoir and Opulentia entries, Voux variations, Valar Series entries and others shown in the official collection.
+- **Pendora Scents — 26 new identities.** Names added include Doris Pink, Dusky Vanilla, Ecstatic Blanc Fleur, English Leather, Enormity, Fig Fete, Hidden Halo, Honeyed Fantasy, Intense Wayfarer, Intima Red, La Nuit Pendora, Lullaby, Mango Flames, Nectarine Haze, Neon Star, Noir d'Arabie, Oud Holidays, Poppy Pulse, Praise, Precision, Rose de Nuit, The Aoud, The Green, The Peace, The Scent and The Street. The official collection reports 36 products, while the currently exposed listing text identifies 32 names including six already represented. Four entries still need a complete listing extraction before this collection can be called reconciled.
+- **Parent Paris Corner:** no additional parent-line identity was imported in this pass. A name visible in the mixed all-products feed was deliberately not assigned to the parent line without evidence from the dedicated parent collection.
+
+Official listing evidence:
+- Emir collection (54 products): https://www.pariscornerperfumes.com/collections/emir-1
+- Emir page 2 listing: https://www.pariscornerperfumes.com/collections/emir-1?page=2
+- Pendora Scents collection (36 products): https://www.pariscornerperfumes.com/collections/pendora-scents-1
+- Paris Corner parent collection: https://www.pariscornerperfumes.com/collections/paris-corner
+
+All 70 new rows remain source_listed_name records backed by collection pages. No unsupported product-detail URLs, sizes, concentrations, GTINs or variants were added. No retailer offers, prices, stock or shipping data were created.
+
+A regression test asserts all 70 names, parent brand, exact collection attribution, source URLs and the absence of unsupported size/concentration data.
+
+### Pass 10 result
+- New canonical identities: **70**.
+- New variants: **0**.
+- Paris Corner branch count: **227** (previously 157).
+- Catalog snapshot: **1,749 canonical identities; 177 explicit variants**.
+- Emir collection: 54/54 names accounted for in the current source snapshot (10 existing + 44 new).
+- Pendora Scents: 32 of 36 listing names currently identified (6 existing + 26 new); four remaining listing entries require another extraction pass.
+- The parent Paris Corner collection and the entire 252-item all-products feed still require complete pagination and classification. This is not an exhaustive Paris Corner completion claim.
+- The new regression test is committed; CI status for the latest branch head must be checked before describing it as passed.
+
