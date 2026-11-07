@@ -93,3 +93,18 @@ def test_catalog_health_route_reports_postgres_when_configured(monkeypatch):
         "service": "catalog-first-api",
         "database_dialect": "postgresql",
     }
+
+
+def test_staging_fly_config_exposes_api_and_preserves_worker_isolation():
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    config = tomllib.loads((root / "fly.staging-catalog.toml").read_text())
+    assert config["app"] == "scenthunter-staging-workers"
+    assert config["build"]["dockerfile"] == "backend/Dockerfile.worker"
+    assert set(config["processes"]) == {"app", "beat", "web"}
+    assert config["http_service"]["processes"] == ["web"]
+    assert config["env"]["SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL"] == "1"
+    assert all(vm["processes"] for vm in config["vm"])
+    assert (root / "backend" / "start_api.sh").is_file()
