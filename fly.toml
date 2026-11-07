@@ -7,6 +7,9 @@ primary_region = "ams"
 
 [env]
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
+  # Canonical catalog services must use the attached Fly Postgres database.
+  # DATABASE_URL is resolved by backend/app/db.py when no ScentHunter-specific URL is set.
+  SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL = "1"
   # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
 
