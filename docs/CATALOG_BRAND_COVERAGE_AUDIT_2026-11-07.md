@@ -1108,3 +1108,8 @@ Sources:
 - Product detail pages linked above.
 
 This is a **four-page reconciliation only**, not a claim that all 464 listings or all ARMAF fragrances have been reconciled. The official page's own concentration filters include body-care products and multiple sizes, so pagination and product-type classification must continue before claiming complete coverage.
+
+
+### Armaf evidence-field correction
+
+The collection classification is stored in `collection_source_url` so that the pre-existing product-detail `source_url` and `source_evidence_url` remain intact wherever they already existed. This preserves direct product evidence and prevents a collection listing from replacing a more specific product page. The Armaf regression test checks the dedicated collection-source field while existing product-detail URL tests continue to validate the direct URLs.
