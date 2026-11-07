@@ -942,3 +942,52 @@ def test_khadlaj_six_additional_official_product_identities_have_verified_varian
 
     # The official Bleu Glace page establishes its 100 ml format but no GTIN.
     assert "gtin" not in products["Bleu Glace"]
+
+def test_paris_corner_magic_oud_north_stag_and_ministry_lines_have_official_membership():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+    }
+    expected = {
+        "Magic Oud Series": {
+            "Magic Oud Dark Roses", "Magic Oud In Pure Zaffron",
+            "Magic Oud Kalimath", "Magic Oud Kashmir Musk",
+        },
+        "North Stag": {
+            "Quatre IV Expressions, North Stag", "Trois III Expressions, North Stag",
+            "Deux II Expressions, North Stag", "Un I Expressions, North Stag",
+            "North Stag Hypnotic Oud Quinze XV", "North Stag Phenomenal Quatorze XIV",
+            "North Stag Huit VIII", "North Stag Sept VII",
+        },
+        "Ministry of Oud": {
+            "Ministry of Oud - Amber Oud", "Ministry of Oud - Oud Indonesian",
+            "Ministry of Oud - Oud Royal", "Ministry of Oud - Oud Satin",
+            "Ministry of Oud - Strictly Oud", "Ministry of Oud - Thailand Oud in Cairo",
+            "Ministry of Oud Greatest", "Ministry of Oud - Gladiators Oath",
+            "Ministry of Oud - Maestro's Symphony", "Ministry of Oud - Nile Whispers",
+            "Ministry of Oud - Oud Beyond the Wall", "Ministry of Oud - Romance Reverie",
+        },
+        "Ministry of Gourmand": {
+            "Creamy Biscuit", "Mango Jugoso", "Strawberry Pound Cake", "Tiramisu Speculoos",
+        },
+    }
+    source_urls = {
+        "Magic Oud Series": "https://www.pariscornerperfumes.com/collections/magic-oud-series",
+        "North Stag": "https://www.pariscornerperfumes.com/collections/north-stag-1",
+        "Ministry of Oud": "https://www.pariscornerperfumes.com/collections/ministry-of-oud",
+        "Ministry of Gourmand": "https://www.pariscornerperfumes.com/collections/ministry-of-gourmand",
+    }
+    for line, names in expected.items():
+        for name in names:
+            row = products[name]
+            assert row["brand"] == "Paris Corner"
+            assert row["collection_name"] == line
+            assert row["identity_status"] == "source_listed_name"
+            assert row["source_url"] == source_urls[line]
+            assert row["source_evidence_url"] == source_urls[line]
+            assert row.get("formats_ml") is None
+            assert row.get("concentration") is None
+    assert len(expected["Magic Oud Series"]) + len(expected["North Stag"]) + len(expected["Ministry of Oud"]) + len(expected["Ministry of Gourmand"]) == 28
+
