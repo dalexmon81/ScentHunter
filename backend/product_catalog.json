@@ -22338,6 +22338,406 @@
       "concentration": "EDP",
       "identity_status": "source_listed_name",
       "source_url": "https://b2b.perfumecenter.eu/brand.aspx?id=4&page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ESHAL-MUSK-CUR01",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Eshal Musk",
+      "name": "Eshal Musk",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Eshal Musk",
+      "aliases": [
+        "Eshal Musk",
+        "Paris Corner Eshal Musk"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ESHAL-VANILLA-CUR02",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Eshal Vanilla",
+      "name": "Eshal Vanilla",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Eshal Vanilla",
+      "aliases": [
+        "Eshal Vanilla",
+        "Paris Corner Eshal Vanilla"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE-CUR03",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Eternal Coffee",
+      "name": "Eternal Coffee",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Eternal Coffee",
+      "aliases": [
+        "Eternal Coffee",
+        "Paris Corner Eternal Coffee"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS-CUR04",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Eternal Meadows",
+      "name": "Eternal Meadows",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Eternal Meadows",
+      "aliases": [
+        "Eternal Meadows",
+        "Paris Corner Eternal Meadows"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK-CUR05",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Eternal Musk",
+      "name": "Eternal Musk",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Eternal Musk",
+      "aliases": [
+        "Eternal Musk",
+        "Paris Corner Eternal Musk"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FARAH-CUR06",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Farah",
+      "name": "Farah",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Farah",
+      "aliases": [
+        "Farah",
+        "Paris Corner Farah"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FATAL-EMBRACE-CUR07",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Fatal Embrace",
+      "name": "Fatal Embrace",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Fatal Embrace",
+      "aliases": [
+        "Fatal Embrace",
+        "Paris Corner Fatal Embrace"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FAYORA-CUR08",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Fayora",
+      "name": "Fayora",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Fayora",
+      "aliases": [
+        "Fayora",
+        "Paris Corner Fayora"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FAYORA-OSHINO-CUR09",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Fayora Oshino",
+      "name": "Fayora Oshino",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Fayora Oshino",
+      "aliases": [
+        "Fayora Oshino",
+        "Paris Corner Fayora Oshino"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-GREEN-BET-CUR10",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Green Bet",
+      "name": "Green Bet",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Green Bet",
+      "aliases": [
+        "Green Bet",
+        "Paris Corner Green Bet"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HEER-CUR11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Heer",
+      "name": "Heer",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Heer",
+      "aliases": [
+        "Heer",
+        "Paris Corner Heer"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HURRIYA-CUR12",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Hurriya",
+      "name": "Hurriya",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Hurriya",
+      "aliases": [
+        "Hurriya",
+        "Paris Corner Hurriya"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IBISCO-NIRVANA-CUR13",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ibisco Nirvana",
+      "name": "Ibisco Nirvana",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ibisco Nirvana",
+      "aliases": [
+        "Ibisco Nirvana",
+        "Paris Corner Ibisco Nirvana"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INDOMITABLE-CUR14",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Indomitable",
+      "name": "Indomitable",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Indomitable",
+      "aliases": [
+        "Indomitable",
+        "Paris Corner Indomitable"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-AFNAN-STARDUST-CUR15",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Stardust",
+      "name": "Stardust",
+      "family_id": "afnan_catalog",
+      "family_name": "Stardust",
+      "aliases": [
+        "Stardust",
+        "Afnan Stardust"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-HISTORIC-SAHARA-CUR16",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Historic Sahara",
+      "name": "Historic Sahara",
+      "family_id": "afnan_catalog",
+      "family_name": "Historic Sahara",
+      "aliases": [
+        "Historic Sahara",
+        "Afnan Historic Sahara"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-TOBACCO-RUSH-CUR17",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Tobacco Rush",
+      "name": "Tobacco Rush",
+      "family_id": "afnan_catalog",
+      "family_name": "Tobacco Rush",
+      "aliases": [
+        "Tobacco Rush",
+        "Afnan Tobacco Rush"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-PORTRAIT-REVIVAL-CUR18",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Portrait Revival",
+      "name": "Portrait Revival",
+      "family_id": "afnan_catalog",
+      "family_name": "Portrait Revival",
+      "aliases": [
+        "Portrait Revival",
+        "Afnan Portrait Revival"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-ORNAMENT-POUR-HOMME-CUR19",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Ornament Pour Homme",
+      "name": "Ornament Pour Homme",
+      "family_id": "afnan_catalog",
+      "family_name": "Ornament Pour Homme",
+      "aliases": [
+        "Ornament Pour Homme",
+        "Afnan Ornament Pour Homme"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-KIAANA-ANGEL-CUR20",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Kiaana Angel",
+      "name": "Kiaana Angel",
+      "family_id": "afnan_catalog",
+      "family_name": "Kiaana Angel",
+      "aliases": [
+        "Kiaana Angel",
+        "Afnan Kiaana Angel"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-EDICT-AMBERHYTHM-CUR21",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Edict Amberhythm",
+      "name": "Edict Amberhythm",
+      "family_id": "afnan_catalog",
+      "family_name": "Edict Amberhythm",
+      "aliases": [
+        "Edict Amberhythm",
+        "Afnan Edict Amberhythm"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-EDICT-OUDDICTION-CUR22",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Edict Ouddiction",
+      "name": "Edict Ouddiction",
+      "family_id": "afnan_catalog",
+      "family_name": "Edict Ouddiction",
+      "aliases": [
+        "Edict Ouddiction",
+        "Afnan Edict Ouddiction"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-TAPIS-ROUGE-CUR23",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Supremacy Tapis Rouge",
+      "name": "Supremacy Tapis Rouge",
+      "family_id": "afnan_catalog",
+      "family_name": "Supremacy Tapis Rouge",
+      "aliases": [
+        "Supremacy Tapis Rouge",
+        "Afnan Supremacy Tapis Rouge"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-OUD-RISING-CUR24",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Oud Rising",
+      "name": "Oud Rising",
+      "family_id": "afnan_catalog",
+      "family_name": "Oud Rising",
+      "aliases": [
+        "Oud Rising",
+        "Afnan Oud Rising"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
+    },
+    {
+      "product_id": "SH-AFNAN-FAKHAR-AL-JAMAAL-CUR25",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Fakhar Al Jamaal",
+      "name": "Fakhar Al Jamaal",
+      "family_id": "afnan_catalog",
+      "family_name": "Fakhar Al Jamaal",
+      "aliases": [
+        "Fakhar Al Jamaal",
+        "Afnan Fakhar Al Jamaal"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.it.afnan.com/collections/all-products"
     }
   ],
   "variants": [
