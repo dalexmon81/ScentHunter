@@ -12354,11 +12354,14 @@
       "family_name": "Club de Nuit Urban Man",
       "aliases": [
         "Club de Nuit Urban Man",
-        "Armaf Club de Nuit Urban Man"
+        "Armaf Club de Nuit Urban Man",
+        "Club de Nuit Urban",
+        "Armaf Club de Nuit Urban"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-iconic",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-bbdb8f2e",
@@ -21257,11 +21260,14 @@
       "family_name": "Lion's Club Monarque",
       "aliases": [
         "Lion's Club Monarque",
-        "Armaf Lion's Club Monarque"
+        "Armaf Lion's Club Monarque",
+        "The Lion's Club Monarque",
+        "Armaf The Lion's Club Monarque"
       ],
       "concentration": null,
       "identity_status": "source_listed_name",
-      "source_url": "https://armaf.uk/collections/all-armaf-products?page=4"
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=4",
+      "source_evidence_url": "https://armaf.com/products/the-lions-club-monarque"
     },
     {
       "product_id": "SH-ARMAF-ODYSSEY-FEMME-WHITE-EDIT-P338",
@@ -21785,11 +21791,14 @@
       "family_name": "Craze For Men",
       "aliases": [
         "Craze For Men",
-        "Armaf Craze For Men"
+        "Armaf Craze For Men",
+        "Craze Man Parfum",
+        "Armaf Craze Man Parfum"
       ],
-      "concentration": null,
+      "concentration": "Eau de Parfum",
       "identity_status": "source_listed_name",
-      "source_url": "https://armaf.uk/collections/all-armaf-products?page=7"
+      "source_url": "https://armaf.uk/collections/all-armaf-products?page=7",
+      "source_evidence_url": "https://armaf.com/products/armaf-craze"
     },
     {
       "product_id": "SH-ARMAF-BUCEPHALUS-X-P033",
@@ -26200,6 +26209,57 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
       "source_evidence_url": "https://armaf.com/products/dubai-nights-midnight-spr"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-MIRAGE-WOMAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Mirage Woman",
+      "name": "Mirage Woman",
+      "family_id": "armaf_catalog",
+      "family_name": "Mirage Woman",
+      "aliases": [
+        "Mirage Woman",
+        "Armaf Mirage Woman"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/mirage-woman"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-VOYAGE-BROWN-MAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Voyage Brown Man",
+      "name": "Voyage Brown Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Voyage Brown Man",
+      "aliases": [
+        "Voyage Brown Man",
+        "Armaf Voyage Brown Man"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/voyage-brown"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LIFE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Private Key To My Life",
+      "name": "Club de Nuit Private Key To My Life",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Private Key To My Life",
+      "aliases": [
+        "Club de Nuit Private Key To My Life",
+        "Armaf Club de Nuit Private Key To My Life"
+      ],
+      "concentration": "Eau de Toilette",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-private-key-to-my-life-100ml"
     }
   ],
   "variants": [
@@ -27727,6 +27787,15 @@
       "aliases": [
         "Club de Nuit Iconic Extrait de Parfum 70 ml",
         "Armaf Club de Nuit Iconic Extrait 70ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LIFE-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LIFE",
+      "size_ml": 100,
+      "aliases": [
+        "Club de Nuit Private Key To My Life 100 ml",
+        "Armaf Club de Nuit Private Key To My Life 100ml"
       ]
     }
   ]
