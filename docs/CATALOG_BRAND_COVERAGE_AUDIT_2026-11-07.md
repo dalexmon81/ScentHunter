@@ -1538,3 +1538,7 @@ These are listing-level identity records only. Product sizes, concentrations, GT
 - A regression test checks all 73 names, page-specific source URLs, family-registry membership and missing size/concentration data.
 - CI for the latest Al Wataniah test must complete before marking this pass verified.
 
+## Pass 28 — Al Wataniah regression suite green (2026-11-07)
+
+GitHub Actions run **#42420558957** for test commit **f0c4b4872d8faf1208f4237538982bf4da297e58** passed the Phase 2 schema-contract suite: **44 passed, 1 warning**. This includes the 73 Al Wataniah listing identities, page-level source URLs, and family-registry consistency assertions.
+
