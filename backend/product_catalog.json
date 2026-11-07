@@ -17904,6 +17904,1179 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.com.au/collections/all",
       "source_evidence_url": "https://bujairami.com.au/collections/all"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-ADDICT-ELIXIR-R001",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Addict Elixir",
+      "name": "Arrogate Addict Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Addict Elixir",
+      "aliases": [
+        "Arrogate Addict Elixir",
+        "Assaf Arrogate Addict Elixir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-BAKHUR-R002",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Bakhur",
+      "name": "Arrogate Bakhur",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Bakhur",
+      "aliases": [
+        "Arrogate Bakhur",
+        "Assaf Arrogate Bakhur"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-BLUE-R003",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Blue",
+      "name": "Arrogate Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Blue",
+      "aliases": [
+        "Arrogate Blue",
+        "Assaf Arrogate Blue"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-BLUE-DE-ELIXIR-R004",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Blue de Elixir",
+      "name": "Arrogate Blue de Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Blue de Elixir",
+      "aliases": [
+        "Arrogate Blue de Elixir",
+        "Assaf Arrogate Blue de Elixir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-BLUE-EXCLUSIVE-R005",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Blue Exclusive",
+      "name": "Arrogate Blue Exclusive",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Blue Exclusive",
+      "aliases": [
+        "Arrogate Blue Exclusive",
+        "Assaf Arrogate Blue Exclusive"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-COLT-R006",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Colt",
+      "name": "Arrogate Colt",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Colt",
+      "aliases": [
+        "Arrogate Colt",
+        "Assaf Arrogate Colt"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-COMETE-R007",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Comete",
+      "name": "Arrogate Comete",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Comete",
+      "aliases": [
+        "Arrogate Comete",
+        "Assaf Arrogate Comete"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-EUPHORIA-R008",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Euphoria",
+      "name": "Arrogate Euphoria",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Euphoria",
+      "aliases": [
+        "Arrogate Euphoria",
+        "Assaf Arrogate Euphoria"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-GIRL-R009",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Girl",
+      "name": "Arrogate Girl",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Girl",
+      "aliases": [
+        "Arrogate Girl",
+        "Assaf Arrogate Girl"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-MILLION-CELEBRATION-R010",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Million Celebration",
+      "name": "Arrogate Million Celebration",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Million Celebration",
+      "aliases": [
+        "Arrogate Million Celebration",
+        "Assaf Arrogate Million Celebration"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-OUD-BAKHUR-R011",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Oud Bakhur",
+      "name": "Arrogate Oud Bakhur",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Oud Bakhur",
+      "aliases": [
+        "Arrogate Oud Bakhur",
+        "Assaf Arrogate Oud Bakhur"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ARROGATE-PINK-R012",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Pink",
+      "name": "Arrogate Pink",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Pink",
+      "aliases": [
+        "Arrogate Pink",
+        "Assaf Arrogate Pink"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-BABY-GIRL-R013",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Baby Girl",
+      "name": "Baby Girl",
+      "family_id": "assaf_catalog",
+      "family_name": "Baby Girl",
+      "aliases": [
+        "Baby Girl",
+        "Assaf Baby Girl"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-BLACK-LADY-R014",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Black Lady",
+      "name": "Black Lady",
+      "family_id": "assaf_catalog",
+      "family_name": "Black Lady",
+      "aliases": [
+        "Black Lady",
+        "Assaf Black Lady"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ELIZABETH-R015",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Elizabeth",
+      "name": "Elizabeth",
+      "family_id": "assaf_catalog",
+      "family_name": "Elizabeth",
+      "aliases": [
+        "Elizabeth",
+        "Assaf Elizabeth"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FEELING-R016",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Feeling",
+      "name": "Feeling",
+      "family_id": "assaf_catalog",
+      "family_name": "Feeling",
+      "aliases": [
+        "Feeling",
+        "Assaf Feeling"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FIRST-NIGHT-R017",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "First Night",
+      "name": "First Night",
+      "family_id": "assaf_catalog",
+      "family_name": "First Night",
+      "aliases": [
+        "First Night",
+        "Assaf First Night"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FRANKEL-GREEN-IRISH-R018",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Green Irish",
+      "name": "Frankel Green Irish",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Green Irish",
+      "aliases": [
+        "Frankel Green Irish",
+        "Assaf Frankel Green Irish"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FRANKEL-IMAGINATION-R019",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Imagination",
+      "name": "Frankel Imagination",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Imagination",
+      "aliases": [
+        "Frankel Imagination",
+        "Assaf Frankel Imagination"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FRANKEL-SILVER-R020",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Silver",
+      "name": "Frankel Silver",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Silver",
+      "aliases": [
+        "Frankel Silver",
+        "Assaf Frankel Silver"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FRANKEL-SILVER-ELIXIR-R021",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Silver Elixir",
+      "name": "Frankel Silver Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Silver Elixir",
+      "aliases": [
+        "Frankel Silver Elixir",
+        "Assaf Frankel Silver Elixir"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-FRANKEL-STORM-R022",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Storm",
+      "name": "Frankel Storm",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Storm",
+      "aliases": [
+        "Frankel Storm",
+        "Assaf Frankel Storm"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-GARDEN-ROSE-R023",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Garden Rose",
+      "name": "Garden Rose",
+      "family_id": "assaf_catalog",
+      "family_name": "Garden Rose",
+      "aliases": [
+        "Garden Rose",
+        "Assaf Garden Rose"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-GLITCH-R024",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Glitch",
+      "name": "Glitch",
+      "family_id": "assaf_catalog",
+      "family_name": "Glitch",
+      "aliases": [
+        "Glitch",
+        "Assaf Glitch"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-GREATNESS-R025",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Greatness",
+      "name": "Greatness",
+      "family_id": "assaf_catalog",
+      "family_name": "Greatness",
+      "aliases": [
+        "Greatness",
+        "Assaf Greatness"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-GREEN-IRIS-R026",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Green Iris",
+      "name": "Green Iris",
+      "family_id": "assaf_catalog",
+      "family_name": "Green Iris",
+      "aliases": [
+        "Green Iris",
+        "Assaf Green Iris"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-GRIS-ERIK-R027",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Gris Erik",
+      "name": "Gris Erik",
+      "family_id": "assaf_catalog",
+      "family_name": "Gris Erik",
+      "aliases": [
+        "Gris Erik",
+        "Assaf Gris Erik"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-GRIS-FLORA-R028",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Gris Flora",
+      "name": "Gris Flora",
+      "family_id": "assaf_catalog",
+      "family_name": "Gris Flora",
+      "aliases": [
+        "Gris Flora",
+        "Assaf Gris Flora"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HAPPY-MOMENT-R029",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Happy Moment",
+      "name": "Happy Moment",
+      "family_id": "assaf_catalog",
+      "family_name": "Happy Moment",
+      "aliases": [
+        "Happy Moment",
+        "Assaf Happy Moment"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARMONY-R030",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Harmony",
+      "name": "Harmony",
+      "family_id": "assaf_catalog",
+      "family_name": "Harmony",
+      "aliases": [
+        "Harmony",
+        "Assaf Harmony"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HOMME-PEGASUS-R031",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Homme Pegasus",
+      "name": "Homme Pegasus",
+      "family_id": "assaf_catalog",
+      "family_name": "Homme Pegasus",
+      "aliases": [
+        "Homme Pegasus",
+        "Assaf Homme Pegasus"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HOOK-BLUE-R032",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Hook Blue",
+      "name": "Hook Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Hook Blue",
+      "aliases": [
+        "Hook Blue",
+        "Assaf Hook Blue"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-I-M-HERE-ENABLE-R033",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "I'm Here Enable",
+      "name": "I'm Here Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "I'm Here Enable",
+      "aliases": [
+        "I'm Here Enable",
+        "Assaf I'm Here Enable"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-JULIET-R034",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Juliet",
+      "name": "Juliet",
+      "family_id": "assaf_catalog",
+      "family_name": "Juliet",
+      "aliases": [
+        "Juliet",
+        "Assaf Juliet"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-LADY-R035",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lady",
+      "name": "Lady",
+      "family_id": "assaf_catalog",
+      "family_name": "Lady",
+      "aliases": [
+        "Lady",
+        "Assaf Lady"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-LADY-SUPREME-R036",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lady Supreme",
+      "name": "Lady Supreme",
+      "family_id": "assaf_catalog",
+      "family_name": "Lady Supreme",
+      "aliases": [
+        "Lady Supreme",
+        "Assaf Lady Supreme"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-LEGEND-R037",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Legend",
+      "name": "Legend",
+      "family_id": "assaf_catalog",
+      "family_name": "Legend",
+      "aliases": [
+        "Legend",
+        "Assaf Legend"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-LIP-STICK-R038",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lip Stick",
+      "name": "Lip Stick",
+      "family_id": "assaf_catalog",
+      "family_name": "Lip Stick",
+      "aliases": [
+        "Lip Stick",
+        "Assaf Lip Stick"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-LORD-R039",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lord",
+      "name": "Lord",
+      "family_id": "assaf_catalog",
+      "family_name": "Lord",
+      "aliases": [
+        "Lord",
+        "Assaf Lord"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-MARTHA-R040",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Martha",
+      "name": "Martha",
+      "family_id": "assaf_catalog",
+      "family_name": "Martha",
+      "aliases": [
+        "Martha",
+        "Assaf Martha"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-MILLIONAIRE-ENABLE-R041",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Millionaire Enable",
+      "name": "Millionaire Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "Millionaire Enable",
+      "aliases": [
+        "Millionaire Enable",
+        "Assaf Millionaire Enable"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-MISS-ARROGATE-R042",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Arrogate",
+      "name": "Miss Arrogate",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Arrogate",
+      "aliases": [
+        "Miss Arrogate",
+        "Assaf Miss Arrogate"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-MISS-ARROGATE-DIVA-R043",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Arrogate Diva",
+      "name": "Miss Arrogate Diva",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Arrogate Diva",
+      "aliases": [
+        "Miss Arrogate Diva",
+        "Assaf Miss Arrogate Diva"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-MISS-FLORA-R044",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Flora",
+      "name": "Miss Flora",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Flora",
+      "aliases": [
+        "Miss Flora",
+        "Assaf Miss Flora"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PEGASUS-OUD-R045",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pegasus Oud",
+      "name": "Pegasus Oud",
+      "family_id": "assaf_catalog",
+      "family_name": "Pegasus Oud",
+      "aliases": [
+        "Pegasus Oud",
+        "Assaf Pegasus Oud"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PEGASUS-REFLECTION-R046",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pegasus Reflection",
+      "name": "Pegasus Reflection",
+      "family_id": "assaf_catalog",
+      "family_name": "Pegasus Reflection",
+      "aliases": [
+        "Pegasus Reflection",
+        "Assaf Pegasus Reflection"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PINK-LADY-R047",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pink Lady",
+      "name": "Pink Lady",
+      "family_id": "assaf_catalog",
+      "family_name": "Pink Lady",
+      "aliases": [
+        "Pink Lady",
+        "Assaf Pink Lady"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PINK-QUEEN-R048",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pink Queen",
+      "name": "Pink Queen",
+      "family_id": "assaf_catalog",
+      "family_name": "Pink Queen",
+      "aliases": [
+        "Pink Queen",
+        "Assaf Pink Queen"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PINK-QUEEN-EXCLUSIVE-R049",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pink Queen Exclusive",
+      "name": "Pink Queen Exclusive",
+      "family_id": "assaf_catalog",
+      "family_name": "Pink Queen Exclusive",
+      "aliases": [
+        "Pink Queen Exclusive",
+        "Assaf Pink Queen Exclusive"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PRIVATE-PURPLE-R050",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Private Purple",
+      "name": "Private Purple",
+      "family_id": "assaf_catalog",
+      "family_name": "Private Purple",
+      "aliases": [
+        "Private Purple",
+        "Assaf Private Purple"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PROINO-PEGASUS-R051",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Proino Pegasus",
+      "name": "Proino Pegasus",
+      "family_id": "assaf_catalog",
+      "family_name": "Proino Pegasus",
+      "aliases": [
+        "Proino Pegasus",
+        "Assaf Proino Pegasus"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-PROMISE-R052",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Promise",
+      "name": "Promise",
+      "family_id": "assaf_catalog",
+      "family_name": "Promise",
+      "aliases": [
+        "Promise",
+        "Assaf Promise"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-QUEEN-OF-SEDUCTION-R053",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Queen of Seduction",
+      "name": "Queen of Seduction",
+      "family_id": "assaf_catalog",
+      "family_name": "Queen of Seduction",
+      "aliases": [
+        "Queen of Seduction",
+        "Assaf Queen of Seduction"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-REBEL-ENABLE-R054",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Rebel Enable",
+      "name": "Rebel Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "Rebel Enable",
+      "aliases": [
+        "Rebel Enable",
+        "Assaf Rebel Enable"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-RISK-COMETE-R055",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Risk Comete",
+      "name": "Risk Comete",
+      "family_id": "assaf_catalog",
+      "family_name": "Risk Comete",
+      "aliases": [
+        "Risk Comete",
+        "Assaf Risk Comete"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-RISK-X-R056",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Risk X",
+      "name": "Risk X",
+      "family_id": "assaf_catalog",
+      "family_name": "Risk X",
+      "aliases": [
+        "Risk X",
+        "Assaf Risk X"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ROUGE-R057",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Rouge",
+      "name": "Rouge",
+      "family_id": "assaf_catalog",
+      "family_name": "Rouge",
+      "aliases": [
+        "Rouge",
+        "Assaf Rouge"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-ROUGE-THUNDER-R058",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Rouge Thunder",
+      "name": "Rouge Thunder",
+      "family_id": "assaf_catalog",
+      "family_name": "Rouge Thunder",
+      "aliases": [
+        "Rouge Thunder",
+        "Assaf Rouge Thunder"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-RUFFIAN-RED-R059",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Ruffian Red",
+      "name": "Ruffian Red",
+      "family_id": "assaf_catalog",
+      "family_name": "Ruffian Red",
+      "aliases": [
+        "Ruffian Red",
+        "Assaf Ruffian Red"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-SAVAGE-R060",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Savage",
+      "name": "Savage",
+      "family_id": "assaf_catalog",
+      "family_name": "Savage",
+      "aliases": [
+        "Savage",
+        "Assaf Savage"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-SEARCH-R061",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Search",
+      "name": "Search",
+      "family_id": "assaf_catalog",
+      "family_name": "Search",
+      "aliases": [
+        "Search",
+        "Assaf Search"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-SHERLOCK-R062",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Sherlock",
+      "name": "Sherlock",
+      "family_id": "assaf_catalog",
+      "family_name": "Sherlock",
+      "aliases": [
+        "Sherlock",
+        "Assaf Sherlock"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-SHIFT-R063",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Shift",
+      "name": "Shift",
+      "family_id": "assaf_catalog",
+      "family_name": "Shift",
+      "aliases": [
+        "Shift",
+        "Assaf Shift"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-STAND-BY-R064",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Stand By",
+      "name": "Stand By",
+      "family_id": "assaf_catalog",
+      "family_name": "Stand By",
+      "aliases": [
+        "Stand By",
+        "Assaf Stand By"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-STRIKE-BLACK-R065",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Strike Black",
+      "name": "Strike Black",
+      "family_id": "assaf_catalog",
+      "family_name": "Strike Black",
+      "aliases": [
+        "Strike Black",
+        "Assaf Strike Black"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-SWIMMING-IN-SUMMER-R066",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Swimming in Summer",
+      "name": "Swimming in Summer",
+      "family_id": "assaf_catalog",
+      "family_name": "Swimming in Summer",
+      "aliases": [
+        "Swimming in Summer",
+        "Assaf Swimming in Summer"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-SWIMMING-IN-SUMMER-INTENSE-R067",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Swimming In Summer Intense",
+      "name": "Swimming In Summer Intense",
+      "family_id": "assaf_catalog",
+      "family_name": "Swimming In Summer Intense",
+      "aliases": [
+        "Swimming In Summer Intense",
+        "Assaf Swimming In Summer Intense"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-TAKE-OFF-R068",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Take Off",
+      "name": "Take Off",
+      "family_id": "assaf_catalog",
+      "family_name": "Take Off",
+      "aliases": [
+        "Take Off",
+        "Assaf Take Off"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-TOBACCO-BLACK-40-R069",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Tobacco Black 40",
+      "name": "Tobacco Black 40",
+      "family_id": "assaf_catalog",
+      "family_name": "Tobacco Black 40",
+      "aliases": [
+        "Tobacco Black 40",
+        "Assaf Tobacco Black 40"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/",
+      "source_evidence_url": "https://assafperfumes.eu/perfumes/"
     }
   ],
   "variants": [
