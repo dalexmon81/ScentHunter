@@ -961,3 +961,41 @@ Official product evidence:
 - https://khadlaj-perfumes.com/collections/perfumes-spray/products/wild-indonesian-oud-spray-shop-online-best-price-in-dubai-uae
 
 This is a product-level correction of existing identities and variant data, not a claim that all Khadlaj perfume oils, extracts, collections or regional products have been exhaustively reconciled.
+
+
+## Current branch-head reconciliation — Khadlaj and Paris Corner, 2026-11-07
+
+### Khadlaj
+
+The official Perfume Sprays collection currently reports 101 products, distinct from the shop's perfume oils, bakhoor, home/ambiance and gift-set sections. The visible cards checked across the collection's pagination were reconciled to existing canonical identities; no new canonical identity was added in this pass.
+
+Seven existing Khadlaj identities now have product-level official evidence. Five Khadlaj 25 fragrances have verified 100 ml Eau de Parfum variants (Experience, Trust, Loyalty, Heritage, Integrity); Wild Indonesian Oud Pure has a verified 60 ml Eau de Parfum variant; Musk Pure Musk Blend retains its existing 60 ml EDP variant and gains the full official product title as an alias. The catalog now records **113 Khadlaj identities** and the additional six variants are reflected in the current total.
+
+### Paris Corner
+
+The official /collections/paris-corner collection currently reports **104 products**. The broader /collections/all page currently reports **252 products** and explicitly lists distinct lines/brands including Paris Corner, Ministry of Oud, North Stag, Pendora, Emir and Magic Oud Series. These totals are not interchangeable and must not be used as counts of unique core Paris Corner perfumes.
+
+The catalog currently has **129 records labelled Paris Corner**, but that count is not a defensible core-brand coverage figure. At least the following names in the broad all-products listing require a brand/line ownership check before they can be counted as core Paris Corner:
+- Acadia Intenso Emir
+- Camp Fire Emir Factory Edition
+- Cedrat Essence Emir
+- Celestial Emir
+- North Stag Neuf IX
+
+These records were **not** automatically reassigned. Their source listing proves they appear in the Paris Corner group's all-products catalog, but the separate brand navigation shows that group contains multiple lines. The exact line owner should be set only after checking each product detail page or its explicit brand label.
+
+Official sources:
+- https://www.pariscornerperfumes.com/collections/paris-corner
+- https://www.pariscornerperfumes.com/collections/all
+- https://khadlaj-perfumes.com/collections/perfumes-spray
+- https://khadlaj-perfumes.com/collections
+
+### Latest data snapshot and validation status
+
+- Canonical product identities: **1,647**
+- Explicit variant records: **171**
+- Products without a declared variant: **1,498**
+- Requested brand/line labels represented: **20 of 20**
+- Product IDs unique; variant IDs unique; no orphan variants.
+
+The first CI run after adding the six Khadlaj variants failed because two existing tests still asserted the previous snapshot (165 variants and 1,504 products without variants). Those assertions were updated to the actual catalog snapshot (171 and 1,498). A new CI run for the corrected test commit is pending/not yet visible at the time of this note. Do not report the new CI as passing until its run completes successfully.
