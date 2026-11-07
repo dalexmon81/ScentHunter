@@ -67,6 +67,21 @@
       "brand": "Assaf",
       "url": "https://assaf.ae/collections/all-perfumes",
       "note": "Official Assaf product pages explicitly state sizes for Frankel Ascot 200ml, Frankel Blackout 200ml, Attacks 125ml, Gris Erik 100ml EDP, Tobacco Jam 50 100ml (50% oil, not mapped to EDP) and Arrogate Comete 200ml. Concentration is left unspecified unless the page explicitly identifies EDP."
+    },
+    {
+      "brand": "Afnan",
+      "url": "https://india.afnan.com/products/9-pm",
+      "note": "Official Afnan regional product page explicitly lists 9 PM as Eau De Parfum, 100 ML."
+    },
+    {
+      "brand": "Armaf",
+      "url": "https://armaf.com/products/club-de-nuit-intense-for-man",
+      "note": "Official Armaf product page identifies Club de Nuit Intense Man as Eau de Parfum and exposes size options in ounces; no ml conversion is asserted in this evidence file."
+    },
+    {
+      "brand": "Swiss Arabian",
+      "url": "https://uae.swissarabian.com/products/shumoukh-al-ghutra",
+      "note": "Official Swiss Arabian product page title explicitly identifies Shumoukh Al Ghutra Eau De Perfume 100ml; the catalog records the 100ml size and leaves normalized concentration unspecified."
     }
   ],
   "products": [
@@ -2037,6 +2052,28 @@
       "brand": "Bujairami",
       "fragrance": "Only Ever",
       "source_url": "https://bujairami.com.au/products/only-ever-inspired-by-power-of-you-giorgio-armani",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Afnan",
+      "fragrance": "9 PM",
+      "source_url": "https://india.afnan.com/products/9-pm",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance": "Shumoukh Al Ghutra",
+      "source_url": "https://uae.swissarabian.com/products/shumoukh-al-ghutra",
       "variants": [
         {
           "concentration": null,
