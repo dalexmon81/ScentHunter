@@ -25,36 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,647 canonical product identity records; 165 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
-
-## Current counts (catalog records, not proof of completeness)
-
-The counts below are the exact current JSON snapshot on this branch, not a claim that each brand's complete official range has been reconciled.
-
-| Brand / line | Records |
-|---|---:|
-| Velixir | 28 |
-| Mykonos | 72 |
-| Maison Asrar | 121 |
-| Khadlaj | 113 |
-| Bujairami | 40 |
-| Paris Corner | 129 |
-| Assaf | 115 |
-| Al Wataniah | 22 |
-| Armaf | 305 |
-| French Avenue | 26 |
-| Arabiyat Prestige | 32 |
-| Gulf Orchid | 19 |
-| Swiss Arabian | 53 |
-| Games of Spades | 4 |
-| Lattafa | 138 |
-| Afnan | 71 |
-| Aromatix | 12 |
-| Maison Alhambra | 237 |
-| Zimaya | 71 |
-| Al Haramain | 37 |
-| Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,647** |
+Current catalog snapshot: **1,645 canonical product identity records; 171 variant records; 21 brand labels** (revalidated 2026-11-07). The full request is represented at the brand-label level, but this is not an exhaustive global catalogue reconciliation.
 
 ## Findings from live public sources
 
@@ -1116,3 +1087,44 @@ This is a **four-page reconciliation only**, not a claim that all 464 listings o
 ### Armaf evidence-field correction
 
 The collection classification is stored in `collection_source_url` so that the pre-existing product-detail `source_url` and `source_evidence_url` remain intact wherever they already existed. This preserves direct product evidence and prevents a collection listing from replacing a more specific product page. The Armaf regression test checks the dedicated collection-source field while existing product-detail URL tests continue to validate the direct URLs.
+
+
+## Reconciliation status — current decision (2026-11-07)
+
+**Authoritative branch snapshot:** 1,645 canonical identities, 171 explicit variants, 21 brand labels. This supersedes all earlier snapshots in this file (including 1,503, 1,572, 1,647 and other interim counts); prior sections remain as historical work notes and must not be used as the current totals.
+
+All 20 requested brand/line labels are present. Presence is not completeness. Current top-level per-brand counts and status:
+- Velixir 28 — partial; needs full current collection pagination and identity reconciliation.
+- Mykonos 72 — partial; verify the requested perfume house/line only and exclude unrelated uses of “Mykonos”.
+- Maison Asrar 121 — partial; fragrance-only name-level audit remains.
+- Khadlaj 113 — partial; official categories mix sprays, perfume oils, home fragrance, bakhoor and sets; five final listing items and product-level evidence gaps remain.
+- Bujairami 40 — partial; distributor/brand listing reconciliation remains.
+- Paris Corner 129 — partial; full pagination and exact parent/sub-label assignment remain.
+- Assaf 115 — partial; check current product pages, aliases and discontinued items.
+- Al Wataniah 22 — partial; current official product range and formats need pagination/reconciliation.
+- Armaf 303 — partial; official listings mix distinct perfumes, concentrations, multiple presentations, sets and body-care products.
+- French Avenue 26 — partial; current product catalogue reconciliation remains.
+- Arabiyat Prestige 32 — partial; current product catalogue reconciliation remains.
+- Gulf Orchid 19 — partial; current product catalogue reconciliation remains.
+- Swiss Arabian 53 — partial; reconcile regional catalogues and product-vs-home/incense formats.
+- Games of Spades 4 — partial; confirm whether these are all current fragrance identities and variants.
+- Lattafa 138 — partial; official perfume listing pagination and product-level matching remain.
+- Afnan 71 — partial; full fragrance range reconciliation remains; separate perfume oils and sets from identity count.
+- Aromatix 12 — partial; keep collaboration line distinct from French Avenue's general range.
+- Maison Alhambra 237 — partial; sources include specialist distributor pages and do not prove complete manufacturer-wide coverage.
+- Zimaya 71 — partial; full current product listing reconciliation remains.
+- Al Haramain 37 — partial; current fragrance range and concentration/variant reconciliation remain.
+
+### Required before declaring a brand complete
+1. Capture all pages/products from an authoritative brand source or clearly identified authorized distributor, with retrieval timestamp and stable product URL.
+2. Classify each listing: standalone fragrance, concentration/size variant, tester/refill, gift set/sample, perfume oil, home fragrance, body care, discontinued or ambiguous.
+3. Match all products by exact product evidence, GTIN/SKU where available, and normalized brand/name; publish a missing/matched/ambiguous/excluded report.
+4. Use product-detail URLs for verified products; collection URLs must remain explicitly listing-level evidence.
+5. Preserve unknown size, concentration and GTIN as null. Never invent a value to fill a schema.
+6. Run the full catalog, seed, and application test suites on the final branch head.
+
+### Current CI evidence
+GitHub Actions run #42417983773 on the current PR head completed successfully. The `schema-contract` job and the schema/seed integration test step passed. This is code/data validation, not proof of exhaustive commercial coverage and not a live retailer-ingestion test.
+
+### Production and offer boundary
+This catalog expansion contains product identity candidates and explicit variants only. It must not create retailer offers, prices, stock, shipping costs, commission data, or manually inserted values. The later Liquid Brun acceptance test must independently collect actual accessible retailer data, persist provenance and timestamps, and prove that ScentHunter search retrieves those worker-ingested offers.\n
