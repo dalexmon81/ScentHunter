@@ -1878,6 +1878,116 @@
           "size_ml": 100
         }
       ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Afeef",
+      "source_url": "https://lattafa.com/product/afeef/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Ameer Al Oudh",
+      "source_url": "https://lattafa.com/product/ameer-al-oud/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Ameer Al Oudh Intense Oud",
+      "source_url": "https://lattafa.com/product/ameer-al-oudh-intense/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Hayatim",
+      "source_url": "https://lattafa.com/product/hayatim/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Atheeri",
+      "source_url": "https://lattafa.com/product/atheeri/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Adeeb",
+      "source_url": "https://lattafa.com/product/adeeb/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Asad",
+      "source_url": "https://lattafa.com/product/asad/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Asad Zanzibar",
+      "source_url": "https://lattafa.com/product/asad-zanzibar/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Asad Elixir",
+      "source_url": "https://lattafa.com/product/asad-elixir/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance": "Qaed Al Fursan",
+      "source_url": "https://lattafa.com/product/qaed-al-fursan/",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 90
+        }
+      ]
     }
   ]
 }
