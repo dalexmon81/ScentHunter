@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1572
+    assert report["fragrances"] == 1581
     assert report["variants"] == 147
-    assert report["products_without_variants"] == 1447
+    assert report["products_without_variants"] == 1456
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,7 +391,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1572
+    assert len(products) == 1581
     assert len(variants) == 147
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
@@ -433,6 +433,15 @@ def test_paris_corner_official_100ml_sizes_are_explicit_variants():
     }
     products = {row["product_id"]: row for row in raw["products"]}
     variants = {row["product_id"]: row for row in raw["variants"] if row["product_id"] in expected}
+    paris_corner_official_names = {
+        "Virilis", "Zahi", "Zahri Amara", "Zaman Al Ula", "Zariya",
+        "Zodiac", "Zodiac Lunaris", "Zodiac Solmaris", "Zodiac Stratos",
+    }
+    catalog_names = {
+        row["canonical_name"] for row in raw["products"]
+        if row["brand_name"] == "Paris Corner"
+    }
+    assert paris_corner_official_names <= catalog_names
     assert set(variants) == set(expected)
     for product_id, evidence_url in expected.items():
         assert products[product_id]["source_evidence_url"] == evidence_url
