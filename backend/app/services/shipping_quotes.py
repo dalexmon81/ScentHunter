@@ -25,11 +25,11 @@ def quote_shipping(session, *, store_slug: str, country_code: str,
     if len(currency_code) != 3 or not currency_code.isalpha():
         raise ValueError("currency_must_be_iso_4217")
     subtotal = Decimal(str(order_subtotal))
-    if subtotal < 0:
-        raise ValueError("order_subtotal_must_be_nonnegative")
+    if not subtotal.is_finite() or subtotal < 0:
+        raise ValueError("order_subtotal_must_be_finite_and_nonnegative")
     weight = Decimal(str(weight_kg)) if weight_kg is not None else None
-    if weight is not None and weight < 0:
-        raise ValueError("weight_kg_must_be_nonnegative")
+    if weight is not None and (not weight.is_finite() or weight < 0):
+        raise ValueError("weight_kg_must_be_finite_and_nonnegative")
 
     instant = now or datetime.now(timezone.utc)
     postcode = "".join(str(postal_code or "").upper().split())
@@ -79,10 +79,12 @@ def quote_shipping(session, *, store_slug: str, country_code: str,
     if rate.status == "unavailable":
         return {"status": "unavailable",
                 "reason": "retailer_does_not_ship_to_destination", **common}
-    if rate.status == "verified":
-        expiry = rate.valid_until
-        if expiry is None:
-            return {"status": "stale", "reason": "shipping_rule_expired", **common}
+    expiry = rate.valid_until
+    if rate.status == "verified" and expiry is None:
+        return {"status": "stale", "reason": "shipping_rule_expired", **common}
+    # Estimated quotes may also carry an expiry. Never keep presenting one
+    # after its stated validity window has ended.
+    if expiry is not None:
         if expiry.tzinfo is None:
             expiry = expiry.replace(tzinfo=timezone.utc)
         if expiry <= instant:
