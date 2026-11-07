@@ -13,6 +13,7 @@ from pathlib import Path
 
 from app.services.store_identity import normalize_store_key as _normalise_store
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
+from app.services.identity_result_aggregation import aggregate_identity_results
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
@@ -1127,85 +1128,12 @@ def _public_offer(item):
     return _serialize_public_offer(item, _public_offer_url)
 
 def _aggregate_identity_results(offers):
-    """
-    Group matched offers by catalog_id.
-
-    Unresolved offers are preserved separately.
-    """
-    groups = {}
-    unresolved = []
-
-    for offer in offers:
-        if not isinstance(offer, dict):
-            continue
-
-        status = str(
-            offer.get("_match_status")
-            or "unresolved"
-        ).lower()
-
-        if status == "matched" and offer.get("catalog_id"):
-            # Final generic publication guard: non-fragrance commercial rows
-            # (samples, testers, gift sets, bundles, cosmetics, etc.) must
-            # never enter public offer groups even if an upstream path marked
-            # them as matched.
-            if _is_non_fragrance_offer(offer) or _is_concentration_mismatch_offer(offer):
-                continue
-
-            catalog_id = str(
-                offer.get("catalog_id")
-            ).strip()
-
-            if catalog_id not in groups:
-                groups[catalog_id] = {
-                    "catalog_id": catalog_id,
-                    "brand": (
-                        offer.get("canonical_brand")
-                        or offer.get("brand")
-                    ),
-                    "canonical_brand": (
-                        offer.get("canonical_brand")
-                        or offer.get("brand")
-                    ),
-                    "name": offer.get("canonical_name") or offer.get("name"),
-                    "family": offer.get("family"),
-                    "variant": offer.get("variant"),
-                    "canonical_name": offer.get(
-                        "canonical_name"
-                    ),
-                    "image": offer.get("canonical_image") or "",
-                    "offers": [],
-                }
-
-            groups[catalog_id]["offers"].append(
-                _public_offer(offer)
-            )
-
-        elif status == "unresolved":
-            unresolved.append(
-                _public_offer(offer)
-            )
-
-    result = list(groups.values())
-
-    for group in result:
-        group["offers"] = sorted(
-            group["offers"],
-            key=lambda item: (
-                item.get("price_num")
-                if item.get("price_num") is not None
-                else 999999.0
-            ),
-        )
-
-    result.sort(
-        key=lambda group: (
-            group.get("canonical_name")
-            or ""
-        ).lower()
+    return aggregate_identity_results(
+        offers,
+        is_non_fragrance_offer=_is_non_fragrance_offer,
+        is_concentration_mismatch_offer=_is_concentration_mismatch_offer,
+        public_offer=_public_offer,
     )
-
-    return result, unresolved
 
 def _empty_report(store, status='error', elapsed=0.0, error=None):
     return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error,'verified':False}
