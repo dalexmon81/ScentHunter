@@ -1988,6 +1988,61 @@
           "size_ml": 90
         }
       ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Iconic",
+      "source_url": "https://bujairami.com.au/products/iconic-by-bujairami",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "HIM",
+      "source_url": "https://bujairami.com.au/products/bujairami-him",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Snow White",
+      "source_url": "https://bujairami.com.au/products/snow-white-bujairami-powdery-scent",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Million Dollar Smell",
+      "source_url": "https://bujairami.com.au/products/million-dollar-smell-inspired-by-vanilla-diorama-dior",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Only Ever",
+      "source_url": "https://bujairami.com.au/products/only-ever-inspired-by-power-of-you-giorgio-armani",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
     }
   ]
 }
