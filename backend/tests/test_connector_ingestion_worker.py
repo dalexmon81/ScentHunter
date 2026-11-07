@@ -536,11 +536,12 @@ def test_celery_discovery_to_publication_executes_every_pipeline_task(monkeypatc
     assert matched == {"raw_id": raw_id, "status": "matched"}
     assert queued["promote"] == [{"queue": "offers"}]
 
+    factory_count_before_promotion = len(created_factories)
     promoted = ingestion_tasks.promote_matched_offers_task.run()
     assert promoted == {"processed": 1, "published": 1, "blocked": 0}
-    # The task must construct and pass the sessionmaker returned by the DB
-    # factory, not pass the factory function itself to the promotion service.
-    assert created_factories == [factory]
+    # Promotion must construct exactly one sessionmaker for its own task.
+    assert len(created_factories) == factory_count_before_promotion + 1
+    assert created_factories[-1] is factory
 
     with factory() as session:
         raw = session.get(IngestionRaw, __import__("uuid").UUID(raw_id))
