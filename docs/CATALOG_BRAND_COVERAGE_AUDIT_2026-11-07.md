@@ -998,7 +998,7 @@ Official sources:
 - Requested brand/line labels represented: **20 of 20**
 - Product IDs unique; variant IDs unique; no orphan variants.
 
-The first CI run after adding the six Khadlaj variants failed because two existing tests still asserted the previous snapshot (165 variants and 1,504 products without variants). Those assertions were updated to the actual catalog snapshot (171 and 1,498). A new CI run for the corrected test commit is pending/not yet visible at the time of this note. Do not report the new CI as passing until its run completes successfully.
+The first CI run after adding the six Khadlaj variants failed because two existing tests still asserted the previous snapshot (165 variants and 1,504 products without variants). Those assertions were updated to the actual catalog snapshot (171 and 1,498). The corrected CI run #180 completed successfully (schema-contract and schema/seed integration tests passed).
 
 
 ## Paris Corner official product-line tagging — 2026-11-07
@@ -1020,3 +1020,14 @@ Official collection sources:
 - North Stag: https://www.pariscornerperfumes.com/collections/north-stag-1
 
 This is a **partial line reconciliation**, not a claim that all 129 Paris Corner-labelled identities have been assigned to a verified product line. Other identities remain in the parent brand until their line membership is verified.
+
+
+## Maison Asrar Royal Collection — current official-site reconciliation (2026-11-07)
+
+A fresh check of the current official global Maison Asrar collection page supersedes the earlier UK-site snapshot. The current page lists **9 individual fragrance products** in Royal Collection: Belgravia, Legacy, Vanguard, Regent, Majesty, Monarch, Heritage, Imperial and Treasure. The earlier seven-product count reflected an older/different regional collection snapshot and is no longer the correct current global-site count.
+
+The two already-existing catalog identities **Monarch** and **Imperial** are now tagged as `collection_name: "Royal Collection"`, and their source/evidence URLs point to the current official collection page. No new canonical identities were created; existing product IDs and variants were preserved. A regression test asserts the exact nine-name collection membership and evidence URL.
+
+Official source: https://maisonasrar.com/collections/royal-collection
+
+This is a live catalog snapshot and can change; future refreshes should compare the collection membership again rather than treating nine as permanent.
