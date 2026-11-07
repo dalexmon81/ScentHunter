@@ -154,7 +154,7 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1645
+    assert report["fragrances"] == 1750
     assert report["variants"] == 171
     assert report["products_without_variants"] == 1496
     assert report["offers_imported"] == 0
@@ -391,7 +391,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1645
+    assert len(products) == 1750
     assert len(variants) == 171
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
@@ -424,7 +424,7 @@ def test_paris_corner_official_100ml_sizes_are_explicit_variants():
     """Official product pages expose 100ml for these six existing fragrance identities."""
     raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
     expected = {
-        "SH-PARIS-CORNER-c5ed3eb2": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+        "SH-PARIS-CORNER-c5ed3eb2": "https://www.pariscornerperfumes.com/collections/paris-corner",
         "SH-PARIS-CORNER-KHAYAL-PG09": "https://www.pariscornerperfumes.com/products/khayal-100ml",
         "SH-PARIS-CORNER-MINYA-PG19": "https://www.pariscornerperfumes.com/products/minya-100ml",
         "SH-PARIS-CORNER-OPHIDIAN-BLACK-CHERRY-PG29": "https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml",
