@@ -3057,7 +3057,8 @@
       "source_url": "https://khadlaj-perfumes.com/collections/all",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-f492c4b4",
@@ -3090,7 +3091,11 @@
         "Khadlaj Panache Angel Dust"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -3173,7 +3178,11 @@
         "Khadlaj Cloud Candy"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -3188,7 +3197,11 @@
         "Khadlaj Island Vanilla Dunes"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-04832397",
@@ -3397,7 +3410,7 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-7ecbb58c",
@@ -7163,7 +7176,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-9b536535",
@@ -7179,7 +7196,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-d22514e3",
@@ -7195,7 +7216,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-826cdbce",
@@ -7211,7 +7236,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-e533526e",
@@ -7555,7 +7584,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-1ba08eef",
@@ -7571,7 +7604,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-b9e265b9",
@@ -7651,7 +7688,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-a5f06830",
@@ -8899,7 +8940,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-75eee9cc",
@@ -8963,7 +9008,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-0a1f0ae3",
@@ -8979,7 +9028,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7bf23686",
@@ -9027,7 +9080,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-ca4cde9b",
@@ -9443,7 +9500,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-74e9db31",
@@ -10339,7 +10400,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-d8532bbd",
@@ -10387,7 +10452,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -10597,6 +10666,142 @@
       "aliases": [
         "Athena 100 ml",
         "Maison Alhambra Athena 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-9b536535",
+      "size_ml": 80,
+      "aliases": [
+        "Toscano Leather 80 ml",
+        "Maison Alhambra Toscano Leather 80 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-d22514e3",
+      "size_ml": 90,
+      "aliases": [
+        "The Tux 90 ml",
+        "Maison Alhambra The Tux 90 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-3ad4d542",
+      "size_ml": 80,
+      "aliases": [
+        "Bright Peach 80 ml",
+        "Maison Alhambra Bright Peach 80 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-81a36e31",
+      "size_ml": 100,
+      "aliases": [
+        "Jean Lowe Azure 100 ml",
+        "Maison Alhambra Jean Lowe Azure 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-826cdbce",
+      "size_ml": 80,
+      "aliases": [
+        "Lovely Cherie 80 ml",
+        "Maison Alhambra Lovely Cherie 80 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-b4ef640f",
+      "size_ml": 100,
+      "aliases": [
+        "Baroque Rouge 540 100 ml",
+        "Maison Alhambra Baroque Rouge 540 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-1ba08eef",
+      "size_ml": 100,
+      "aliases": [
+        "Baroque Rouge Extrait 100 ml",
+        "Maison Alhambra Baroque Rouge Extrait 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-dd2c5772",
+      "size_ml": 100,
+      "aliases": [
+        "Kismet 100 ml",
+        "Maison Alhambra Kismet 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-3a24e40b",
+      "size_ml": 100,
+      "aliases": [
+        "Salvo Intense 100 ml",
+        "Maison Alhambra Salvo Intense 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-0a1f0ae3",
+      "size_ml": 100,
+      "aliases": [
+        "Jean Lowe Fantasme 100 ml",
+        "Maison Alhambra Jean Lowe Fantasme 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-b19cb1e4",
+      "size_ml": 100,
+      "aliases": [
+        "Infini Musk 100 ml",
+        "Maison Alhambra Infini Musk 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-356ae7a3",
+      "size_ml": 100,
+      "aliases": [
+        "Leonie 100 ml",
+        "Maison Alhambra Leonie 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-2eb2ad09",
+      "size_ml": 100,
+      "aliases": [
+        "Perseus 100 ml",
+        "Maison Alhambra Perseus 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-68802b72",
+      "size_ml": 100,
+      "aliases": [
+        "Jean Lowe Noir 100 ml",
+        "Maison Alhambra Jean Lowe Noir 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-f26d9535",
+      "size_ml": 100,
+      "aliases": [
+        "Panache Angel Dust 100 ml",
+        "Khadlaj Panache Angel Dust 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-47b079b3",
+      "size_ml": 100,
+      "aliases": [
+        "Island Vanilla Dunes 100 ml",
+        "Khadlaj Island Vanilla Dunes 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-78fd361a",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud Candy 100 ml",
+        "Khadlaj Cloud Candy 100 ml"
       ]
     }
   ]
