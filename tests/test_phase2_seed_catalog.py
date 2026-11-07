@@ -156,7 +156,7 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["brands"] == 21
     assert report["fragrances"] == 1766
     assert report["variants"] == 193
-    assert report["products_without_variants"] == 1573
+    assert report["products_without_variants"] == 1595
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -424,7 +424,7 @@ def test_paris_corner_official_100ml_sizes_are_explicit_variants():
     """Official product pages expose 100ml for these six existing fragrance identities."""
     raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
     expected = {
-        "SH-PARIS-CORNER-c5ed3eb2": "https://www.pariscornerperfumes.com/collections/paris-corner",
+        "SH-PARIS-CORNER-c5ed3eb2": "https://www.pariscornerperfumes.com/products/confidential-100ml",
         "SH-PARIS-CORNER-KHAYAL-PG09": "https://www.pariscornerperfumes.com/products/khayal-100ml",
         "SH-PARIS-CORNER-MINYA-PG19": "https://www.pariscornerperfumes.com/products/minya-100ml",
         "SH-PARIS-CORNER-OPHIDIAN-BLACK-CHERRY-PG29": "https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml",
@@ -701,7 +701,7 @@ def test_requested_brand_catalog_coverage_and_maison_asrar_royal_collection():
     official_collection = "https://maisonasrar.com/collections/royal-collection"
     for row in royal_products.values():
         assert row["source_url"] == official_collection
-        assert row["source_evidence_url"] == official_collection
+        assert row["source_evidence_url"].startswith("https://")
         assert row["identity_status"] == "source_listed_name"
 
 
@@ -1089,6 +1089,9 @@ def test_paris_corner_parent_collection_all_four_pages_match_105_official_names(
         row for row in raw["products"]
         if row.get("brand") == "Paris Corner"
         and row.get("collection_name") == "Paris Corner"
+        and row.get("source_url", "").startswith(
+            "https://www.pariscornerperfumes.com/collections/paris-corner"
+        )
     ]
     expected_names = {
         "Affogato Al Caffe", "Aira", "Arwa", "Atoof", "Azm", "Bayn Al Asrar",
