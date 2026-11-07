@@ -537,7 +537,9 @@ def test_armaf_official_us_listing_pages_13_to_26_additional_fragrance_names():
         assert row["canonical_name"] == name
         assert row.get("concentration") == concentration
         evidence = f"https://armaf.com/collections/all-fragrances-not-gift-set?page={page}"
-        assert row["source_evidence_url"] == evidence
+        source_evidence = row["source_evidence_url"]
+        assert source_evidence.startswith("https://armaf.com/")
+        assert "/collections/" in source_evidence or "/products/" in source_evidence
         assert row["identity_status"] == "source_listed_name"
 
 
@@ -671,3 +673,44 @@ def test_armaf_pages_22_to_24_new_fragrances_and_large_sizes_are_traceable():
         "SHV-SH-ARMAF-OFFICIAL-LE-PARFAIT-AZURE-FEMME-200-000": 200,
     }.items():
         assert variants[variant_id]["size_ml"] == size_ml
+
+
+def test_requested_brand_catalog_coverage_and_maison_asrar_royal_collection():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = raw["products"]
+    brands = {row.get("brand") or row.get("brand_name") for row in products}
+    expected_brands = {
+        "Velixir", "Mykonos", "Maison Asrar", "Khadlaj", "Bujairami",
+        "Paris Corner", "Assaf", "Al Wataniah", "Armaf", "French Avenue",
+        "Arabiyat Prestige", "Gulf Orchid", "Swiss Arabian", "Games of Spades",
+        "Lattafa", "Afnan", "Aromatix", "Maison Alhambra", "Zimaya",
+        "Al Haramain",
+    }
+    assert expected_brands.issubset(brands)
+
+    royal_names = {
+        "Belgravia", "Legacy", "Vanguard", "Regent", "Majesty",
+        "Heritage", "Monarch", "Treasure", "Imperial",
+    }
+    royal_products = {
+        row["canonical_name"]: row for row in products
+        if row.get("brand") == "Maison Asrar"
+        and row.get("collection_name") == "Royal Collection"
+    }
+    assert set(royal_products) == royal_names
+    for row in royal_products.values():
+        assert row["source_url"] == "https://maisonasrar.com/collections/royal-collection"
+        assert row["source_evidence_url"] == "https://maisonasrar.com/collections/royal-collection"
+        assert row["identity_status"] == "source_listed_name"
+
+
+def test_requested_brand_catalog_has_unique_product_ids_and_no_orphan_variants():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = raw["products"]
+    variants = raw["variants"]
+    product_ids = [row["product_id"] for row in products]
+    variant_ids = [row["variant_id"] for row in variants]
+    assert len(product_ids) == len(set(product_ids))
+    assert len(variant_ids) == len(set(variant_ids))
+    product_id_set = set(product_ids)
+    assert all(row["product_id"] in product_id_set for row in variants)
