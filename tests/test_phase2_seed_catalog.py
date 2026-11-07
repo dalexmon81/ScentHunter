@@ -154,8 +154,8 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1772
-    assert report["variants"] == 199
+    assert report["fragrances"] == 1775
+    assert report["variants"] == 202
     assert report["products_without_variants"] == 1595
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1772
-    assert len(variants) == 199
+    assert len(products) == 1775
+    assert len(variants) == 202
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -1195,6 +1195,30 @@ def test_six_additional_paris_corner_product_detail_pages_have_verified_variants
         assert row["source_product_url"] == url
         assert row["source_evidence_url"] == url
         assert row["collection_name"] == line
+        assert row["formats_ml"] == [size]
+        variant_id = f"SHV-{row['product_id']}-{size}-000"
+        assert variants[variant_id]["product_id"] == row["product_id"]
+        assert variants[variant_id]["size_ml"] == size
+
+def test_three_more_paris_corner_official_detail_products_have_size_variants():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Paris Corner"
+    }
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "Empire de la Rouge": ("https://www.pariscornerperfumes.com/products/empire-de-la-rouge", 100),
+        "Vivant Sunlit": ("https://www.pariscornerperfumes.com/products/vivant-sunlit", 100),
+        "Wayfarer Infusion": ("https://www.pariscornerperfumes.com/products/wayfarer-infusion", 100),
+    }
+    for name, (url, size) in expected.items():
+        row = products[name]
+        assert row["identity_status"] == "source_verified_name"
+        assert row["source_product_url"] == url
+        assert row["source_evidence_url"] == url
+        assert row["collection_name"] == "Unclassified"
         assert row["formats_ml"] == [size]
         variant_id = f"SHV-{row['product_id']}-{size}-000"
         assert variants[variant_id]["product_id"] == row["product_id"]
