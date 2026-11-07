@@ -12239,11 +12239,14 @@
       "family_name": "Club de Nuit Precieux I",
       "aliases": [
         "Club de Nuit Precieux I",
-        "Armaf Club de Nuit Precieux I"
+        "Armaf Club de Nuit Precieux I",
+        "Club de Nuit Precieux 1 Extrait de Parfum",
+        "Armaf Club de Nuit Precieux 1 Extrait de Parfum"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-precieux-1-extrait-de-parfum-55ml",
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-ARMAF-b3387ab2",
@@ -12383,11 +12386,14 @@
       "family_name": "Club de Nuit Woman Extrait",
       "aliases": [
         "Club de Nuit Woman Extrait",
-        "Armaf Club de Nuit Woman Extrait"
+        "Armaf Club de Nuit Woman Extrait",
+        "Club de Nuit Woman Extrait de Parfum",
+        "Armaf Club de Nuit Woman Extrait de Parfum"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-ARMAF-d8863acf",
@@ -25994,6 +26000,125 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=4"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ODYSSEY-BLOODY-HOT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Bloody Hot",
+      "name": "Odyssey Bloody Hot",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Bloody Hot",
+      "aliases": [
+        "Odyssey Bloody Hot",
+        "Armaf Odyssey Bloody Hot"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/odyssey-bloody-hot"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ODYSSEY-RING-MY-BELL",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Ring My Bell",
+      "name": "Odyssey Ring My Bell",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Ring My Bell",
+      "aliases": [
+        "Odyssey Ring My Bell",
+        "Armaf Odyssey Ring My Bell"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/odyssey-ring-my-bell"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ETER-ARABIAN-SKY",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Arabian Sky",
+      "name": "Eter Arabian Sky",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Arabian Sky",
+      "aliases": [
+        "Eter Arabian Sky",
+        "Armaf Eter Arabian Sky"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/eter-arabian-sky"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ODYSSEY-FRENCH-KISS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey French Kiss",
+      "name": "Odyssey French Kiss",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey French Kiss",
+      "aliases": [
+        "Odyssey French Kiss",
+        "Armaf Odyssey French Kiss"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/odyssey-french-kiss"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ODYSSEY-PINK-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Pink Pop",
+      "name": "Odyssey Pink Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Pink Pop",
+      "aliases": [
+        "Odyssey Pink Pop",
+        "Armaf Odyssey Pink Pop"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/odyssey-pink-pop-edp"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-SPARTACUS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Spartacus",
+      "name": "Spartacus",
+      "family_id": "armaf_catalog",
+      "family_name": "Spartacus",
+      "aliases": [
+        "Spartacus",
+        "Armaf Spartacus"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/spartacus-edp"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-ICONIC-EXTRAIT-DE-PARFUM",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Iconic Extrait de Parfum",
+      "name": "Club de Nuit Iconic Extrait de Parfum",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Iconic Extrait de Parfum",
+      "aliases": [
+        "Club de Nuit Iconic Extrait de Parfum",
+        "Armaf Club de Nuit Iconic Extrait de Parfum"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-iconic-estrait-de-parfum"
     }
   ],
   "variants": [
@@ -27502,6 +27627,25 @@
       "aliases": [
         "Taskeen Lactea Divina 100 ml",
         "Paris Corner Taskeen Lactea Divina 100 ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-224191af-55-000",
+      "product_id": "SH-ARMAF-224191af",
+      "size_ml": 55,
+      "aliases": [
+        "Club de Nuit Precieux I 55 ml",
+        "Club de Nuit Precieux 1 Extrait de Parfum 55 ml",
+        "Armaf Club de Nuit Precieux 1 55ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-ICONIC-EXTRAIT-DE-PARFUM-70-000",
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-ICONIC-EXTRAIT-DE-PARFUM",
+      "size_ml": 70,
+      "aliases": [
+        "Club de Nuit Iconic Extrait de Parfum 70 ml",
+        "Armaf Club de Nuit Iconic Extrait 70ml"
       ]
     }
   ]
