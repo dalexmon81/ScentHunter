@@ -137,6 +137,11 @@
       "brand": "Maison Asrar",
       "url": "https://maisonasrar.com/collections/all",
       "note": "Official Maison Asrar all-products collection; product names are taken from visible fragrance cards. Collection also includes home-fragrance categories, excluded. No concentration/size variants inferred from the collection cards."
+    },
+    {
+      "brand": "Khadlaj",
+      "url": "https://khadlaj-perfumes.sa/",
+      "note": "Official Khadlaj Saudi storefront product cards explicitly state product name, fragrance concentration and 100ml size for these perfume sprays. Other categories (oils, home fragrance, gift sets) excluded."
     }
   ],
   "products": [
@@ -3446,6 +3451,83 @@
       "variants": [
         {
           "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Muse",
+      "source_url": "https://khadlaj-perfumes.sa/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Island Sun",
+      "source_url": "https://khadlaj-perfumes.sa/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Panache Angel Dust",
+      "source_url": "https://khadlaj-perfumes.sa/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Special Edition Shiyaaka Sky",
+      "source_url": "https://khadlaj-perfumes.sa/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Khadlaj Island",
+      "source_url": "https://khadlaj-perfumes.sa/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Fursan White",
+      "source_url": "https://khadlaj-perfumes.sa/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Khadlaj Island Vanilla Dunes",
+      "source_url": "https://khadlaj-perfumes.sa/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
           "size_ml": 100
         }
       ]
