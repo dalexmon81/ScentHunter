@@ -1394,3 +1394,21 @@ The latest test commit **8b51c6fb8f9fa36136718edd39d0faa6fe64a655** completed Gi
 
 The immediately preceding run (#42419374203) failed only because it tested the catalog commit before the count assertions were updated. The later run against the test commit is green.
 
+## Pass 17 — three further official Paris Corner detail pages (2026-11-07)
+
+Added three more fragrances from the official all-products feed after direct product-detail verification:
+
+- **Empire de la Rouge** — 100 ml: https://www.pariscornerperfumes.com/products/empire-de-la-rouge
+- **Vivant Sunlit** — 100 ml: https://www.pariscornerperfumes.com/products/vivant-sunlit
+- **Wayfarer Infusion** — 100 ml: https://www.pariscornerperfumes.com/products/wayfarer-infusion
+
+All three have one explicit 100 ml variant. They remain Unclassified because the checked detail pages establish the product identity and size but not membership in the modeled Emir, Pendora Scents, North Stag, Ministry of Oud or Magic Oud lines. Wayfarer Infusion is kept distinct from Wayfarer Eau de Parfum and Intense Wayfarer.
+
+### Pass 17 result
+- New canonical identities: **3**.
+- New explicit variants: **3**.
+- Paris Corner branch count: **253** (previously 250).
+- Catalog snapshot: **1,775 canonical identities; 202 explicit variants**.
+- New regression coverage asserts the official detail URLs, sizes and variant relationships.
+- CI for the latest addition is pending.
+
