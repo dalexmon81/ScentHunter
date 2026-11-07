@@ -508,6 +508,8 @@ def match_offer_to_variant(self, raw_id: str):
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.promote_matched_offers_task")
 def promote_matched_offers_task(self, limit: int = 100):
     from app.workers.offer_promotion import promote_matched_offers
+    # Promotion expects a SQLAlchemy sessionmaker, not the factory function.
+    # Keep the same per-task engine lifecycle used by the other ingestion tasks.
     factory = make_session_factory()
     try:
         return promote_matched_offers(factory, limit=limit)
