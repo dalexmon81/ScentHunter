@@ -2305,6 +2305,471 @@
       "identity_status": "source_listed_name",
       "source_url": "https://maisonasrar.com/collections/all",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-8a079897",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud",
+      "name": "Shaghaf Oud",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud",
+      "aliases": [
+        "Shaghaf Oud",
+        "Swiss Arabian Shaghaf Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-3fec7eab",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Aswad",
+      "name": "Shaghaf Oud Aswad",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Aswad",
+      "aliases": [
+        "Shaghaf Oud Aswad",
+        "Swiss Arabian Shaghaf Oud Aswad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-8a26549a",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Tonka",
+      "name": "Shaghaf Oud Tonka",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Tonka",
+      "aliases": [
+        "Shaghaf Oud Tonka",
+        "Swiss Arabian Shaghaf Oud Tonka"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-1ccb8d0e",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Casablanca",
+      "name": "Casablanca",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Casablanca",
+      "aliases": [
+        "Casablanca",
+        "Swiss Arabian Casablanca"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-36809115",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Layali",
+      "name": "Layali",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Layali",
+      "aliases": [
+        "Layali",
+        "Swiss Arabian Layali"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-5a798367",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Primal Code",
+      "name": "Primal Code",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Primal Code",
+      "aliases": [
+        "Primal Code",
+        "Swiss Arabian Primal Code"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-d8b44fd0",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Valencia",
+      "name": "Valencia",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Valencia",
+      "aliases": [
+        "Valencia",
+        "Swiss Arabian Valencia"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-cf7d7639",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Areej Al Sheila",
+      "name": "Areej Al Sheila",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Areej Al Sheila",
+      "aliases": [
+        "Areej Al Sheila",
+        "Swiss Arabian Areej Al Sheila"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-6402a7b8",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Sehr Al Sheila",
+      "name": "Sehr Al Sheila",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Sehr Al Sheila",
+      "aliases": [
+        "Sehr Al Sheila",
+        "Swiss Arabian Sehr Al Sheila"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-ff13397d",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shumoukh Al Ghutra",
+      "name": "Shumoukh Al Ghutra",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shumoukh Al Ghutra",
+      "aliases": [
+        "Shumoukh Al Ghutra",
+        "Swiss Arabian Shumoukh Al Ghutra"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-8dc6df00",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Hawa",
+      "name": "Hawa",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Hawa",
+      "aliases": [
+        "Hawa",
+        "Swiss Arabian Hawa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-dbbdd894",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Hayaam",
+      "name": "Hayaam",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Hayaam",
+      "aliases": [
+        "Hayaam",
+        "Swiss Arabian Hayaam"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-6002c2d5",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Wajd",
+      "name": "Wajd",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Wajd",
+      "aliases": [
+        "Wajd",
+        "Swiss Arabian Wajd"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-4e2d9250",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Ishq",
+      "name": "Ishq",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Ishq",
+      "aliases": [
+        "Ishq",
+        "Swiss Arabian Ishq"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-55b3ef77",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Walaa",
+      "name": "Walaa",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Walaa",
+      "aliases": [
+        "Walaa",
+        "Swiss Arabian Walaa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-1701d715",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Intense Pride",
+      "name": "Intense Pride",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Intense Pride",
+      "aliases": [
+        "Intense Pride",
+        "Swiss Arabian Intense Pride"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-5d7af77b",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Pure Instinct",
+      "name": "Pure Instinct",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Pure Instinct",
+      "aliases": [
+        "Pure Instinct",
+        "Swiss Arabian Pure Instinct"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-1a09357b",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Royal Mystery",
+      "name": "Royal Mystery",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Royal Mystery",
+      "aliases": [
+        "Royal Mystery",
+        "Swiss Arabian Royal Mystery"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-245b8a6c",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Wild Spirit",
+      "name": "Wild Spirit",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Wild Spirit",
+      "aliases": [
+        "Wild Spirit",
+        "Swiss Arabian Wild Spirit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-ba07208b",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Vanilla Toffee",
+      "name": "Shaghaf Oud Vanilla Toffee",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Vanilla Toffee",
+      "aliases": [
+        "Shaghaf Oud Vanilla Toffee",
+        "Swiss Arabian Shaghaf Oud Vanilla Toffee"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-de9b731f",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Royale",
+      "name": "Shaghaf Oud Royale",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Royale",
+      "aliases": [
+        "Shaghaf Oud Royale",
+        "Swiss Arabian Shaghaf Oud Royale"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-58b48426",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Azraq",
+      "name": "Shaghaf Oud Azraq",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Azraq",
+      "aliases": [
+        "Shaghaf Oud Azraq",
+        "Swiss Arabian Shaghaf Oud Azraq"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-87a7b35c",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Ahmar",
+      "name": "Shaghaf Oud Ahmar",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Ahmar",
+      "aliases": [
+        "Shaghaf Oud Ahmar",
+        "Swiss Arabian Shaghaf Oud Ahmar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-389a3c84",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Abyad",
+      "name": "Shaghaf Oud Abyad",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Abyad",
+      "aliases": [
+        "Shaghaf Oud Abyad",
+        "Swiss Arabian Shaghaf Oud Abyad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-2ead1149",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Amber and Apricot",
+      "name": "Amber and Apricot",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Amber and Apricot",
+      "aliases": [
+        "Amber and Apricot",
+        "Swiss Arabian Amber and Apricot"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-f7dfee84",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Bergamot and Patchouli",
+      "name": "Bergamot and Patchouli",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Bergamot and Patchouli",
+      "aliases": [
+        "Bergamot and Patchouli",
+        "Swiss Arabian Bergamot and Patchouli"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-fd1a765b",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Bergamot and Cedarwood",
+      "name": "Bergamot and Cedarwood",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Bergamot and Cedarwood",
+      "aliases": [
+        "Bergamot and Cedarwood",
+        "Swiss Arabian Bergamot and Cedarwood"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-f788b076",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Cardamom and Apple",
+      "name": "Cardamom and Apple",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Cardamom and Apple",
+      "aliases": [
+        "Cardamom and Apple",
+        "Swiss Arabian Cardamom and Apple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-421f858d",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Iris and Berry",
+      "name": "Iris and Berry",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Iris and Berry",
+      "aliases": [
+        "Iris and Berry",
+        "Swiss Arabian Iris and Berry"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-313f11c6",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Jasmine and Honey",
+      "name": "Jasmine and Honey",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Jasmine and Honey",
+      "aliases": [
+        "Jasmine and Honey",
+        "Swiss Arabian Jasmine and Honey"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-c19847ba",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Jasmine and Vanilla",
+      "name": "Jasmine and Vanilla",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Jasmine and Vanilla",
+      "aliases": [
+        "Jasmine and Vanilla",
+        "Swiss Arabian Jasmine and Vanilla"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
     }
   ],
   "variants": []
