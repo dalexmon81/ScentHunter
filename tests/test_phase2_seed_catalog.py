@@ -1375,7 +1375,8 @@ def test_maison_asrar_all_74_official_perfume_spray_listings_map_to_existing_ide
     }
     assert len(products) == 121
     assert len(expected) == 74
-    assert expected.issubset(indexed_names)
+    expected_normalized = {name.strip().lower() for name in expected}
+    assert expected_normalized.issubset(indexed_names)
     mohra = next(row for row in products if row["canonical_name"] == "Mohra")
     assert "Mohra Oud" in mohra["aliases"]
     assert mohra["source_product_url"] == "https://maisonasrar.com/products/mohrab"
