@@ -46,7 +46,7 @@
     {
       "brand": "Bujairami",
       "url": "https://bujairami.com.au/collections/all-products",
-      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Additional official product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious and Drip. Concentration is not inferred where absent."
+      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Additional official product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious and Drip. Concentration is not inferred where absent. Additional official individual product pages explicitly identify 100ml Extrait variants for Too Damn Good, Non Stop, Riverina, Queens Avenue, Harbour Tea, Glorious, Drip, Billion Dollar, Woolloomooloo, Imperial Oud, Oud Royale and Roselle."
     },
     {
       "brand": "Mykonos",
@@ -1078,6 +1078,61 @@
       "brand": "Bujairami",
       "fragrance": "Drip",
       "source_url": "https://bujairami.com.au/products/drip-inspired-by-afternoon-swim-louis-vuitton-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Billion Dollar",
+      "source_url": "https://bujairami.com.au/products/billion-dollar-inspired-by-vanilla-diorama-dior-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Woolloomooloo",
+      "source_url": "https://bujairami.com.au/products/woolloomooloo-original-creation-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Imperial Oud",
+      "source_url": "https://bujairami.com.au/products/imperial-oud-inspired-by-oud-zarian-creed-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Oud Royale",
+      "source_url": "https://bujairami.com.au/products/oud-royale-inspired-by-arabian-oud-taraf-extrait",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Roselle",
+      "source_url": "https://bujairami.com.au/products/roselle-inspired-by-sirene-fragrance-du-bois-extrait",
       "variants": [
         {
           "concentration": "Extrait de Parfum",
