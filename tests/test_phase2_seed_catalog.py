@@ -887,7 +887,7 @@ def test_armaf_official_us_first_four_all_fragrances_pages_resolve_to_existing_i
     }
     for name, url in expected_detail_pages.items():
         row = products[name]
-        assert row["source_url"] == url
+        assert row["source_evidence_url"] == url
         assert row["source_evidence_url"] == url
         assert row["identity_status"] == "source_verified_name"
     assert len(products) == 303
