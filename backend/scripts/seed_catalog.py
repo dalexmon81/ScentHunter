@@ -22,7 +22,7 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
-from app.services.product_normalization import normalize_brand
+from app.services.product_normalization import normalize_brand, normalize_product
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -162,10 +162,9 @@ def merge_variant_evidence_overlay(raw: dict, overlay: dict) -> int:
             if variant_id in existing_ids:
                 continue
 
-            key = "|".join((
-                normalize_brand(brand), norm(fragrance), norm(concentration or ""),
-                str(size_int), "False", "False", "False", variant_id,
-            ))
+            canonical = normalize_product(
+                brand, fragrance, concentration=concentration, size_ml=size_int,
+            ).canonical_key
             variants.append({
                 "product_id": pid,
                 "variant_id": variant_id,
@@ -174,7 +173,7 @@ def merge_variant_evidence_overlay(raw: dict, overlay: dict) -> int:
                 "is_tester": False,
                 "is_refill": False,
                 "is_gift_set": False,
-                "canonical_key": key[:320],
+                "canonical_key": canonical[:320],
                 "evidence_url": source_url,
             })
             existing_ids.add(variant_id)
@@ -450,6 +449,10 @@ def main() -> int:
                         session.flush()
                     elif variant_row.fragrance_id != fragrance.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
+                    else:
+                        expected_key = str(variant.get("canonical_key") or key[:320])
+                        if variant_row.canonical_key != expected_key:
+                            variant_row.canonical_key = expected_key
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
