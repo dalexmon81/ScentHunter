@@ -2953,8 +2953,9 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
-      "collection_name": "Paris Corner"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "collection_name": "Paris Corner",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/confidential-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-41eeb4a5",
@@ -20478,7 +20479,8 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khayal-100ml",
-      "collection_name": "Paris Corner"
+      "collection_name": "Paris Corner",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/khayal-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-MANAAL-PG10",
@@ -20649,7 +20651,8 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-100ml",
-      "collection_name": "Paris Corner"
+      "collection_name": "Paris Corner",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/minya-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-MINYA-CARAMEL-DULCE-PG20",
@@ -20820,7 +20823,8 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=2",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml",
-      "collection_name": "Paris Corner"
+      "collection_name": "Paris Corner",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-OPHIDIAN-MANGO-BLISS-PG30",
@@ -21160,7 +21164,8 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=3",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qawafi-100ml",
-      "collection_name": "Paris Corner"
+      "collection_name": "Paris Corner",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/qawafi-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-P311",
@@ -21433,7 +21438,8 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner?page=3",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-lactea-divina-100ml",
-      "collection_name": "Paris Corner"
+      "collection_name": "Paris Corner",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/taskeen-lactea-divina-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-TASKEEN-MARINA-P327",
