@@ -201,3 +201,33 @@ The official ARMAF UK collection currently reports 313 products and has separate
 - Variants: 141
 - Duplicate product IDs: 0
 - Duplicate brand + canonical-name pairs: 0
+
+
+## Priority-brand reconciliation pass 4 — Paris Corner pages 2–3 and Armaf pages 3–4
+
+### Paris Corner official core-brand collection
+
+The official `/collections/paris-corner` collection reports 105 products and has separate pages. Page 2 lists names from Jardin Des Papillons through Oravea; page 3 lists Oud Faek through Twilight Shadow Musk Collection. Added 32 exact names absent from the catalog from page 2 and 32 exact names absent from the catalog from page 3. Sources:
+- https://www.pariscornerperfumes.com/collections/paris-corner?page=2
+- https://www.pariscornerperfumes.com/collections/paris-corner?page=3
+
+The collection count can include different presentations/collections, so this is not yet a unique canonical fragrance count. We are preserving exact official listing names pending product-page review. Some titles containing "Collection" may be a family or set rather than an individual fragrance; these are flagged for a later product-page type check and should not be considered validated standalone perfumes until confirmed.
+
+### Armaf official UK collection
+
+Continued reviewing official collection pages 3 and 4. Added six exact fragrance names absent from the catalog: Odyssey Lichi Lush, Lion's Club Courageux, Infinity Gold, Private Key To My Soul, Lion's Club Monarque, Odyssey Femme White Edition. Source: https://armaf.uk/collections/all-armaf-products?page=4 . Page 3 had been reviewed in the previous pass; page 4 includes non-fragrance formats such as shower gel, discovery sets and deodorant, which were not added as canonical perfumes. Two titles (Miss Chic and Miss Mistique) were deliberately held back because they appear closely related to existing Miss Armaf identities and need product-page/GTIN disambiguation before creating new canonical records.
+
+### Pass 4 outcome
+
+- Added 38 identities: 32 Paris Corner and 6 Armaf.
+- Paris Corner core collection has 105 listed products; pages 2–3 now reconciled at the visible-name level, but page 1 and product type/brand hierarchy still need a complete exact comparison.
+- Armaf official UK collection has 7 pages; pages 1–4 have now been reviewed at listing level, but pages 5–7 and mixed formats remain open.
+- No brand completeness claim is made.
+
+
+## Updated catalog totals after pass 4
+
+- Product identities: 1287
+- Variants: 141
+- Duplicate IDs: 0
+- Duplicate brand + canonical-name pairs: 0
