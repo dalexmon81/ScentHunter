@@ -1,5 +1,13 @@
 name: Deploy staging catalog API and worker
 on:
+  pull_request:
+    branches:
+      - phase10/ops-phase11-integrated
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "fly.staging-catalog.toml"
+      - ".github/workflows/deploy-staging-worker.yml"
   workflow_dispatch:
     inputs:
       confirm_staging_deploy:
@@ -14,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
-    if: inputs.confirm_staging_deploy == 'yes'
+    if: inputs.confirm_staging_deploy == 'yes' || github.event.pull_request.number == 424
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
