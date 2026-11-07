@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1818
+    assert report["fragrances"] == 1891
     assert report["variants"] == 245
-    assert report["products_without_variants"] == 1595
+    assert report["products_without_variants"] == 1668
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,7 +391,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1818
+    assert len(products) == 1891
     assert len(variants) == 245
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
@@ -1381,4 +1381,49 @@ def test_maison_asrar_all_74_official_perfume_spray_listings_map_to_existing_ide
     assert "Mohra Oud" in mohra["aliases"]
     assert mohra["source_product_url"] == "https://maisonasrar.com/products/mohrab"
     assert all("room spray" not in row["canonical_name"].lower() for row in products)
+
+def test_al_wataniah_official_all_products_pages_add_73_missing_fragrance_identities():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    family_raw = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Al Wataniah"
+    }
+    family = next(row for row in family_raw["families"] if row["family_id"] == "al_wataniah_catalog")
+    family_names = {row["canonical_name"] for row in family["products"]}
+    expected = {
+        "Al Daiem": 1, "Al Daiem Elixir": 1, "Al Layl": 1, "Alya": 1,
+        "Ameerati": 1, "Ameeri": 1, "Amnia": 1, "Anwan": 1, "Arya": 1,
+        "Arya Peony Rose": 1, "Attar Al Wesal": 1, "Attar Al Wesal Elixir": 1,
+        "Baraa": 1, "Bareeq Al Dhahab": 1, "Brownie Bite": 1, "Castilla": 1,
+        "Crème": 1, "Da'im": 1, "Duha": 1, "Durrat Al Aroos": 1, "Eqaab": 1,
+        "Emiran": 2, "Emiran Selar": 2, "Fayroz": 2, "Fayyad": 2, "Fikrah": 2,
+        "Ghala": 2, "Golden Honey": 2, "Granada": 2, "Hala": 2, "Hayat": 2,
+        "House Of Oud": 2, "Kenz Al Malik": 2, "Layali": 2, "Lazuli": 2,
+        "Lily": 2, "Marjaan": 2, "Massad Royale": 2, "Muheeb": 2, "Nada": 2,
+        "Nawal Alexandrite": 2, "Nawal Bronzite": 2, "Nawal Fluorite": 2,
+        "Nawal Tanzanite": 2, "Oud Mystery Intense": 3, "Praline Toffee": 3,
+        "Qasar Al Watan": 3, "Rawaee Elite": 3, "Rawaee Monarch": 3,
+        "Rawaee Noble": 3, "Rawaee Regina": 3, "Redaa": 3,
+        "Rose Mystery Intense": 3, "Royal Oak I": 3, "Royal Oak II": 3,
+        "Sabah Al Ward": 3, "Sabah Al Ward Garden of Eden": 3,
+        "Sabah Al Ward Sugar": 3, "Sahari": 3, "Sevilla": 4,
+        "Shagaf Al Ward": 4, "Shagaf Al Ward Gardenia": 4, "Special Oud": 4,
+        "Sugar Rush": 4, "Sultan Al Lail": 4, "Thahaani": 4, "Tiara Pink": 4,
+        "Tibyan": 4, "Watani Intense Gold": 4, "Watani Noir": 4,
+        "Watani Purple": 4, "White Chocolate Ganache": 4, "Ziyana": 4,
+    }
+    assert len(expected) == 73
+    assert len(products) == 95
+    assert set(expected).issubset(products)
+    assert set(products).issubset(family_names)
+    for name, page in expected.items():
+        row = products[name]
+        source = "https://www.alwataniah.com/collections/all" + (f"?page={page}" if page > 1 else "")
+        assert row["identity_status"] == "source_listed_name"
+        assert row["source_url"] == source
+        assert row["source_evidence_url"] == source
+        assert row.get("formats_ml") is None
+        assert row.get("concentration") is None
 
