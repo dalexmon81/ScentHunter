@@ -63,7 +63,7 @@ def quote_shipping(session, *, store_slug: str, country_code: str,
 
     applicable.sort(key=lambda r: (
         len("".join((r.postal_code_prefix or "").split())),
-        r.captured_at or datetime.min.replace(tzinfo=timezone.utc),
+        r.captured_at.isoformat() if r.captured_at else "",
     ), reverse=True)
     rate = applicable[0]
     common = {
@@ -79,8 +79,14 @@ def quote_shipping(session, *, store_slug: str, country_code: str,
     if rate.status == "unavailable":
         return {"status": "unavailable",
                 "reason": "retailer_does_not_ship_to_destination", **common}
-    if rate.status == "verified" and (rate.valid_until is None or rate.valid_until <= instant):
-        return {"status": "stale", "reason": "shipping_rule_expired", **common}
+    if rate.status == "verified":
+        expiry = rate.valid_until
+        if expiry is None:
+            return {"status": "stale", "reason": "shipping_rule_expired", **common}
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if expiry <= instant:
+            return {"status": "stale", "reason": "shipping_rule_expired", **common}
 
     fee = Decimal("0.00") if (
         rate.free_shipping_threshold is not None and subtotal >= rate.free_shipping_threshold

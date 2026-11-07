@@ -283,6 +283,7 @@ class StoreShippingRate(Base):
         CheckConstraint("status IN ('verified', 'estimated', 'unavailable')", name="shipping_rate_status"),
         CheckConstraint("method IN ('official_page', 'api', 'feed', 'manual_confirmation')", name="shipping_rate_method"),
         CheckConstraint("status <> 'verified' OR (base_cost IS NOT NULL AND valid_until IS NOT NULL)", name="verified_shipping_rate_has_cost_and_expiry"),
+        CheckConstraint("status <> 'verified' OR ((source_url IS NOT NULL AND length(trim(source_url)) > 0) OR (evidence_reference IS NOT NULL AND length(trim(evidence_reference)) > 0))", name="verified_shipping_rate_has_evidence"),
         Index("ix_store_shipping_rates_destination", "store_id", "country_code", "status"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)

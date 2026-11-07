@@ -48,6 +48,7 @@ def upgrade():
         sa.CheckConstraint("status IN ('verified', 'estimated', 'unavailable')", name="shipping_rate_status"),
         sa.CheckConstraint("method IN ('official_page', 'api', 'feed', 'manual_confirmation')", name="shipping_rate_method"),
         sa.CheckConstraint("status <> 'verified' OR (base_cost IS NOT NULL AND valid_until IS NOT NULL)", name="verified_shipping_rate_has_cost_and_expiry"),
+        sa.CheckConstraint("status <> 'verified' OR ((source_url IS NOT NULL AND length(trim(source_url)) > 0) OR (evidence_reference IS NOT NULL AND length(trim(evidence_reference)) > 0))", name="verified_shipping_rate_has_evidence"),
         sa.ForeignKeyConstraint(["store_id"], ["stores.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
