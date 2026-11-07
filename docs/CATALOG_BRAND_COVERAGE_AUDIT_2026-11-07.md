@@ -1081,3 +1081,10 @@ Five cross-region duplicate identities were consolidated, retaining the current 
 The catalog now contains **303 Armaf identities** and **1645 total canonical identities**, with 171 explicit variants. The new snapshot tests verify the additions, collection tags, source URLs and alias consolidation. The remaining regional-name candidate **Tres Nuit Lyric Pour Homme** has not been merged with **Tres Nuit Lyric Man**; it remains flagged for product-level identity verification rather than being guessed.
 
 Important scope note: the official `all-perfumes` page currently displays 464 listings, and the broader all-products page displays still more. Those are store listings, not a count of unique canonical perfume identities: they include product types, sets and sizes. Do not use those raw listing totals as the expected number of canonical fragrance records.
+
+
+## Armaf pass — final branch snapshot after CI assertion correction
+
+The catalog currently contains **1,645 canonical identities, 171 explicit variants, 1,496 products without declared variants and 303 Armaf identities**. This supersedes the earlier 1,647 / 305 snapshot after five duplicate regional spellings were consolidated and three official collection-listed fragrances were added. All five removed records had no variants, so the variant total remains 171.
+
+The corrected seed dry-run test now expects 1,645 fragrances and 1,496 products without variants. Unique product IDs: true; unique variant IDs: true; orphan variants: 0.
