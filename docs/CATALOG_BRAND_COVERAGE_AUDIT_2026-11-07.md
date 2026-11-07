@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,598 canonical product identity records; 151 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,628 canonical product identity records; 151 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 256 |
+| Armaf | 286 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,598** |
+| **Total** | **1,628** |
 
 ## Findings from live public sources
 
@@ -726,3 +726,38 @@ Pages 9–10 added three further product identities confirmed by official detail
 Pages 11–12 yielded two additional concentration-specific products confirmed by the official detail pages: **Club de Nuit Woman Parfum Extreme Edition** (Parfum, 105ml) and **Niche Purple Amethyst Fleur** (Eau de Parfum). Both are now separate canonical identities; the 105ml variant is explicit for the former. Official sources:
 - https://armaf.com/products/club-de-nuit-woman-parfum-extreme-edition
 - https://armaf.com/products/niche-purple-amethyst-fleur
+
+
+## Armaf official US collection — additional pages 13–26
+
+Continued the listing-level comparison on the official US **All Fragrances (Not Gift Set)** collection. The retrieved pages 13–26 show a mixture of perfume products and body-care items. Only entries identified as perfume products were added; body sprays, lotions, deodorants, roll-ons, shower gels, soaps, gift sets and discovery bundles were not imported as perfume identities.
+
+Added **30 fragrance identities** absent from the existing Armaf catalog:
+- Art Du'Parfum Abstracto; The Lion's Club Courageux; El Cielo Man; Hunter Killer Man; Oros Pure Cloisonne; Tag Her Donna Colorata Purple
+- Vanity Femme Essence Woman; Amber Arabia Oud; Eter Desert Breeze; Oros The Inventor Black; Profumi D'Art 03 Legni Dolci Bruciati; Odyssey Wild One; Odyssey Aoud; Connoisseur Woman; Magnificent Satin
+- Eternia Man; Eternia Man Limited Edition; Red Velvet; Miss Armaf Magnifiq; SHK IV by Saoud Alkaabi; Red Sky; Bucephalus No. X; Niche Platinum; Le Parfait Azure Femme
+- Magnificent Pour Femme; Let's Move Tango; Magnificent Jardin; Club de Nuit Intense Man Parfum Extreme Edition; Blue Sky; Blue Homme
+
+Each entry is recorded as `source_listed_name` with its official collection page as evidence. Concentration is populated only where the official listing states it; it remains unset for Eternia Man Limited Edition because the listing did not expose one. No sizes, prices or stock were inferred.
+
+Updated branch snapshot:
+- Product identities: **1,628** (up from 1,598)
+- Explicit variants: **151**
+- Armaf identities: **286** (up from 256)
+- Products without declared variants: **1,477**
+
+This is a page-sample reconciliation, not a claim that all Armaf products have been imported. The collection pagination is dynamic and contains mixed product formats; remaining pages, duplicate name/size variants and official product-detail evidence still require review.
+
+Official sources:
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=13
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=14
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=15
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=16
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=17
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=18
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=19
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=20
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=22
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=23
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=24
+- https://armaf.com/collections/all-fragrances-not-gift-set?page=26
