@@ -12,3 +12,20 @@ def test_frontend_requires_and_sends_a_delivery_destination():
     assert "TOTALE CONSEGNATO" in source
     assert "SPEDIZIONE NON DISPONIBILE" in source
     assert "delivered_total_verified" in source
+
+
+def test_frontend_account_profile_connects_auth_and_saved_destinations():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert 'id="profileView"' in source
+    assert 'data-view="profile"' in source
+    assert 'id="profileEmail"' in source
+    assert 'id="profileResidence"' in source
+    assert 'id="profileAddDestination"' in source
+    assert 'id="profileLogout"' in source
+    assert 'profileApi(profileRegisterMode?"/account/register":"/account/login"' in source
+    assert 'profileApi("/account/me")' in source
+    assert 'profileApi("/account/destinations"' in source
+    assert 'data-profile-default' in source
+    assert 'data-profile-delete' in source
+    assert 'scentHunterAccessToken=""' in source
