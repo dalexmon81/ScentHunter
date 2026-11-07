@@ -1490,3 +1490,24 @@ All 37 records use collection-level evidence and retain the status source_listed
 
 GitHub Actions run **#42419917309** for test commit **79f250e828172ad357ca50f678ba9ff2e9d72a47** completed successfully. The Phase 2 schema-contract suite reports **42 passed, 1 warning**, including all 37 La Fede collection identities and their explicit size/concentration variants.
 
+## Pass 25 — Maison Asrar perfume-spray collection reconciliation (2026-11-07)
+
+Compared the official Maison Asrar perfume-spray collection across its paginated listings. The current collection counter is 73–74 depending on the crawl snapshot; the visible product names reconcile to **74 distinct listing identities**. All 74 map to the existing Maison Asrar catalog, with one naming difference: the collection card displays **Mohra Oud**, while the official product-detail page canonical heading is **Mohra**. Added “Mohra Oud” as an alias to the existing Mohra identity and recorded its official product-detail URL rather than creating a duplicate product.
+
+Official sources:
+- Perfume sprays: https://maisonasrar.com/collections/perfume-sprays
+- Paginated collection: https://maisonasrar.com/collections/perfume-sprays?page=2 through page 7
+- Mohra detail page: https://maisonasrar.com/products/mohrab
+- Room sprays are separately listed in an eight-item collection: https://maisonasrar.com/collections/room-spray
+
+The Maison Asrar catalog remains at **121 canonical identities**. The eight room-spray SKUs are not added as perfume identities. The official all-products collection lists 129 products; its product and room-spray categories must remain distinct.
+
+A regression test now asserts the 74 official perfume-spray names map to the 121 existing Maison Asrar identities, verifies the Mohra Oud alias, and ensures room-spray titles are not imported as perfume identities.
+
+### Pass 25 result
+- New canonical identities: **0** (no duplicates created).
+- New aliases: **1** (Mohra Oud → Mohra).
+- Maison Asrar branch count: **121**.
+- Catalog snapshot: **1,818 canonical identities; 245 explicit variants**.
+- CI for this new reconciliation test must complete before marking it verified.
+
