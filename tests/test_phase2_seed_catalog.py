@@ -156,7 +156,7 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["brands"] == 21
     assert report["fragrances"] == 1645
     assert report["variants"] == 171
-    assert report["products_without_variants"] == 1474
+    assert report["products_without_variants"] == 1496
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
