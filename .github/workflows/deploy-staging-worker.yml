@@ -36,7 +36,7 @@ jobs:
         env:
           PYTHONPATH: backend
         run: |
-          pytest -q backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py backend/tests/test_product_normalization.py backend/tests/test_store_connector_contract.py backend/tests/test_seed_catalog_store_safety.py backend/tests/test_catalog_first_api.py backend/tests/test_manage_store_authorization_cli.py backend/tests/test_account_api.py backend/tests/test_user_account_destinations.py backend/tests/test_frontend_delivery_context_contract.py tests/test_arabian_fragrance_discovery_overlay.py
+          pytest -q backend/tests/test_celery_ingestion_pipeline.py backend/tests/test_connector_ingestion_worker.py backend/tests/test_offer_matching_worker.py backend/tests/test_offer_promotion_worker.py backend/tests/test_product_normalization.py backend/tests/test_store_connector_contract.py backend/tests/test_seed_catalog_store_safety.py backend/tests/test_catalog_first_api.py backend/tests/test_manage_store_authorization_cli.py backend/tests/test_account_api.py backend/tests/test_user_account_destinations.py backend/tests/test_frontend_delivery_context_contract.py tests/test_arabian_fragrance_discovery_overlay.py backend/tests/test_variant_coverage_audit.py
           python -m compileall -q backend/app/api/accounts.py
       - name: Verify PostgreSQL fail-closed startup policy
         env:
@@ -138,6 +138,18 @@ jobs:
           machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/seed_catalog.py --apply --include-discovery-overlay"
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'from sqlalchemy import text; from app.db import make_engine; e=make_engine(); c=e.connect(); names=(\"brands\",\"fragrances\",\"product_variants\",\"stores\",\"offers\",\"legacy_product_id_map\",\"legacy_variant_id_map\"); counts={n:c.execute(text(\"SELECT COUNT(*) FROM \"+n)).scalar_one() for n in names}; q=\"SELECT COUNT(*) FROM product_variants pv JOIN fragrances f ON f.id=pv.fragrance_id JOIN brands b ON b.id=f.brand_id WHERE b.normalized_name=:brand AND f.slug=:slug AND pv.canonical_key=:key\"; dior=c.execute(text(q),{\"brand\":\"christian dior\",\"slug\":\"sauvage\",\"key\":\"christian-dior|sauvage|edp|100|standard\"}).scalar_one(); print({\"counts\":counts,\"dior_sauvage_edp_100ml_matches\":dior}); assert counts[\"brands\"]>=60 and counts[\"fragrances\"]>0 and counts[\"product_variants\"]==512 and counts[\"legacy_product_id_map\"]>=3518 and counts[\"legacy_variant_id_map\"]==512 and counts[\"stores\"]==0 and counts[\"offers\"]==0 and dior==1; c.close(); e.dispose()'"
+      - name: Audit canonical variant coverage without modifying catalog
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+            echo "::error::No started staging machine for the read-only variant coverage audit."
+            exit 1
+          fi
+          flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/audit_variant_coverage.py --summary-only --csv /tmp/scenthunter-variant-research-queue.csv"
       - name: Verify one API, one non-root worker and zero Beat machines
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
