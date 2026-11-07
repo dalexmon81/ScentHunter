@@ -18,6 +18,7 @@ from app.api.catalog_search import router as catalog_search_router
 from app.api.legacy_catalog import router as legacy_catalog_router
 from app.api.offer_refresh import router as offer_refresh_router
 from app.api.shipping import router as shipping_router
+from app.api.accounts import router as accounts_router
 from app.services.catalog_search import search_catalog_for_frontend
 
 
@@ -38,6 +39,7 @@ app.include_router(catalog_search_router)
 app.include_router(legacy_catalog_router)
 app.include_router(offer_refresh_router)
 app.include_router(shipping_router)
+app.include_router(accounts_router)
 
 _FRONTEND = Path(__file__).resolve().parents[1] / "frontend" / "index.html"
 
