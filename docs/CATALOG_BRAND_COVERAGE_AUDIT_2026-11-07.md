@@ -1357,3 +1357,34 @@ The corrected branch head was checked by GitHub Actions run **#42419260784**. Th
 
 The earlier failures were from superseded commits. The latest verified head is **1f5dcb4766bb300a327fa57d196b522c4ed3e7a8**. The warning is from the existing dependency/tooling deprecation output; it did not fail the test job.
 
+## Pass 15 — additional Paris Corner detail-page identities (2026-11-07)
+
+Continued reconciling the official all-products feed and added six more fragrances only after checking their official product-detail pages:
+
+- **Harrier Absoulte** — 100 ml; official page retains the displayed spelling “Absoulte”.
+- **Wild and Tobacco Emir** — 75 ml; assigned to Emir based on its official product name.
+- **Lueur d'Espoir Noche** — 100 ml.
+- **Lueur d'Espoir Arena** — 100 ml.
+- **Lueur d'Espoir Ambre** — 100 ml.
+- **Wayfarer Eau de Parfum** — 100 ml; kept separate from Intense Wayfarer because the official names and detail pages are distinct.
+
+Official detail pages:
+- https://www.pariscornerperfumes.com/products/harrier-absoulte
+- https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir
+- https://www.pariscornerperfumes.com/products/lueur-noche
+- https://www.pariscornerperfumes.com/products/lueur-arena
+- https://www.pariscornerperfumes.com/products/lueur-ambre
+- https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum
+
+The three Lueur d'Espoir entries, Harrier Absoulte and Wayfarer are kept as Unclassified because the checked product pages establish Paris Corner product identity and size but do not unambiguously establish membership in one of the sub-lines modeled here. No concentration or GTIN was inferred.
+
+A regression test checks the six official product URLs, sizes, collection classification and explicit variant relationships.
+
+### Pass 15 result
+- New canonical identities: **6**.
+- New explicit variants: **6**.
+- Paris Corner branch count: **250** (previously 244).
+- Catalog snapshot: **1,772 canonical identities; 199 explicit variants**.
+- The parent Paris Corner collection remains exactly 105/105. Unclassified products from the mixed all-products feed are not incorrectly counted as parent-collection members.
+- CI for these latest additions must be checked against the current branch head.
+
