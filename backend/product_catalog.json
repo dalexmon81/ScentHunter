@@ -12975,6 +12975,241 @@
         50
       ],
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-cb6f0532",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Urban Man Elixir",
+      "name": "Club de Nuit Urban Man Elixir",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Urban Man Elixir",
+      "aliases": [
+        "Club de Nuit Urban Man Elixir",
+        "Armaf Club de Nuit Urban Man Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-35441c5c",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Iconic",
+      "name": "Club de Nuit Iconic",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Iconic",
+      "aliases": [
+        "Club de Nuit Iconic",
+        "Armaf Club de Nuit Iconic"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-6485db14",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Mandarin Sky Elixir",
+      "name": "Odyssey Mandarin Sky Elixir",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Mandarin Sky Elixir",
+      "aliases": [
+        "Odyssey Mandarin Sky Elixir",
+        "Armaf Odyssey Mandarin Sky Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-d93826a7",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Imperiale",
+      "name": "Club de Nuit Imperiale",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Imperiale",
+      "aliases": [
+        "Club de Nuit Imperiale",
+        "Armaf Club de Nuit Imperiale"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-681d5bf6",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Dunescape",
+      "name": "Dunescape",
+      "family_id": "armaf_catalog",
+      "family_name": "Dunescape",
+      "aliases": [
+        "Dunescape",
+        "Armaf Dunescape"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-fa82f8c8",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Artisto",
+      "name": "Odyssey Artisto",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Artisto",
+      "aliases": [
+        "Odyssey Artisto",
+        "Armaf Odyssey Artisto"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2"
+    },
+    {
+      "product_id": "SH-ARMAF-e1349118",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Go Mango",
+      "name": "Odyssey Go Mango",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Go Mango",
+      "aliases": [
+        "Odyssey Go Mango",
+        "Armaf Odyssey Go Mango"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-386ff57b",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Ba Ha Mas",
+      "name": "Odyssey Ba Ha Mas",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Ba Ha Mas",
+      "aliases": [
+        "Odyssey Ba Ha Mas",
+        "Armaf Odyssey Ba Ha Mas"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-78579c03",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Marshmallow",
+      "name": "Odyssey Marshmallow",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Marshmallow",
+      "aliases": [
+        "Odyssey Marshmallow",
+        "Armaf Odyssey Marshmallow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-e9227d2b",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Woman",
+      "name": "Club de Nuit Intense Woman",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Woman",
+      "aliases": [
+        "Club de Nuit Intense Woman",
+        "Armaf Club de Nuit Intense Woman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-b6165bfe",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Limoni",
+      "name": "Odyssey Limoni",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Limoni",
+      "aliases": [
+        "Odyssey Limoni",
+        "Armaf Odyssey Limoni"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-ff1a16c2",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Yum Yum",
+      "name": "Yum Yum",
+      "family_id": "armaf_catalog",
+      "family_name": "Yum Yum",
+      "aliases": [
+        "Yum Yum",
+        "Armaf Yum Yum"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3"
+    },
+    {
+      "product_id": "SH-ARMAF-3810c777",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Infinity Silver",
+      "name": "Infinity Silver",
+      "family_id": "armaf_catalog",
+      "family_name": "Infinity Silver",
+      "aliases": [
+        "Infinity Silver",
+        "Armaf Infinity Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-890a715f",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Ombre Oud Intense Man",
+      "name": "Ombre Oud Intense Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Ombre Oud Intense Man",
+      "aliases": [
+        "Ombre Oud Intense Man",
+        "Armaf Ombre Oud Intense Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
