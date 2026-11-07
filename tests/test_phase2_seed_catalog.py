@@ -689,8 +689,7 @@ def test_requested_brand_catalog_coverage_and_maison_asrar_royal_collection():
     assert expected_brands.issubset(brands)
 
     royal_names = {
-        "Belgravia", "Legacy", "Vanguard", "Regent", "Majesty",
-        "Heritage", "Monarch", "Treasure", "Imperial",
+        "Belgravia", "Legacy", "Vanguard", "Regent", "Majesty", "Heritage",
     }
     royal_products = {
         row["canonical_name"]: row for row in products
@@ -699,8 +698,8 @@ def test_requested_brand_catalog_coverage_and_maison_asrar_royal_collection():
     }
     assert set(royal_products) == royal_names
     for row in royal_products.values():
-        assert row["source_url"] == "https://maisonasrar.com/collections/royal-collection"
-        assert row["source_evidence_url"] == "https://maisonasrar.com/collections/royal-collection"
+        assert row["source_url"] == "https://maisonasrar.co.uk/collections/royal-collection"
+        assert row["source_evidence_url"] == "https://maisonasrar.co.uk/collections/royal-collection"
         assert row["identity_status"] == "source_listed_name"
 
 
