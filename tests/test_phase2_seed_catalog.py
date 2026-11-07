@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1581
-    assert report["variants"] == 147
-    assert report["products_without_variants"] == 1456
+    assert report["fragrances"] == 1588
+    assert report["variants"] == 149
+    assert report["products_without_variants"] == 1461
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1581
-    assert len(variants) == 147
+    assert len(products) == 1588
+    assert len(variants) == 149
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -446,3 +446,29 @@ def test_paris_corner_official_100ml_sizes_are_explicit_variants():
     for product_id, evidence_url in expected.items():
         assert products[product_id]["source_evidence_url"] == evidence_url
         assert variants[product_id]["size_ml"] == 100
+
+
+
+def test_armaf_official_page_products_and_concentration_variants_are_traceable():
+    """New Armaf fragrance names and the two size/concentration distinctions stay explicit."""
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["product_id"]: row for row in raw["products"]}
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "SH-ARMAF-OFFICIAL-ODYSSEY-BLOODY-HOT": ("Odyssey Bloody Hot", "Eau de Parfum", "https://armaf.com/products/odyssey-bloody-hot"),
+        "SH-ARMAF-OFFICIAL-ODYSSEY-RING-MY-BELL": ("Odyssey Ring My Bell", "Eau de Parfum", "https://armaf.com/products/odyssey-ring-my-bell"),
+        "SH-ARMAF-OFFICIAL-ETER-ARABIAN-SKY": ("Eter Arabian Sky", "Eau de Parfum", "https://armaf.com/products/eter-arabian-sky"),
+        "SH-ARMAF-OFFICIAL-ODYSSEY-FRENCH-KISS": ("Odyssey French Kiss", "Eau de Parfum", "https://armaf.com/products/odyssey-french-kiss"),
+        "SH-ARMAF-OFFICIAL-ODYSSEY-PINK-POP": ("Odyssey Pink Pop", "Eau de Parfum", "https://armaf.com/products/odyssey-pink-pop-edp"),
+        "SH-ARMAF-OFFICIAL-SPARTACUS": ("Spartacus", "Eau de Parfum", "https://armaf.com/products/spartacus-edp"),
+        "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-ICONIC-EXTRAIT-DE-PARFUM": ("Club de Nuit Iconic Extrait de Parfum", "Extrait de Parfum", "https://armaf.com/products/club-de-nuit-iconic-estrait-de-parfum"),
+    }
+    for product_id, (name, concentration, evidence_url) in expected.items():
+        row = products[product_id]
+        assert row["canonical_name"] == name
+        assert row["concentration"] == concentration
+        assert row["source_evidence_url"] == evidence_url
+    assert variants["SHV-SH-ARMAF-224191af-55-000"]["size_ml"] == 55
+    assert variants["SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-ICONIC-EXTRAIT-DE-PARFUM-70-000"]["size_ml"] == 70
+    assert "Club de Nuit Precieux 1 Extrait de Parfum" in products["SH-ARMAF-224191af"]["aliases"]
+    assert "Club de Nuit Woman Extrait de Parfum" in products["SH-ARMAF-7a645342"]["aliases"]
