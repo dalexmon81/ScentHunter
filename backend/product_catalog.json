@@ -15515,6 +15515,66 @@
       "source_url": "https://armaf.com/collections/all-perfumes?page=39",
       "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=39",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-001",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad",
+      "name": "Asad",
+      "family_id": "lattafa_asad",
+      "family_name": "Asad",
+      "aliases": [
+        "Asad",
+        "Lattafa Asad"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad/",
+      "source_evidence_url": "https://lattafa.com/product/asad/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-ZANZIBAR-001",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad Zanzibar",
+      "name": "Asad Zanzibar",
+      "family_id": "lattafa_asad",
+      "family_name": "Asad Zanzibar",
+      "aliases": [
+        "Asad Zanzibar",
+        "Lattafa Asad Zanzibar"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad-zanzibar/",
+      "source_evidence_url": "https://lattafa.com/product/asad-zanzibar/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-BOURBON-001",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad Bourbon",
+      "name": "Asad Bourbon",
+      "family_id": "lattafa_asad",
+      "family_name": "Asad Bourbon",
+      "aliases": [
+        "Asad Bourbon",
+        "Lattafa Asad Bourbon"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad-bourbon/",
+      "source_evidence_url": "https://lattafa.com/product/asad-bourbon/",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -16940,6 +17000,36 @@
         "Mykonos Invade 50 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-001",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asad 100 ml",
+        "Lattafa Asad 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ASAD-001-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-ZANZIBAR-001",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asad Zanzibar 100 ml",
+        "Lattafa Asad Zanzibar 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ASAD-ZANZIBAR-001-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-BOURBON-001",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asad Bourbon 100 ml",
+        "Lattafa Asad Bourbon 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ASAD-BOURBON-001-100-000"
     }
   ]
 }
