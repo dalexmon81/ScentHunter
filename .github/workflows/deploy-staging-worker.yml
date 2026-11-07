@@ -218,7 +218,11 @@ jobs:
             fi
             sleep 5
           done
-          curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 3 --max-time 20 "$url/" | grep -q "ScentHunter"
+          frontend_html="$(curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 3 --max-time 20 "$url/")"
+          case "$frontend_html" in
+            *ScentHunter*) ;;
+            *) echo "::error::Staging frontend did not contain the ScentHunter application."; exit 1 ;;
+          esac
           curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 3 --max-time 20 "$url/search-start?q=Sauvage" | python -c 'import json,sys; d=json.load(sys.stdin); p=d.get("results",[]); assert d.get("status")=="completed"; assert any(str(x.get("brand","")).lower()=="dior" and str(x.get("fragrance","")).lower()=="sauvage" for x in p); print({"status":d.get("status"),"products":d.get("count"),"offers":d.get("offer_count")})'
       - name: Inspect worker logs and machine state
         env:
