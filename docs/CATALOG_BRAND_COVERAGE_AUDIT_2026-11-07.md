@@ -231,3 +231,39 @@ Continued reviewing official collection pages 3 and 4. Added six exact fragrance
 - Variants: 141
 - Duplicate IDs: 0
 - Duplicate brand + canonical-name pairs: 0
+
+
+## Priority-brand reconciliation pass 5 — Armaf UK pages 5–7 and Maison Alhambra distributor pages 1–4
+
+### Armaf UK
+
+Reviewed official ARMAF UK collection pages 5, 6 and 7. The pages explicitly separate EDP/EDT/extrait fragrances from body mist, deodorant, gift sets, perfume oils and discovery sets. Added 33 exact names from these pages that were not present as exact Armaf canonical names in the catalog: Space Age; Sacre Bleu; Miss Voce Vive; Miss Magnifiq; Miss Dazzling; Magical Oud For Eter; Le Femme; La Rosa; Tres Nuit Lyric Pour Homme; Miss Grandeur; Profumi D'Art 14 Latte Di Tuberosa; Profumi D'Art 06 Vaniglia Esotica; Twist Debois; Sapphire Niche; Profumi D'Art 13 E Tanta Roba; Profumi D'Art 01 Acqua Mia; Perfume Oasis For Eter; Lion's Club Rugir; Lionheart Heritage For Women; Legasi For Women; Le Parfait Azure; Fade Denim Edit; Evening Rose; Eternia Italia; Eternia Imperia; Cloisonne; Blooming Maguey; Affecte; Ego Panthera; Desert Rose For Eter; Desert Flower For Eter; Craze For Men; Bucephalus X.
+
+Sources: https://armaf.uk/collections/all-armaf-products?page=5 ; https://armaf.uk/collections/all-armaf-products?page=6 ; https://armaf.uk/collections/all-armaf-products?page=7 . Exact naming is preserved from retailer listing. Potential naming aliases (for example, reversed line/name order) should be reconciled before final product publication. Existing variants/sizes were not duplicated as separate identities.
+
+### Maison Alhambra
+
+Used the European B2B distributor's Maison Alhambra brand catalogue, which explicitly separates LATTAFA MAISON ALHAMBRA from Lattafa air fresheners, deodorants and other sub-brands. Pages 1–4 list 100ml/80ml EDP identities and SKUs; added 34 absent identities in total across these pages (10 on page 1, 15 on page 2, 6 on page 3, 3 on page 4). Correction: the actual additions in this commit are 10 from page 1 plus 24 from pages 2–4 (9 + 6 + 9 = 24), total 34. Names added:
+
+- Page 1: Sensual Vanilla; Your Touch Amber; Yeah! Man; Your Touch for Women; Jean Lowe Maitre; Winsome; Queenstown Pour Femme Intense; Spectrum; Victoria Flower Rosa Lilium; Victorioso Heroic. (Florenza was already in catalog.)
+- Page 2: Tonic Malt; Tonic Ice; Encode Mountain; Vogue Party; Vogue Rouge; Vogue Night; Pink Velvet; Smoky Touch; Sceptre Oceana.
+- Page 3: Victorioso Legacy; Camille; Rose Origami; Jorge Di Profumo Deep Blue; Vanilla Blush; Coeur Sunny.
+- Page 4: Kismet for Men; Winsome L'Exclusif; Oasis; Philos Opus Noir; Bronze; Luminous Gris; Sugar Me Carrot Cake; Summit Elixir; Dominate Absolu.
+
+Sources: https://b2b.perfumecenter.eu/brand.aspx?id=4 and pages `?page=2`, `?page=3`, `?page=4`. The source is a specialist European B2B distributor, not the manufacturer's master database; treat as distributor-listed evidence. The catalogue explicitly identifies EDP and volume, but the catalog additions preserve the name and EDP concentration without inventing GTINs or stock.
+
+### Pass 5 outcome
+
+- Armaf: 33 new names from official UK pages 5–7.
+- Maison Alhambra: 34 distributor-listed names across pages 1–4; ten page-one additions plus 24 additions on pages 2–4. (One page-one name, Florenza, already existed and was not duplicated.)
+- Armaf pages 1–7 have now been checked at listing level; pages may paginate differently over time and the collection still contains non-perfume categories.
+- Maison Alhambra distributor pages 1–4 have been checked; the distributor shows 4 pages, but this is not proof of the entire global Maison Alhambra catalogue.
+- No brand completeness claim is made.
+
+
+## Updated catalog totals after pass 5
+
+- Product identities: 1354
+- Variants: 141
+- Duplicate product IDs: 0
+- Duplicate brand + canonical-name pairs: 0
