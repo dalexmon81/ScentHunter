@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1636
-    assert report["variants"] == 156
-    assert report["products_without_variants"] == 1502
+    assert report["fragrances"] == 1638
+    assert report["variants"] == 157
+    assert report["products_without_variants"] == 1503
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1636
-    assert len(variants) == 156
+    assert len(products) == 1638
+    assert len(variants) == 157
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -601,3 +601,20 @@ def test_armaf_official_pages_13_to_16_added_missing_fragrance_identities_and_si
         "SHV-SH-ARMAF-OFFICIAL-EGO-TIGRE-100-000": 100,
     }.items():
         assert variants[variant_id]["size_ml"] == size_ml
+
+
+
+def test_armaf_pages_17_to_20_official_ombre_and_eter_products_are_traced():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["product_id"]: row for row in raw["products"]}
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    ombre = products["SH-ARMAF-OFFICIAL-OMBRE-OUD-INTENSE-BLACK"]
+    assert ombre["canonical_name"] == "Ombre Oud Intense Black"
+    assert ombre["concentration"] == "Eau de Parfum"
+    assert ombre["source_evidence_url"] == "https://armaf.com/products/ombre-oud-intense-black"
+    assert variants["SHV-SH-ARMAF-OFFICIAL-OMBRE-OUD-INTENSE-BLACK-100-000"]["size_ml"] == 100
+    eter = products["SH-ARMAF-OFFICIAL-ETER-DESERT-ROSE"]
+    assert eter["canonical_name"] == "Eter Desert Rose"
+    assert eter["concentration"] == "Eau de Parfum"
+    assert eter["source_evidence_url"] == "https://armaf.com/products/eter-desert-rose"
+    assert not any(v["product_id"] == eter["product_id"] for v in raw["variants"])
