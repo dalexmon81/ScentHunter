@@ -109,6 +109,7 @@ def search_catalog(query: str, *, limit: int = 20, session_factory=None, destina
                     # Verified delivered totals are comparable only within the
                     # same currency. Unknown/estimated shipping never becomes zero.
                     ranked.sort(key=lambda item: (
+                        str(item.get("currency") or "").upper(),
                         not item.get("delivered_total_verified", False),
                         item.get("delivered_total") if item.get("delivered_total_verified") else item.get("price", 0),
                     ))
