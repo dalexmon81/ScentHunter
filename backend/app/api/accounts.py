@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib, hmac, re, secrets, uuid
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field, field_validator
@@ -34,13 +35,16 @@ def verify_password(password: str, encoded: str) -> bool:
     except (ValueError, TypeError):
         return False
 
+@lru_cache(maxsize=1)
+def _account_session_factory():
+    """Reuse one process-scoped SQLAlchemy engine/pool for account requests."""
+    return make_session_factory()
+
 def db_session():
-    factory = make_session_factory()
-    try:
-        with factory() as session:
-            yield session
-    finally:
-        factory.kw["bind"].dispose()
+    # The engine and its connection pool live for the process lifetime. Each
+    # request still gets its own short-lived Session via the context manager.
+    with _account_session_factory()() as session:
+        yield session
 
 def new_session(session: Session, user: UserAccount) -> str:
     token = secrets.token_urlsafe(48)
@@ -85,7 +89,7 @@ class RegisterBody(BaseModel):
     @classmethod
     def email_normalized(cls, value):
         value = value.strip().lower()
-        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
+        if not re.fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", value):
             raise ValueError("invalid_email")
         return value
 
