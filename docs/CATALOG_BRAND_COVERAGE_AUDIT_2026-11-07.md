@@ -1443,3 +1443,21 @@ The source collection is recorded separately from the product-detail evidence. M
 
 GitHub Actions run **#42419642110** for test commit **64729d87823a409019b97d3d12d0edc9fc921a4a** completed successfully. The Phase 2 schema-contract suite reports **40 passed, 1 warning**, including the new Code Viola Nectar, Uno Sensuale and Maya product-detail/variant assertions.
 
+## Pass 21 — remaining official Khadlaj Uno Range products (2026-11-07)
+
+The official Khadlaj Uno Range collection contains four perfume sprays, all 100 ml. Uno Sensuale was already added in Pass 19. Added the other three after checking their official detail pages:
+
+- **Uno Lusso** — 100 ml Eau de Parfum: https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae
+- **Uno Intimo** — 100 ml Eau de Parfum: https://khadlaj-perfumes.com/collections/uno-range/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae
+- **Uno Durable** — 100 ml Eau de Parfum: https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae
+
+All three are assigned to the Uno Range within the Khadlaj house, with one explicit 100 ml EDP variant each. The official collection page reports four products in this range; all four are now represented in the catalog.
+
+### Pass 21 result
+- New canonical identities: **3**.
+- New explicit variants: **3**.
+- Khadlaj branch count: **125** (previously 122).
+- Catalog snapshot: **1,781 canonical identities; 208 explicit variants**.
+- Regression coverage checks the three product-detail URLs, source collection, 100 ml size and Eau de Parfum concentration.
+- CI for this pass must complete before marking it verified.
+
