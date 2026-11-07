@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1589
+    assert report["fragrances"] == 1593
     assert report["variants"] == 149
-    assert report["products_without_variants"] == 1462
+    assert report["products_without_variants"] == 1466
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,7 +391,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1589
+    assert len(products) == 1593
     assert len(variants) == 149
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
@@ -473,5 +473,13 @@ def test_armaf_official_page_products_and_concentration_variants_are_traceable()
     soda_pop = products["SH-ARMAF-OFFICIAL-ODYSSEY-SODA-POP"]
     assert soda_pop["identity_status"] == "source_verified_name"
     assert soda_pop["source_evidence_url"] == "https://armaf.com/products/odyssey-soda-pop"
+    later_page_products = {
+        "SH-ARMAF-OFFICIAL-UNIQ-EFFECTS-OF-UNIQ": "https://armaf.com/products/uniq-effects-of-uniq-spr",
+        "SH-ARMAF-OFFICIAL-SCENTASY-NOIR-DE-PECHE": "https://armaf.com/products/scentasy-noir-de-peche",
+        "SH-ARMAF-OFFICIAL-KUNAFA-CHOCOLATE": "https://armaf.com/products/kunafa-chocolate",
+        "SH-ARMAF-OFFICIAL-DUBAI-NIGHTS-MIDNIGHT": "https://armaf.com/products/dubai-nights-midnight-spr",
+    }
+    for product_id, evidence_url in later_page_products.items():
+        assert products[product_id]["source_evidence_url"] == evidence_url
     assert "Club de Nuit Precieux 1 Extrait de Parfum" in products["SH-ARMAF-224191af"]["aliases"]
     assert "Club de Nuit Woman Extrait de Parfum" in products["SH-ARMAF-7a645342"]["aliases"]
