@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "description": "Verified fragrance-family knowledge used by ScentHunter to reject retailer naming errors. This file contains knowledge/data only; matching logic remains generic.",
+  "description": "Verified fragrance-family knowledge used by ScentHunter to reject retailer naming errors. This file contains knowledge/data only; matching logic remains generic. Expanded with sourced fragrance-family identities. This registry contains discovery aliases only; canonical product/variant records and commercial offers must still be imported and validated separately.",
   "families": [
     {
       "family_id": "rasasi_hawas",
@@ -883,6 +883,2286 @@
       ],
       "excluded_products": [],
       "excluded_aliases": []
+    },
+    {
+      "family_id": "velixir_catalog",
+      "brand": "Velixir",
+      "query_aliases": [
+        "Velixir"
+      ],
+      "products": [
+        {
+          "canonical_name": "Adonis",
+          "aliases": [
+            "Adonis",
+            "Velixir Adonis"
+          ]
+        },
+        {
+          "canonical_name": "Aphrodite",
+          "aliases": [
+            "Aphrodite",
+            "Velixir Aphrodite"
+          ]
+        },
+        {
+          "canonical_name": "Apollo",
+          "aliases": [
+            "Apollo",
+            "Velixir Apollo"
+          ]
+        },
+        {
+          "canonical_name": "Ares",
+          "aliases": [
+            "Ares",
+            "Velixir Ares"
+          ]
+        },
+        {
+          "canonical_name": "Artemis",
+          "aliases": [
+            "Artemis",
+            "Velixir Artemis"
+          ]
+        },
+        {
+          "canonical_name": "Asteria",
+          "aliases": [
+            "Asteria",
+            "Velixir Asteria"
+          ]
+        },
+        {
+          "canonical_name": "Athena",
+          "aliases": [
+            "Athena",
+            "Velixir Athena"
+          ]
+        },
+        {
+          "canonical_name": "Comus",
+          "aliases": [
+            "Comus",
+            "Velixir Comus"
+          ]
+        },
+        {
+          "canonical_name": "Concordia",
+          "aliases": [
+            "Concordia",
+            "Velixir Concordia"
+          ]
+        },
+        {
+          "canonical_name": "Demeter",
+          "aliases": [
+            "Demeter",
+            "Velixir Demeter"
+          ]
+        },
+        {
+          "canonical_name": "Ether",
+          "aliases": [
+            "Ether",
+            "Velixir Ether"
+          ]
+        },
+        {
+          "canonical_name": "Galatea",
+          "aliases": [
+            "Galatea",
+            "Velixir Galatea"
+          ]
+        },
+        {
+          "canonical_name": "Harmonia",
+          "aliases": [
+            "Harmonia",
+            "Velixir Harmonia"
+          ]
+        },
+        {
+          "canonical_name": "Helios",
+          "aliases": [
+            "Helios",
+            "Velixir Helios"
+          ]
+        },
+        {
+          "canonical_name": "Hera",
+          "aliases": [
+            "Hera",
+            "Velixir Hera"
+          ]
+        },
+        {
+          "canonical_name": "Himeros",
+          "aliases": [
+            "Himeros",
+            "Velixir Himeros"
+          ]
+        },
+        {
+          "canonical_name": "Icarus",
+          "aliases": [
+            "Icarus",
+            "Velixir Icarus"
+          ]
+        },
+        {
+          "canonical_name": "Morpheus",
+          "aliases": [
+            "Morpheus",
+            "Velixir Morpheus"
+          ]
+        },
+        {
+          "canonical_name": "Narcisus",
+          "aliases": [
+            "Narcisus",
+            "Velixir Narcisus"
+          ]
+        },
+        {
+          "canonical_name": "Nyx",
+          "aliases": [
+            "Nyx",
+            "Velixir Nyx"
+          ]
+        },
+        {
+          "canonical_name": "Orion",
+          "aliases": [
+            "Orion",
+            "Velixir Orion"
+          ]
+        },
+        {
+          "canonical_name": "Orpheus",
+          "aliases": [
+            "Orpheus",
+            "Velixir Orpheus"
+          ]
+        },
+        {
+          "canonical_name": "Paladin",
+          "aliases": [
+            "Paladin",
+            "Velixir Paladin"
+          ]
+        },
+        {
+          "canonical_name": "Panacea",
+          "aliases": [
+            "Panacea",
+            "Velixir Panacea"
+          ]
+        },
+        {
+          "canonical_name": "Persephone",
+          "aliases": [
+            "Persephone",
+            "Velixir Persephone"
+          ]
+        },
+        {
+          "canonical_name": "Poseidon",
+          "aliases": [
+            "Poseidon",
+            "Velixir Poseidon"
+          ]
+        },
+        {
+          "canonical_name": "Selene",
+          "aliases": [
+            "Selene",
+            "Velixir Selene"
+          ]
+        },
+        {
+          "canonical_name": "Uranus",
+          "aliases": [
+            "Uranus",
+            "Velixir Uranus"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "mykonos_catalog",
+      "brand": "Mykonos",
+      "query_aliases": [
+        "Mykonos"
+      ],
+      "products": [
+        {
+          "canonical_name": "Aphrodite",
+          "aliases": [
+            "Aphrodite",
+            "Mykonos Aphrodite"
+          ]
+        },
+        {
+          "canonical_name": "Baby Love",
+          "aliases": [
+            "Baby Love",
+            "Mykonos Baby Love"
+          ]
+        },
+        {
+          "canonical_name": "Black Opera",
+          "aliases": [
+            "Black Opera",
+            "Mykonos Black Opera"
+          ]
+        },
+        {
+          "canonical_name": "Bonfire Vanilla",
+          "aliases": [
+            "Bonfire Vanilla",
+            "Mykonos Bonfire Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Cafe Drops",
+          "aliases": [
+            "Cafe Drops",
+            "Mykonos Cafe Drops"
+          ]
+        },
+        {
+          "canonical_name": "California Blue",
+          "aliases": [
+            "California Blue",
+            "Mykonos California Blue"
+          ]
+        },
+        {
+          "canonical_name": "California Club",
+          "aliases": [
+            "California Club",
+            "Mykonos California Club"
+          ]
+        },
+        {
+          "canonical_name": "California",
+          "aliases": [
+            "California",
+            "Mykonos California"
+          ]
+        },
+        {
+          "canonical_name": "Caramel Fudge Cookie",
+          "aliases": [
+            "Caramel Fudge Cookie",
+            "Mykonos Caramel Fudge Cookie"
+          ]
+        },
+        {
+          "canonical_name": "Coconut Dreams",
+          "aliases": [
+            "Coconut Dreams",
+            "Mykonos Coconut Dreams"
+          ]
+        },
+        {
+          "canonical_name": "Conquer",
+          "aliases": [
+            "Conquer",
+            "Mykonos Conquer"
+          ]
+        },
+        {
+          "canonical_name": "Constantine",
+          "aliases": [
+            "Constantine",
+            "Mykonos Constantine"
+          ]
+        },
+        {
+          "canonical_name": "Crimson",
+          "aliases": [
+            "Crimson",
+            "Mykonos Crimson"
+          ]
+        },
+        {
+          "canonical_name": "Dark Secret",
+          "aliases": [
+            "Dark Secret",
+            "Mykonos Dark Secret"
+          ]
+        },
+        {
+          "canonical_name": "Dreamscape",
+          "aliases": [
+            "Dreamscape",
+            "Mykonos Dreamscape"
+          ]
+        },
+        {
+          "canonical_name": "Enchanted",
+          "aliases": [
+            "Enchanted",
+            "Mykonos Enchanted"
+          ]
+        },
+        {
+          "canonical_name": "Hawaiian Crush",
+          "aliases": [
+            "Hawaiian Crush",
+            "Mykonos Hawaiian Crush"
+          ]
+        },
+        {
+          "canonical_name": "Moroccan Vanilla",
+          "aliases": [
+            "Moroccan Vanilla",
+            "Mykonos Moroccan Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Musk Aura",
+          "aliases": [
+            "Musk Aura",
+            "Mykonos Musk Aura"
+          ]
+        },
+        {
+          "canonical_name": "Paradise",
+          "aliases": [
+            "Paradise",
+            "Mykonos Paradise"
+          ]
+        },
+        {
+          "canonical_name": "Pink Beach",
+          "aliases": [
+            "Pink Beach",
+            "Mykonos Pink Beach"
+          ]
+        },
+        {
+          "canonical_name": "Sparkling Rosé",
+          "aliases": [
+            "Sparkling Rosé",
+            "Mykonos Sparkling Rosé"
+          ]
+        },
+        {
+          "canonical_name": "Utopia",
+          "aliases": [
+            "Utopia",
+            "Mykonos Utopia"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Clouds",
+          "aliases": [
+            "Vanilla Clouds",
+            "Mykonos Vanilla Clouds"
+          ]
+        },
+        {
+          "canonical_name": "Xoxo Rosy",
+          "aliases": [
+            "Xoxo Rosy",
+            "Mykonos Xoxo Rosy"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "maison_asrar_catalog",
+      "brand": "Maison Asrar",
+      "query_aliases": [
+        "Maison Asrar"
+      ],
+      "products": [
+        {
+          "canonical_name": "Belgravia",
+          "aliases": [
+            "Belgravia",
+            "Maison Asrar Belgravia"
+          ]
+        },
+        {
+          "canonical_name": "Legacy",
+          "aliases": [
+            "Legacy",
+            "Maison Asrar Legacy"
+          ]
+        },
+        {
+          "canonical_name": "Vanguard",
+          "aliases": [
+            "Vanguard",
+            "Maison Asrar Vanguard"
+          ]
+        },
+        {
+          "canonical_name": "Regent",
+          "aliases": [
+            "Regent",
+            "Maison Asrar Regent"
+          ]
+        },
+        {
+          "canonical_name": "Ameer",
+          "aliases": [
+            "Ameer",
+            "Maison Asrar Ameer"
+          ]
+        },
+        {
+          "canonical_name": "Majesty",
+          "aliases": [
+            "Majesty",
+            "Maison Asrar Majesty"
+          ]
+        },
+        {
+          "canonical_name": "Veyra",
+          "aliases": [
+            "Veyra",
+            "Maison Asrar Veyra"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Aura",
+          "aliases": [
+            "Vanilla Aura",
+            "Maison Asrar Vanilla Aura"
+          ]
+        },
+        {
+          "canonical_name": "Faris Al Arab",
+          "aliases": [
+            "Faris Al Arab",
+            "Maison Asrar Faris Al Arab"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Voyage",
+          "aliases": [
+            "Vanilla Voyage",
+            "Maison Asrar Vanilla Voyage"
+          ]
+        },
+        {
+          "canonical_name": "III Thriller",
+          "aliases": [
+            "III Thriller",
+            "Maison Asrar III Thriller"
+          ]
+        },
+        {
+          "canonical_name": "Last Swim",
+          "aliases": [
+            "Last Swim",
+            "Maison Asrar Last Swim"
+          ]
+        },
+        {
+          "canonical_name": "Pomme Rouge",
+          "aliases": [
+            "Pomme Rouge",
+            "Maison Asrar Pomme Rouge"
+          ]
+        },
+        {
+          "canonical_name": "Haven",
+          "aliases": [
+            "Haven",
+            "Maison Asrar Haven"
+          ]
+        },
+        {
+          "canonical_name": "Muharib",
+          "aliases": [
+            "Muharib",
+            "Maison Asrar Muharib"
+          ]
+        },
+        {
+          "canonical_name": "Silent Surge",
+          "aliases": [
+            "Silent Surge",
+            "Maison Asrar Silent Surge"
+          ]
+        },
+        {
+          "canonical_name": "Treasure",
+          "aliases": [
+            "Treasure",
+            "Maison Asrar Treasure"
+          ]
+        },
+        {
+          "canonical_name": "Hunter",
+          "aliases": [
+            "Hunter",
+            "Maison Asrar Hunter"
+          ]
+        },
+        {
+          "canonical_name": "Imperial",
+          "aliases": [
+            "Imperial",
+            "Maison Asrar Imperial"
+          ]
+        },
+        {
+          "canonical_name": "Monarch",
+          "aliases": [
+            "Monarch",
+            "Maison Asrar Monarch"
+          ]
+        },
+        {
+          "canonical_name": "Heritage",
+          "aliases": [
+            "Heritage",
+            "Maison Asrar Heritage"
+          ]
+        },
+        {
+          "canonical_name": "1963",
+          "aliases": [
+            "1963",
+            "Maison Asrar 1963"
+          ]
+        },
+        {
+          "canonical_name": "Librae",
+          "aliases": [
+            "Librae",
+            "Maison Asrar Librae"
+          ]
+        },
+        {
+          "canonical_name": "Lily",
+          "aliases": [
+            "Lily",
+            "Maison Asrar Lily"
+          ]
+        },
+        {
+          "canonical_name": "Lolita",
+          "aliases": [
+            "Lolita",
+            "Maison Asrar Lolita"
+          ]
+        },
+        {
+          "canonical_name": "Lumiere",
+          "aliases": [
+            "Lumiere",
+            "Maison Asrar Lumiere"
+          ]
+        },
+        {
+          "canonical_name": "Luna",
+          "aliases": [
+            "Luna",
+            "Maison Asrar Luna"
+          ]
+        },
+        {
+          "canonical_name": "Magic Night",
+          "aliases": [
+            "Magic Night",
+            "Maison Asrar Magic Night"
+          ]
+        },
+        {
+          "canonical_name": "Masterpiece",
+          "aliases": [
+            "Masterpiece",
+            "Maison Asrar Masterpiece"
+          ]
+        },
+        {
+          "canonical_name": "Milky Way",
+          "aliases": [
+            "Milky Way",
+            "Maison Asrar Milky Way"
+          ]
+        },
+        {
+          "canonical_name": "Mohra",
+          "aliases": [
+            "Mohra",
+            "Maison Asrar Mohra"
+          ]
+        },
+        {
+          "canonical_name": "Nada",
+          "aliases": [
+            "Nada",
+            "Maison Asrar Nada"
+          ]
+        },
+        {
+          "canonical_name": "Never Forget Me",
+          "aliases": [
+            "Never Forget Me",
+            "Maison Asrar Never Forget Me"
+          ]
+        },
+        {
+          "canonical_name": "Night in Paris",
+          "aliases": [
+            "Night in Paris",
+            "Maison Asrar Night in Paris"
+          ]
+        },
+        {
+          "canonical_name": "Oh Honey!",
+          "aliases": [
+            "Oh Honey!",
+            "Maison Asrar Oh Honey!"
+          ]
+        },
+        {
+          "canonical_name": "Omniya",
+          "aliases": [
+            "Omniya",
+            "Maison Asrar Omniya"
+          ]
+        },
+        {
+          "canonical_name": "Oscar",
+          "aliases": [
+            "Oscar",
+            "Maison Asrar Oscar"
+          ]
+        },
+        {
+          "canonical_name": "Patchouli with Love",
+          "aliases": [
+            "Patchouli with Love",
+            "Maison Asrar Patchouli with Love"
+          ]
+        },
+        {
+          "canonical_name": "Petra",
+          "aliases": [
+            "Petra",
+            "Maison Asrar Petra"
+          ]
+        },
+        {
+          "canonical_name": "Pink Crush",
+          "aliases": [
+            "Pink Crush",
+            "Maison Asrar Pink Crush"
+          ]
+        },
+        {
+          "canonical_name": "Qamar",
+          "aliases": [
+            "Qamar",
+            "Maison Asrar Qamar"
+          ]
+        },
+        {
+          "canonical_name": "Red Velvet",
+          "aliases": [
+            "Red Velvet",
+            "Maison Asrar Red Velvet"
+          ]
+        },
+        {
+          "canonical_name": "Rey",
+          "aliases": [
+            "Rey",
+            "Maison Asrar Rey"
+          ]
+        },
+        {
+          "canonical_name": "Rose",
+          "aliases": [
+            "Rose",
+            "Maison Asrar Rose"
+          ]
+        },
+        {
+          "canonical_name": "Rose Honey",
+          "aliases": [
+            "Rose Honey",
+            "Maison Asrar Rose Honey"
+          ]
+        },
+        {
+          "canonical_name": "Rose Musk",
+          "aliases": [
+            "Rose Musk",
+            "Maison Asrar Rose Musk"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "khadlaj_catalog",
+      "brand": "Khadlaj",
+      "query_aliases": [
+        "Khadlaj"
+      ],
+      "products": [
+        {
+          "canonical_name": "Shiyaaka Blue",
+          "aliases": [
+            "Shiyaaka Blue",
+            "Khadlaj Shiyaaka Blue"
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Gold",
+          "aliases": [
+            "Shiyaaka Gold",
+            "Khadlaj Shiyaaka Gold"
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka For Men",
+          "aliases": [
+            "Shiyaaka For Men",
+            "Khadlaj Shiyaaka For Men"
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka White",
+          "aliases": [
+            "Shiyaaka White",
+            "Khadlaj Shiyaaka White"
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Rose Gold",
+          "aliases": [
+            "Shiyaaka Rose Gold",
+            "Khadlaj Shiyaaka Rose Gold"
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Sky",
+          "aliases": [
+            "Shiyaaka Sky",
+            "Khadlaj Shiyaaka Sky"
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Shadow",
+          "aliases": [
+            "Shiyaaka Shadow",
+            "Khadlaj Shiyaaka Shadow"
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Snow",
+          "aliases": [
+            "Shiyaaka Snow",
+            "Khadlaj Shiyaaka Snow"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "bujairami_catalog",
+      "brand": "Bujairami",
+      "query_aliases": [
+        "Bujairami"
+      ],
+      "products": [
+        {
+          "canonical_name": "Gold Coast Shiraz",
+          "aliases": [
+            "Gold Coast Shiraz",
+            "Bujairami Gold Coast Shiraz"
+          ]
+        },
+        {
+          "canonical_name": "G’Day",
+          "aliases": [
+            "G’Day",
+            "Bujairami G’Day"
+          ]
+        },
+        {
+          "canonical_name": "Midnight in Melbourne",
+          "aliases": [
+            "Midnight in Melbourne",
+            "Bujairami Midnight in Melbourne"
+          ]
+        },
+        {
+          "canonical_name": "Sunrise in Sydney",
+          "aliases": [
+            "Sunrise in Sydney",
+            "Bujairami Sunrise in Sydney"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "paris_corner_catalog",
+      "brand": "Paris Corner",
+      "query_aliases": [
+        "Paris Corner"
+      ],
+      "products": [
+        {
+          "canonical_name": "Affogato Al Caffe",
+          "aliases": [
+            "Affogato Al Caffe",
+            "Paris Corner Affogato Al Caffe"
+          ]
+        },
+        {
+          "canonical_name": "Aira",
+          "aliases": [
+            "Aira",
+            "Paris Corner Aira"
+          ]
+        },
+        {
+          "canonical_name": "Arwa",
+          "aliases": [
+            "Arwa",
+            "Paris Corner Arwa"
+          ]
+        },
+        {
+          "canonical_name": "Atoof",
+          "aliases": [
+            "Atoof",
+            "Paris Corner Atoof"
+          ]
+        },
+        {
+          "canonical_name": "Azm",
+          "aliases": [
+            "Azm",
+            "Paris Corner Azm"
+          ]
+        },
+        {
+          "canonical_name": "Bayn Al Asrar",
+          "aliases": [
+            "Bayn Al Asrar",
+            "Paris Corner Bayn Al Asrar"
+          ]
+        },
+        {
+          "canonical_name": "Caramel Bash",
+          "aliases": [
+            "Caramel Bash",
+            "Paris Corner Caramel Bash"
+          ]
+        },
+        {
+          "canonical_name": "Choco Lait",
+          "aliases": [
+            "Choco Lait",
+            "Paris Corner Choco Lait"
+          ]
+        },
+        {
+          "canonical_name": "Ciao Citrus",
+          "aliases": [
+            "Ciao Citrus",
+            "Paris Corner Ciao Citrus"
+          ]
+        },
+        {
+          "canonical_name": "Confidential",
+          "aliases": [
+            "Confidential",
+            "Paris Corner Confidential"
+          ]
+        },
+        {
+          "canonical_name": "Cosmic Giardino",
+          "aliases": [
+            "Cosmic Giardino",
+            "Paris Corner Cosmic Giardino"
+          ]
+        },
+        {
+          "canonical_name": "Dar Al Oud",
+          "aliases": [
+            "Dar Al Oud",
+            "Paris Corner Dar Al Oud"
+          ]
+        },
+        {
+          "canonical_name": "Date Caramel",
+          "aliases": [
+            "Date Caramel",
+            "Paris Corner Date Caramel"
+          ]
+        },
+        {
+          "canonical_name": "December Ambar",
+          "aliases": [
+            "December Ambar",
+            "Paris Corner December Ambar"
+          ]
+        },
+        {
+          "canonical_name": "December Rose",
+          "aliases": [
+            "December Rose",
+            "Paris Corner December Rose"
+          ]
+        },
+        {
+          "canonical_name": "December Vanilla",
+          "aliases": [
+            "December Vanilla",
+            "Paris Corner December Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Dulzura",
+          "aliases": [
+            "Dulzura",
+            "Paris Corner Dulzura"
+          ]
+        },
+        {
+          "canonical_name": "Dulzura Vanilla Envie",
+          "aliases": [
+            "Dulzura Vanilla Envie",
+            "Paris Corner Dulzura Vanilla Envie"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "assaf_catalog",
+      "brand": "Assaf",
+      "query_aliases": [
+        "Assaf"
+      ],
+      "products": [
+        {
+          "canonical_name": "90s",
+          "aliases": [
+            "90s",
+            "Assaf 90s"
+          ]
+        },
+        {
+          "canonical_name": "Addict Blue",
+          "aliases": [
+            "Addict Blue",
+            "Assaf Addict Blue"
+          ]
+        },
+        {
+          "canonical_name": "Alex Enable",
+          "aliases": [
+            "Alex Enable",
+            "Assaf Alex Enable"
+          ]
+        },
+        {
+          "canonical_name": "Alexandra",
+          "aliases": [
+            "Alexandra",
+            "Assaf Alexandra"
+          ]
+        },
+        {
+          "canonical_name": "Arkle",
+          "aliases": [
+            "Arkle",
+            "Assaf Arkle"
+          ]
+        },
+        {
+          "canonical_name": "Arrogate Addict",
+          "aliases": [
+            "Arrogate Addict",
+            "Assaf Arrogate Addict"
+          ]
+        },
+        {
+          "canonical_name": "Tobacco Jam 60",
+          "aliases": [
+            "Tobacco Jam 60",
+            "Assaf Tobacco Jam 60"
+          ]
+        },
+        {
+          "canonical_name": "Tobacco Pacha",
+          "aliases": [
+            "Tobacco Pacha",
+            "Assaf Tobacco Pacha"
+          ]
+        },
+        {
+          "canonical_name": "Tobacco Rage 32",
+          "aliases": [
+            "Tobacco Rage 32",
+            "Assaf Tobacco Rage 32"
+          ]
+        },
+        {
+          "canonical_name": "Troy Enable",
+          "aliases": [
+            "Troy Enable",
+            "Assaf Troy Enable"
+          ]
+        },
+        {
+          "canonical_name": "Wanted Lady",
+          "aliases": [
+            "Wanted Lady",
+            "Assaf Wanted Lady"
+          ]
+        },
+        {
+          "canonical_name": "Warrior",
+          "aliases": [
+            "Warrior",
+            "Assaf Warrior"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt",
+          "aliases": [
+            "Wild Colt",
+            "Assaf Wild Colt"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt Bakhur",
+          "aliases": [
+            "Wild Colt Bakhur",
+            "Assaf Wild Colt Bakhur"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt Boss",
+          "aliases": [
+            "Wild Colt Boss",
+            "Assaf Wild Colt Boss"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt Elixir",
+          "aliases": [
+            "Wild Colt Elixir",
+            "Assaf Wild Colt Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt Exclusive",
+          "aliases": [
+            "Wild Colt Exclusive",
+            "Assaf Wild Colt Exclusive"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt Outlast",
+          "aliases": [
+            "Wild Colt Outlast",
+            "Assaf Wild Colt Outlast"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt Smoky",
+          "aliases": [
+            "Wild Colt Smoky",
+            "Assaf Wild Colt Smoky"
+          ]
+        },
+        {
+          "canonical_name": "Wild Colt Tobacco",
+          "aliases": [
+            "Wild Colt Tobacco",
+            "Assaf Wild Colt Tobacco"
+          ]
+        },
+        {
+          "canonical_name": "Wild Pegasus",
+          "aliases": [
+            "Wild Pegasus",
+            "Assaf Wild Pegasus"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "al_wataniah_catalog",
+      "brand": "Al Wataniah",
+      "query_aliases": [
+        "Al Wataniah"
+      ],
+      "products": [
+        {
+          "canonical_name": "Kayaan Classic",
+          "aliases": [
+            "Kayaan Classic",
+            "Al Wataniah Kayaan Classic"
+          ]
+        },
+        {
+          "canonical_name": "Kayaan Terra",
+          "aliases": [
+            "Kayaan Terra",
+            "Al Wataniah Kayaan Terra"
+          ]
+        },
+        {
+          "canonical_name": "Kayaan Gold",
+          "aliases": [
+            "Kayaan Gold",
+            "Al Wataniah Kayaan Gold"
+          ]
+        },
+        {
+          "canonical_name": "Kayaan Midnight",
+          "aliases": [
+            "Kayaan Midnight",
+            "Al Wataniah Kayaan Midnight"
+          ]
+        },
+        {
+          "canonical_name": "Lemon Souffle",
+          "aliases": [
+            "Lemon Souffle",
+            "Al Wataniah Lemon Souffle"
+          ]
+        },
+        {
+          "canonical_name": "Choco Truffle",
+          "aliases": [
+            "Choco Truffle",
+            "Al Wataniah Choco Truffle"
+          ]
+        },
+        {
+          "canonical_name": "Rose Eclat",
+          "aliases": [
+            "Rose Eclat",
+            "Al Wataniah Rose Eclat"
+          ]
+        },
+        {
+          "canonical_name": "Milele",
+          "aliases": [
+            "Milele",
+            "Al Wataniah Milele"
+          ]
+        },
+        {
+          "canonical_name": "Turquois",
+          "aliases": [
+            "Turquois",
+            "Al Wataniah Turquois"
+          ]
+        },
+        {
+          "canonical_name": "Cloud",
+          "aliases": [
+            "Cloud",
+            "Al Wataniah Cloud"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "armaf_catalog",
+      "brand": "Armaf",
+      "query_aliases": [
+        "Armaf"
+      ],
+      "products": [
+        {
+          "canonical_name": "Club de Nuit Untold",
+          "aliases": [
+            "Club de Nuit Untold",
+            "Armaf Club de Nuit Untold"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Intense Man",
+          "aliases": [
+            "Club de Nuit Intense Man",
+            "Armaf Club de Nuit Intense Man"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Elite",
+          "aliases": [
+            "Club de Nuit Elite",
+            "Armaf Club de Nuit Elite"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Intense Overdose",
+          "aliases": [
+            "Club de Nuit Intense Overdose",
+            "Armaf Club de Nuit Intense Overdose"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Intense Man Pure Parfum",
+          "aliases": [
+            "Club de Nuit Intense Man Pure Parfum",
+            "Armaf Club de Nuit Intense Man Pure Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Intenso Fuego",
+          "aliases": [
+            "Club de Nuit Intenso Fuego",
+            "Armaf Club de Nuit Intenso Fuego"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Mandarin Sky",
+          "aliases": [
+            "Odyssey Mandarin Sky",
+            "Armaf Odyssey Mandarin Sky"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Intense Man Extrait de Parfum",
+          "aliases": [
+            "Club de Nuit Intense Man Extrait de Parfum",
+            "Armaf Club de Nuit Intense Man Extrait de Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Woman",
+          "aliases": [
+            "Club de Nuit Woman",
+            "Armaf Club de Nuit Woman"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Sillage",
+          "aliases": [
+            "Club de Nuit Sillage",
+            "Armaf Club de Nuit Sillage"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "french_avenue_catalog",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "French Avenue"
+      ],
+      "products": [
+        {
+          "canonical_name": "Liquid Brun",
+          "aliases": [
+            "Liquid Brun",
+            "French Avenue Liquid Brun"
+          ]
+        },
+        {
+          "canonical_name": "Liquid Brun Limited Edition",
+          "aliases": [
+            "Liquid Brun Limited Edition",
+            "French Avenue Liquid Brun Limited Edition"
+          ]
+        },
+        {
+          "canonical_name": "Azzure Aoud",
+          "aliases": [
+            "Azzure Aoud",
+            "French Avenue Azzure Aoud"
+          ]
+        },
+        {
+          "canonical_name": "Royal Blend",
+          "aliases": [
+            "Royal Blend",
+            "French Avenue Royal Blend"
+          ]
+        },
+        {
+          "canonical_name": "Spectre Ghost",
+          "aliases": [
+            "Spectre Ghost",
+            "French Avenue Spectre Ghost"
+          ]
+        },
+        {
+          "canonical_name": "After Effect",
+          "aliases": [
+            "After Effect",
+            "French Avenue After Effect"
+          ]
+        },
+        {
+          "canonical_name": "Vulcan Feu",
+          "aliases": [
+            "Vulcan Feu",
+            "French Avenue Vulcan Feu"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "arabiyat_prestige_catalog",
+      "brand": "Arabiyat Prestige",
+      "query_aliases": [
+        "Arabiyat Prestige"
+      ],
+      "products": [
+        {
+          "canonical_name": "Marwa",
+          "aliases": [
+            "Marwa",
+            "Arabiyat Prestige Marwa"
+          ]
+        },
+        {
+          "canonical_name": "Niche Emarati",
+          "aliases": [
+            "Niche Emarati",
+            "Arabiyat Prestige Niche Emarati"
+          ]
+        },
+        {
+          "canonical_name": "Niche",
+          "aliases": [
+            "Niche",
+            "Arabiyat Prestige Niche"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "gulf_orchid_catalog",
+      "brand": "Gulf Orchid",
+      "query_aliases": [
+        "Gulf Orchid"
+      ],
+      "products": [
+        {
+          "canonical_name": "Al Qasr",
+          "aliases": [
+            "Al Qasr",
+            "Gulf Orchid Al Qasr"
+          ]
+        },
+        {
+          "canonical_name": "Asala",
+          "aliases": [
+            "Asala",
+            "Gulf Orchid Asala"
+          ]
+        },
+        {
+          "canonical_name": "Hamsat",
+          "aliases": [
+            "Hamsat",
+            "Gulf Orchid Hamsat"
+          ]
+        },
+        {
+          "canonical_name": "Hikma",
+          "aliases": [
+            "Hikma",
+            "Gulf Orchid Hikma"
+          ]
+        },
+        {
+          "canonical_name": "Jawhara",
+          "aliases": [
+            "Jawhara",
+            "Gulf Orchid Jawhara"
+          ]
+        },
+        {
+          "canonical_name": "Jewel",
+          "aliases": [
+            "Jewel",
+            "Gulf Orchid Jewel"
+          ]
+        },
+        {
+          "canonical_name": "Riwaya",
+          "aliases": [
+            "Riwaya",
+            "Gulf Orchid Riwaya"
+          ]
+        },
+        {
+          "canonical_name": "Turath",
+          "aliases": [
+            "Turath",
+            "Gulf Orchid Turath"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Aura",
+          "aliases": [
+            "Vanilla Aura",
+            "Gulf Orchid Vanilla Aura"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Voyage",
+          "aliases": [
+            "Vanilla Voyage",
+            "Gulf Orchid Vanilla Voyage"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "swiss_arabian_catalog",
+      "brand": "Swiss Arabian",
+      "query_aliases": [
+        "Swiss Arabian"
+      ],
+      "products": [
+        {
+          "canonical_name": "Shaghaf Oud",
+          "aliases": [
+            "Shaghaf Oud",
+            "Swiss Arabian Shaghaf Oud"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Aswad",
+          "aliases": [
+            "Shaghaf Oud Aswad",
+            "Swiss Arabian Shaghaf Oud Aswad"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Tonka",
+          "aliases": [
+            "Shaghaf Oud Tonka",
+            "Swiss Arabian Shaghaf Oud Tonka"
+          ]
+        },
+        {
+          "canonical_name": "Casablanca",
+          "aliases": [
+            "Casablanca",
+            "Swiss Arabian Casablanca"
+          ]
+        },
+        {
+          "canonical_name": "Layali",
+          "aliases": [
+            "Layali",
+            "Swiss Arabian Layali"
+          ]
+        },
+        {
+          "canonical_name": "Primal Code",
+          "aliases": [
+            "Primal Code",
+            "Swiss Arabian Primal Code"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "games_of_spades_catalog",
+      "brand": "Games of Spades",
+      "query_aliases": [
+        "Games of Spades"
+      ],
+      "products": [
+        {
+          "canonical_name": "King",
+          "aliases": [
+            "King",
+            "Games of Spades King"
+          ]
+        },
+        {
+          "canonical_name": "Queen",
+          "aliases": [
+            "Queen",
+            "Games of Spades Queen"
+          ]
+        },
+        {
+          "canonical_name": "Jack",
+          "aliases": [
+            "Jack",
+            "Games of Spades Jack"
+          ]
+        },
+        {
+          "canonical_name": "Ace",
+          "aliases": [
+            "Ace",
+            "Games of Spades Ace"
+          ]
+        },
+        {
+          "canonical_name": "Wildcard",
+          "aliases": [
+            "Wildcard",
+            "Games of Spades Wildcard"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "lattafa_catalog",
+      "brand": "Lattafa",
+      "query_aliases": [
+        "Lattafa"
+      ],
+      "products": [
+        {
+          "canonical_name": "Fahad",
+          "aliases": [
+            "Fahad",
+            "Lattafa Fahad"
+          ]
+        },
+        {
+          "canonical_name": "Khamrah Waha",
+          "aliases": [
+            "Khamrah Waha",
+            "Lattafa Khamrah Waha"
+          ]
+        },
+        {
+          "canonical_name": "Sheikh Al Shuyukh Supreme",
+          "aliases": [
+            "Sheikh Al Shuyukh Supreme",
+            "Lattafa Sheikh Al Shuyukh Supreme"
+          ]
+        },
+        {
+          "canonical_name": "Jouri",
+          "aliases": [
+            "Jouri",
+            "Lattafa Jouri"
+          ]
+        },
+        {
+          "canonical_name": "Ana Abiyedh Passion",
+          "aliases": [
+            "Ana Abiyedh Passion",
+            "Lattafa Ana Abiyedh Passion"
+          ]
+        },
+        {
+          "canonical_name": "Ameerat Al Arab Sugar Crown",
+          "aliases": [
+            "Ameerat Al Arab Sugar Crown",
+            "Lattafa Ameerat Al Arab Sugar Crown"
+          ]
+        },
+        {
+          "canonical_name": "Mishlah",
+          "aliases": [
+            "Mishlah",
+            "Lattafa Mishlah"
+          ]
+        },
+        {
+          "canonical_name": "Angham Second Song",
+          "aliases": [
+            "Angham Second Song",
+            "Lattafa Angham Second Song"
+          ]
+        },
+        {
+          "canonical_name": "Maahir Honor",
+          "aliases": [
+            "Maahir Honor",
+            "Lattafa Maahir Honor"
+          ]
+        },
+        {
+          "canonical_name": "Dalal",
+          "aliases": [
+            "Dalal",
+            "Lattafa Dalal"
+          ]
+        },
+        {
+          "canonical_name": "Yara Elixir",
+          "aliases": [
+            "Yara Elixir",
+            "Lattafa Yara Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Asad Elixir",
+          "aliases": [
+            "Asad Elixir",
+            "Lattafa Asad Elixir"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "afnan_catalog",
+      "brand": "Afnan",
+      "query_aliases": [
+        "Afnan"
+      ],
+      "products": [
+        {
+          "canonical_name": "9 PM Night Out",
+          "aliases": [
+            "9 PM Night Out",
+            "Afnan 9 PM Night Out"
+          ]
+        },
+        {
+          "canonical_name": "9 PM Rare",
+          "aliases": [
+            "9 PM Rare",
+            "Afnan 9 PM Rare"
+          ]
+        },
+        {
+          "canonical_name": "9 AM",
+          "aliases": [
+            "9 AM",
+            "Afnan 9 AM"
+          ]
+        },
+        {
+          "canonical_name": "9 AM Pour Femme",
+          "aliases": [
+            "9 AM Pour Femme",
+            "Afnan 9 AM Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "9 AM Dive",
+          "aliases": [
+            "9 AM Dive",
+            "Afnan 9 AM Dive"
+          ]
+        },
+        {
+          "canonical_name": "Supremacy Gold",
+          "aliases": [
+            "Supremacy Gold",
+            "Afnan Supremacy Gold"
+          ]
+        },
+        {
+          "canonical_name": "Supremacy Not Only Intense",
+          "aliases": [
+            "Supremacy Not Only Intense",
+            "Afnan Supremacy Not Only Intense"
+          ]
+        },
+        {
+          "canonical_name": "Rare Reef",
+          "aliases": [
+            "Rare Reef",
+            "Afnan Rare Reef"
+          ]
+        },
+        {
+          "canonical_name": "9 PM Rebel",
+          "aliases": [
+            "9 PM Rebel",
+            "Afnan 9 PM Rebel"
+          ]
+        },
+        {
+          "canonical_name": "Turathi Brown Homme",
+          "aliases": [
+            "Turathi Brown Homme",
+            "Afnan Turathi Brown Homme"
+          ]
+        },
+        {
+          "canonical_name": "Kiaana Vibes",
+          "aliases": [
+            "Kiaana Vibes",
+            "Afnan Kiaana Vibes"
+          ]
+        },
+        {
+          "canonical_name": "Lynked Freedom",
+          "aliases": [
+            "Lynked Freedom",
+            "Afnan Lynked Freedom"
+          ]
+        },
+        {
+          "canonical_name": "Historic Olmeda",
+          "aliases": [
+            "Historic Olmeda",
+            "Afnan Historic Olmeda"
+          ]
+        },
+        {
+          "canonical_name": "Historic Doria",
+          "aliases": [
+            "Historic Doria",
+            "Afnan Historic Doria"
+          ]
+        },
+        {
+          "canonical_name": "Mystique Bouquet",
+          "aliases": [
+            "Mystique Bouquet",
+            "Afnan Mystique Bouquet"
+          ]
+        },
+        {
+          "canonical_name": "Souvenir Floral Bouquet",
+          "aliases": [
+            "Souvenir Floral Bouquet",
+            "Afnan Souvenir Floral Bouquet"
+          ]
+        },
+        {
+          "canonical_name": "Supremacy Pink",
+          "aliases": [
+            "Supremacy Pink",
+            "Afnan Supremacy Pink"
+          ]
+        },
+        {
+          "canonical_name": "Supremacy Purple",
+          "aliases": [
+            "Supremacy Purple",
+            "Afnan Supremacy Purple"
+          ]
+        },
+        {
+          "canonical_name": "Supremacy Gala",
+          "aliases": [
+            "Supremacy Gala",
+            "Afnan Supremacy Gala"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "aromatix_catalog",
+      "brand": "Aromatix",
+      "query_aliases": [
+        "Aromatix"
+      ],
+      "products": [
+        {
+          "canonical_name": "Carnal Desire",
+          "aliases": [
+            "Carnal Desire",
+            "Aromatix Carnal Desire"
+          ]
+        },
+        {
+          "canonical_name": "Forbidden Fruit",
+          "aliases": [
+            "Forbidden Fruit",
+            "Aromatix Forbidden Fruit"
+          ]
+        },
+        {
+          "canonical_name": "Frostbite",
+          "aliases": [
+            "Frostbite",
+            "Aromatix Frostbite"
+          ]
+        },
+        {
+          "canonical_name": "Magnetiq",
+          "aliases": [
+            "Magnetiq",
+            "Aromatix Magnetiq"
+          ]
+        },
+        {
+          "canonical_name": "Naughty Dates",
+          "aliases": [
+            "Naughty Dates",
+            "Aromatix Naughty Dates"
+          ]
+        },
+        {
+          "canonical_name": "Ora",
+          "aliases": [
+            "Ora",
+            "Aromatix Ora"
+          ]
+        },
+        {
+          "canonical_name": "Platine Blanc",
+          "aliases": [
+            "Platine Blanc",
+            "Aromatix Platine Blanc"
+          ]
+        },
+        {
+          "canonical_name": "Royal Taboo",
+          "aliases": [
+            "Royal Taboo",
+            "Aromatix Royal Taboo"
+          ]
+        },
+        {
+          "canonical_name": "Roza",
+          "aliases": [
+            "Roza",
+            "Aromatix Roza"
+          ]
+        },
+        {
+          "canonical_name": "Sun Kissed",
+          "aliases": [
+            "Sun Kissed",
+            "Aromatix Sun Kissed"
+          ]
+        },
+        {
+          "canonical_name": "Teas Me",
+          "aliases": [
+            "Teas Me",
+            "Aromatix Teas Me"
+          ]
+        },
+        {
+          "canonical_name": "X Xandal",
+          "aliases": [
+            "X Xandal",
+            "Aromatix X Xandal"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "maison_alhambra_catalog",
+      "brand": "Maison Alhambra",
+      "query_aliases": [
+        "Maison Alhambra"
+      ],
+      "products": [
+        {
+          "canonical_name": "Jean Lowe Immortal",
+          "aliases": [
+            "Jean Lowe Immortal",
+            "Maison Alhambra Jean Lowe Immortal"
+          ]
+        },
+        {
+          "canonical_name": "Jean Lowe Ombre",
+          "aliases": [
+            "Jean Lowe Ombre",
+            "Maison Alhambra Jean Lowe Ombre"
+          ]
+        },
+        {
+          "canonical_name": "Kismet",
+          "aliases": [
+            "Kismet",
+            "Maison Alhambra Kismet"
+          ]
+        },
+        {
+          "canonical_name": "Toscano Leather",
+          "aliases": [
+            "Toscano Leather",
+            "Maison Alhambra Toscano Leather"
+          ]
+        },
+        {
+          "canonical_name": "The Tux",
+          "aliases": [
+            "The Tux",
+            "Maison Alhambra The Tux"
+          ]
+        },
+        {
+          "canonical_name": "Lovely Cherie",
+          "aliases": [
+            "Lovely Cherie",
+            "Maison Alhambra Lovely Cherie"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "zimaya_catalog",
+      "brand": "Zimaya",
+      "query_aliases": [
+        "Zimaya"
+      ],
+      "products": [
+        {
+          "canonical_name": "Abadi Opulent",
+          "aliases": [
+            "Abadi Opulent",
+            "Zimaya Abadi Opulent"
+          ]
+        },
+        {
+          "canonical_name": "Abadi Saga",
+          "aliases": [
+            "Abadi Saga",
+            "Zimaya Abadi Saga"
+          ]
+        },
+        {
+          "canonical_name": "Afrah",
+          "aliases": [
+            "Afrah",
+            "Zimaya Afrah"
+          ]
+        },
+        {
+          "canonical_name": "Al Barari Coral",
+          "aliases": [
+            "Al Barari Coral",
+            "Zimaya Al Barari Coral"
+          ]
+        },
+        {
+          "canonical_name": "Al Barari Shore",
+          "aliases": [
+            "Al Barari Shore",
+            "Zimaya Al Barari Shore"
+          ]
+        },
+        {
+          "canonical_name": "Al Embratur Absolu",
+          "aliases": [
+            "Al Embratur Absolu",
+            "Zimaya Al Embratur Absolu"
+          ]
+        },
+        {
+          "canonical_name": "Al Embratur Elixir",
+          "aliases": [
+            "Al Embratur Elixir",
+            "Zimaya Al Embratur Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Al Embratur Intense",
+          "aliases": [
+            "Al Embratur Intense",
+            "Zimaya Al Embratur Intense"
+          ]
+        },
+        {
+          "canonical_name": "Al Fouz",
+          "aliases": [
+            "Al Fouz",
+            "Zimaya Al Fouz"
+          ]
+        },
+        {
+          "canonical_name": "Al Kaser",
+          "aliases": [
+            "Al Kaser",
+            "Zimaya Al Kaser"
+          ]
+        },
+        {
+          "canonical_name": "Al Kiswah",
+          "aliases": [
+            "Al Kiswah",
+            "Zimaya Al Kiswah"
+          ]
+        },
+        {
+          "canonical_name": "Al Maha Gold",
+          "aliases": [
+            "Al Maha Gold",
+            "Zimaya Al Maha Gold"
+          ]
+        },
+        {
+          "canonical_name": "Al Maha Silver",
+          "aliases": [
+            "Al Maha Silver",
+            "Zimaya Al Maha Silver"
+          ]
+        },
+        {
+          "canonical_name": "Al Maqam",
+          "aliases": [
+            "Al Maqam",
+            "Zimaya Al Maqam"
+          ]
+        },
+        {
+          "canonical_name": "Al Safwah",
+          "aliases": [
+            "Al Safwah",
+            "Zimaya Al Safwah"
+          ]
+        },
+        {
+          "canonical_name": "Amber Is Great",
+          "aliases": [
+            "Amber Is Great",
+            "Zimaya Amber Is Great"
+          ]
+        },
+        {
+          "canonical_name": "Anhaar Dune",
+          "aliases": [
+            "Anhaar Dune",
+            "Zimaya Anhaar Dune"
+          ]
+        },
+        {
+          "canonical_name": "Anhaar Valley",
+          "aliases": [
+            "Anhaar Valley",
+            "Zimaya Anhaar Valley"
+          ]
+        },
+        {
+          "canonical_name": "Awatif Pour Femme",
+          "aliases": [
+            "Awatif Pour Femme",
+            "Zimaya Awatif Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "Awatif Pour Homme",
+          "aliases": [
+            "Awatif Pour Homme",
+            "Zimaya Awatif Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Bahjah",
+          "aliases": [
+            "Bahjah",
+            "Zimaya Bahjah"
+          ]
+        },
+        {
+          "canonical_name": "Bouquet Red",
+          "aliases": [
+            "Bouquet Red",
+            "Zimaya Bouquet Red"
+          ]
+        },
+        {
+          "canonical_name": "Brave Heart",
+          "aliases": [
+            "Brave Heart",
+            "Zimaya Brave Heart"
+          ]
+        },
+        {
+          "canonical_name": "Charisma Pour Femme",
+          "aliases": [
+            "Charisma Pour Femme",
+            "Zimaya Charisma Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "Charisma Pour Homme",
+          "aliases": [
+            "Charisma Pour Homme",
+            "Zimaya Charisma Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Crysta Oud",
+          "aliases": [
+            "Crysta Oud",
+            "Zimaya Crysta Oud"
+          ]
+        },
+        {
+          "canonical_name": "Cult",
+          "aliases": [
+            "Cult",
+            "Zimaya Cult"
+          ]
+        },
+        {
+          "canonical_name": "Daiman Eclipse",
+          "aliases": [
+            "Daiman Eclipse",
+            "Zimaya Daiman Eclipse"
+          ]
+        },
+        {
+          "canonical_name": "Daiman Eden",
+          "aliases": [
+            "Daiman Eden",
+            "Zimaya Daiman Eden"
+          ]
+        },
+        {
+          "canonical_name": "Dar Es Salaam",
+          "aliases": [
+            "Dar Es Salaam",
+            "Zimaya Dar Es Salaam"
+          ]
+        },
+        {
+          "canonical_name": "Elixir Gold",
+          "aliases": [
+            "Elixir Gold",
+            "Zimaya Elixir Gold"
+          ]
+        },
+        {
+          "canonical_name": "Elixir Red",
+          "aliases": [
+            "Elixir Red",
+            "Zimaya Elixir Red"
+          ]
+        },
+        {
+          "canonical_name": "Exquisite",
+          "aliases": [
+            "Exquisite",
+            "Zimaya Exquisite"
+          ]
+        },
+        {
+          "canonical_name": "Farah",
+          "aliases": [
+            "Farah",
+            "Zimaya Farah"
+          ]
+        },
+        {
+          "canonical_name": "Fatima",
+          "aliases": [
+            "Fatima",
+            "Zimaya Fatima"
+          ]
+        },
+        {
+          "canonical_name": "Ghali Elegante",
+          "aliases": [
+            "Ghali Elegante",
+            "Zimaya Ghali Elegante"
+          ]
+        },
+        {
+          "canonical_name": "Ghali Imperial",
+          "aliases": [
+            "Ghali Imperial",
+            "Zimaya Ghali Imperial"
+          ]
+        },
+        {
+          "canonical_name": "Ghayath",
+          "aliases": [
+            "Ghayath",
+            "Zimaya Ghayath"
+          ]
+        },
+        {
+          "canonical_name": "Ghyoom",
+          "aliases": [
+            "Ghyoom",
+            "Zimaya Ghyoom"
+          ]
+        },
+        {
+          "canonical_name": "Grandeur",
+          "aliases": [
+            "Grandeur",
+            "Zimaya Grandeur"
+          ]
+        },
+        {
+          "canonical_name": "Hawwa Pink",
+          "aliases": [
+            "Hawwa Pink",
+            "Zimaya Hawwa Pink"
+          ]
+        },
+        {
+          "canonical_name": "Hawwa Red",
+          "aliases": [
+            "Hawwa Red",
+            "Zimaya Hawwa Red"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "al_haramain_catalog",
+      "brand": "Al Haramain",
+      "query_aliases": [
+        "Al Haramain"
+      ],
+      "products": [
+        {
+          "canonical_name": "Junoon",
+          "aliases": [
+            "Junoon",
+            "Al Haramain Junoon"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Ruby Edition",
+          "aliases": [
+            "Amber Oud Ruby Edition",
+            "Al Haramain Amber Oud Ruby Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Gold Edition Extreme",
+          "aliases": [
+            "Amber Oud Gold Edition Extreme",
+            "Al Haramain Amber Oud Gold Edition Extreme"
+          ]
+        },
+        {
+          "canonical_name": "Junoon Oud",
+          "aliases": [
+            "Junoon Oud",
+            "Al Haramain Junoon Oud"
+          ]
+        },
+        {
+          "canonical_name": "Azlan Oud Bleu Edition",
+          "aliases": [
+            "Azlan Oud Bleu Edition",
+            "Al Haramain Azlan Oud Bleu Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Ultra Violet",
+          "aliases": [
+            "Amber Oud Ultra Violet",
+            "Al Haramain Amber Oud Ultra Violet"
+          ]
+        },
+        {
+          "canonical_name": "Azlan Oud Saffron Edition",
+          "aliases": [
+            "Azlan Oud Saffron Edition",
+            "Al Haramain Azlan Oud Saffron Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Tobacco Edition",
+          "aliases": [
+            "Amber Oud Tobacco Edition",
+            "Al Haramain Amber Oud Tobacco Edition"
+          ]
+        }
+      ]
     }
   ]
 }
