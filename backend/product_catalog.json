@@ -29405,6 +29405,342 @@
       "source_url": "https://www.pariscornerperfumes.com/collections/pendora-scents-men",
       "source_evidence_url": "https://www.pariscornerperfumes.com/collections/pendora-scents-men",
       "collection_name": "Pendora Scents"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-MEN-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Frenetic Men",
+      "name": "Frenetic Men",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Frenetic Men",
+      "aliases": [
+        "Frenetic Men",
+        "Paris Corner Frenetic Men"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/frenetic-men",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetic-men",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-RED-TEMPT-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Frenetic Red Tempt",
+      "name": "Frenetic Red Tempt",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Frenetic Red Tempt",
+      "aliases": [
+        "Frenetic Red Tempt",
+        "Paris Corner Frenetic Red Tempt"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/frenetic-red-tempt",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetic-red-tempt",
+      "formats_ml": [
+        80
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-TOBACCO-HONEY-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Frenetic Tobacco Honey",
+      "name": "Frenetic Tobacco Honey",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Frenetic Tobacco Honey",
+      "aliases": [
+        "Frenetic Tobacco Honey",
+        "Paris Corner Frenetic Tobacco Honey"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/frenetic-tobacco-honey",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetic-tobacco-honey",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Identity Oud Crescent",
+      "name": "Identity Oud Crescent",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Identity Oud Crescent",
+      "aliases": [
+        "Identity Oud Crescent",
+        "Paris Corner Identity Oud Crescent"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/identity-oud-crescent",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/identity-oud-crescent",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IDENTITY-ROSE-LEATHER-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Identity Rose & Leather",
+      "name": "Identity Rose & Leather",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Identity Rose & Leather",
+      "aliases": [
+        "Identity Rose & Leather",
+        "Paris Corner Identity Rose & Leather"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/identity-rose-leather",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/identity-rose-leather",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IDENTITY-UNIQUE-PORTRAIT-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Identity Unique Portrait",
+      "name": "Identity Unique Portrait",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Identity Unique Portrait",
+      "aliases": [
+        "Identity Unique Portrait",
+        "Paris Corner Identity Unique Portrait"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/identity-unique-portrait",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/identity-unique-portrait",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INTENSE-OUD-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Intense Oud",
+      "name": "Intense Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Intense Oud",
+      "aliases": [
+        "Intense Oud",
+        "Paris Corner Intense Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/intense-oud-arabian",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/intense-oud-arabian",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INTENSE-OUD-SAFFRON-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Intense Oud Saffron",
+      "name": "Intense Oud Saffron",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Intense Oud Saffron",
+      "aliases": [
+        "Intense Oud Saffron",
+        "Paris Corner Intense Oud Saffron"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/intense-oud-saffron",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/intense-oud-saffron",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LE-CHARME-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Le Charme",
+      "name": "Le Charme",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Le Charme",
+      "aliases": [
+        "Le Charme",
+        "Paris Corner Le Charme"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/la-charme-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/la-charme-emir",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-PROTOCOL-EDITION-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Protocol Edition",
+      "name": "Protocol Edition",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Protocol Edition",
+      "aliases": [
+        "Protocol Edition",
+        "Paris Corner Protocol Edition"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/protocol-edition",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/protocol-edition",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Pendora Scents"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-RESURRECTION-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Resurrection",
+      "name": "Resurrection",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Resurrection",
+      "aliases": [
+        "Resurrection",
+        "Paris Corner Resurrection"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/resurrection",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/resurrection",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-THE-TRIUMPHANT-SAPPHIRE-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "The Triumphant Sapphire",
+      "name": "The Triumphant Sapphire",
+      "family_id": "paris_corner_catalog",
+      "family_name": "The Triumphant Sapphire",
+      "aliases": [
+        "The Triumphant Sapphire",
+        "Paris Corner The Triumphant Sapphire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/the-triumphant-sapphire",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/the-triumphant-sapphire",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TOXIC-HEART-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Toxic Heart",
+      "name": "Toxic Heart",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Toxic Heart",
+      "aliases": [
+        "Toxic Heart",
+        "Paris Corner Toxic Heart"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/toxic-heart",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/toxic-heart",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-YOU-RE-DRUGGED-EMIR-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "You're Drugged Emir",
+      "name": "You're Drugged Emir",
+      "family_id": "paris_corner_catalog",
+      "family_name": "You're Drugged Emir",
+      "aliases": [
+        "You're Drugged Emir",
+        "Paris Corner You're Drugged Emir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/youre-drugged-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/youre-drugged-emir",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-DELICIEUSE-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Frenetic Delicieuse",
+      "name": "Frenetic Delicieuse",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Frenetic Delicieuse",
+      "aliases": [
+        "Frenetic Delicieuse",
+        "Paris Corner Frenetic Delicieuse"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/frenetic-delicieuse",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetic-delicieuse",
+      "formats_ml": [
+        80
+      ],
+      "collection_name": "Paris Corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-HOMME-INTENSE-DETAIL11",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Frenetic Homme Intense",
+      "name": "Frenetic Homme Intense",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Frenetic Homme Intense",
+      "aliases": [
+        "Frenetic Homme Intense",
+        "Paris Corner Frenetic Homme Intense"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense",
+      "formats_ml": [
+        80
+      ],
+      "collection_name": "Paris Corner"
     }
   ],
   "variants": [
@@ -31197,6 +31533,150 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-ZAYAAN-SILVER-100-000",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-MEN-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Frenetic Men 100 ml",
+        "Paris Corner Frenetic Men 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-MEN-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-RED-TEMPT-DETAIL11",
+      "size_ml": 80,
+      "aliases": [
+        "Frenetic Red Tempt 80 ml",
+        "Paris Corner Frenetic Red Tempt 80ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-RED-TEMPT-DETAIL11-80-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-TOBACCO-HONEY-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Frenetic Tobacco Honey 100 ml",
+        "Paris Corner Frenetic Tobacco Honey 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-TOBACCO-HONEY-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Identity Oud Crescent 100 ml",
+        "Paris Corner Identity Oud Crescent 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IDENTITY-ROSE-LEATHER-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Identity Rose & Leather 100 ml",
+        "Paris Corner Identity Rose & Leather 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-IDENTITY-ROSE-LEATHER-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IDENTITY-UNIQUE-PORTRAIT-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Identity Unique Portrait 100 ml",
+        "Paris Corner Identity Unique Portrait 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-IDENTITY-UNIQUE-PORTRAIT-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INTENSE-OUD-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Intense Oud 100 ml",
+        "Paris Corner Intense Oud 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-INTENSE-OUD-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INTENSE-OUD-SAFFRON-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Intense Oud Saffron 100 ml",
+        "Paris Corner Intense Oud Saffron 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-INTENSE-OUD-SAFFRON-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LE-CHARME-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Le Charme 100 ml",
+        "Paris Corner Le Charme 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-LE-CHARME-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-PROTOCOL-EDITION-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Protocol Edition 100 ml",
+        "Paris Corner Protocol Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-PROTOCOL-EDITION-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-RESURRECTION-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Resurrection 100 ml",
+        "Paris Corner Resurrection 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-RESURRECTION-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-THE-TRIUMPHANT-SAPPHIRE-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "The Triumphant Sapphire 100 ml",
+        "Paris Corner The Triumphant Sapphire 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-THE-TRIUMPHANT-SAPPHIRE-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TOXIC-HEART-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "Toxic Heart 100 ml",
+        "Paris Corner Toxic Heart 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-TOXIC-HEART-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-YOU-RE-DRUGGED-EMIR-DETAIL11",
+      "size_ml": 100,
+      "aliases": [
+        "You're Drugged Emir 100 ml",
+        "Paris Corner You're Drugged Emir 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-YOU-RE-DRUGGED-EMIR-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-DELICIEUSE-DETAIL11",
+      "size_ml": 80,
+      "aliases": [
+        "Frenetic Delicieuse 80 ml",
+        "Paris Corner Frenetic Delicieuse 80ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-DELICIEUSE-DETAIL11-80-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FRENETIC-HOMME-INTENSE-DETAIL11",
+      "size_ml": 80,
+      "aliases": [
+        "Frenetic Homme Intense 80 ml",
+        "Paris Corner Frenetic Homme Intense 80ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-HOMME-INTENSE-DETAIL11-80-000"
     }
   ]
 }
