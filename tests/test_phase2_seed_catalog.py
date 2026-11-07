@@ -718,3 +718,41 @@ def test_requested_brand_catalog_has_unique_product_ids_and_no_orphan_variants()
     assert len(variant_ids) == len(set(variant_ids))
     product_id_set = set(product_ids)
     assert all(row["product_id"] in product_id_set for row in variants)
+
+
+def test_khadlaj_official_perfume_spray_detail_pages_and_sizes_are_traceable():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["canonical_name"]: row for row in raw["products"] if row.get("brand") == "Khadlaj"}
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "25 Experience": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-experience-100-ml-edp-spray",
+        "25 Trust": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women",
+        "25 Loyalty": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae",
+        "25 Heritage": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-heritage-100-ml-edp-spray",
+        "25 Integrity": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-integrity-100-ml-edp-spray",
+    }
+    for name, url in expected.items():
+        row = products[name]
+        assert row["source_url"] == url
+        assert row["source_evidence_url"] == url
+        assert row["identity_status"] == "source_verified_name"
+        assert row["formats_ml"] == [100]
+        assert row["concentration"] == "Eau de Parfum"
+        variant_id = f"SHV-{row['product_id']}-100-000"
+        assert variants[variant_id]["size_ml"] == 100
+        assert variants[variant_id]["concentration"] == "Eau de Parfum"
+
+    musk = products["Musk Pure Musk Blend"]
+    assert "Musk Pure Musk Blend Creation of Iqbal" in musk["aliases"]
+    assert musk["identity_status"] == "source_verified_name"
+    assert musk["source_url"].endswith("musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae")
+    assert variants["SHV-SH-KHADLAJ-04832397-60-000"]["size_ml"] == 60
+
+    wild = products["Wild Indonesian Oud"]
+    assert "Wild Indonesian Oud Pure" in wild["aliases"]
+    assert wild["formats_ml"] == [60]
+    assert wild["concentration"] == "Eau de Parfum"
+    assert wild["identity_status"] == "source_verified_name"
+    wild_variant_id = f"SHV-{wild['product_id']}-60-000"
+    assert variants[wild_variant_id]["size_ml"] == 60
+    assert variants[wild_variant_id]["concentration"] == "Eau de Parfum"
