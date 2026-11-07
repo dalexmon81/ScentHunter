@@ -24,7 +24,7 @@ def test_pipeline_beat_cadence_is_catalog_first():
     )
     assert schedule["refresh-main-store-prices-every-thirty-minutes"]["schedule"] == 1800.0
 
-def test_all_pipeline_jobs_are_registered_and_runtime_has_nine_connectors():
+def test_all_pipeline_jobs_are_registered_and_runtime_has_ten_connectors():
     import app.workers.ingestion_tasks  # noqa: F401
     from app.connectors.runtime_registry import build_connectors
 
@@ -44,7 +44,7 @@ def test_all_pipeline_jobs_are_registered_and_runtime_has_nine_connectors():
     assert expected <= registered
     assert set(build_connectors()) == {
         "notino", "deloox", "easycosmetic", "sabina", "parfumzentrum",
-        "perfumemarket", "parfumcity", "bplatz", "orioudh",
+        "perfumemarket", "parfumcity", "bplatz", "orioudh", "perfumesmem",
     }
 
 
