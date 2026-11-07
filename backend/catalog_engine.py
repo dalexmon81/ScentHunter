@@ -4069,6 +4069,7 @@ def _maybe_persist_bplatz_phase2(item, url):
             "stores", "brands", "fragrances", "product_variants", "offers",
             "price_history", "match_audit", "ingestion_raw",
             "legacy_product_id_map", "legacy_variant_id_map",
+            "store_authorizations",
         }
         missing = sorted(required_tables - tables)
         supported_revisions = {
