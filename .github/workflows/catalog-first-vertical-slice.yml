@@ -166,6 +166,7 @@ jobs:
           tests/test_next_engine_service.py
           tests/test_phase2_schema_contract.py
           backend/tests/test_user_account_destinations.py
+          backend/tests/test_account_api.py
 
       - name: Validate connector contracts and offline retailer fixtures
         run: >-
