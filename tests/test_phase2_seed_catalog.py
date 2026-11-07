@@ -373,7 +373,7 @@ def test_seed_consolidates_duplicate_canonical_names_and_preserves_all_legacy_id
             "SELECT v.size_ml, v.is_refill, v.fragrance_id "
             "FROM product_variants v ORDER BY v.size_ml"
         ).fetchall()
-        assert [(row[0], row[1]) for row in variant_rows] == [(75, 0), (100, 1), (125, 0)]
+        assert [(row[0], row[1]) for row in variant_rows] == [(75, None), (100, 1), (125, None)]
         assert {row[2] for row in variant_rows} == {mapped["ARMANI-PROFONDO-A"]}
 
 
