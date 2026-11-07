@@ -25,30 +25,36 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog: 1153 canonical product identity records; 141 variant records.
+Current catalog snapshot (revalidated on branch head): **1,503 canonical product identity records; 141 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
-Velixir: 28
-Mykonos: 72
-Maison Asrar: 121
-Khadlaj: 41
-Bujairami: 33
-Paris Corner: 33
-Assaf: 112
-Al Wataniah: 22
-Armaf: 190
-French Avenue: 19
-Arabiyat Prestige: 27
-Gulf Orchid: 10
-Swiss Arabian: 42
-Games of Spades: 4
-Lattafa: 19
-Afnan: 55
-Aromatix: 12
-Maison Alhambra: 203
-Zimaya: 71
-Al Haramain: 37
+The counts below are the exact current JSON snapshot on this branch, not a claim that each brand's complete official range has been reconciled.
+
+| Brand / line | Records |
+|---|---:|
+| Velixir | 28 |
+| Mykonos | 72 |
+| Maison Asrar | 121 |
+| Khadlaj | 44 |
+| Bujairami | 40 |
+| Paris Corner | 120 |
+| Assaf | 115 |
+| Al Wataniah | 22 |
+| Armaf | 239 |
+| French Avenue | 26 |
+| Arabiyat Prestige | 32 |
+| Gulf Orchid | 19 |
+| Swiss Arabian | 53 |
+| Games of Spades | 4 |
+| Lattafa | 138 |
+| Afnan | 71 |
+| Aromatix | 12 |
+| Maison Alhambra | 237 |
+| Zimaya | 71 |
+| Al Haramain | 37 |
+| Giorgio Armani (pre-existing records) | 2 |
+| **Total** | **1,503** |
 
 ## Findings from live public sources
 
@@ -92,7 +98,7 @@ Al Haramain: 37
 
 ## Current conclusion
 
-The catalog has expanded to 1153 identities, but it is **not yet defensible to call it complete**. The strongest immediate gaps are Paris Corner and Khadlaj. Maison Asrar needs a name-level reconciliation because the current count exceeds the independent index count.
+Historical note: this conclusion referred to the earlier 1,153-record snapshot and is superseded by the current 1,503-record count above. The catalog is still **not defensible to call complete**. Paris Corner and Khadlaj need further reconciliation; Maison Asrar's current 121 records must be checked against official fragrance-only listings, not compared as a raw total to a secondary index.
 
 
 ## Additional product-level listing reconciliation — 2026-11-07 evening
@@ -544,3 +550,16 @@ Evidence:
 - Giorgio Armani Acqua di Gio Profondo: **one fragrance identity with three package variants**; consolidation pending legacy-ID-safe migration.
 - Catalog product IDs remain unique as stored; normalized identity audit still reports three duplicate-key groups. No records or IDs were deleted in this pass.
 - No live retailer offers, prices, stock or shipping data were added.
+
+
+## Seed/migration regression coverage — 2026-11-07
+
+The seed script already resolves products to an existing fragrance by normalized brand + slug. Therefore duplicate source product IDs with punctuation/accent variations can map to the same fragrance while retaining separate legacy product-ID mappings and package variants. This behavior is now protected by a dedicated regression test in `tests/test_phase2_seed_catalog.py` for:
+- Afnan 9 AM Pour Femme duplicate IDs;
+- Afnan 9 PM Pour Femme duplicate IDs;
+- Giorgio Armani Acqua di Gio / Giò Profondo duplicate IDs;
+- 75 ml, 125 ml and 100 ml refillable variants retained under the same fragrance UUID.
+
+The real-catalog dry-run test expectations were also updated to the exact current branch snapshot: 1,503 product identities, 141 variants, 21 normalized brand identities and 1,384 products without declared variants. The latter is a data-coverage indicator, not permission to infer sizes or variants.
+
+The regression tests have been committed but **have not yet been executed in GitHub Actions**. Do not treat them as passing until a CI run reports success.
