@@ -121,14 +121,22 @@ def test_periodic_discovery_uses_only_active_catalog_stores(tmp_path, monkeypatc
 def test_refresh_raw_artifacts_are_persisted_without_an_ingestion_run(tmp_path, monkeypatch):
     from sqlalchemy import create_engine, select
     from sqlalchemy.orm import sessionmaker
-    from app.models import Base, IngestionArtifact, Store
+    from app.models import Base, IngestionArtifact, Store, StoreAuthorization
+    from datetime import datetime, timezone
     from app.workers import ingestion_tasks
 
     engine = create_engine(f"sqlite:///{tmp_path / 'refresh-artifacts.sqlite'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
-        session.add(Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"))
+        store = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
+        session.add(store)
+        session.flush()
+        session.add(StoreAuthorization(
+            store_id=store.id, status="approved", collection_method="other",
+            scopes=["offer_data"], authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.commit()
     monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
 
