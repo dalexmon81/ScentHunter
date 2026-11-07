@@ -1439,3 +1439,7 @@ The source collection is recorded separately from the product-detail evidence. M
 - A regression test checks product-detail URLs, source collection URLs, sizes, line attribution and variant links.
 - CI for this pass must complete before marking it verified.
 
+## Pass 20 — Khadlaj verification tests green (2026-11-07)
+
+GitHub Actions run **#42419642110** for test commit **64729d87823a409019b97d3d12d0edc9fc921a4a** completed successfully. The Phase 2 schema-contract suite reports **40 passed, 1 warning**, including the new Code Viola Nectar, Uno Sensuale and Maya product-detail/variant assertions.
+
