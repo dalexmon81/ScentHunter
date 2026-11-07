@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,572 canonical product identity records; 141 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,572 canonical product identity records; 147 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -605,3 +605,36 @@ Official sources:
 - https://khadlaj-perfumes.com/collections/perfumes-spray?page=6
 - https://khadlaj-perfumes.com/collections/perfumes-spray?page=7
 - https://khadlaj-perfumes.com/collections/perfumes-spray?page=8
+
+
+## Paris Corner core collection — official page and size reconciliation pass
+
+Reviewed the official core-brand collection (not the all-brands collection). The current page reports **105 products** and the site maintains separate collection labels for Paris Corner, North Stag, Emir, Pendora, Ministry of Oud and other lines. Those sub-brands must remain separately attributed where the product page identifies them. The retrieved official collection pages exposed 96 product names in their page text; the remaining nine entries were not available in the retrieved text and remain unverified. The 96 visible names were compared against the ScentHunter `Paris Corner` bucket. Six existing identities were missing their explicit 100ml package variant; no new canonical identities were needed for those six.
+
+Added six 100ml variants, each linked to its official product-detail page:
+- Confidential — `/products/confidential-100ml`
+- Khayal — `/products/khayal-100ml`
+- Minya — `/products/minya-100ml`
+- Ophidian Black Cherry — `/products/ophidian-black-cherry-100ml`
+- Qawafi — `/products/qawafi-100ml`
+- Taskeen Lactea Divina — `/products/taskeen-lactea-divina-100ml`
+
+The canonical identities were already present, so this pass adds **0 product identities and 6 explicit variants**. Product-level `source_evidence_url` now points to the official product page. No concentration, price, stock or offer data was inferred.
+
+Updated current branch snapshot:
+- Product identities: **1,572**
+- Explicit variants: **147** (previously 141)
+- Products without declared variants: **1,447** (previously 1,453)
+
+A regression test now asserts all six official 100ml variants and their product evidence URLs. The collection is not yet fully reconciled: nine product listings were not exposed in retrieved page text, and the 120-record catalog bucket remains larger than the current 105-item core-brand collection. Discontinued products, product-line ownership and duplicate/legacy identities still require reconciliation.
+
+Official sources:
+- https://www.pariscornerperfumes.com/collections/paris-corner
+- https://www.pariscornerperfumes.com/collections/paris-corner?page=2
+- https://www.pariscornerperfumes.com/collections/paris-corner?page=3
+- https://www.pariscornerperfumes.com/products/confidential-100ml
+- https://www.pariscornerperfumes.com/products/khayal-100ml
+- https://www.pariscornerperfumes.com/products/minya-100ml
+- https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml
+- https://www.pariscornerperfumes.com/products/qawafi-100ml
+- https://www.pariscornerperfumes.com/products/taskeen-lactea-divina-100ml
