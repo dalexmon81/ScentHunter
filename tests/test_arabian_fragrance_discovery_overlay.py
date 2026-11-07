@@ -25,16 +25,16 @@ def test_researched_fragrance_overlay_contains_requested_brands_and_lines():
     assert overlay["data_kind"] == "candidate_fragrance_identities_only_no_variants_no_offers"
     by_brand = {row["brand_name"]: row["products"] for row in overlay["brands"]}
     assert set(by_brand) == EXPECTED_BRANDS
-    assert sum(len(names) for names in by_brand.values()) == 2126
+    assert sum(len(names) for names in by_brand.values()) == 2129
     assert all(len(names) == len({name.casefold() for name in names}) for names in by_brand.values())
 
     assert {"Monarch", "Majesty", "Treasure", "Imperial", "Vanguard"}.issubset(set(by_brand["Maison Asrar"]))
     assert {"Liquid Brun", "Vulcan Feu"}.issubset(set(by_brand["French Avenue"]))
     assert {"Adonis", "Panacea", "Ether", "Orpheus"}.issubset(set(by_brand["Velixir"]))
-    assert {"Teas Me", "Forbidden Fruit", "Frostbite", "Magnetiq", "Naughty Dates",
-            "Platine Blanc", "Royal Taboo", "Sun Kissed", "X Xandal"}.issubset(set(by_brand["French Avenue"]))
+    assert {"Aromatix Teas Me", "Aromatix Forbidden Fruit", "Aromatix Frostbite", "Aromatix Magnetiq", "Aromatix Naughty Dates",
+            "Aromatix Platine Blanc", "Aromatix Royal Taboo", "Aromatix Sun Kissed", "Aromatix X Xandal"}.issubset(set(by_brand["French Avenue"]))
     assert {"King", "Queen", "Wildcard", "Full House", "Bid"}.issubset(set(by_brand["Games of Spades"]))
-    assert {"Khamrah", "Yara", "Asad"}.issubset(set(by_brand["Lattafa"])) if {"Khamrah", "Yara", "Asad"}.issubset(set(by_brand["Lattafa"])) else True
+    assert {"Khamrah", "Yara", "Asad"}.issubset(set(by_brand["Lattafa"]))
 
 
 def test_overlay_merges_identities_only_and_is_idempotent():
@@ -43,7 +43,7 @@ def test_overlay_merges_identities_only_and_is_idempotent():
 
     added = merge_discovery_overlay(raw, overlay)
     expected = sum(len(row["products"]) for row in overlay["brands"])
-    assert added == expected == 2126
+    assert added == expected == 2129
     assert len(raw["products"]) == expected
     assert len(raw["brands"]) == len(EXPECTED_BRANDS)
     assert raw["variants"] == []
