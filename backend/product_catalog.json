@@ -19986,6 +19986,54 @@
       "concentration": null,
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all"
+    },
+    {
+      "product_id": "SH-ARMAF-CLUB-DE-NUIT-OVERDOSE-JOHN-ABR-UK01",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club De Nuit Overdose John Abraham Edition",
+      "name": "Club De Nuit Overdose John Abraham Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Club De Nuit Overdose John Abraham Edition",
+      "aliases": [
+        "Club De Nuit Overdose John Abraham Edition",
+        "Armaf Club De Nuit Overdose John Abraham Edition"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products"
+    },
+    {
+      "product_id": "SH-ARMAF-CONNOISSEUR-MAN-UK02",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Connoisseur Man",
+      "name": "Connoisseur Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Connoisseur Man",
+      "aliases": [
+        "Connoisseur Man",
+        "Armaf Connoisseur Man"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-HOMME-MANDARIN-SKY-LIM-UK03",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Homme Mandarin Sky Limited Edition",
+      "name": "Odyssey Homme Mandarin Sky Limited Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Homme Mandarin Sky Limited Edition",
+      "aliases": [
+        "Odyssey Homme Mandarin Sky Limited Edition",
+        "Armaf Odyssey Homme Mandarin Sky Limited Edition"
+      ],
+      "concentration": null,
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.uk/collections/all-armaf-products"
     }
   ],
   "variants": [
