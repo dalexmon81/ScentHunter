@@ -13,6 +13,8 @@ on:
       - "backend/app/api/catalog_search.py"
       - "backend/scripts/verify_postgres_backup_restore.sh"
       - "backend/app/api/admin_catalog.py"
+      - "backend/app/api/accounts.py"
+      - "backend/catalog_first_api.py"
       - "backend/main.py"
       - "backend/app/services/catalog_rollout.py"
       - "frontend/index.html"
