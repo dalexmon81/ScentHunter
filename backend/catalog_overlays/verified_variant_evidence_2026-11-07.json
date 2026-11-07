@@ -47,6 +47,16 @@
       "brand": "Bujairami",
       "url": "https://bujairami.com.au/collections/all-products",
       "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Concentration is not stated on these pages and is left unspecified."
+    },
+    {
+      "brand": "Mykonos",
+      "url": "https://officialmykonos.com/collections/100ml-collection",
+      "note": "Official Mykonos product pages explicitly state Extrait de Parfum and the available 50ml/100ml options for Glitch, Empire, Sorrento, Royal Ispahan, Reflection and Penthouse; Utopia, On The Rocks and Moroccan Vanilla are listed as 100ml Extrait."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/collections/royal-collection",
+      "note": "Official Royal Collection lists Heritage and Treasure; their individual official product URL slugs explicitly identify Eau de Parfum 100ml. Other Royal Collection products were not assigned a size where the official product page did not state it."
     }
   ],
   "products": [
@@ -707,6 +717,151 @@
       "variants": [
         {
           "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Glitch",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Empire",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Utopia",
+      "source_url": "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Sorrento",
+      "source_url": "https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Royal Ispahan",
+      "source_url": "https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Reflection",
+      "source_url": "https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "On The Rocks",
+      "source_url": "https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Penthouse",
+      "source_url": "https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Moroccan Vanilla",
+      "source_url": "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Heritage",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Treasure",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
           "size_ml": 100
         }
       ]
