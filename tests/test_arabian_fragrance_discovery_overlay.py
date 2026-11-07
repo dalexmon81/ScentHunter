@@ -33,7 +33,7 @@ def test_researched_fragrance_overlay_contains_requested_brands_and_lines():
     assert {"Adonis", "Panacea", "Ether", "Orpheus"}.issubset(set(by_brand["Velixir"]))
     assert {"Aromatix Teas Me", "Aromatix Forbidden Fruit", "Aromatix Frostbite", "Aromatix Magnetiq", "Aromatix Naughty Dates",
             "Aromatix Platine Blanc", "Aromatix Royal Taboo", "Aromatix Sun Kissed", "Aromatix X Xandal"}.issubset(set(by_brand["French Avenue"]))
-    assert {"King", "Queen", "Wildcard", "Full House", "Bid"}.issubset(set(by_brand["Games of Spades"]))
+    assert {"King", "Queen", "WildCard", "Full House", "Bid"}.issubset(set(by_brand["Games of Spades"]))
     assert {"Khamrah", "Yara", "Asad"}.issubset(set(by_brand["Lattafa"]))
 
 
