@@ -1194,3 +1194,26 @@ Sources:
 - Paris Corner: secondary index used to identify candidate gaps; no speculative records added.
 - No sizes, concentrations, GTINs, retailer offers, prices, stock or shipping values were inferred.
 - The 1,645-product / 171-variant catalog snapshot remains unchanged by this audit pass.
+
+
+## Pass 8 — Khadlaj official product-detail verification (2026-11-07)
+
+Added six Khadlaj fragrance identities after confirming each on an official Khadlaj product-detail page:
+- **Bleu Glace** — 100 ml, Extrait de Parfum; official product page: https://khadlaj-perfumes.com/ar/collections/for-him/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae
+- **Gaith** — 100 ml, Eau de Parfum; official product page: https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae
+- **Qarar** — 60 ml, Extrait de Parfum; official product page: https://khadlaj-perfumes.com/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum
+- **Sueño** — 100 ml, Extrait de Parfum; official product page: https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/sueno-100ml-extrait-de-parfum-for-women
+- **Wow Oud** — 100 ml, Eau de Parfum; official product page: https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray
+- **Zayaan Silver** — 100 ml, Eau de Parfum; official product page: https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men
+
+Each identity has one explicit variant with the source-confirmed size and concentration. GTINs are retained only where the official product detail page exposed one; Bleu Glace GTIN remains null/absent because the checked page did not establish it. No price, stock or retailer offer was imported.
+
+The following candidates remain **not added**: Code Viola Nectar (currently only corroborated by a third-party retailer in this pass), Johayna Green (official listing places it under perfume oils, outside the spray-fragrance identity pass), Maya (official listing shows a 20 ml item but its product type/format needs a product-detail check), Musk Ice (already represented as Private Blend Musk Ice), and Uno Sensuale / Vanilla Kiss / Opulence Bleu (not yet verified from an official Khadlaj product-detail page during this pass).
+
+### Pass 8 result
+- New canonical identities: **6**.
+- New explicit variants: **6**.
+- Khadlaj branch count: **119** (previously 113).
+- Catalog snapshot: **1,651 canonical identities; 177 explicit variants**.
+- These additions are product identity/variant records only. They are not retailer offers and do not imply current purchasable stock.
+- A dedicated regression test was added for all six official product URLs, sizes, concentrations and variant links. CI for the resulting commit has not yet been observed; do not describe this pass as CI-verified until Actions completes.
