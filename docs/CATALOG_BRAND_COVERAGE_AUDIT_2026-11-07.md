@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,643 canonical product identity records; 160 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,647 canonical product identity records; 165 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 301 |
+| Armaf | 305 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,643** |
+| **Total** | **1,647** |
 
 ## Findings from live public sources
 
@@ -906,3 +906,8 @@ Official detail pages:
 - https://armaf.com/products/le-parfait-azure-pour-femme-1
 
 This is still a sampled reconciliation of the dynamic official collection, not a completeness claim.
+
+
+### Branch-head snapshot reconciliation
+
+The branch advanced while the page-13–20 pass was being committed. Re-read the actual branch head and reconciled the snapshot assertions to the authoritative current file: **1,647 identities, 165 variants, 305 Armaf identities, 1,504 identities without variants**. Product IDs and variant IDs remain unique, and the three normalized duplicate groups are unchanged. These are branch-file counts only; the seed has not been imported into production.
