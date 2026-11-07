@@ -65,6 +65,21 @@
         "https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"
       ],
       "evidence_note": "Deloox Product JSON-LD explicitly reports GTIN 6298042001831 for French Avenue Liquid Brun Extrait de Parfum Limited Edition, size 150 ml, SKU 1385920. The target product SH-0031 and real variant VAR-f5aff76b4bb5de8a exist in backend/product_catalog.json at current main. The canonical product documents Extrait de Parfum; the standard Liquid Brun 100 ml is separate as SH-0030 / VAR-f87146c82d167f4c. This GTIN maps only to the existing 150 ml variant; OUT OF STOCK status and missing price are preserved by the retailer adapter."
+    },
+    {
+      "gtin": "6290360375694",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-0030",
+      "variant_id": "VAR-f87146c82d167f4c",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-07",
+      "source_urls": [
+        "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
+      ],
+      "evidence_note": "Bplatz's captured authentic product HTML returns GTIN 6290360375694 in Product JSON-LD and Shopify variant barcode, with exact title French Avenue Liquid Brun Eau de Parfum 100ml. The same payload identifies Shopify variant 54015243419916, price EUR 27.50 and InStock; this record establishes identity only, not an imported offer."
     }
   ]
 }
