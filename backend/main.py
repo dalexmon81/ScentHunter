@@ -13,6 +13,7 @@ from pathlib import Path
 
 from app.services.store_identity import normalize_store_key as _normalise_store
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
+from app.services.store_retry_policy import should_retry_store_report
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
@@ -1444,14 +1445,9 @@ def _run_store_subprocess(store, query, on_result=None, cancel_event=None):
     first=_run_store_subprocess_once(store,query,on_result=on_result,cancel_event=cancel_event)
     fs=first.get('status'); fv=bool(first.get('verified')); fc=int(first.get('count') or 0)
 
-    # IMPORTANT: technical failures are NOT retried. This restores the old
-    # lifecycle behaviour and prevents a slow/blocked store from monopolising
-    # a lane and cascading cancellation into other stores.
-    if fs in {'timeout','error','blocked','unavailable','cancelled'}:
-        first['attempts']=1
-        return first
-
-    if fv and (fs in {'ok','no_match'} or (fs=='partial' and fc>0)):
+    # Technical failures and verified outcomes are final for this attempt.
+    # Only ambiguous, unverified reports may consume the retry budget.
+    if not should_retry_store_report(first):
         first['attempts']=1
         return first
 
