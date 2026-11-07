@@ -170,8 +170,9 @@ def test_eight_hour_collection_refreshes_known_active_offers_not_discovery(tmp_p
     from decimal import Decimal
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from app.models import Base, Offer, Store
+    from app.models import Base, Offer, Store, StoreAuthorization
     from app.workers import ingestion_tasks
+    from datetime import datetime, timezone
 
     engine = create_engine(f"sqlite:///{tmp_path / 'eight-hour-refresh.sqlite'}")
     Base.metadata.create_all(engine)
@@ -181,6 +182,11 @@ def test_eight_hour_collection_refreshes_known_active_offers_not_discovery(tmp_p
         inactive = Store(name="Notino", slug="notino", currency="EUR", status="inactive")
         session.add_all([active, inactive])
         session.flush()
+        session.add(StoreAuthorization(
+            store_id=active.id, status="approved", collection_method="other",
+            scopes=["price_stock"], authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.add_all([
             Offer(store_id=active.id, external_product_id="sku-active",
                   url="https://shop.example/active", price=Decimal("49.90"),
