@@ -42,6 +42,11 @@
       "brand": "Khadlaj",
       "url": "https://khadlaj-perfumes.com/collections/all",
       "note": "Official product pages for Cloud Candy, Caffe Latte, Mocha Latte and Gaith explicitly show concentration and 100ml; Sawaar Vanille Blanc size 100ml is explicit but the official page title and image metadata disagree on concentration, so concentration is intentionally left unspecified."
+    },
+    {
+      "brand": "Bujairami",
+      "url": "https://bujairami.com.au/collections/all-products",
+      "note": "Official individual product pages explicitly state 100ml for Agha, Madness and Unforgettable; Agha also has a separate limited-edition 50ml product page. Concentration is not stated on these pages and is left unspecified."
     }
   ],
   "products": [
@@ -662,6 +667,43 @@
       "brand": "Khadlaj",
       "fragrance": "Sawaar Vanille Blanc",
       "source_url": "https://khadlaj-perfumes.com/collections/all/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Agha",
+      "source_url": "https://bujairami.com.au/products/agha-inspired-by-irresistible-althair-parfums-de-marly",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        },
+        {
+          "concentration": null,
+          "size_ml": 50
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Madness",
+      "source_url": "https://bujairami.com.au/products/madness-inspired-by-ombre-nomade-louis-vuitton",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Unforgettable",
+      "source_url": "https://bujairami.com.au/products/unforgettable-inspired-by-symphony-louis-vuitton",
       "variants": [
         {
           "concentration": null,
