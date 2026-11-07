@@ -991,3 +991,24 @@ def test_paris_corner_magic_oud_north_stag_and_ministry_lines_have_official_memb
             assert row.get("concentration") is None
     assert len(expected["Magic Oud Series"]) + len(expected["North Stag"]) + len(expected["Ministry of Oud"]) + len(expected["Ministry of Gourmand"]) == 28
 
+
+
+def test_paris_corner_core_collection_records_use_official_brand_collection_evidence():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["canonical_name"]: row for row in raw["products"] if row.get("brand") == "Paris Corner"}
+    page_one_names = {
+        "Affogato Al Caffe", "Aira", "Arwa", "Atoof", "Azm", "Bayn Al Asrar",
+        "Caramel Bash", "Choco Lait", "Ciao Citrus", "Confidential", "Cosmic Giardino",
+        "Dar Al Oud", "Date Caramel", "December Ambar", "December Rose",
+        "December Vanilla", "Dulzura", "Dulzura Vanilla Envie",
+    }
+    official_collection = "https://www.pariscornerperfumes.com/collections/paris-corner"
+    for name in page_one_names:
+        row = products[name]
+        assert row["collection_name"] == "Paris Corner"
+        assert row["source_url"] == official_collection
+        assert row["source_evidence_url"] == official_collection
+
+    for row in products.values():
+        if "/collections/paris-corner" in row.get("source_url", ""):
+            assert row["collection_name"] == "Paris Corner"
