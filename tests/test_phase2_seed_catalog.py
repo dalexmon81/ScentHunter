@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1588
+    assert report["fragrances"] == 1589
     assert report["variants"] == 149
-    assert report["products_without_variants"] == 1461
+    assert report["products_without_variants"] == 1462
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,7 +391,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1588
+    assert len(products) == 1589
     assert len(variants) == 149
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
@@ -470,5 +470,8 @@ def test_armaf_official_page_products_and_concentration_variants_are_traceable()
         assert row["source_evidence_url"] == evidence_url
     assert variants["SHV-SH-ARMAF-224191af-55-000"]["size_ml"] == 55
     assert variants["SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-ICONIC-EXTRAIT-DE-PARFUM-70-000"]["size_ml"] == 70
+    soda_pop = products["SH-ARMAF-OFFICIAL-ODYSSEY-SODA-POP"]
+    assert soda_pop["identity_status"] == "source_verified_name"
+    assert soda_pop["source_evidence_url"] == "https://armaf.com/products/odyssey-soda-pop"
     assert "Club de Nuit Precieux 1 Extrait de Parfum" in products["SH-ARMAF-224191af"]["aliases"]
     assert "Club de Nuit Woman Extrait de Parfum" in products["SH-ARMAF-7a645342"]["aliases"]
