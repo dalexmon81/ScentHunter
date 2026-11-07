@@ -37,7 +37,7 @@ def test_search_start_returns_completed_catalog_contract(monkeypatch):
 
     monkeypatch.setattr(catalog_first_api, "search_catalog_for_frontend", fake_search)
     response = TestClient(catalog_first_api.app).get(
-        "/search-start", params={"q": "Sauvage"}
+        "/search-start", params={"q": "Sauvage", "country_code": "IT", "postal_code": "00100"}
     )
 
     assert response.status_code == 200
