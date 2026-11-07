@@ -154,8 +154,8 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1781
-    assert report["variants"] == 208
+    assert report["fragrances"] == 1818
+    assert report["variants"] == 245
     assert report["products_without_variants"] == 1595
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1781
-    assert len(variants) == 208
+    assert len(products) == 1818
+    assert len(variants) == 245
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -1283,4 +1283,66 @@ def test_remaining_khadlaj_uno_range_products_are_official_100ml_edp_variants():
         variant_id = f"SHV-{row['product_id']}-100-000"
         assert variants[variant_id]["size_ml"] == 100
         assert variants[variant_id]["concentration"] == "Eau de Parfum"
+
+def test_khadlaj_la_fede_eau_de_parfum_collection_has_37_additional_official_identities():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {
+        row["canonical_name"]: row
+        for row in raw["products"]
+        if row.get("brand") == "Khadlaj"
+    }
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "La Fede Intoxicate Mystique": (100, "Extrait de Parfum"),
+        "La Fede Edge Intense": (100, "Eau de Parfum"),
+        "La Fede Edge Original": (100, "Eau de Parfum"),
+        "La Fede Symbol of Love": (100, "Eau de Parfum"),
+        "La Fede Symbol of Power": (100, "Eau de Parfum"),
+        "La Fede Choco Brown": (100, "Eau de Parfum"),
+        "La Fede White Forest Strawberry": (100, "Eau de Parfum"),
+        "La Fede Celeste Toffee": (100, "Eau de Parfum"),
+        "La Fede Celeste Fluer": (100, "Eau de Parfum"),
+        "La Fede Celeste Joice": (100, "Eau de Parfum"),
+        "La Fede Celeste Aqua": (100, "Eau de Parfum"),
+        "La Fede Intoxicate Blue Elixir": (100, "Eau de Parfum"),
+        "La Fede Intoxicate": (100, "Eau de Parfum"),
+        "La Fede Aura Manga Splash": (100, "Eau de Parfum"),
+        "La Fede Aura Pista Dessert": (100, "Eau de Parfum"),
+        "La Fede Opera Noir L'Or": (100, "Eau de Parfum"),
+        "La Fede Opera Rose L'Or": (100, "Eau de Parfum"),
+        "La Fede Crystallia Imperio": (100, "Eau de Parfum"),
+        "La Fede Crystallia Primaso": (100, "Eau de Parfum"),
+        "La Fede Magnum Extreme Blue": (100, "Eau de Parfum"),
+        "La Fede Magnum Wild Green": (100, "Eau de Parfum"),
+        "La Fede Magnum Gold Edition": (100, "Eau de Parfum"),
+        "La Fede Magnum Silver Edition": (100, "Eau de Parfum"),
+        "La Fede Aura Kiss of Rose": (100, "Eau de Parfum"),
+        "La Fede Aura Crisp Flower": (100, "Eau de Parfum"),
+        "La Fede Belle Reve Segrato Viola": (100, "Eau de Parfum"),
+        "La Fede Bella Reve Dolce Flore": (100, "Eau de Parfum"),
+        "La Fede Statesman": (75, "Eau de Parfum"),
+        "La Fede First Lady": (75, "Eau de Parfum"),
+        "La Fede Kingsman": (75, "Eau de Parfum"),
+        "La Fede Miss Premiere": (75, "Eau de Parfum"),
+        "Code Marron Oud": (100, "Eau de Parfum"),
+        "Code Rouge Amour": (100, "Eau de Parfum"),
+        "Code Verde Sublime": (100, "Eau de Parfum"),
+        "La Fede Lavish Luna": (100, "Eau de Parfum"),
+        "La Fede Lavish Rouge": (100, "Eau de Parfum"),
+        "La Fede Lavish Blush": (100, "Eau de Parfum"),
+    }
+    collection = "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume"
+    assert len(expected) == 37
+    for name, (size, concentration) in expected.items():
+        row = products[name]
+        assert row["identity_status"] == "source_listed_name"
+        assert row["source_url"] == collection
+        assert row["source_evidence_url"] == collection
+        assert row["collection_name"] == "La Fede Eau De Parfum"
+        assert row["formats_ml"] == [size]
+        assert row["concentration"] == concentration
+        variant_id = f"SHV-{row['product_id']}-{size}-000"
+        assert variants[variant_id]["product_id"] == row["product_id"]
+        assert variants[variant_id]["size_ml"] == size
+        assert variants[variant_id]["concentration"] == concentration
 
