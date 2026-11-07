@@ -5324,7 +5324,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-e1d337d3",
@@ -10537,6 +10540,2050 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-4758ef74",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Carnal Desire",
+      "name": "Carnal Desire",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Carnal Desire",
+      "aliases": [
+        "Carnal Desire",
+        "Aromatix Carnal Desire",
+        "Aromatix X French Avenue Carnal Desire",
+        "French Avenue Carnal Desire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-734e14ee",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Forbidden Fruit",
+      "name": "Forbidden Fruit",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Forbidden Fruit",
+      "aliases": [
+        "Forbidden Fruit",
+        "Aromatix Forbidden Fruit",
+        "Aromatix X French Avenue Forbidden Fruit",
+        "French Avenue Forbidden Fruit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-91a1aba9",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Frostbite",
+      "name": "Frostbite",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Frostbite",
+      "aliases": [
+        "Frostbite",
+        "Aromatix Frostbite",
+        "Aromatix X French Avenue Frostbite",
+        "French Avenue Frostbite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-c94bf6c3",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Magnetiq",
+      "name": "Magnetiq",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Magnetiq",
+      "aliases": [
+        "Magnetiq",
+        "Aromatix Magnetiq",
+        "Aromatix X French Avenue Magnetiq",
+        "French Avenue Magnetiq"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-4a5104e0",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Naughty Dates",
+      "name": "Naughty Dates",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Naughty Dates",
+      "aliases": [
+        "Naughty Dates",
+        "Aromatix Naughty Dates",
+        "Aromatix X French Avenue Naughty Dates",
+        "French Avenue Naughty Dates"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-c2b4dd95",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Ora",
+      "name": "Ora",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Ora",
+      "aliases": [
+        "Ora",
+        "Aromatix Ora",
+        "Aromatix X French Avenue Ora",
+        "French Avenue Ora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-6a87a272",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Platine Blanc",
+      "name": "Platine Blanc",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Platine Blanc",
+      "aliases": [
+        "Platine Blanc",
+        "Aromatix Platine Blanc",
+        "Aromatix X French Avenue Platine Blanc",
+        "French Avenue Platine Blanc"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-1eebd5f7",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Royal Taboo",
+      "name": "Royal Taboo",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Royal Taboo",
+      "aliases": [
+        "Royal Taboo",
+        "Aromatix Royal Taboo",
+        "Aromatix X French Avenue Royal Taboo",
+        "French Avenue Royal Taboo"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-e3d58c05",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Roza",
+      "name": "Roza",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Roza",
+      "aliases": [
+        "Roza",
+        "Aromatix Roza",
+        "Aromatix X French Avenue Roza",
+        "French Avenue Roza"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b8512f16",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Sun Kissed",
+      "name": "Sun Kissed",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Sun Kissed",
+      "aliases": [
+        "Sun Kissed",
+        "Aromatix Sun Kissed",
+        "Aromatix X French Avenue Sun Kissed",
+        "French Avenue Sun Kissed"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-9c9562ca",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Teas Me",
+      "name": "Teas Me",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "Teas Me",
+      "aliases": [
+        "Teas Me",
+        "Aromatix Teas Me",
+        "Aromatix X French Avenue Teas Me",
+        "French Avenue Teas Me"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-8ac1bb9b",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "X Xandal",
+      "name": "X Xandal",
+      "family_id": "aromatix_french_avenue",
+      "family_name": "X Xandal",
+      "aliases": [
+        "X Xandal",
+        "Aromatix X Xandal",
+        "Aromatix X French Avenue X Xandal",
+        "French Avenue X Xandal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/products/",
+      "source_evidence_url": "https://frenchavenue.com/products/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MYKONOS-d6ce21fb",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Aphrodite",
+      "name": "Aphrodite",
+      "family_id": "mykonos_catalog",
+      "family_name": "Aphrodite",
+      "aliases": [
+        "Aphrodite",
+        "Mykonos Aphrodite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-6aff7937",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Baby Love",
+      "name": "Baby Love",
+      "family_id": "mykonos_catalog",
+      "family_name": "Baby Love",
+      "aliases": [
+        "Baby Love",
+        "Mykonos Baby Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-0b2ce9db",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Black Opera",
+      "name": "Black Opera",
+      "family_id": "mykonos_catalog",
+      "family_name": "Black Opera",
+      "aliases": [
+        "Black Opera",
+        "Mykonos Black Opera"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-5a82441b",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Bonfire Vanilla",
+      "name": "Bonfire Vanilla",
+      "family_id": "mykonos_catalog",
+      "family_name": "Bonfire Vanilla",
+      "aliases": [
+        "Bonfire Vanilla",
+        "Mykonos Bonfire Vanilla"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-b4433062",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Cafe Drops",
+      "name": "Cafe Drops",
+      "family_id": "mykonos_catalog",
+      "family_name": "Cafe Drops",
+      "aliases": [
+        "Cafe Drops",
+        "Mykonos Cafe Drops"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-c0079fad",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "California Blue",
+      "name": "California Blue",
+      "family_id": "mykonos_catalog",
+      "family_name": "California Blue",
+      "aliases": [
+        "California Blue",
+        "Mykonos California Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-a7986b6d",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "California Club",
+      "name": "California Club",
+      "family_id": "mykonos_catalog",
+      "family_name": "California Club",
+      "aliases": [
+        "California Club",
+        "Mykonos California Club"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-3e5e18c7",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "California",
+      "name": "California",
+      "family_id": "mykonos_catalog",
+      "family_name": "California",
+      "aliases": [
+        "California",
+        "Mykonos California"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-087e4a85",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Caramel Fudge Cookie",
+      "name": "Caramel Fudge Cookie",
+      "family_id": "mykonos_catalog",
+      "family_name": "Caramel Fudge Cookie",
+      "aliases": [
+        "Caramel Fudge Cookie",
+        "Mykonos Caramel Fudge Cookie"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-cb66aed4",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Coconut Dreams",
+      "name": "Coconut Dreams",
+      "family_id": "mykonos_catalog",
+      "family_name": "Coconut Dreams",
+      "aliases": [
+        "Coconut Dreams",
+        "Mykonos Coconut Dreams"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-8bad0f8a",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Conquer",
+      "name": "Conquer",
+      "family_id": "mykonos_catalog",
+      "family_name": "Conquer",
+      "aliases": [
+        "Conquer",
+        "Mykonos Conquer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-ba81e1f1",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Constantine",
+      "name": "Constantine",
+      "family_id": "mykonos_catalog",
+      "family_name": "Constantine",
+      "aliases": [
+        "Constantine",
+        "Mykonos Constantine"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-fbaf72fe",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Crimson",
+      "name": "Crimson",
+      "family_id": "mykonos_catalog",
+      "family_name": "Crimson",
+      "aliases": [
+        "Crimson",
+        "Mykonos Crimson"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-5ad9e0a7",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Dark Secret",
+      "name": "Dark Secret",
+      "family_id": "mykonos_catalog",
+      "family_name": "Dark Secret",
+      "aliases": [
+        "Dark Secret",
+        "Mykonos Dark Secret"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-f3caf502",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Dreamscape",
+      "name": "Dreamscape",
+      "family_id": "mykonos_catalog",
+      "family_name": "Dreamscape",
+      "aliases": [
+        "Dreamscape",
+        "Mykonos Dreamscape"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-789b7773",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Enchanted",
+      "name": "Enchanted",
+      "family_id": "mykonos_catalog",
+      "family_name": "Enchanted",
+      "aliases": [
+        "Enchanted",
+        "Mykonos Enchanted"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-dd83e874",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Hawaiian Crush",
+      "name": "Hawaiian Crush",
+      "family_id": "mykonos_catalog",
+      "family_name": "Hawaiian Crush",
+      "aliases": [
+        "Hawaiian Crush",
+        "Mykonos Hawaiian Crush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-1713c194",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Moroccan Vanilla",
+      "name": "Moroccan Vanilla",
+      "family_id": "mykonos_catalog",
+      "family_name": "Moroccan Vanilla",
+      "aliases": [
+        "Moroccan Vanilla",
+        "Mykonos Moroccan Vanilla"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-dd9e74c4",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Musk Aura",
+      "name": "Musk Aura",
+      "family_id": "mykonos_catalog",
+      "family_name": "Musk Aura",
+      "aliases": [
+        "Musk Aura",
+        "Mykonos Musk Aura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-52459698",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Paradise",
+      "name": "Paradise",
+      "family_id": "mykonos_catalog",
+      "family_name": "Paradise",
+      "aliases": [
+        "Paradise",
+        "Mykonos Paradise"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-3207f716",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Pink Beach",
+      "name": "Pink Beach",
+      "family_id": "mykonos_catalog",
+      "family_name": "Pink Beach",
+      "aliases": [
+        "Pink Beach",
+        "Mykonos Pink Beach"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-e15a94f5",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Sparkling Rosé",
+      "name": "Sparkling Rosé",
+      "family_id": "mykonos_catalog",
+      "family_name": "Sparkling Rosé",
+      "aliases": [
+        "Sparkling Rosé",
+        "Mykonos Sparkling Rosé"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-78b2bc55",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Utopia",
+      "name": "Utopia",
+      "family_id": "mykonos_catalog",
+      "family_name": "Utopia",
+      "aliases": [
+        "Utopia",
+        "Mykonos Utopia"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-7de81646",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Vanilla Clouds",
+      "name": "Vanilla Clouds",
+      "family_id": "mykonos_catalog",
+      "family_name": "Vanilla Clouds",
+      "aliases": [
+        "Vanilla Clouds",
+        "Mykonos Vanilla Clouds"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-2e47d8e0",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Xoxo Rosy",
+      "name": "Xoxo Rosy",
+      "family_id": "mykonos_catalog",
+      "family_name": "Xoxo Rosy",
+      "aliases": [
+        "Xoxo Rosy",
+        "Mykonos Xoxo Rosy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-92e7627a",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Empire x RRQ",
+      "name": "Empire x RRQ",
+      "family_id": "mykonos_catalog",
+      "family_name": "Empire x RRQ",
+      "aliases": [
+        "Empire x RRQ",
+        "Mykonos Empire x RRQ"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-678b254c",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Inception",
+      "name": "Inception",
+      "family_id": "mykonos_catalog",
+      "family_name": "Inception",
+      "aliases": [
+        "Inception",
+        "Mykonos Inception"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-24a34991",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Sorrento",
+      "name": "Sorrento",
+      "family_id": "mykonos_catalog",
+      "family_name": "Sorrento",
+      "aliases": [
+        "Sorrento",
+        "Mykonos Sorrento"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-0eac5dbd",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Slow Living",
+      "name": "Slow Living",
+      "family_id": "mykonos_catalog",
+      "family_name": "Slow Living",
+      "aliases": [
+        "Slow Living",
+        "Mykonos Slow Living"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-57056cb5",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Untamed",
+      "name": "Untamed",
+      "family_id": "mykonos_catalog",
+      "family_name": "Untamed",
+      "aliases": [
+        "Untamed",
+        "Mykonos Untamed"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-12074094",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Reflection",
+      "name": "Reflection",
+      "family_id": "mykonos_catalog",
+      "family_name": "Reflection",
+      "aliases": [
+        "Reflection",
+        "Mykonos Reflection"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-c024bc58",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Glitch",
+      "name": "Glitch",
+      "family_id": "mykonos_catalog",
+      "family_name": "Glitch",
+      "aliases": [
+        "Glitch",
+        "Mykonos Glitch"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-ae57a514",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Inferno",
+      "name": "Inferno",
+      "family_id": "mykonos_catalog",
+      "family_name": "Inferno",
+      "aliases": [
+        "Inferno",
+        "Mykonos Inferno"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-764eda91",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Marbella",
+      "name": "Marbella",
+      "family_id": "mykonos_catalog",
+      "family_name": "Marbella",
+      "aliases": [
+        "Marbella",
+        "Mykonos Marbella"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-578b53c8",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Milk Drops",
+      "name": "Milk Drops",
+      "family_id": "mykonos_catalog",
+      "family_name": "Milk Drops",
+      "aliases": [
+        "Milk Drops",
+        "Mykonos Milk Drops"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-75d9d117",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Pink Drops",
+      "name": "Pink Drops",
+      "family_id": "mykonos_catalog",
+      "family_name": "Pink Drops",
+      "aliases": [
+        "Pink Drops",
+        "Mykonos Pink Drops"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-257f75b0",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Luminos",
+      "name": "Luminos",
+      "family_id": "mykonos_catalog",
+      "family_name": "Luminos",
+      "aliases": [
+        "Luminos",
+        "Mykonos Luminos"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-8cbc0859",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Sansa",
+      "name": "Sansa",
+      "family_id": "mykonos_catalog",
+      "family_name": "Sansa",
+      "aliases": [
+        "Sansa",
+        "Mykonos Sansa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-339c777f",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Reflection Elixir",
+      "name": "Reflection Elixir",
+      "family_id": "mykonos_catalog",
+      "family_name": "Reflection Elixir",
+      "aliases": [
+        "Reflection Elixir",
+        "Mykonos Reflection Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-39050fe8",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Nautilus",
+      "name": "Nautilus",
+      "family_id": "mykonos_catalog",
+      "family_name": "Nautilus",
+      "aliases": [
+        "Nautilus",
+        "Mykonos Nautilus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-133fd300",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Penthouse",
+      "name": "Penthouse",
+      "family_id": "mykonos_catalog",
+      "family_name": "Penthouse",
+      "aliases": [
+        "Penthouse",
+        "Mykonos Penthouse"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-991a7472",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Royal Ispahan",
+      "name": "Royal Ispahan",
+      "family_id": "mykonos_catalog",
+      "family_name": "Royal Ispahan",
+      "aliases": [
+        "Royal Ispahan",
+        "Mykonos Royal Ispahan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-dd8264d1",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "On The Rocks",
+      "name": "On The Rocks",
+      "family_id": "mykonos_catalog",
+      "family_name": "On The Rocks",
+      "aliases": [
+        "On The Rocks",
+        "Mykonos On The Rocks"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-1b298ff6",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Tea Poetry",
+      "name": "Tea Poetry",
+      "family_id": "mykonos_catalog",
+      "family_name": "Tea Poetry",
+      "aliases": [
+        "Tea Poetry",
+        "Mykonos Tea Poetry"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-ffebc3ec",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Affair",
+      "name": "Affair",
+      "family_id": "mykonos_catalog",
+      "family_name": "Affair",
+      "aliases": [
+        "Affair",
+        "Mykonos Affair"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-1ce7e53c",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Only You",
+      "name": "Only You",
+      "family_id": "mykonos_catalog",
+      "family_name": "Only You",
+      "aliases": [
+        "Only You",
+        "Mykonos Only You"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-d36ff1d7",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Shades Perfume",
+      "name": "Shades Perfume",
+      "family_id": "mykonos_catalog",
+      "family_name": "Shades Perfume",
+      "aliases": [
+        "Shades Perfume",
+        "Mykonos Shades Perfume"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-52353618",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Chai Crema Latte",
+      "name": "Chai Crema Latte",
+      "family_id": "mykonos_catalog",
+      "family_name": "Chai Crema Latte",
+      "aliases": [
+        "Chai Crema Latte",
+        "Mykonos Chai Crema Latte"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-aa3e1b8a",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Jynx",
+      "name": "Jynx",
+      "family_id": "mykonos_catalog",
+      "family_name": "Jynx",
+      "aliases": [
+        "Jynx",
+        "Mykonos Jynx"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-10a2bd45",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Rouge",
+      "name": "Rouge",
+      "family_id": "mykonos_catalog",
+      "family_name": "Rouge",
+      "aliases": [
+        "Rouge",
+        "Mykonos Rouge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-67332242",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Seven Roses",
+      "name": "Seven Roses",
+      "family_id": "mykonos_catalog",
+      "family_name": "Seven Roses",
+      "aliases": [
+        "Seven Roses",
+        "Mykonos Seven Roses"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-c8ea16e6",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Ivory",
+      "name": "Ivory",
+      "family_id": "mykonos_catalog",
+      "family_name": "Ivory",
+      "aliases": [
+        "Ivory",
+        "Mykonos Ivory"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-69a65dd6",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Blossom",
+      "name": "Blossom",
+      "family_id": "mykonos_catalog",
+      "family_name": "Blossom",
+      "aliases": [
+        "Blossom",
+        "Mykonos Blossom"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-e036b897",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Zora",
+      "name": "Zora",
+      "family_id": "mykonos_catalog",
+      "family_name": "Zora",
+      "aliases": [
+        "Zora",
+        "Mykonos Zora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-070136ba",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Down to Earth",
+      "name": "Down to Earth",
+      "family_id": "mykonos_catalog",
+      "family_name": "Down to Earth",
+      "aliases": [
+        "Down to Earth",
+        "Mykonos Down to Earth"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-35ac95ff",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "When in Paris",
+      "name": "When in Paris",
+      "family_id": "mykonos_catalog",
+      "family_name": "When in Paris",
+      "aliases": [
+        "When in Paris",
+        "Mykonos When in Paris"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-9ff7fa43",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Pandan Sticky Rice",
+      "name": "Pandan Sticky Rice",
+      "family_id": "mykonos_catalog",
+      "family_name": "Pandan Sticky Rice",
+      "aliases": [
+        "Pandan Sticky Rice",
+        "Mykonos Pandan Sticky Rice"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-825c174b",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Pistachio Cream Cake",
+      "name": "Pistachio Cream Cake",
+      "family_id": "mykonos_catalog",
+      "family_name": "Pistachio Cream Cake",
+      "aliases": [
+        "Pistachio Cream Cake",
+        "Mykonos Pistachio Cream Cake"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-775acf3b",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Blaze",
+      "name": "Blaze",
+      "family_id": "mykonos_catalog",
+      "family_name": "Blaze",
+      "aliases": [
+        "Blaze",
+        "Mykonos Blaze"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-9abbf020",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Memoir of Meri",
+      "name": "Memoir of Meri",
+      "family_id": "mykonos_catalog",
+      "family_name": "Memoir of Meri",
+      "aliases": [
+        "Memoir of Meri",
+        "Mykonos Memoir of Meri"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-3b92f6c9",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Once Upon Don",
+      "name": "Once Upon Don",
+      "family_id": "mykonos_catalog",
+      "family_name": "Once Upon Don",
+      "aliases": [
+        "Once Upon Don",
+        "Mykonos Once Upon Don"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-MYKONOS-accabf2b",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Verve",
+      "name": "Verve",
+      "family_id": "mykonos_catalog",
+      "family_name": "Verve",
+      "aliases": [
+        "Verve",
+        "Mykonos Verve"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_evidence_url": "https://officialmykonos.com/collections/all"
+    },
+    {
+      "product_id": "SH-ARMAF-88c7f40b",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Untold",
+      "name": "Club de Nuit Untold",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Untold",
+      "aliases": [
+        "Club de Nuit Untold",
+        "Armaf Club de Nuit Untold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-f0af9d9d",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man",
+      "name": "Club de Nuit Intense Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man",
+      "aliases": [
+        "Club de Nuit Intense Man",
+        "Armaf Club de Nuit Intense Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-96ab7130",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Elite",
+      "name": "Club de Nuit Elite",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Elite",
+      "aliases": [
+        "Club de Nuit Elite",
+        "Armaf Club de Nuit Elite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-ebaced44",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Overdose",
+      "name": "Club de Nuit Intense Overdose",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Overdose",
+      "aliases": [
+        "Club de Nuit Intense Overdose",
+        "Armaf Club de Nuit Intense Overdose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-b6b77ff6",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Pure Parfum",
+      "name": "Club de Nuit Intense Man Pure Parfum",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Pure Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Pure Parfum",
+        "Armaf Club de Nuit Intense Man Pure Parfum"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-4c83dfcd",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intenso Fuego",
+      "name": "Club de Nuit Intenso Fuego",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intenso Fuego",
+      "aliases": [
+        "Club de Nuit Intenso Fuego",
+        "Armaf Club de Nuit Intenso Fuego"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-2b05e041",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Mandarin Sky",
+      "name": "Odyssey Mandarin Sky",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Mandarin Sky",
+      "aliases": [
+        "Odyssey Mandarin Sky",
+        "Armaf Odyssey Mandarin Sky"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-909fec22",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Extrait de Parfum",
+      "name": "Club de Nuit Intense Man Extrait de Parfum",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Extrait de Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Extrait de Parfum",
+        "Armaf Club de Nuit Intense Man Extrait de Parfum"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-58e48fd1",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Woman",
+      "name": "Club de Nuit Woman",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Woman",
+      "aliases": [
+        "Club de Nuit Woman",
+        "Armaf Club de Nuit Woman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-4494f7fc",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Sillage",
+      "name": "Club de Nuit Sillage",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Sillage",
+      "aliases": [
+        "Club de Nuit Sillage",
+        "Armaf Club de Nuit Sillage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-661683d6",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Limited Edition (With Cufflinks)",
+      "name": "Club de Nuit Intense Man Limited Edition (With Cufflinks)",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Limited Edition (With Cufflinks)",
+      "aliases": [
+        "Club de Nuit Intense Man Limited Edition (With Cufflinks)",
+        "Armaf Club de Nuit Intense Man Limited Edition (With Cufflinks)"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-a8963e42",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Limited Edition Parfum",
+      "name": "Club de Nuit Intense Man Limited Edition Parfum",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Limited Edition Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Limited Edition Parfum",
+        "Armaf Club de Nuit Intense Man Limited Edition Parfum"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-8a8776c2",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Limited Edition Parfum 2024",
+      "name": "Club de Nuit Intense Man Limited Edition Parfum 2024",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Limited Edition Parfum 2024",
+      "aliases": [
+        "Club de Nuit Intense Man Limited Edition Parfum 2024",
+        "Armaf Club de Nuit Intense Man Limited Edition Parfum 2024"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-25bad71e",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Blue Iconic",
+      "name": "Club de Nuit Blue Iconic",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Blue Iconic",
+      "aliases": [
+        "Club de Nuit Blue Iconic",
+        "Armaf Club de Nuit Blue Iconic"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-b3967c31",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Bling",
+      "name": "Club de Nuit Bling",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Bling",
+      "aliases": [
+        "Club de Nuit Bling",
+        "Armaf Club de Nuit Bling"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-91877071",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Bling Gold",
+      "name": "Club de Nuit Bling Gold",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Bling Gold",
+      "aliases": [
+        "Club de Nuit Bling Gold",
+        "Armaf Club de Nuit Bling Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-224191af",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Precieux I",
+      "name": "Club de Nuit Precieux I",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Precieux I",
+      "aliases": [
+        "Club de Nuit Precieux I",
+        "Armaf Club de Nuit Precieux I"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-b3387ab2",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Precieux II",
+      "name": "Club de Nuit Precieux II",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Precieux II",
+      "aliases": [
+        "Club de Nuit Precieux II",
+        "Armaf Club de Nuit Precieux II"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-c638989b",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Precieux IV",
+      "name": "Club de Nuit Precieux IV",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Precieux IV",
+      "aliases": [
+        "Club de Nuit Precieux IV",
+        "Armaf Club de Nuit Precieux IV"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-8c539773",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Oud",
+      "name": "Club de Nuit Oud",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Oud",
+      "aliases": [
+        "Club de Nuit Oud",
+        "Armaf Club de Nuit Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-e4d46951",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Milestone",
+      "name": "Club de Nuit Milestone",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Milestone",
+      "aliases": [
+        "Club de Nuit Milestone",
+        "Armaf Club de Nuit Milestone"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-559ea709",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Timeless",
+      "name": "Club de Nuit Timeless",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Timeless",
+      "aliases": [
+        "Club de Nuit Timeless",
+        "Armaf Club de Nuit Timeless"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-bc44011a",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Urban Elixir",
+      "name": "Club de Nuit Urban Elixir",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Urban Elixir",
+      "aliases": [
+        "Club de Nuit Urban Elixir",
+        "Armaf Club de Nuit Urban Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-36ca3d7f",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Urban Man",
+      "name": "Club de Nuit Urban Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Urban Man",
+      "aliases": [
+        "Club de Nuit Urban Man",
+        "Armaf Club de Nuit Urban Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-bbdb8f2e",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit White Imperiale",
+      "name": "Club de Nuit White Imperiale",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit White Imperiale",
+      "aliases": [
+        "Club de Nuit White Imperiale",
+        "Armaf Club de Nuit White Imperiale"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-7a645342",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Woman Extrait",
+      "name": "Club de Nuit Woman Extrait",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Woman Extrait",
+      "aliases": [
+        "Club de Nuit Woman Extrait",
+        "Armaf Club de Nuit Woman Extrait"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-d8863acf",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Woman Extreme Edition",
+      "name": "Club de Nuit Woman Extreme Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Woman Extreme Edition",
+      "aliases": [
+        "Club de Nuit Woman Extreme Edition",
+        "Armaf Club de Nuit Woman Extreme Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-3730ce35",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Lionheart Man",
+      "name": "Club de Nuit Lionheart Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Lionheart Man",
+      "aliases": [
+        "Club de Nuit Lionheart Man",
+        "Armaf Club de Nuit Lionheart Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-8a8dfbb3",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Lionheart Woman",
+      "name": "Club de Nuit Lionheart Woman",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Lionheart Woman",
+      "aliases": [
+        "Club de Nuit Lionheart Woman",
+        "Armaf Club de Nuit Lionheart Woman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-4e9fde0c",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Maleka",
+      "name": "Club de Nuit Maleka",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Maleka",
+      "aliases": [
+        "Club de Nuit Maleka",
+        "Armaf Club de Nuit Maleka"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-dd435afb",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Man",
+      "name": "Club de Nuit Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Man",
+      "aliases": [
+        "Club de Nuit Man",
+        "Armaf Club de Nuit Man"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-e5e7e73b",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Extreme Edition",
+      "name": "Club de Nuit Intense Man Extreme Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Extreme Edition",
+      "aliases": [
+        "Club de Nuit Intense Man Extreme Edition",
+        "Armaf Club de Nuit Intense Man Extreme Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-3e35d56a",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Parfum",
+      "name": "Club de Nuit Intense Man Parfum",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Parfum",
+        "Armaf Club de Nuit Intense Man Parfum"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-194da576",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Extrait",
+      "name": "Club de Nuit Intense Man Extrait",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Intense Man Extrait",
+      "aliases": [
+        "Club de Nuit Intense Man Extrait",
+        "Armaf Club de Nuit Intense Man Extrait"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-643e357a",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Homme",
+      "name": "Odyssey Homme",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Homme",
+      "aliases": [
+        "Odyssey Homme",
+        "Armaf Odyssey Homme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-e8879c24",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Aqua",
+      "name": "Odyssey Aqua",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Aqua",
+      "aliases": [
+        "Odyssey Aqua",
+        "Armaf Odyssey Aqua"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-a15d6be2",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Mega",
+      "name": "Odyssey Mega",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Mega",
+      "aliases": [
+        "Odyssey Mega",
+        "Armaf Odyssey Mega"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-3268844e",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Limoni Fresh",
+      "name": "Odyssey Limoni Fresh",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Limoni Fresh",
+      "aliases": [
+        "Odyssey Limoni Fresh",
+        "Armaf Odyssey Limoni Fresh"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARMAF-fcd50804",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Wild One Gold Edition",
+      "name": "Odyssey Wild One Gold Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Wild One Gold Edition",
+      "aliases": [
+        "Odyssey Wild One Gold Edition",
+        "Armaf Odyssey Wild One Gold Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-1351a14d",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Niche Emarati",
+      "name": "Niche Emarati",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Niche Emarati",
+      "aliases": [
+        "Niche Emarati",
+        "Arabiyat Prestige Niche Emarati"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://arabiyatprestigeus.com/collections/all",
+      "source_evidence_url": "https://arabiyatprestigeus.com/collections/all"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-d6c8fbce",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Niche",
+      "name": "Niche",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Niche",
+      "aliases": [
+        "Niche",
+        "Arabiyat Prestige Niche"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://arabiyatprestigeus.com/collections/all",
+      "source_evidence_url": "https://arabiyatprestigeus.com/collections/all"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-4133b3ae",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Al Qasr",
+      "name": "Al Qasr",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Al Qasr",
+      "aliases": [
+        "Al Qasr",
+        "Gulf Orchid Al Qasr"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-93df94e2",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Asala",
+      "name": "Asala",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Asala",
+      "aliases": [
+        "Asala",
+        "Gulf Orchid Asala"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-fdd3dac0",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Hamsat",
+      "name": "Hamsat",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Hamsat",
+      "aliases": [
+        "Hamsat",
+        "Gulf Orchid Hamsat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-6f46ab28",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Hikma",
+      "name": "Hikma",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Hikma",
+      "aliases": [
+        "Hikma",
+        "Gulf Orchid Hikma"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-bbaba4ee",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Jawhara",
+      "name": "Jawhara",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Jawhara",
+      "aliases": [
+        "Jawhara",
+        "Gulf Orchid Jawhara"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-aca1784d",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Jewel",
+      "name": "Jewel",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Jewel",
+      "aliases": [
+        "Jewel",
+        "Gulf Orchid Jewel"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-e2e348cd",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Riwaya",
+      "name": "Riwaya",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Riwaya",
+      "aliases": [
+        "Riwaya",
+        "Gulf Orchid Riwaya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-1a6e26f4",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Turath",
+      "name": "Turath",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Turath",
+      "aliases": [
+        "Turath",
+        "Gulf Orchid Turath"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-0aca84c2",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Vanilla Voyage",
+      "name": "Vanilla Voyage",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Vanilla Voyage",
+      "aliases": [
+        "Vanilla Voyage",
+        "Gulf Orchid Vanilla Voyage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections",
+      "source_evidence_url": "https://shop-gulforchid.com/collections"
     }
   ],
   "variants": [
@@ -11061,6 +13108,123 @@
       "aliases": [
         "Acqua di Gio Profondo Eau de Parfum refillable bottle 100 ml",
         "Giorgio Armani Acqua di Gio Profondo EDP 100 ml refillable bottle"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-4758ef74",
+      "variant_id": "VAR-8211a295af50619e",
+      "size_ml": 100,
+      "aliases": [
+        "Carnal Desire 100 ml",
+        "French Avenue Carnal Desire 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-734e14ee",
+      "variant_id": "VAR-be6d95d564d87974",
+      "size_ml": 100,
+      "aliases": [
+        "Forbidden Fruit 100 ml",
+        "French Avenue Forbidden Fruit 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-91a1aba9",
+      "variant_id": "VAR-aad6950d558d4153",
+      "size_ml": 100,
+      "aliases": [
+        "Frostbite 100 ml",
+        "French Avenue Frostbite 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-c94bf6c3",
+      "variant_id": "VAR-7746a36c70542c6e",
+      "size_ml": 100,
+      "aliases": [
+        "Magnetiq 100 ml",
+        "French Avenue Magnetiq 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-4a5104e0",
+      "variant_id": "VAR-edc7ad8559f63f4a",
+      "size_ml": 100,
+      "aliases": [
+        "Naughty Dates 100 ml",
+        "French Avenue Naughty Dates 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-c2b4dd95",
+      "variant_id": "VAR-a5e44a70c007b55f",
+      "size_ml": 100,
+      "aliases": [
+        "Ora 100 ml",
+        "French Avenue Ora 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-6a87a272",
+      "variant_id": "VAR-840c7c7a6b1d47c8",
+      "size_ml": 100,
+      "aliases": [
+        "Platine Blanc 100 ml",
+        "French Avenue Platine Blanc 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-1eebd5f7",
+      "variant_id": "VAR-9d198be4b62eabbf",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Taboo 100 ml",
+        "French Avenue Royal Taboo 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-e3d58c05",
+      "variant_id": "VAR-0ac0dac233b48f0b",
+      "size_ml": 100,
+      "aliases": [
+        "Roza 100 ml",
+        "French Avenue Roza 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b8512f16",
+      "variant_id": "VAR-8d5cef4e1caea5a1",
+      "size_ml": 100,
+      "aliases": [
+        "Sun Kissed 100 ml",
+        "French Avenue Sun Kissed 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-9c9562ca",
+      "variant_id": "VAR-71769965f684eae0",
+      "size_ml": 100,
+      "aliases": [
+        "Teas Me 100 ml",
+        "French Avenue Teas Me 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-8ac1bb9b",
+      "variant_id": "VAR-ef886184af831d72",
+      "size_ml": 100,
+      "aliases": [
+        "X Xandal 100 ml",
+        "French Avenue X Xandal 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-9c91c81c",
+      "variant_id": "VAR-97d1b2cdcc3a8b55",
+      "size_ml": 100,
+      "aliases": [
+        "Asad Elixir 100 ml",
+        "Lattafa Asad Elixir 100 ml"
       ]
     }
   ]
