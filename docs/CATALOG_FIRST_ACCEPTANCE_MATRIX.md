@@ -188,3 +188,17 @@ The repository audit of the integrated Phase 10 branch confirmed these cross-pha
 - Missing, expired, revoked, pending, or insufficiently scoped authorization blocks collection. Authorization-policy blocks are not treated as connector outages and do not trigger connector quarantine.
 - Unit tests cover missing authorization, missing scope, mismatched reference and an explicitly granted scope.
 - This control is implemented in the worker/data path. A protected operator workflow for recording and reviewing grants, PostgreSQL migration execution and passing CI on the latest commit are still pending. No retailer is authorized merely because a row or connector exists.
+
+
+## Fly.io staging acceptance update (2026-11-07, commit 424060b468f8f4861ac4639417b2714d41d1351a)
+
+- The latest API contract CI passed: [run 42342537121](https://github.com/dalexmon81/ScentHunter/actions/runs/42342537121).
+- The latest full PostgreSQL vertical-slice CI passed: [run 42342537046](https://github.com/dalexmon81/ScentHunter/actions/runs/42342537046). It includes migration and schema checks, disposable PostgreSQL backup/restore, canonical identity/normalization, offline connector contracts, ingestion/matching/promotion, PostgreSQL search/fail-closed behavior, admin queues/metrics and canary/shadow routing checks.
+- The isolated Fly.io staging deploy and end-to-end verification passed: [run 42342537039](https://github.com/dalexmon81/ScentHunter/actions/runs/42342537039). Alembic head on the staging PostgreSQL database is `0012_store_authorizations`; required tables were present.
+- Staging canonical seed is now populated with 60 brands, 1,374 fragrances, 512 product variants, 1,389 legacy product mappings and 512 legacy variant mappings. No store rows were seeded or activated; there are zero offers and zero price-history rows.
+- The staging search endpoint `/search-start?q=Sauvage` returned `status=completed`, 4 product identities, and included Dior Sauvage. The public HTTPS frontend and `/healthz` returned HTTP 200. This verifies catalog identity search, not purchasable offers or retailer coverage.
+- Fly process topology verified: one API machine, one worker machine, zero Beat machines. Worker runs non-root; broker ping and queued-task smoke passed.
+- No live retailer credentials were configured, no retailer was activated, and no offer data was fabricated. Public staging currently demonstrates a populated product catalog but cannot yet compare prices.
+- The authorization gate implementation and migration are deployed to isolated staging. A protected operator workflow for entering/reviewing written grants remains open; do not add an unauthenticated grant-management endpoint.
+- PR #424 remains open and draft, not merged. No production configuration, production database, production traffic, or production deployment was changed.
+- These checks prove this isolated staging snapshot only. They do not complete the remaining live-retailer authorization/coverage, freshness, alert/recovery, measured match precision/recall, real shadow comparison or traffic rollout work. Do not mark the entire catalog-first migration complete.
