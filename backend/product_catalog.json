@@ -27055,6 +27055,74 @@
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
       "source_evidence_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-UOMO",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Oros Uomo",
+      "name": "Oros Uomo",
+      "family_id": "armaf_catalog",
+      "family_name": "Oros Uomo",
+      "aliases": [
+        "Oros Uomo",
+        "Armaf Oros Uomo"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/oros-uomo"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-ART-DU-PARFUM-POUR-HOMME",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Art Du' Parfum Pour Homme",
+      "name": "Art Du' Parfum Pour Homme",
+      "family_id": "armaf_catalog",
+      "family_name": "Art Du' Parfum Pour Homme",
+      "aliases": [
+        "Art Du' Parfum Pour Homme",
+        "Armaf Art Du' Parfum Pour Homme"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/art-du-parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-RADICAL-BLUE-MAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Radical Blue Man",
+      "name": "Radical Blue Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Radical Blue Man",
+      "aliases": [
+        "Radical Blue Man",
+        "Armaf Radical Blue Man"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/radical-edp-for-men-slate-blue-btl"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-OUD",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Oros Oud",
+      "name": "Oros Oud",
+      "family_id": "armaf_catalog",
+      "family_name": "Oros Oud",
+      "aliases": [
+        "Oros Oud",
+        "Armaf Oros Oud"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/oros-oud"
     }
   ],
   "variants": [
@@ -28681,6 +28749,51 @@
       "aliases": [
         "Profumi D'Art 13 Tanta Roba 100 ml",
         "Armaf Profumi D'Art 13 Tanta Roba 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-OROS-UOMO-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-UOMO",
+      "size_ml": 100,
+      "aliases": [
+        "Oros Uomo 100 ml",
+        "Armaf Oros Uomo 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-RADICAL-BLUE-MAN-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-RADICAL-BLUE-MAN",
+      "size_ml": 100,
+      "aliases": [
+        "Radical Blue Man 100 ml",
+        "Armaf Radical Blue Man 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-OROS-OUD-85-000",
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-OUD",
+      "size_ml": 85,
+      "aliases": [
+        "Oros Oud 85 ml",
+        "Armaf Oros Oud 85ml"
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-6a665a32",
+      "variant_id": "SHV-SH-ARMAF-6a665a32-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Le Parfait Panache 200 ml",
+        "Armaf Le Parfait Panache 200ml"
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-LE-PARFAIT-AZURE-FEMME",
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-LE-PARFAIT-AZURE-FEMME-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Le Parfait Azure Femme 200 ml",
+        "Le Parfait Azure Pour Femme 200ml"
       ]
     }
   ]
