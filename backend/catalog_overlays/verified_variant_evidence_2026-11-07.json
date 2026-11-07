@@ -1,0 +1,526 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-07",
+  "purpose": "Source-backed product variant evidence; no retailer offer data.",
+  "rules": [
+    "Only exact brand/fragrance matches are enriched.",
+    "Only sizes and concentrations explicitly shown by cited product/brand source are included.",
+    "No GTIN, stock, price, availability, tester, refill or gift-set facts are inferred."
+  ],
+  "sources": [
+    {
+      "brand": "Velixir",
+      "url": "https://velixirperfumes.eu/perfumes/",
+      "note": "Brand catalogue states 24 EDP fragrances in 35ml and 100ml; four Extrait fragrances in 100ml."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar",
+      "note": "Official product page names Rey as EDP 100ml."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+      "note": "Official product page names Fakhama as EDP 100ml."
+    },
+    {
+      "brand": "Paris Corner",
+      "url": "https://www.pariscornerperfumes.com/",
+      "note": "Official brand product pages used for each individual fragrance; where concentration is not explicit, it is left null."
+    }
+  ],
+  "products": [
+    {
+      "brand": "Velixir",
+      "fragrance": "Adonis",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Aphrodite",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Apollo",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Ares",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Artemis",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Asteria",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Athena",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Comus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Concordia",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Demeter",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Ether",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Galatea",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Harmonia",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Helios",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Hera",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Himeros",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Icarus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Morpheus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Narcisus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Nyx",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Orion",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Orpheus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Paladin",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Panacea",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Persephone",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Poseidon",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Selene",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Velixir",
+      "fragrance": "Uranus",
+      "source_url": "https://velixirperfumes.eu/perfumes/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 35
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Rey",
+      "source_url": "https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Fakhama",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "AZM",
+      "source_url": "https://www.pariscornerperfumes.com/products/azm",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Khayal",
+      "source_url": "https://www.pariscornerperfumes.com/products/khayal-100ml",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Oravéa",
+      "source_url": "https://www.pariscornerperfumes.com/products/oravea",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Confidential",
+      "source_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Wayfarer",
+      "source_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Paris Corner",
+      "fragrance": "Charuto Mysterious Tobacco",
+      "source_url": "https://www.pariscornerperfumes.com/products/paris-corner-perfumes",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    }
+  ]
+}
