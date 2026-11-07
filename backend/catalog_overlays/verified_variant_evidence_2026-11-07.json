@@ -57,6 +57,16 @@
       "brand": "Maison Asrar",
       "url": "https://maisonasrar.com/collections/royal-collection",
       "note": "Official Royal Collection lists Heritage and Treasure; their individual official product URL slugs explicitly identify Eau de Parfum 100ml. Other Royal Collection products were not assigned a size where the official product page did not state it."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume",
+      "note": "Official Gulf Orchid perfume shop product pages explicitly identify the listed products and sizes: Vanilla Addiction 100ml EDP, Mango Ice 100ml EDP, Sweet Heaven 20ml EDP, Cookie Bite 100ml EDP, Exotic Oud 100ml EDP and Sweet Like Candy 100ml EDP."
+    },
+    {
+      "brand": "Assaf",
+      "url": "https://assaf.ae/collections/all-perfumes",
+      "note": "Official Assaf product pages explicitly state sizes for Frankel Ascot 200ml, Frankel Blackout 200ml, Attacks 125ml, Gris Erik 100ml EDP, Tobacco Jam 50 100ml (50% oil, not mapped to EDP) and Arrogate Comete 200ml. Concentration is left unspecified unless the page explicitly identifies EDP."
     }
   ],
   "products": [
@@ -863,6 +873,138 @@
         {
           "concentration": "Eau de Parfum",
           "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Vanilla Addiction",
+      "source_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Mango Ice",
+      "source_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Sweet Heaven",
+      "source_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 20
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Cookie Bite",
+      "source_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Exotic Oud",
+      "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Sweet Like Candy",
+      "source_url": "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Frankel Ascot",
+      "source_url": "https://assaf.ae/products/frankel-ascot",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Frankel Blackout",
+      "source_url": "https://assaf.ae/products/frankel-blackout",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 200
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Attacks",
+      "source_url": "https://assaf.ae/products/attacks",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 125
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Gris Erik",
+      "source_url": "https://assaf.ae/products/edp-gris-erik-100ml",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Tobacco Jam 50",
+      "source_url": "https://assaf.ae/products/tobacco-jam-50",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Assaf",
+      "fragrance": "Arrogate Comete",
+      "source_url": "https://assaf.ae/products/edp-arrogate-comete-200ml-copy",
+      "variants": [
+        {
+          "concentration": null,
+          "size_ml": 200
         }
       ]
     }
