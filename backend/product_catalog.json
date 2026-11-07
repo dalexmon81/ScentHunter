@@ -27475,6 +27475,132 @@
       "source_evidence_url": "https://armaf.com/collections/shk",
       "collection_name": "ARMAF X SHK",
       "collection_source_url": "https://armaf.com/collections/shk"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-BLEU-GLACE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Bleu Glace",
+      "name": "Bleu Glace",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Bleu Glace",
+      "aliases": [
+        "Bleu Glace",
+        "Khadlaj Bleu Glace"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/ar/collections/for-him/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/ar/collections/for-him/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "gtin": "629804307"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-GAITH",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Gaith",
+      "name": "Gaith",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Gaith",
+      "aliases": [
+        "Gaith",
+        "Khadlaj Gaith"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "gtin": "6291107976143"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-QARAR",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Qarar",
+      "name": "Qarar",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Qarar",
+      "aliases": [
+        "Qarar",
+        "Khadlaj Qarar"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
+      "gtin": "6298043071628"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-SUENO",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Sueño",
+      "name": "Sueño",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Sueño",
+      "aliases": [
+        "Sueño",
+        "Khadlaj Sueño"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/sueno-100ml-extrait-de-parfum-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/sueno-100ml-extrait-de-parfum-for-women",
+      "gtin": "6298043072809"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-WOW-OUD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Wow Oud",
+      "name": "Wow Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Wow Oud",
+      "aliases": [
+        "Wow Oud",
+        "Khadlaj Wow Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+      "gtin": "6291107976716"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-ZAYAAN-SILVER",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Zayaan Silver",
+      "name": "Zayaan Silver",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Zayaan Silver",
+      "aliases": [
+        "Zayaan Silver",
+        "Khadlaj Zayaan Silver"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
+      "gtin": "6298043070058"
     }
   ],
   "variants": [
@@ -29206,6 +29332,66 @@
         "Khadlaj Wild Indonesian Oud Pure 60ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-WILD-INDONESIAN-OUD-60-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-BLEU-GLACE",
+      "size_ml": 100,
+      "aliases": [
+        "Bleu Glace 100 ml",
+        "Khadlaj Bleu Glace 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-BLEU-GLACE-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-GAITH",
+      "size_ml": 100,
+      "aliases": [
+        "Gaith 100 ml",
+        "Khadlaj Gaith 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-GAITH-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-QARAR",
+      "size_ml": 60,
+      "aliases": [
+        "Qarar 60 ml",
+        "Khadlaj Qarar 60ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-QARAR-60-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-SUENO",
+      "size_ml": 100,
+      "aliases": [
+        "Sueño 100 ml",
+        "Khadlaj Sueño 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-SUENO-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-WOW-OUD",
+      "size_ml": 100,
+      "aliases": [
+        "Wow Oud 100 ml",
+        "Khadlaj Wow Oud 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-WOW-OUD-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OFFICIAL-ZAYAAN-SILVER",
+      "size_ml": 100,
+      "aliases": [
+        "Zayaan Silver 100 ml",
+        "Khadlaj Zayaan Silver 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-ZAYAAN-SILVER-100-000",
       "concentration": "Eau de Parfum"
     }
   ]
