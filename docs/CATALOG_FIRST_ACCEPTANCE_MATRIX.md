@@ -251,3 +251,15 @@ Acceptance remains **partial / not yet verified**:
 - First integrated test attempt exposed three test setup failures because several test registrations omitted the now-required Origin header. This was a test-fixture issue, not a production bypass; all test registration calls were corrected to use the HTTPS test origin. Do not count the failed run as acceptance.
 - On head `efb64ba47edac8009b735cb85ca21f325c88aafb`, the full PostgreSQL vertical-slice CI passed ([run 42351240562](https://github.com/dalexmon81/ScentHunter/actions/runs/42351240562)) and the API contract CI passed ([run 42351240543](https://github.com/dalexmon81/ScentHunter/actions/runs/42351240543)). The staging deploy workflow ([run 42351240589](https://github.com/dalexmon81/ScentHunter/actions/runs/42351240589)) passed its pre-deploy test gates and was applying migrations when this note was recorded; the cookie-based live staging smoke test and final deploy conclusion remain pending.
 - The browser session implementation is not considered staging-accepted until the final Fly deploy and cookie-based smoke test pass. Email verification, password recovery and account rate limiting remain open. No retailer activation, merge or production rollout is authorized.
+
+### Secure browser session staging acceptance — passed (2026-11-07)
+
+- The cookie-based account flow is now verified on the isolated Fly.io staging app at commit `c9329f228ff74a024d637ec1b00b8e59f828139b`.
+- Final CI evidence on that exact commit:
+  - API contract: [run 42351793113](https://github.com/dalexmon81/ScentHunter/actions/runs/42351793113) — success.
+  - Full PostgreSQL vertical slice: [run 42351793057](https://github.com/dalexmon81/ScentHunter/actions/runs/42351793057) — success.
+  - Fly.io staging deploy and end-to-end verification: [run 42351793143](https://github.com/dalexmon81/ScentHunter/actions/runs/42351793143) — success.
+- Staging deploy verified migrations and canonical seed, one API/one worker/zero Beat topology, non-root worker, broker ping, queued task execution, frontend/PostgreSQL search, public DNS/HTTPS, account registration using Secure HttpOnly cookies, profile read, saved delivery destination, CSRF-protected mutation, logout revocation, and cleanup of the synthetic smoke-test account.
+- The first cookie smoke test failed because the app saw an internal HTTP scheme behind Fly's TLS termination. The origin check was corrected to validate HTTPS against the externally forwarded host and port. The subsequent full staging smoke test passed. Do not treat the earlier failed run as acceptance.
+- PR #424 remains open, draft and unmerged. No production deployment, merge, retailer activation, or traffic ramp occurred.
+- This closes the browser-session persistence subtask only. Email verification, password recovery, account rate limiting, live retailer authorization/offers, verified shipping rates, and the broader phase acceptance criteria remain open. No phase is automatically marked complete by this account increment.
