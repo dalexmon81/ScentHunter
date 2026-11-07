@@ -1351,3 +1351,9 @@ The first Actions runs exposed stale hard-coded catalog counts and an attributio
 
 The failed runs reported 32–33 passing tests and failures from the stale totals, old detail evidence, and the over-broad parent-collection count. The corrections are committed, but no successful Actions run for the corrected current head has yet been observed. Do not mark CI green until a fresh run completes.
 
+## Pass 14 — corrected catalog checks green (2026-11-07)
+
+The corrected branch head was checked by GitHub Actions run **#42419260784**. The Phase 2 schema-contract job completed successfully and the test command reported **37 passed, 1 warning**. This run includes the current catalog count assertions, product-detail provenance checks, Paris Corner parent collection exact-name test, Pendora Veteran Oud test and the 16 new product-detail/variant assertions.
+
+The earlier failures were from superseded commits. The latest verified head is **1f5dcb4766bb300a327fa57d196b522c4ed3e7a8**. The warning is from the existing dependency/tooling deprecation output; it did not fail the test job.
+
