@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,636 canonical product identity records; 156 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,638 canonical product identity records; 157 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 294 |
+| Armaf | 296 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,636** |
+| **Total** | **1,638** |
 
 ## Findings from live public sources
 
@@ -826,3 +826,18 @@ Official detail pages:
 - https://armaf.com/products/ego-tiger
 
 This extends the sample, but does not prove that all Armaf fragrance pages or variants have been captured.
+
+
+## Armaf official US collection pages 17–20 — two further product identities
+
+The page 17–20 listing sample surfaced two additional fragrance identities missing from the catalog and confirmed by official product-detail pages:
+- **Ombre Oud Intense Black** — Eau de Parfum, 100ml
+- **Eter Desert Rose** — Eau de Parfum; the retrieved detail page did not state a size, so no variant was inferred.
+
+Both are now represented with official product evidence URLs. The catalog snapshot is now **1,638 identities, 157 variants, 296 Armaf identities**. Products without declared variants: **1,503**.
+
+Official detail pages:
+- https://armaf.com/products/ombre-oud-intense-black
+- https://armaf.com/products/eter-desert-rose
+
+The Armaf audit remains a partial reconciliation; the source collection is dynamic and mixes fragrance products with body-care items and bundles.
