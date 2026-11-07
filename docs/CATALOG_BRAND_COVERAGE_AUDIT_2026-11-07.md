@@ -302,3 +302,36 @@ The official Lattafa perfume category shows three pages. The visible first-page 
 - Variants: 141
 - Duplicate product IDs: 0
 - Duplicate brand + canonical-name pairs: 0
+
+
+## Priority-brand reconciliation pass 7 — Afnan concentration categories and quality cross-check
+
+### Afnan official Europe category reconciliation
+
+Inspected the official European Afnan category pages separately, rather than treating the 64-item all-products collection as 64 fragrances:
+- Eau de Parfum collection: https://www.it.afnan.com/collections/eau-de-parfum (42 listed items, including some collection kits/sets that must be excluded from standalone perfume identities).
+- Extrait de Parfum collection: https://www.it.afnan.com/collections/extrait-de-parfum (15 listed items).
+- Concentrated perfume oil: https://www.it.afnan.com/collections/concentrated-perfume-oil (1 listed item, Abiyad Musk).
+
+Added five absent names from the official Extrait collection, with the type recorded as `Extrait de Parfum`: Patchouli On Fire, Highness IV, Highness V, Highness IX and Highness X. These were not in the previous Afnan list. The existing Afnan list already included the other visible Extrait names checked, including 9 PM Night Out, 9 PM Elixir, Rare Reef, Supremacy Not Only Intense, Historic Sahara, Tobacco Rush, Edict Amberhythm, Supremacy Tapis Rouge, Edict Ouddiction and Oud Rising.
+
+Important: the Afnan official European all-products page and type pages have different counts due to collection membership, duplicate featured products, gift sets and category filters. Do not sum the counts as unique fragrances. Oil-format products should have their own format/concentration field in the catalog schema instead of being conflated with EDP/Extrait. The current catalog's Afnan bucket is 71 identities, but it is not yet a final global range count.
+
+### Paris Corner first-page audit reminder
+
+The official Paris Corner core-brand collection currently reports 105 products. The current ScentHunter Paris Corner bucket is 120. The first-page gap additions have been recorded, but this count mismatch remains unresolved. We need to compare exact official product handles and product pages, identify discontinued/duplicate items, and preserve sub-brand attribution. No additional Paris Corner names were added in this pass.
+
+### Pass 7 outcome
+
+- Added 5 Afnan Extrait identities from the official European shop.
+- Afnan bucket now: 71.
+- Paris Corner bucket remains: 120 versus 105 currently listed on the official core-brand collection; exact reconciliation remains open.
+- No brand completeness claim is made.
+
+
+## Updated catalog totals after pass 7
+
+- Product identities: 1384
+- Variants: 141
+- Duplicate product IDs: 0
+- Duplicate brand + canonical-name pairs: 0
