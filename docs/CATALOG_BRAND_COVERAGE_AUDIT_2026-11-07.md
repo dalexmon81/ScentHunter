@@ -1511,3 +1511,7 @@ A regression test now asserts the 74 official perfume-spray names map to the 121
 - Catalog snapshot: **1,818 canonical identities; 245 explicit variants**.
 - CI for this new reconciliation test must complete before marking it verified.
 
+## Pass 26 — Maison Asrar full spray-list test green (2026-11-07)
+
+GitHub Actions run **#42420311483** for test commit **f2a76caf021ddbee36db6c4c24635b3a8eef83ba** passed: **43 tests passed, 1 warning**. This includes the full 74-name Maison Asrar perfume-spray mapping, the Mohra Oud alias, and the room-spray exclusion assertion. The preceding failure was a case-normalization error in the test itself; the catalog mapping was complete and the corrected test now passes.
+
