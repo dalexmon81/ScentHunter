@@ -69,6 +69,31 @@ class Store(Base):
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class StoreAuthorization(Base):
+    """Auditable retailer permission record; no row means collection is denied."""
+    __tablename__ = "store_authorizations"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'approved', 'rejected', 'revoked', 'expired')", name="store_authorization_status"),
+        CheckConstraint("collection_method IN ('api', 'feed', 'affiliate_feed', 'manual_url', 'other')", name="store_authorization_method"),
+        Index("ix_store_authorizations_store_status", "store_id", "status"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
+    collection_method: Mapped[str] = mapped_column(String(24), nullable=False)
+    scopes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    authorization_reference: Mapped[str | None] = mapped_column(String(240))
+    evidence_url: Mapped[str | None] = mapped_column(Text)
+    approved_by: Mapped[str | None] = mapped_column(String(160))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    terms: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LegacyProductIdMap(Base):
     __tablename__ = "legacy_product_id_map"
     legacy_product_id: Mapped[str] = mapped_column(String(80), primary_key=True)
