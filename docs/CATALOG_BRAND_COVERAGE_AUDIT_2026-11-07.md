@@ -1088,3 +1088,23 @@ Important scope note: the official `all-perfumes` page currently displays 464 li
 The catalog currently contains **1,645 canonical identities, 171 explicit variants, 1,496 products without declared variants and 303 Armaf identities**. This supersedes the earlier 1,647 / 305 snapshot after five duplicate regional spellings were consolidated and three official collection-listed fragrances were added. All five removed records had no variants, so the variant total remains 171.
 
 The corrected seed dry-run test now expects 1,645 fragrances and 1,496 products without variants. Unique product IDs: true; unique variant IDs: true; orphan variants: 0.
+
+
+## Armaf official US all-fragrances pages 1–4 — identity reconciliation (2026-11-07)
+
+Reviewed the first four pages of the official US ARMAF `/collections/all-perfumes` listing. The live collection reports 464 listings overall, but it mixes fragrance products, body-care formats and sets; the 464 total is not a canonical perfume count.
+
+Across pages 1–4, **46 fragrance listing titles** were reconciled against the current 303 Armaf canonical identities. All 46 resolve to existing identities by exact canonical name or an existing verified alias. One additional listing, **Miss Armaf Parfum Discovery Set**, is a set and was correctly excluded from canonical fragrance identities. No new product identities or variants were created.
+
+Three existing identities received stronger product-level evidence instead of generic collection URLs:
+- Club de Nuit Woman Extrait → https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr
+- Odyssey Pink Pop → https://armaf.com/products/odyssey-pink-pop-edp
+- Spartacus → https://armaf.com/products/spartacus-edp
+
+The official product pages confirm the first is an Extrait de Parfum, the second is an Eau de Parfum, and the third is an Eau de Parfum. The existing canonical names and IDs are retained; the longer display spellings remain covered by aliases where applicable.
+
+Sources:
+- Official all-fragrances listing, pages 1–4: https://armaf.com/collections/all-perfumes ; https://armaf.com/collections/all-perfumes?page=2 ; https://armaf.com/collections/all-perfumes?page=3 ; https://armaf.com/collections/all-perfumes?page=4
+- Product detail pages linked above.
+
+This is a **four-page reconciliation only**, not a claim that all 464 listings or all ARMAF fragrances have been reconciled. The official page's own concentration filters include body-care products and multiple sizes, so pagination and product-type classification must continue before claiming complete coverage.
