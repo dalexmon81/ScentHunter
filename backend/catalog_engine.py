@@ -4086,6 +4086,7 @@ def _maybe_persist_bplatz_phase2(item, url):
             "0011_catalog_search_fts",
             "0012_store_authorizations",
             "0013_store_shipping_rates",
+            "0015_user_sessions",
         }
         if revision not in supported_revisions or missing:
             print(
