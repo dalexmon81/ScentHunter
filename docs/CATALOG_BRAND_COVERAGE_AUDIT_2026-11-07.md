@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,581 canonical product identity records; 147 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,588 canonical product identity records; 149 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 239 |
+| Armaf | 246 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,581** |
+| **Total** | **1,588** |
 
 ## Findings from live public sources
 
@@ -652,3 +652,43 @@ Updated branch snapshot after page 4:
 - Additional Paris Corner catalog identities beyond the current collection: **24**, to be classified as legacy/discontinued or re-attributed after product-level review.
 
 Source: https://www.pariscornerperfumes.com/collections/paris-corner?page=4
+
+
+## Armaf official US fragrance-listing pass — pages 1–4
+
+Reviewed the official ARMAF US collection **All Fragrances (Not Gift Set)** and the first four currently surfaced pages. The collection's live page reports 424 listings and its concentration filters include EDP, EDT, Extrait and Parfum alongside body sprays, mists, lotions, deodorants, roll-ons, shower gels and soaps. Therefore the raw collection count is not a perfume-identity count and must not be imported wholesale.
+
+Compared 43 visible product names from the first four pages against the existing Armaf catalog. Seven official perfume identities were missing and have been added with product-detail evidence URLs and verified concentrations:
+- Odyssey Bloody Hot — Eau de Parfum
+- Odyssey Ring My Bell — Eau de Parfum
+- Eter Arabian Sky — Eau de Parfum
+- Odyssey French Kiss — Eau de Parfum
+- Odyssey Pink Pop — Eau de Parfum
+- Spartacus — Eau de Parfum
+- Club de Nuit Iconic Extrait de Parfum — Extrait de Parfum
+
+Also reconciled two official names to existing canonical records instead of creating duplicates:
+- Club de Nuit Precieux 1 Extrait de Parfum maps to the existing Club de Nuit Precieux I identity; official page confirms Extrait de Parfum and 55ml, so the 55ml variant is now explicit.
+- Club de Nuit Woman Extrait de Parfum maps to the existing Club de Nuit Woman Extrait identity; its official concentration and product evidence URL are now recorded.
+
+Added a 70ml variant for Club de Nuit Iconic Extrait de Parfum from the official product description. No prices, stock or retailer offers were added.
+
+Updated branch snapshot:
+- Product identities: **1,588** (up from 1,581)
+- Explicit variants: **149** (up from 147)
+- Armaf identities: **246** (up from 239)
+- Products without declared variants: **1,461**
+
+This is a partial Armaf pass only. Four pages of a large, mixed-format official collection do not establish full Armaf coverage. The remaining pages, product types and any further concentration/size variants still need reconciliation. The 424 collection count includes non-perfume body-care items and must be filtered by product type before completeness can be measured.
+
+Official sources:
+- https://armaf.com/collections/all-fragrances-not-gift-set
+- https://armaf.com/products/odyssey-bloody-hot
+- https://armaf.com/products/odyssey-ring-my-bell
+- https://armaf.com/products/eter-arabian-sky
+- https://armaf.com/products/odyssey-french-kiss
+- https://armaf.com/products/odyssey-pink-pop-edp
+- https://armaf.com/products/spartacus-edp
+- https://armaf.com/products/club-de-nuit-iconic-estrait-de-parfum
+- https://armaf.com/products/club-de-nuit-precieux-1-extrait-de-parfum-55ml
+- https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr
