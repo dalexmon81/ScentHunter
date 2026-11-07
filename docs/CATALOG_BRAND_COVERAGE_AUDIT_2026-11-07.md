@@ -361,3 +361,47 @@ The archive shows 13 pages, so checking only pages 1, 3 and 11 does not complete
 - Variants: 141
 - Duplicate product IDs: 0
 - Duplicate brand + canonical-name pairs: 0
+
+
+## Priority-brand reconciliation pass 9 — Lattafa official archive pages 2, 4–8, 10, 12–13
+
+Reviewed the official Lattafa Perfumes archive pages that had remained unchecked, excluding page 9 which did not return reliably during this pass. Compared each listed name against the existing Lattafa identities and added 96 new names from the official archive. Names are preserved as listing-level identities; no size, GTIN, SKU, stock, price or concentration was inferred. Gift sets and multi-product collections were excluded.
+
+### Additions by official archive page
+
+- Page 2 (8): Nasmaat; Layaan; Sherif; Choco Overdose; Mallow Madness; Cookie Crave; Whipped Pleasure; Vanilla Freak.
+- Page 4 (10): Asad Zanzibar Limited Edition; Fakhar Lattafa Platin; Petra; Opulent Dubai; Qaed Al Fursan Untamed; Atheeri; Khamrah Dukhan; Ana Abiyedh Coral; Mohra Silky Rose; Victoria. My Yara Collection and Anniversary Edition were excluded as sets.
+- Page 5 (11): Lail Maleki Moroccan Blue; Mashrabya; Mayar Cherry Intense; Afeef; Teriaq Intense; Badee Al Oud Noble Blush; Her Confession; His Confession; Badee Al Oud Amethyst; Atlas; Yara Candy.
+- Page 6 (12): Al Nashama Caprice; Kingdom Men; Kingdom Women; Angham; Ajwad Pink to Pink; Sehr Lattafa; Qaaed Al Shabaab; Mahasin Crystal; Emeer; Ameer Al Arab Imperium; Ameer Al Oudh; Adeeb.
+- Page 7 (11): Oud Najdia; Musk Sugar Plum; Musk Candy Rose; Fakhar Lattafa Women; Hayatim; Pure Musk; Raed Silver; Safwaan Lauture Oud; Mayar; Yara Tous; Rouat Al Oud.
+- Page 8 (12): Qimmah For Men; Oud Mood Reminiscence; Oud Mood Elixir; Musk Mood; Oud Lail Maleki; Fakhar Lattafa Men; Awraq Al Oud; Musk So Poudree; Musk Wild Vanille; Raed Oud; Eclaire; Ameerat Al Arab.
+- Page 10 (11): Qaed Al Fursan; Sheikh Al Shuyukh Luxe Edition; Ramz Lattafa Gold; Ramz Lattafa Silver; Velvet Oud; Oud Mood; Ejaazi; Lail Maleki; Najdia; Badee Al Oud Oud For Glory; Musamam.
+- Page 12 (12): Yara Moi; Sakeena; Emaan; Hayaati Al Maleky; Ajayeb Dubai Portrait; Jasoor; Mayar Natural Intense; Khamrah Qahwa; Aura; Ta’weel; Teriaq; Musamam White Intense.
+- Page 13 (9): Ajayeb Dubai; Ana Abiyedh Rouge; Hayaati Gold Elixir; Hayaati; Fakhar Lattafa Extrait; Ameer Al Oudh Intense; Al Dur Al Maknoon Silver; 24 Carat White Gold; 24 Carat Pure Gold.
+
+Official sources:
+- https://lattafa.com/product-category/lattafa-perfumes/page/2/
+- https://lattafa.com/product-category/lattafa-perfumes/page/4/
+- https://lattafa.com/product-category/lattafa-perfumes/page/5/
+- https://lattafa.com/product-category/lattafa-perfumes/page/6/
+- https://lattafa.com/product-category/lattafa-perfumes/page/7/
+- https://lattafa.com/product-category/lattafa-perfumes/page/8/
+- https://lattafa.com/product-category/lattafa-perfumes/page/10/
+- https://lattafa.com/product-category/lattafa-perfumes/page/12/
+- https://lattafa.com/product-category/lattafa-perfumes/page/13/
+
+### Quality and scope notes
+
+- Page 9 of 13 remains unchecked because the official page request timed out; page 1 was previously sampled and pages 3 and 11 were reviewed in pass 8.
+- The current Lattafa bucket is 138 listing-level identities. This is not a claim that Lattafa's complete global fragrance range contains exactly 138 perfumes.
+- The official archive includes line/collection labels such as Give Me Gourmand and Thameen Collection. They are retained under Lattafa because the official Lattafa Perfumes archive lists them, but product-level brand/line taxonomy still needs confirmation.
+- A duplicate-key audit of the full catalog surfaced three pre-existing brand + normalized-name collisions outside Lattafa: two Afnan 9 AM/9 PM Pour Femme spelling variants, and Giorgio Armani Acqua di Gio Profondo with/without accent. No new duplicate brand/name key was introduced by this pass. These existing collisions should be reconciled before claiming a globally duplicate-free catalog.
+
+### Pass 9 outcome
+
+- New Lattafa identities added: 96.
+- Lattafa bucket: 138.
+- Total canonical product identities: 1503.
+- Variant records retained: 141.
+- Product IDs remain unique; no new duplicate brand + normalized-name pairs introduced.
+- Page 9 remains open; no completeness claim is made.
