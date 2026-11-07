@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1628
+    assert report["fragrances"] == 1636
     assert report["variants"] == 149
-    assert report["products_without_variants"] == 1477
+    assert report["products_without_variants"] == 1502
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1628
-    assert len(variants) == 151
+    assert len(products) == 1636
+    assert len(variants) == 156
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -539,3 +539,33 @@ def test_armaf_official_us_listing_pages_13_to_26_additional_fragrance_names():
         evidence = f"https://armaf.com/collections/all-fragrances-not-gift-set?page={page}"
         assert row["source_evidence_url"] == evidence
         assert row["identity_status"] == "source_listed_name"
+
+
+
+def test_additional_armaf_official_detail_records_and_variants_are_preserved():
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["product_id"]: row for row in raw["products"]}
+    variants = {row["variant_id"]: row for row in raw["variants"]}
+    expected = {
+        "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SUCCESS": ("Club de Nuit Private Key To My Success", "Eau de Parfum", "https://armaf.com/products/copy-of-club-de-nuit-private-key-to-my-success-100ml"),
+        "SH-ARMAF-OFFICIAL-MISS-ARMAF-DAZZLING": ("Miss Armaf Dazzling", "Eau de Parfum", "https://armaf.com/products/miss-armaf-dazzling"),
+        "SH-ARMAF-OFFICIAL-CHECKMATE-WHITE-KNIGHT": ("Checkmate White Knight", "Eau de Parfum", "https://armaf.com/products/checkmate-white-knight-1"),
+        "SH-ARMAF-OFFICIAL-TAG-HIM-PRESTIGE": ("Tag Him Prestige", None, "https://armaf.com/products/tag-him-prestige"),
+        "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LOVE": ("Club de Nuit Private Key To My Love", "Eau de Toilette", "https://armaf.com/products/club-de-nuit-private-key-to-my-love-100ml"),
+        "SH-ARMAF-OFFICIAL-DUBAI-NIGHTS-UMBRA": ("Dubai Nights Umbra", None, "https://armaf.com/products/dubai-nights-umbra-spr"),
+        "SH-ARMAF-OFFICIAL-OROS-THE-INVENTOR-BROWN": ("Oros The Inventor Brown", "Eau de Parfum", "https://armaf.com/products/the-inventor"),
+        "SH-ARMAF-OFFICIAL-EGO-TIGRE": ("Ego Tigre", "Eau de Parfum", "https://armaf.com/products/ego-tiger"),
+    }
+    for product_id, (name, concentration, evidence_url) in expected.items():
+        row = products[product_id]
+        assert row["canonical_name"] == name
+        assert row.get("concentration") == concentration
+        assert row["source_evidence_url"] == evidence_url
+    for variant_id, size_ml in {
+        "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SUCCESS-100-000": 100,
+        "SHV-SH-ARMAF-OFFICIAL-MISS-ARMAF-DAZZLING-100-000": 100,
+        "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LOVE-100-000": 100,
+        "SHV-SH-ARMAF-OFFICIAL-OROS-THE-INVENTOR-BROWN-85-000": 85,
+        "SHV-SH-ARMAF-OFFICIAL-EGO-TIGRE-100-000": 100,
+    }.items():
+        assert variants[variant_id]["size_ml"] == size_ml
