@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,572 canonical product identity records; 147 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,581 canonical product identity records; 147 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -38,7 +38,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Maison Asrar | 121 |
 | Khadlaj | 113 |
 | Bujairami | 40 |
-| Paris Corner | 120 |
+| Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
 | Armaf | 239 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,572** |
+| **Total** | **1,581** |
 
 ## Findings from live public sources
 
@@ -589,7 +589,7 @@ The 69 added names include:
 - Maison Creation De Reve, Maison Epoque Artistique, Maison L'Or Noir, Maison Flor Oud, Wild Indonesian Oud, Mystical Indian Oud Pure, Oud Pour Noble/Shaikh/Rouge/Blueberry, Musk Pour Narcis, and additional listed spray fragrances.
 
 Updated exact branch snapshot after this pass:
-- Product identities: **1,572** (was 1,503)
+- Product identities: **1,581** (was 1,503)
 - Explicit variant records: **141** (unchanged)
 - Khadlaj identities: **113** (was 44)
 - Products without explicitly declared variants: **1,453** (was 1,384)
@@ -609,7 +609,7 @@ Official sources:
 
 ## Paris Corner core collection — official page and size reconciliation pass
 
-Reviewed the official core-brand collection (not the all-brands collection). The current page reports **105 products** and the site maintains separate collection labels for Paris Corner, North Stag, Emir, Pendora, Ministry of Oud and other lines. Those sub-brands must remain separately attributed where the product page identifies them. The retrieved official collection pages exposed 96 product names in their page text; the remaining nine entries were not available in the retrieved text and remain unverified. The 96 visible names were compared against the ScentHunter `Paris Corner` bucket. Six existing identities were missing their explicit 100ml package variant; no new canonical identities were needed for those six.
+Reviewed the official core-brand collection (not the all-brands collection). The current page reports **105 products** and the site maintains separate collection labels for Paris Corner, North Stag, Emir, Pendora, Ministry of Oud and other lines. Those sub-brands must remain separately attributed where the product page identifies them. Pages 1–3 exposed 96 product names; page 4 exposed the final nine, bringing the verified listing set to all 105 current collection entries. All 105 official names were compared against the ScentHunter `Paris Corner` bucket. The first 96 were already represented by existing canonical names; the final nine were absent and have now been added. Six existing identities were missing their explicit 100ml package variant.
 
 Added six 100ml variants, each linked to its official product-detail page:
 - Confidential — `/products/confidential-100ml`
@@ -619,14 +619,14 @@ Added six 100ml variants, each linked to its official product-detail page:
 - Qawafi — `/products/qawafi-100ml`
 - Taskeen Lactea Divina — `/products/taskeen-lactea-divina-100ml`
 
-The canonical identities were already present, so this pass adds **0 product identities and 6 explicit variants**. Product-level `source_evidence_url` now points to the official product page. No concentration, price, stock or offer data was inferred.
+This reconciliation adds **9 product identities and 6 explicit variants**. Product-level `source_evidence_url` now points to the official product page. No concentration, price, stock or offer data was inferred.
 
 Updated current branch snapshot:
 - Product identities: **1,572**
 - Explicit variants: **147** (previously 141)
-- Products without declared variants: **1,447** (previously 1,453)
+- Products without declared variants: **1,456** (previously 1,447)
 
-A regression test now asserts all six official 100ml variants and their product evidence URLs. The collection is not yet fully reconciled: nine product listings were not exposed in retrieved page text, and the 120-record catalog bucket remains larger than the current 105-item core-brand collection. Discontinued products, product-line ownership and duplicate/legacy identities still require reconciliation.
+A regression test now asserts all six official 100ml variants and their product evidence URLs. All 105 currently listed official core-brand names are now represented in the catalog. The 129-record Paris Corner bucket is still 24 records larger than the current 105-item collection; those additional records need review for discontinued products, legacy names, and possible product-line misattribution. This is a current-collection name match, not proof that the complete historical range has been captured.
 
 Official sources:
 - https://www.pariscornerperfumes.com/collections/paris-corner
@@ -638,3 +638,17 @@ Official sources:
 - https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml
 - https://www.pariscornerperfumes.com/products/qawafi-100ml
 - https://www.pariscornerperfumes.com/products/taskeen-lactea-divina-100ml
+
+
+### Paris Corner page 4 — final nine current collection names
+
+Page 4 of the official core-brand collection exposed the final nine names: **Virilis, Zahi, Zahri Amara, Zaman Al Ula, Zariya, Zodiac, Zodiac Lunaris, Zodiac Solmaris and Zodiac Stratos**. None existed in the prior Paris Corner canonical-name/alias set, and all nine were added as `source_listed_name` identities with the official page-4 collection URL. This closes the current 105-name visible collection comparison at the name level.
+
+Updated branch snapshot after page 4:
+- Product identities: **1,581** (up from 1,572)
+- Variants: **147**
+- Paris Corner identities: **129** (up from 120)
+- Current official core-brand collection: **105/105 listed names represented**
+- Additional Paris Corner catalog identities beyond the current collection: **24**, to be classified as legacy/discontinued or re-attributed after product-level review.
+
+Source: https://www.pariscornerperfumes.com/collections/paris-corner?page=4
