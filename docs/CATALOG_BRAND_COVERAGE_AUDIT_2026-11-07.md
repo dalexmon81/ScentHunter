@@ -25,7 +25,7 @@ Requested fragrance houses and lines:
 - Al Haramain
 
 Branch reviewed: `catalog/complete-brand-expansion-2026-11`
-Current catalog snapshot (revalidated on branch head): **1,628 canonical product identity records; 151 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
+Current catalog snapshot (revalidated on branch head): **1,636 canonical product identity records; 156 variant records; 21 brand labels**. This replaces the earlier 1,153-record snapshot below.
 
 ## Current counts (catalog records, not proof of completeness)
 
@@ -41,7 +41,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Paris Corner | 129 |
 | Assaf | 115 |
 | Al Wataniah | 22 |
-| Armaf | 286 |
+| Armaf | 294 |
 | French Avenue | 26 |
 | Arabiyat Prestige | 32 |
 | Gulf Orchid | 19 |
@@ -54,7 +54,7 @@ The counts below are the exact current JSON snapshot on this branch, not a claim
 | Zimaya | 71 |
 | Al Haramain | 37 |
 | Giorgio Armani (pre-existing records) | 2 |
-| **Total** | **1,628** |
+| **Total** | **1,636** |
 
 ## Findings from live public sources
 
@@ -761,3 +761,32 @@ Official sources:
 - https://armaf.com/collections/all-fragrances-not-gift-set?page=23
 - https://armaf.com/collections/all-fragrances-not-gift-set?page=24
 - https://armaf.com/collections/all-fragrances-not-gift-set?page=26
+
+
+## Latest branch reconciliation — additional Armaf detail-page records
+
+A fresh read of the shared PR branch showed eight additional Armaf identities and five explicit size variants beyond the previous page-listing batch. Their official product detail pages were checked and the test snapshot was brought into line with the actual branch state:
+- Club de Nuit Private Key To My Success — Eau de Parfum, 100ml
+- Miss Armaf Dazzling — Eau de Parfum, 100ml
+- Checkmate White Knight — Eau de Parfum
+- Tag Him Prestige — concentration left unset because the detail page does not state it
+- Club de Nuit Private Key To My Love — Eau de Toilette, 100ml
+- Dubai Nights Umbra — concentration left unset because the detail page does not state it
+- Oros The Inventor Brown — Eau de Parfum, 85ml
+- Ego Tigre — Eau de Parfum, 100ml
+
+Updated current branch snapshot:
+- Product identities: **1,636**
+- Explicit variants: **156**
+- Armaf identities: **294**
+- Products without declared variants: **1,502**
+
+The eight records have official product-detail evidence URLs. Concentrations and sizes are retained only where the official pages state them. Sources:
+- https://armaf.com/products/copy-of-club-de-nuit-private-key-to-my-success-100ml
+- https://armaf.com/products/miss-armaf-dazzling
+- https://armaf.com/products/checkmate-white-knight-1
+- https://armaf.com/products/tag-him-prestige
+- https://armaf.com/products/club-de-nuit-private-key-to-my-love-100ml
+- https://armaf.com/products/dubai-nights-umbra-spr
+- https://armaf.com/products/the-inventor
+- https://armaf.com/products/ego-tiger
