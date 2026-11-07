@@ -13,6 +13,7 @@ from pathlib import Path
 
 from app.services.store_identity import normalize_store_key as _normalise_store
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
+from app.services.retailer_metadata import clean_retailer_brand_metadata
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
@@ -941,29 +942,10 @@ def clean_result(item, store):
     # or source/brand; ProductMatcher may legitimately fall back to those
     # fields when the top-level brand is empty. This cleanup is generic and
     # applies only when the nested value is the retailer label itself.
-    def _clean_retailer_brand_metadata(value):
-        if isinstance(value, dict):
-            cleaned = dict(value)
-            for key in ("source_brand", "brand", "manufacturer"):
-                current = str(cleaned.get(key) or "").strip()
-                if current:
-                    normalized_current = "".join(
-                        current.lower().replace("-", " ").split()
-                    )
-                    if normalized_current == normalized_store_label:
-                        cleaned[key] = ""
-            for key, nested in list(cleaned.items()):
-                if isinstance(nested, (dict, list, tuple)):
-                    cleaned[key] = _clean_retailer_brand_metadata(nested)
-            return cleaned
-        if isinstance(value, list):
-            return [_clean_retailer_brand_metadata(item) for item in value]
-        if isinstance(value, tuple):
-            return tuple(_clean_retailer_brand_metadata(item) for item in value)
-        return value
-
     if isinstance(result.get("source"), (dict, list, tuple)):
-        result["source"] = _clean_retailer_brand_metadata(result.get("source"))
+        result["source"] = clean_retailer_brand_metadata(
+            result.get("source"), normalized_store_label
+        )
 
     # Keep the retailer's raw name untouched for provenance, but remove a generic
     # retailer-label prefix from the normalized product name when a source card
