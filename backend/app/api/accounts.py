@@ -72,6 +72,8 @@ def new_session(session: Session, user: UserAccount) -> str:
 
 def set_browser_session(response: Response, token: str) -> None:
     csrf_token = secrets.token_urlsafe(32)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     max_age = SESSION_DAYS * 86400
     response.set_cookie(
         SESSION_COOKIE, token, max_age=max_age, httponly=True,
@@ -206,7 +208,8 @@ class DestinationBody(BaseModel):
 
 
 @router.post("/register", status_code=201)
-def register(body: RegisterBody, response: Response, session: Session = Depends(db_session)):
+def register(body: RegisterBody, request: Request, response: Response, session: Session = Depends(db_session)):
+    require_same_origin(request)
     user = UserAccount(
         email=body.email,
         password_hash=hash_password(body.password),
@@ -226,7 +229,8 @@ def register(body: RegisterBody, response: Response, session: Session = Depends(
 
 
 @router.post("/login")
-def login(body: LoginBody, response: Response, session: Session = Depends(db_session)):
+def login(body: LoginBody, request: Request, response: Response, session: Session = Depends(db_session)):
+    require_same_origin(request)
     user = session.scalar(select(UserAccount).where(UserAccount.email == body.email.strip().lower()))
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
         raise HTTPException(401, "invalid_email_or_password")
