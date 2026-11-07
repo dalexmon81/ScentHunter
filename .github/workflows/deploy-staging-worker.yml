@@ -150,6 +150,28 @@ jobs:
             exit 1
           fi
           flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python /app/backend/scripts/audit_variant_coverage.py --summary-only --csv /tmp/scenthunter-variant-research-queue.csv"
+      - name: Export variant research queue from isolated staging
+        env:
+          FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machines list --app scenthunter-staging-workers --json | jq -r '[.[] | select(.state == "started" and .config.metadata.fly_process_group == "app")][0].id')"
+          queue_output="$(flyctl ssh console --app scenthunter-staging-workers --machine "$machine_id" --command "python -c 'import base64; p="/tmp/scenthunter-variant-research-queue.csv"; print("QUEUE_BASE64="+base64.b64encode(open(p,"rb").read()).decode())'")"
+          queue_b64="$(printf '%s\\n' "$queue_output" | sed -n 's/^QUEUE_BASE64=//p' | tail -n 1)"
+          if [ -z "$queue_b64" ]; then
+            echo "::error::Could not retrieve the variant research queue from staging."
+            exit 1
+          fi
+          printf '%s' "$queue_b64" | base64 --decode > scent-hunter-variant-research-queue.csv
+          echo "Variant research queue rows: $(($(wc -l < scent-hunter-variant-research-queue.csv) - 1))"
+      - name: Publish variant research queue artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scent-hunter-variant-research-queue
+          path: scent-hunter-variant-research-queue.csv
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify one API, one non-root worker and zero Beat machines
         env:
           FLY_STAGING_API_TOKEN: ${{ secrets.FLY_STAGING_API_TOKEN }}
