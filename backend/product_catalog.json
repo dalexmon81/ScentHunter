@@ -30848,6 +30848,1175 @@
       ],
       "concentration": "Eau de Parfum",
       "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-DAIEM-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Al Daiem",
+      "name": "Al Daiem",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Al Daiem",
+      "aliases": [
+        "Al Daiem",
+        "Al Wataniah Al Daiem"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-DAIEM-ELIXIR-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Al Daiem Elixir",
+      "name": "Al Daiem Elixir",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Al Daiem Elixir",
+      "aliases": [
+        "Al Daiem Elixir",
+        "Al Wataniah Al Daiem Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-LAYL-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Al Layl",
+      "name": "Al Layl",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Al Layl",
+      "aliases": [
+        "Al Layl",
+        "Al Wataniah Al Layl"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ALYA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Alya",
+      "name": "Alya",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Alya",
+      "aliases": [
+        "Alya",
+        "Al Wataniah Alya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AMEERATI-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Ameerati",
+      "name": "Ameerati",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Ameerati",
+      "aliases": [
+        "Ameerati",
+        "Al Wataniah Ameerati"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AMEERI-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Ameeri",
+      "name": "Ameeri",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Ameeri",
+      "aliases": [
+        "Ameeri",
+        "Al Wataniah Ameeri"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AMNIA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Amnia",
+      "name": "Amnia",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Amnia",
+      "aliases": [
+        "Amnia",
+        "Al Wataniah Amnia"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ANWAN-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Anwan",
+      "name": "Anwan",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Anwan",
+      "aliases": [
+        "Anwan",
+        "Al Wataniah Anwan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ARYA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Arya",
+      "name": "Arya",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Arya",
+      "aliases": [
+        "Arya",
+        "Al Wataniah Arya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ARYA-PEONY-ROSE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Arya Peony Rose",
+      "name": "Arya Peony Rose",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Arya Peony Rose",
+      "aliases": [
+        "Arya Peony Rose",
+        "Al Wataniah Arya Peony Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Attar Al Wesal",
+      "name": "Attar Al Wesal",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Attar Al Wesal",
+      "aliases": [
+        "Attar Al Wesal",
+        "Al Wataniah Attar Al Wesal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-ELIXIR-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Attar Al Wesal Elixir",
+      "name": "Attar Al Wesal Elixir",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Attar Al Wesal Elixir",
+      "aliases": [
+        "Attar Al Wesal Elixir",
+        "Al Wataniah Attar Al Wesal Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BARAA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Baraa",
+      "name": "Baraa",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Baraa",
+      "aliases": [
+        "Baraa",
+        "Al Wataniah Baraa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BAREEQ-AL-DHAHAB-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Bareeq Al Dhahab",
+      "name": "Bareeq Al Dhahab",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Bareeq Al Dhahab",
+      "aliases": [
+        "Bareeq Al Dhahab",
+        "Al Wataniah Bareeq Al Dhahab"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BROWNIE-BITE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Brownie Bite",
+      "name": "Brownie Bite",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Brownie Bite",
+      "aliases": [
+        "Brownie Bite",
+        "Al Wataniah Brownie Bite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-CASTILLA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Castilla",
+      "name": "Castilla",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Castilla",
+      "aliases": [
+        "Castilla",
+        "Al Wataniah Castilla"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-CREME-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Crème",
+      "name": "Crème",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Crème",
+      "aliases": [
+        "Crème",
+        "Al Wataniah Crème"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-DA-IM-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Da'im",
+      "name": "Da'im",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Da'im",
+      "aliases": [
+        "Da'im",
+        "Al Wataniah Da'im",
+        "Da’im"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-DUHA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Duha",
+      "name": "Duha",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Duha",
+      "aliases": [
+        "Duha",
+        "Al Wataniah Duha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-DURRAT-AL-AROOS-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Durrat Al Aroos",
+      "name": "Durrat Al Aroos",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Durrat Al Aroos",
+      "aliases": [
+        "Durrat Al Aroos",
+        "Al Wataniah Durrat Al Aroos"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EQAAB-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Eqaab",
+      "name": "Eqaab",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Eqaab",
+      "aliases": [
+        "Eqaab",
+        "Al Wataniah Eqaab"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMIRAN-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Emiran",
+      "name": "Emiran",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Emiran",
+      "aliases": [
+        "Emiran",
+        "Al Wataniah Emiran"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMIRAN-SELAR-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Emiran Selar",
+      "name": "Emiran Selar",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Emiran Selar",
+      "aliases": [
+        "Emiran Selar",
+        "Al Wataniah Emiran Selar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-FAYROZ-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Fayroz",
+      "name": "Fayroz",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Fayroz",
+      "aliases": [
+        "Fayroz",
+        "Al Wataniah Fayroz"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-FAYYAD-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Fayyad",
+      "name": "Fayyad",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Fayyad",
+      "aliases": [
+        "Fayyad",
+        "Al Wataniah Fayyad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-FIKRAH-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Fikrah",
+      "name": "Fikrah",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Fikrah",
+      "aliases": [
+        "Fikrah",
+        "Al Wataniah Fikrah"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-GHALA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Ghala",
+      "name": "Ghala",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Ghala",
+      "aliases": [
+        "Ghala",
+        "Al Wataniah Ghala"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-GOLDEN-HONEY-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Golden Honey",
+      "name": "Golden Honey",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Golden Honey",
+      "aliases": [
+        "Golden Honey",
+        "Al Wataniah Golden Honey"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-GRANADA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Granada",
+      "name": "Granada",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Granada",
+      "aliases": [
+        "Granada",
+        "Al Wataniah Granada"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-HALA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Hala",
+      "name": "Hala",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Hala",
+      "aliases": [
+        "Hala",
+        "Al Wataniah Hala"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-HAYAT-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Hayat",
+      "name": "Hayat",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Hayat",
+      "aliases": [
+        "Hayat",
+        "Al Wataniah Hayat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-HOUSE-OF-OUD-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "House Of Oud",
+      "name": "House Of Oud",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "House Of Oud",
+      "aliases": [
+        "House Of Oud",
+        "Al Wataniah House Of Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-KENZ-AL-MALIK-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Kenz Al Malik",
+      "name": "Kenz Al Malik",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Kenz Al Malik",
+      "aliases": [
+        "Kenz Al Malik",
+        "Al Wataniah Kenz Al Malik"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LAYALI-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Layali",
+      "name": "Layali",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Layali",
+      "aliases": [
+        "Layali",
+        "Al Wataniah Layali"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LAZULI-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Lazuli",
+      "name": "Lazuli",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Lazuli",
+      "aliases": [
+        "Lazuli",
+        "Al Wataniah Lazuli"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LILY-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Lily",
+      "name": "Lily",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Lily",
+      "aliases": [
+        "Lily",
+        "Al Wataniah Lily"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-MARJAAN-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Marjaan",
+      "name": "Marjaan",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Marjaan",
+      "aliases": [
+        "Marjaan",
+        "Al Wataniah Marjaan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-MASSAD-ROYALE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Massad Royale",
+      "name": "Massad Royale",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Massad Royale",
+      "aliases": [
+        "Massad Royale",
+        "Al Wataniah Massad Royale"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-MUHEEB-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Muheeb",
+      "name": "Muheeb",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Muheeb",
+      "aliases": [
+        "Muheeb",
+        "Al Wataniah Muheeb"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NADA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Nada",
+      "name": "Nada",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Nada",
+      "aliases": [
+        "Nada",
+        "Al Wataniah Nada"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-ALEXANDRITE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Nawal Alexandrite",
+      "name": "Nawal Alexandrite",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Nawal Alexandrite",
+      "aliases": [
+        "Nawal Alexandrite",
+        "Al Wataniah Nawal Alexandrite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-BRONZITE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Nawal Bronzite",
+      "name": "Nawal Bronzite",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Nawal Bronzite",
+      "aliases": [
+        "Nawal Bronzite",
+        "Al Wataniah Nawal Bronzite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-FLUORITE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Nawal Fluorite",
+      "name": "Nawal Fluorite",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Nawal Fluorite",
+      "aliases": [
+        "Nawal Fluorite",
+        "Al Wataniah Nawal Fluorite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-TANZANITE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Nawal Tanzanite",
+      "name": "Nawal Tanzanite",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Nawal Tanzanite",
+      "aliases": [
+        "Nawal Tanzanite",
+        "Al Wataniah Nawal Tanzanite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=2",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-OUD-MYSTERY-INTENSE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Oud Mystery Intense",
+      "name": "Oud Mystery Intense",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Oud Mystery Intense",
+      "aliases": [
+        "Oud Mystery Intense",
+        "Al Wataniah Oud Mystery Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-PRALINE-TOFFEE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Praline Toffee",
+      "name": "Praline Toffee",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Praline Toffee",
+      "aliases": [
+        "Praline Toffee",
+        "Al Wataniah Praline Toffee"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-QASAR-AL-WATAN-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Qasar Al Watan",
+      "name": "Qasar Al Watan",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Qasar Al Watan",
+      "aliases": [
+        "Qasar Al Watan",
+        "Al Wataniah Qasar Al Watan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-RAWAEE-ELITE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Rawaee Elite",
+      "name": "Rawaee Elite",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Rawaee Elite",
+      "aliases": [
+        "Rawaee Elite",
+        "Al Wataniah Rawaee Elite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-RAWAEE-MONARCH-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Rawaee Monarch",
+      "name": "Rawaee Monarch",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Rawaee Monarch",
+      "aliases": [
+        "Rawaee Monarch",
+        "Al Wataniah Rawaee Monarch"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-RAWAEE-NOBLE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Rawaee Noble",
+      "name": "Rawaee Noble",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Rawaee Noble",
+      "aliases": [
+        "Rawaee Noble",
+        "Al Wataniah Rawaee Noble"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-RAWAEE-REGINA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Rawaee Regina",
+      "name": "Rawaee Regina",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Rawaee Regina",
+      "aliases": [
+        "Rawaee Regina",
+        "Al Wataniah Rawaee Regina"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-REDAA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Redaa",
+      "name": "Redaa",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Redaa",
+      "aliases": [
+        "Redaa",
+        "Al Wataniah Redaa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROSE-MYSTERY-INTENSE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Rose Mystery Intense",
+      "name": "Rose Mystery Intense",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Rose Mystery Intense",
+      "aliases": [
+        "Rose Mystery Intense",
+        "Al Wataniah Rose Mystery Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROYAL-OAK-I-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Royal Oak I",
+      "name": "Royal Oak I",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Royal Oak I",
+      "aliases": [
+        "Royal Oak I",
+        "Al Wataniah Royal Oak I"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROYAL-OAK-II-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Royal Oak II",
+      "name": "Royal Oak II",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Royal Oak II",
+      "aliases": [
+        "Royal Oak II",
+        "Al Wataniah Royal Oak II"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sabah Al Ward",
+      "name": "Sabah Al Ward",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sabah Al Ward",
+      "aliases": [
+        "Sabah Al Ward",
+        "Al Wataniah Sabah Al Ward"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-GARDEN-OF-EDEN-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sabah Al Ward Garden of Eden",
+      "name": "Sabah Al Ward Garden of Eden",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sabah Al Ward Garden of Eden",
+      "aliases": [
+        "Sabah Al Ward Garden of Eden",
+        "Al Wataniah Sabah Al Ward Garden of Eden"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-SUGAR-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sabah Al Ward Sugar",
+      "name": "Sabah Al Ward Sugar",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sabah Al Ward Sugar",
+      "aliases": [
+        "Sabah Al Ward Sugar",
+        "Al Wataniah Sabah Al Ward Sugar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SAHARI-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sahari",
+      "name": "Sahari",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sahari",
+      "aliases": [
+        "Sahari",
+        "Al Wataniah Sahari"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=3",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SEVILLA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sevilla",
+      "name": "Sevilla",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sevilla",
+      "aliases": [
+        "Sevilla",
+        "Al Wataniah Sevilla"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SHAGAF-AL-WARD-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Shagaf Al Ward",
+      "name": "Shagaf Al Ward",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Shagaf Al Ward",
+      "aliases": [
+        "Shagaf Al Ward",
+        "Al Wataniah Shagaf Al Ward"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SHAGAF-AL-WARD-GARDENIA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Shagaf Al Ward Gardenia",
+      "name": "Shagaf Al Ward Gardenia",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Shagaf Al Ward Gardenia",
+      "aliases": [
+        "Shagaf Al Ward Gardenia",
+        "Al Wataniah Shagaf Al Ward Gardenia"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SPECIAL-OUD-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Special Oud",
+      "name": "Special Oud",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Special Oud",
+      "aliases": [
+        "Special Oud",
+        "Al Wataniah Special Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SUGAR-RUSH-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sugar Rush",
+      "name": "Sugar Rush",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sugar Rush",
+      "aliases": [
+        "Sugar Rush",
+        "Al Wataniah Sugar Rush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SULTAN-AL-LAIL-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sultan Al Lail",
+      "name": "Sultan Al Lail",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sultan Al Lail",
+      "aliases": [
+        "Sultan Al Lail",
+        "Al Wataniah Sultan Al Lail"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-THAHAANI-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Thahaani",
+      "name": "Thahaani",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Thahaani",
+      "aliases": [
+        "Thahaani",
+        "Al Wataniah Thahaani"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-TIARA-PINK-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Tiara Pink",
+      "name": "Tiara Pink",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Tiara Pink",
+      "aliases": [
+        "Tiara Pink",
+        "Al Wataniah Tiara Pink"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-TIBYAN-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Tibyan",
+      "name": "Tibyan",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Tibyan",
+      "aliases": [
+        "Tibyan",
+        "Al Wataniah Tibyan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WATANI-INTENSE-GOLD-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Watani Intense Gold",
+      "name": "Watani Intense Gold",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Watani Intense Gold",
+      "aliases": [
+        "Watani Intense Gold",
+        "Al Wataniah Watani Intense Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WATANI-NOIR-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Watani Noir",
+      "name": "Watani Noir",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Watani Noir",
+      "aliases": [
+        "Watani Noir",
+        "Al Wataniah Watani Noir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WATANI-PURPLE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Watani Purple",
+      "name": "Watani Purple",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Watani Purple",
+      "aliases": [
+        "Watani Purple",
+        "Al Wataniah Watani Purple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WHITE-CHOCOLATE-GANACHE-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "White Chocolate Ganache",
+      "name": "White Chocolate Ganache",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "White Chocolate Ganache",
+      "aliases": [
+        "White Chocolate Ganache",
+        "Al Wataniah White Chocolate Ganache"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ZIYANA-OFFICIAL2026",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Ziyana",
+      "name": "Ziyana",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Ziyana",
+      "aliases": [
+        "Ziyana",
+        "Al Wataniah Ziyana"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/collections/all?page=4",
+      "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
     }
   ],
   "variants": [
