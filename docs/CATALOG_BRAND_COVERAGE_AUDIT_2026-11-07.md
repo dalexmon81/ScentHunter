@@ -876,3 +876,33 @@ Official sources:
 - https://armaf.com/products/club-de-nuit-private-key-to-my-soul-100ml
 - https://armaf.com/products/niche-saphire
 - https://armaf.com/products/profumi-dart-13-e-tanta-roba
+
+
+## Armaf official US collection pages 22–24 — four more fragrances and two 200ml formats
+
+Four additional official fragrance identities were missing from the catalog and have now been added with product-detail evidence:
+- **Oros Uomo** — Eau de Parfum, 100ml
+- **Art Du' Parfum Pour Homme** — Eau de Parfum; size not converted because the official page lists 3.6 oz rather than a metric size
+- **Radical Blue Man** — Eau de Parfum, 100ml
+- **Oros Oud** — Eau de Parfum, 85ml
+
+The existing **Club de Nuit Private Key To My Soul** identity was already added in a concurrent branch update and now has its 100ml variant. Two existing Le Parfait identities have also gained verified 200ml variants:
+- Le Parfait Panache — 200ml
+- Le Parfait Azure Femme — 200ml
+
+Updated branch snapshot:
+- Product identities: **1,647**
+- Explicit variants: **165**
+- Armaf identities: **305**
+- Products without declared variants: **1,504**
+
+Official detail pages:
+- https://armaf.com/products/oros-uomo
+- https://armaf.com/products/art-du-parfum
+- https://armaf.com/products/radical-edp-for-men-slate-blue-btl
+- https://armaf.com/products/oros-oud
+- https://armaf.com/products/club-de-nuit-private-key-to-my-soul-100ml
+- https://armaf.com/products/le-parfait-panache-1
+- https://armaf.com/products/le-parfait-azure-pour-femme-1
+
+This is still a sampled reconciliation of the dynamic official collection, not a completeness claim.
