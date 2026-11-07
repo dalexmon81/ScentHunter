@@ -29936,6 +29936,70 @@
         100
       ],
       "collection_name": "Unclassified"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-VIOLA-NECTAR-DETAIL12",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Viola Nectar",
+      "name": "Code Viola Nectar",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Viola Nectar",
+      "aliases": [
+        "Code Viola Nectar",
+        "Khadlaj Code Viola Nectar",
+        "Code Viola Necter"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede",
+      "source_product_url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "La Fede"
+    },
+    {
+      "product_id": "SH-KHADLAJ-UNO-SENSUALE-DETAIL12",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Uno Sensuale",
+      "name": "Uno Sensuale",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Uno Sensuale",
+      "aliases": [
+        "Uno Sensuale",
+        "Khadlaj Uno Sensuale"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "La Fede / Uno Range"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MAYA-DETAIL12",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maya",
+      "name": "Maya",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Maya",
+      "aliases": [
+        "Maya",
+        "Khadlaj Maya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "formats_ml": [
+        20
+      ],
+      "collection_name": "Concentrated Perfume Oils"
     }
   ],
   "variants": [
@@ -31953,6 +32017,33 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-DETAIL11-100-000"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-VIOLA-NECTAR-DETAIL12",
+      "size_ml": 100,
+      "aliases": [
+        "Code Viola Nectar 100 ml",
+        "Khadlaj Code Viola Nectar 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-CODE-VIOLA-NECTAR-DETAIL12-100-000"
+    },
+    {
+      "product_id": "SH-KHADLAJ-UNO-SENSUALE-DETAIL12",
+      "size_ml": 100,
+      "aliases": [
+        "Uno Sensuale 100 ml",
+        "Khadlaj Uno Sensuale 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-UNO-SENSUALE-DETAIL12-100-000"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MAYA-DETAIL12",
+      "size_ml": 20,
+      "aliases": [
+        "Maya 20 ml",
+        "Khadlaj Maya 20ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-MAYA-DETAIL12-20-000"
     }
   ]
 }
