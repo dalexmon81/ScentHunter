@@ -1486,3 +1486,7 @@ All 37 records use collection-level evidence and retain the status source_listed
 - Regression coverage checks all 37 names, official collection evidence, sizes, concentrations and variant links.
 - CI for the latest additions must complete before marking them verified.
 
+## Pass 24 — La Fede collection regression suite green (2026-11-07)
+
+GitHub Actions run **#42419917309** for test commit **79f250e828172ad357ca50f678ba9ff2e9d72a47** completed successfully. The Phase 2 schema-contract suite reports **42 passed, 1 warning**, including all 37 La Fede collection identities and their explicit size/concentration variants.
+
