@@ -1461,3 +1461,7 @@ All three are assigned to the Uno Range within the Khadlaj house, with one expli
 - Regression coverage checks the three product-detail URLs, source collection, 100 ml size and Eau de Parfum concentration.
 - CI for this pass must complete before marking it verified.
 
+## Pass 22 — Khadlaj Uno Range CI green (2026-11-07)
+
+GitHub Actions run **#42419757178** for test commit **f8f4fa359956e4dc9f9fd71433d610f6ae9cb3a5** passed the Phase 2 schema-contract suite: **41 passed, 1 warning**. The run includes the three added Uno Range product-detail records and their 100 ml Eau de Parfum variants.
+
