@@ -26135,6 +26135,71 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=6",
       "source_evidence_url": "https://armaf.com/products/odyssey-soda-pop"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-UNIQ-EFFECTS-OF-UNIQ",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Uniq Effects of Uniq",
+      "name": "Uniq Effects of Uniq",
+      "family_id": "armaf_catalog",
+      "family_name": "Uniq Effects of Uniq",
+      "aliases": [
+        "Uniq Effects of Uniq",
+        "Armaf Uniq Effects of Uniq"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/uniq-effects-of-uniq-spr"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-SCENTASY-NOIR-DE-PECHE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Scentasy Noir De Peche",
+      "name": "Scentasy Noir De Peche",
+      "family_id": "armaf_catalog",
+      "family_name": "Scentasy Noir De Peche",
+      "aliases": [
+        "Scentasy Noir De Peche",
+        "Armaf Scentasy Noir De Peche"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/scentasy-noir-de-peche"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-KUNAFA-CHOCOLATE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Kunafa Chocolate",
+      "name": "Kunafa Chocolate",
+      "family_id": "armaf_catalog",
+      "family_name": "Kunafa Chocolate",
+      "aliases": [
+        "Kunafa Chocolate",
+        "Armaf Kunafa Chocolate"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/kunafa-chocolate",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-DUBAI-NIGHTS-MIDNIGHT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Dubai Nights Midnight",
+      "name": "Dubai Nights Midnight",
+      "family_id": "armaf_catalog",
+      "family_name": "Dubai Nights Midnight",
+      "aliases": [
+        "Dubai Nights Midnight",
+        "Armaf Dubai Nights Midnight"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/dubai-nights-midnight-spr"
     }
   ],
   "variants": [
