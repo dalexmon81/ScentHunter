@@ -17,6 +17,7 @@ def test_phase2_declares_all_core_tables():
         "offers", "price_history", "match_audit", "ingestion_runs",
         "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
         "canonical_identity_reviews", "ingestion_artifacts", "ingestion_dead_letters",
+        "store_authorizations",
     }
 
 def test_canonical_identity_is_separate_from_retailer_offers():
