@@ -23,7 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
 from app.connectors.base import validate_offer_payload
-from app.models import IngestionArtifact, IngestionDeadLetter, IngestionRaw, IngestionRun, Offer, Store
+from app.models import IngestionArtifact, IngestionDeadLetter, IngestionRaw, IngestionRun, Offer, Store, StoreAuthorization
 from app.matching.offer_matcher import match_staged_offer
 from app.services.product_normalization import normalize_product
 from app.workers.celery_app import celery_app
@@ -78,6 +78,31 @@ def _json_safe(value: Any):
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     return repr(value)[:2000]
+
+def _require_store_authorization(session, store: Store, scope: str) -> StoreAuthorization:
+    """Fail closed unless a current, approved permission explicitly grants scope."""
+    now = datetime.now(timezone.utc)
+    grant = session.scalar(
+        select(StoreAuthorization)
+        .where(
+            StoreAuthorization.store_id == store.id,
+            StoreAuthorization.status == "approved",
+            StoreAuthorization.approved_at.is_not(None),
+            StoreAuthorization.revoked_at.is_(None),
+            (StoreAuthorization.valid_from.is_(None) | (StoreAuthorization.valid_from <= now)),
+            (StoreAuthorization.expires_at.is_(None) | (StoreAuthorization.expires_at > now)),
+        )
+        .order_by(StoreAuthorization.approved_at.desc(), StoreAuthorization.created_at.desc())
+        .limit(1)
+    )
+    if grant is None:
+        raise PermissionError(f"store_collection_not_authorized:{store.slug}")
+    if scope not in (grant.scopes or []):
+        raise PermissionError(f"store_authorization_scope_missing:{store.slug}:{scope}")
+    if not (grant.authorization_reference or "").strip():
+        raise PermissionError(f"store_authorization_reference_missing:{store.slug}")
+    return grant
+
 
 def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[dict]) -> list[str]:
     """Persist exact source bytes (or deterministic JSON evidence) once per hash."""
