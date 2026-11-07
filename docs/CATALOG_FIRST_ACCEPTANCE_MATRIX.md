@@ -280,3 +280,14 @@ The acceptance run is not complete until all of the following are demonstrated o
 8. Save a reproducible test report with request, result, offer IDs, source evidence, timestamps, destination and observed discrepancies.
 
 A public retailer listing or a third-party price-comparison page can help identify candidate retailers and cross-check observations, but it is not by itself permission to ingest that retailer's data. No retailer is activated until its source access and terms have been reviewed. Until the live-source requirement is met, use fixtures only for automated tests and label them as test data; do not describe them as live offers. This acceptance scenario is a release gate for claiming that real multi-store search works; its status remains **Partial** until completed.
+
+### Liquid Brun canonical-identity audit (2026-11-07)
+
+A source audit found an important distinction that must be resolved before the live acceptance run:
+
+- `backend/family_registry.json` contains French Avenue Liquid Brun, 100 ml, GTIN `6290360375694`. This file is fragrance-family knowledge used for naming/exclusion rules; its presence does not itself create a PostgreSQL `product_variants` row.
+- `backend/scripts/seed_catalog.py` seeds PostgreSQL from `backend/product_catalog.json`. It imports a variant GTIN only from that catalog's explicit `variants[].gtin` field; it does not import GTINs from `family_registry.json`.
+- The existing Bplatz parser fixture reads SKU/GTIN from structured product JSON-LD, but its positive test assigns a fixed test variant ID in a temporary SQLite database. Its own comment states that the catalog GTIN is empty. The negative test correctly leaves the item unmatched without a canonical association.
+- The separate user-screenshot observation records a displayed price but explicitly has no capture timestamp, product URL or stock evidence; it must remain observational test data, not an offer.
+
+**Required correction before claiming exact-match acceptance:** ensure the canonical 100 ml Liquid Brun EDP variant is present in the PostgreSQL seed source with the verified GTIN, or provide a separately reviewed canonical identity import path. Then add an integration test that reads the seeded canonical variant and proves the real matcher resolves the Bplatz fixture by GTIN without a hard-coded variant ID. The test must still keep the Bplatz retailer authorization gate closed and must not publish a fixture as a live offer. Re-run the PostgreSQL vertical slice and staging seed/search smoke after the code change. Until then, Liquid Brun is known to the family registry but is not proven as a GTIN-backed canonical PostgreSQL variant.
