@@ -26326,7 +26326,7 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
-      "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=14",
+      "source_evidence_url": "https://armaf.com/products/the-lions-club-courageux",
       "concentration": "Eau de Parfum"
     },
     {
@@ -26803,6 +26803,140 @@
       "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
       "source_evidence_url": "https://armaf.com/collections/all-fragrances-not-gift-set?page=26",
       "concentration": "Eau de Toilette"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SUCCESS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Private Key To My Success",
+      "name": "Club de Nuit Private Key To My Success",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Private Key To My Success",
+      "aliases": [
+        "Club de Nuit Private Key To My Success",
+        "Armaf Club de Nuit Private Key To My Success"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/copy-of-club-de-nuit-private-key-to-my-success-100ml",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-MISS-ARMAF-DAZZLING",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Miss Armaf Dazzling",
+      "name": "Miss Armaf Dazzling",
+      "family_id": "armaf_catalog",
+      "family_name": "Miss Armaf Dazzling",
+      "aliases": [
+        "Miss Armaf Dazzling",
+        "Armaf Miss Armaf Dazzling"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/miss-armaf-dazzling",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CHECKMATE-WHITE-KNIGHT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Checkmate White Knight",
+      "name": "Checkmate White Knight",
+      "family_id": "armaf_catalog",
+      "family_name": "Checkmate White Knight",
+      "aliases": [
+        "Checkmate White Knight",
+        "Armaf Checkmate White Knight"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/checkmate-white-knight-1",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-TAG-HIM-PRESTIGE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Tag Him Prestige",
+      "name": "Tag Him Prestige",
+      "family_id": "armaf_catalog",
+      "family_name": "Tag Him Prestige",
+      "aliases": [
+        "Tag Him Prestige",
+        "Armaf Tag Him Prestige"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/tag-him-prestige"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LOVE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Private Key To My Love",
+      "name": "Club de Nuit Private Key To My Love",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Private Key To My Love",
+      "aliases": [
+        "Club de Nuit Private Key To My Love",
+        "Armaf Club de Nuit Private Key To My Love"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-private-key-to-my-love-100ml",
+      "concentration": "Eau de Toilette"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-DUBAI-NIGHTS-UMBRA",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Dubai Nights Umbra",
+      "name": "Dubai Nights Umbra",
+      "family_id": "armaf_catalog",
+      "family_name": "Dubai Nights Umbra",
+      "aliases": [
+        "Dubai Nights Umbra",
+        "Armaf Dubai Nights Umbra"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/dubai-nights-umbra-spr"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-THE-INVENTOR-BROWN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Oros The Inventor Brown",
+      "name": "Oros The Inventor Brown",
+      "family_id": "armaf_catalog",
+      "family_name": "Oros The Inventor Brown",
+      "aliases": [
+        "Oros The Inventor Brown",
+        "Armaf Oros The Inventor Brown"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/the-inventor",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-OFFICIAL-EGO-TIGRE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Ego Tigre",
+      "name": "Ego Tigre",
+      "family_id": "armaf_catalog",
+      "family_name": "Ego Tigre",
+      "aliases": [
+        "Ego Tigre",
+        "Armaf Ego Tigre"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/collections/all-fragrances-not-gift-set",
+      "source_evidence_url": "https://armaf.com/products/ego-tiger",
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -28348,6 +28482,51 @@
       "aliases": [
         "Club de Nuit Woman Parfum Extreme Edition 105 ml",
         "Armaf Club de Nuit Woman Parfum Extreme Edition 105ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SUCCESS-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-SUCCESS",
+      "size_ml": 100,
+      "aliases": [
+        "Club de Nuit Private Key To My Success 100 ml",
+        "Armaf Club de Nuit Private Key To My Success 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-MISS-ARMAF-DAZZLING-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-MISS-ARMAF-DAZZLING",
+      "size_ml": 100,
+      "aliases": [
+        "Miss Armaf Dazzling 100 ml",
+        "Armaf Miss Armaf Dazzling 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LOVE-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-PRIVATE-KEY-TO-MY-LOVE",
+      "size_ml": 100,
+      "aliases": [
+        "Club de Nuit Private Key To My Love 100 ml",
+        "Armaf Club de Nuit Private Key To My Love 100ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-OROS-THE-INVENTOR-BROWN-85-000",
+      "product_id": "SH-ARMAF-OFFICIAL-OROS-THE-INVENTOR-BROWN",
+      "size_ml": 85,
+      "aliases": [
+        "Oros The Inventor Brown 85 ml",
+        "Armaf Oros The Inventor Brown 85ml"
+      ]
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-OFFICIAL-EGO-TIGRE-100-000",
+      "product_id": "SH-ARMAF-OFFICIAL-EGO-TIGRE",
+      "size_ml": 100,
+      "aliases": [
+        "Ego Tigre 100 ml",
+        "Armaf Ego Tigre 100ml"
       ]
     }
   ]
