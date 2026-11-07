@@ -85,7 +85,7 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 .navitem .navicon{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin-bottom:3px!important;font-size:0!important;line-height:0!important}
 .navitem .navicon svg{width:30px!important;height:30px!important;fill:none!important;stroke:currentColor!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important;display:block!important}
 
-</style>
+ .delivery-context{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px;align-items:center}.delivery-context label{grid-column:1/-1;color:#d7d7d3;font-size:12px;font-weight:800;letter-spacing:.4px}.delivery-context select,.delivery-context input{min-width:0;width:100%;border:1px solid #3b403e;border-radius:13px;background:#121615;color:#f7f7f5;padding:12px;font-size:14px}.delivery-context select{grid-column:1/-1}.delivery-context input{grid-column:1/-1}.delivery-context select:invalid{color:#a9aaae}</style>
 <style>
 .nav{position:fixed!important;left:50%!important;right:auto!important;bottom:0!important;top:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;z-index:9999!important;margin:0!important}
 .app{padding-bottom:calc(110px + env(safe-area-inset-bottom))!important}
@@ -333,6 +333,19 @@ body{position:relative}
     <div class="home-search-field">
       <span class="home-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg></span>
       <input id="query" type="search" placeholder="Cerca un profumo..." autocomplete="off" enterkeyhint="search" aria-label="Cerca un profumo">
+      <div class="delivery-context">
+        <label for="deliveryCountry">Spedire in</label>
+        <select id="deliveryCountry" aria-label="Paese di consegna">
+          <option value="">Scegli il Paese di consegna</option>
+          <option value="LU">Lussemburgo</option>
+          <option value="BE">Belgio</option>
+          <option value="FR">Francia</option>
+          <option value="DE">Germania</option>
+          <option value="IT">Italia</option>
+          <option value="NL">Paesi Bassi</option>
+        </select>
+        <input id="deliveryPostalCode" type="text" maxlength="24" placeholder="CAP (facoltativo)" aria-label="Codice postale di consegna">
+      </div>
     </div>
     <button id="searchButton" class="home-search-button" type="button">INIZIA LA RICERCA</button>
   </div>
@@ -368,6 +381,23 @@ body{position:relative}
 <script>
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),unresolvedBox=document.getElementById("unresolvedBox"),errorsBox=document.getElementById("errorsBox");
+const deliveryCountry=document.getElementById("deliveryCountry");
+const deliveryPostalCode=document.getElementById("deliveryPostalCode");
+const DELIVERY_CONTEXT_KEY="scenthunter_delivery_context_v1";
+try{
+  const savedDestination=JSON.parse(localStorage.getItem(DELIVERY_CONTEXT_KEY)||"null");
+  if(savedDestination&&deliveryCountry&&savedDestination.country)deliveryCountry.value=savedDestination.country;
+  if(savedDestination&&deliveryPostalCode&&savedDestination.postalCode)deliveryPostalCode.value=savedDestination.postalCode;
+}catch(_){}
+function saveDeliveryContext(){
+  if(!deliveryCountry)return;
+  localStorage.setItem(DELIVERY_CONTEXT_KEY,JSON.stringify({
+    country:deliveryCountry.value,
+    postalCode:deliveryPostalCode?deliveryPostalCode.value.trim():""
+  }));
+}
+if(deliveryCountry)deliveryCountry.addEventListener("change",saveDeliveryContext);
+if(deliveryPostalCode)deliveryPostalCode.addEventListener("change",saveDeliveryContext);
 
 const WISH_KEY="scenthunter_wishlist_v4";
 const PREV_WISH_KEY="scenthunter_wishlist_v3";
@@ -757,6 +787,13 @@ function shOfferCompare(a,b){
   const ac=String(a&&a.currency||"EUR").toUpperCase();
   const bc=String(b&&b.currency||"EUR").toUpperCase();
   if(ac!==bc)return ac.localeCompare(bc);
+  const av=a&&a.delivered_total_verified===true;
+  const bv=b&&b.delivered_total_verified===true;
+  if(av!==bv)return av?-1:1;
+  if(av&&bv){
+    const at=Number(a.delivered_total),bt=Number(b.delivered_total);
+    if(Number.isFinite(at)&&Number.isFinite(bt)&&at!==bt)return at-bt;
+  }
   const ar=Number(a&&a.ranking&&a.ranking.score),br=Number(b&&b.ranking&&b.ranking.score);
   if(Number.isFinite(ar)&&Number.isFinite(br)&&ar!==br)return br-ar;
   return shNum(a)-shNum(b);
@@ -1168,7 +1205,12 @@ async function searchStoresProgressive(term,onPartial){
   let jobId="";
   try{
     while(Date.now()-startedAt<180000){
-      const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000,{"X-Catalog-Rollout-Key":catalogRolloutKey()});
+      const country=deliveryCountry?deliveryCountry.value:"";
+      const postal=deliveryPostalCode?deliveryPostalCode.value.trim():"";
+      const params=new URLSearchParams({q:query});
+      if(country)params.set("country_code",country);
+      if(postal)params.set("postal_code",postal);
+      const start=await fetchJSONWithTimeout(backend()+"/search-start?"+params.toString(),15000,{"X-Catalog-Rollout-Key":catalogRolloutKey()});
       if(start?.status==="busy"){
         lastData=start;
         await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||200)));
@@ -1231,6 +1273,12 @@ async function searchPerfume(){
   if(searchButton.disabled)return;
   const q=queryInput.value.trim();
   if(!q){statusBox.textContent="Cerca un profumo per confrontare i prezzi.";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";return;}
+  if(!deliveryCountry||!deliveryCountry.value){
+    statusBox.textContent="Seleziona il Paese di consegna per confrontare i costi.";
+    deliveryCountry?.focus();
+    return;
+  }
+  saveDeliveryContext();
   searchButton.disabled=true;searchButton.classList.add("searching");searchButton.textContent="CERCO…";
   statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";clearOpenProduct();
   try{
