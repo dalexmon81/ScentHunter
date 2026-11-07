@@ -1416,3 +1416,26 @@ All three have one explicit 100 ml variant. They remain Unclassified because the
 
 GitHub Actions run **#42419497636** for test commit **1a2f65636640f3cda0a0695f2a14ad225b78635e** completed its Phase 2 schema-contract test command successfully: **39 passed, 1 warning**. This includes the three latest Paris Corner detail-page products (Empire de la Rouge, Vivant Sunlit and Wayfarer Infusion) and their explicit 100 ml variants.
 
+## Pass 19 — Khadlaj La Fede and concentrated perfume oil verification (2026-11-07)
+
+Added three Khadlaj-house identities after confirming official product-detail pages:
+
+- **Code Viola Nectar** — 100 ml EDP spray; the official product page identifies it as La Fede and exposes the 100 ml size. Its description uses the variant spelling “Necter”; canonical name follows the page heading.
+- **Uno Sensuale** — 100 ml EDP spray; official Uno Range / La Fede product page.
+- **Maya** — 20 ml concentrated perfume oil; official product page explicitly classifies it under concentrated perfume oils, not spray perfume.
+
+Official sources:
+- Code Viola Nectar: https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae
+- Uno Sensuale: https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae
+- Maya: https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae
+
+The source collection is recorded separately from the product-detail evidence. Maya is modeled under Concentrated Perfume Oils so it is not confused with a spray. No GTIN was inferred from the displayed SKU fields.
+
+### Pass 19 result
+- New canonical identities: **3**.
+- New explicit variants: **3**.
+- Khadlaj branch count: **122** (previously 119).
+- Catalog snapshot: **1,778 canonical identities; 205 explicit variants**.
+- A regression test checks product-detail URLs, source collection URLs, sizes, line attribution and variant links.
+- CI for this pass must complete before marking it verified.
+
