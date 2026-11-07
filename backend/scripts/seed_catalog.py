@@ -123,11 +123,17 @@ def merge_variant_evidence_overlay(raw: dict, overlay: dict) -> int:
             raise ValueError(f"{brand} / {fragrance}: an HTTPS evidence URL is required")
 
         matches = product_index.get((normalize_brand(brand), norm(fragrance)), [])
-        if len(matches) != 1:
-            raise ValueError(
-                f"{brand} / {fragrance}: expected exactly one catalog identity, found {len(matches)}"
-            )
-        product = matches[0]
+        if not matches:
+            raise ValueError(f"{brand} / {fragrance}: no exact catalog identity found")
+        # Legacy and discovery IDs can describe the same canonical fragrance.
+        # The database deduplicates them by brand + slug, so attach evidence to
+        # the discovery ID when present, otherwise the first exact identity.
+        product = next(
+            (row for row in matches if str(row.get("product_id", "")).startswith(
+                f"discovery:{slugify(brand)}:{slugify(fragrance)}"
+            )),
+            matches[0],
+        )
         pid = str(product["product_id"]).strip()
 
         evidence_variants = item.get("variants")
