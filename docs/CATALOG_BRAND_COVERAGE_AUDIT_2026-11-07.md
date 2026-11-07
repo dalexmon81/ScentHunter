@@ -911,3 +911,15 @@ This is still a sampled reconciliation of the dynamic official collection, not a
 ### Branch-head snapshot reconciliation
 
 The branch advanced while the page-13–20 pass was being committed. Re-read the actual branch head and reconciled the snapshot assertions to the authoritative current file: **1,647 identities, 165 variants, 305 Armaf identities, 1,504 identities without variants**. Product IDs and variant IDs remain unique, and the three normalized duplicate groups are unchanged. These are branch-file counts only; the seed has not been imported into production.
+
+
+## Maison Asrar Royal Collection source correction — 2026-11-07
+
+A follow-up source check corrected an earlier over-broad collection attribution. The live Maison Asrar UK Royal Collection page is:
+https://maisonasrar.co.uk/collections/royal-collection
+
+That official page lists six individual fragrances — Belgravia, Legacy, Vanguard, Regent, Majesty and Heritage — plus two non-fragrance/bundle entries (Treasure and The Royal are listed as products on the page; Treasure is shown with fragrance notes, while The Royal is a bundle). The catalog now marks only the six individually listed fragrances with `collection_name: Royal Collection` and uses the correct official UK collection URL as evidence.
+
+Monarch, Treasure and Imperial remain in the Maison Asrar identity catalog, but are no longer tagged as confirmed members of the official collection based on that page. They are retained as source-listed Maison Asrar names; their collection membership needs separate product-level confirmation. This avoids turning retailer taxonomy or an unverified URL into an official brand claim.
+
+The previous `maisonasrar.com/collections/royal-collection` URL was not substantiated and has been removed from these records. This correction supersedes the earlier nine-name Royal Collection assertion.
