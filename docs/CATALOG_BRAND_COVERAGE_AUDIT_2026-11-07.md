@@ -335,3 +335,29 @@ The official Paris Corner core-brand collection currently reports 105 products. 
 - Variants: 141
 - Duplicate product IDs: 0
 - Duplicate brand + canonical-name pairs: 0
+
+
+## Priority-brand reconciliation pass 8 — Lattafa official perfume archive pages 3 and 11
+
+The official Lattafa site exposes a dedicated `Lattafa Perfumes` archive with 13 pages. The category is distinct from deodorants, perfume mists, air fresheners, personal care and gift sets. Reviewed official archive pages 3 and 11 and added 23 exact perfume names absent from the current Lattafa catalog.
+
+Page 3 additions (11): Berry On Top; Washwasha; Musk Salama; Eclaire Pistache; Eclaire Banoffi; Ana Abiyedh Scarlet; Dynasty; Ana Abiyedh Leather; Fire On Ice; Habik Women; Habik Men. Source: https://lattafa.com/product-category/lattafa-perfumes/page/3/ . The Yara 5ml Collection was deliberately excluded as a discovery/mini set.
+
+Page 11 additions (12): Mohra; Khamrah; Suqaraat; Al Noble Safeer; Al Noble Wazeer; Al Noble Ameer; Confidential Private Gold; Raghba; Velvet Rose; Qaed Al Fursan Unlimited; Hayaati Florence; Badee Al Oud Sublime. Source: https://lattafa.com/product-category/lattafa-perfumes/page/11/ .
+
+The archive shows 13 pages, so checking only pages 1, 3 and 11 does not complete Lattafa. Other brand-specific categories (Lattafa Pride, Niche Emarati) must be kept distinct from the main Lattafa perfume label unless a clear brand taxonomy is established. Exclude deo, mist, air freshener and gift-set SKUs from the canonical perfume identity list.
+
+### Pass 8 outcome
+
+- Added 23 Lattafa perfume identities from official archive pages 3 and 11.
+- Lattafa bucket now: 42.
+- Pages still unreviewed: 2 and 4–10, 12–13.
+- No brand completeness claim is made.
+
+
+## Updated catalog totals after pass 8
+
+- Product identities: 1407
+- Variants: 141
+- Duplicate product IDs: 0
+- Duplicate brand + canonical-name pairs: 0
