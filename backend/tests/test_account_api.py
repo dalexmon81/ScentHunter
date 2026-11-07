@@ -84,7 +84,7 @@ def test_register_issues_httponly_secure_cookie_and_persists_session():
 def test_login_sets_new_browser_session_and_logout_revokes_it():
     client, engine, _factory = client_for_test()
     try:
-        client.post("/account/register", json={
+        client.post("/account/register", headers={"Origin": "https://testserver"}, json={
             "email": "owner@example.com",
             "password": "a-very-long-test-password",
             "residence_country_code": "LU",
@@ -106,7 +106,7 @@ def test_login_sets_new_browser_session_and_logout_revokes_it():
 def test_cookie_authenticated_mutations_require_csrf_and_same_origin():
     client, engine, _factory = client_for_test()
     try:
-        client.post("/account/register", json={
+        client.post("/account/register", headers={"Origin": "https://testserver"}, json={
             "email": "csrf@example.com",
             "password": "a-very-long-test-password",
             "residence_country_code": "LU",
@@ -126,7 +126,7 @@ def test_cookie_authenticated_mutations_require_csrf_and_same_origin():
 def test_delivery_destination_is_owned_and_default_is_switchable():
     client, engine, _factory = client_for_test()
     try:
-        client.post("/account/register", json={
+        client.post("/account/register", headers={"Origin": "https://testserver"}, json={
             "email": "owner@example.com",
             "password": "a-very-long-test-password",
             "residence_country_code": "LU",
@@ -153,7 +153,7 @@ def test_account_endpoints_require_authentication_and_validate_password_length()
     client, engine, _factory = client_for_test()
     try:
         assert client.get("/account/me").status_code == 401
-        short = client.post("/account/register", json={
+        short = client.post("/account/register", headers={"Origin": "https://testserver"}, json={
             "email": "x@example.com", "password": "short", "residence_country_code": "LU",
         })
         assert short.status_code == 422
