@@ -37,6 +37,11 @@
       "brand": "Al Wataniah",
       "url": "https://www.alwataniah.com/products/sabah-al-ward",
       "note": "Official product pages identify Sabah Al Ward and Special Oud as Eau de Parfum 100ml."
+    },
+    {
+      "brand": "Khadlaj",
+      "url": "https://khadlaj-perfumes.com/collections/all",
+      "note": "Official product pages for Cloud Candy, Caffe Latte, Mocha Latte and Gaith explicitly show concentration and 100ml; Sawaar Vanille Blanc size 100ml is explicit but the official page title and image metadata disagree on concentration, so concentration is intentionally left unspecified."
     }
   ],
   "products": [
@@ -605,6 +610,61 @@
       "variants": [
         {
           "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Cloud Candy",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Caffe Latte",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/caffe-latte-100-ml-extrait-de-parfum-spray",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Mocha Latte",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-seller-top-fragrances-to-shop-online/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Gaith",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance": "Sawaar Vanille Blanc",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "variants": [
+        {
+          "concentration": null,
           "size_ml": 100
         }
       ]
