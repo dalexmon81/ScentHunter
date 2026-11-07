@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1598
+    assert report["fragrances"] == 1628
     assert report["variants"] == 149
-    assert report["products_without_variants"] == 1469
+    assert report["products_without_variants"] == 1477
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,7 +391,7 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1598
+    assert len(products) == 1628
     assert len(variants) == 151
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
@@ -493,3 +493,49 @@ def test_armaf_official_page_products_and_concentration_variants_are_traceable()
     assert variants["SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-WOMAN-PARFUM-EXTREME-EDITION-105-000"]["size_ml"] == 105
     assert "Club de Nuit Precieux 1 Extrait de Parfum" in products["SH-ARMAF-224191af"]["aliases"]
     assert "Club de Nuit Woman Extrait de Parfum" in products["SH-ARMAF-7a645342"]["aliases"]
+
+
+
+def test_armaf_official_us_listing_pages_13_to_26_additional_fragrance_names():
+    """Additional perfume identities from later official US collection pages remain source-listed."""
+    raw = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+    products = {row["product_id"]: row for row in raw["products"]}
+    expected = {
+        "ART-DU-PARFUM-ABSTRACTO": ("Art Du'Parfum Abstracto", "Eau de Parfum", 14),
+        "THE-LION-S-CLUB-COURAGEUX": ("The Lion's Club Courageux", "Eau de Parfum", 14),
+        "EL-CIELO-MAN": ("El Cielo Man", "Eau de Parfum", 17),
+        "HUNTER-KILLER-MAN": ("Hunter Killer Man", "Eau de Parfum", 17),
+        "OROS-PURE-CLOISONNE": ("Oros Pure Cloisonne", "Eau de Parfum", 17),
+        "TAG-HER-DONNA-COLORATA-PURPLE": ("Tag Her Donna Colorata Purple", "Eau de Parfum", 17),
+        "VANITY-FEMME-ESSENCE-WOMAN": ("Vanity Femme Essence Woman", "Eau de Parfum", 18),
+        "AMBER-ARABIA-OUD": ("Amber Arabia Oud", "Eau de Parfum", 18),
+        "ETER-DESERT-BREEZE": ("Eter Desert Breeze", "Eau de Parfum", 19),
+        "OROS-THE-INVENTOR-BLACK": ("Oros The Inventor Black", "Eau de Parfum", 19),
+        "PROFUMI-D-ART-03-LEGNI-DOLCI-BRUCIATI": ("Profumi D'Art 03 Legni Dolci Bruciati", "Eau de Parfum", 20),
+        "ODYSSEY-WILD-ONE": ("Odyssey Wild One", "Eau de Parfum", 19),
+        "ODYSSEY-AOUD": ("Odyssey Aoud", "Eau de Parfum", 19),
+        "CONNOISSEUR-WOMAN": ("Connoisseur Woman", "Eau de Parfum", 20),
+        "MAGNIFICENT-SATIN": ("Magnificent Satin", "Eau de Parfum", 16),
+        "ETERNIA-MAN": ("Eternia Man", "Eau de Parfum", 14),
+        "ETERNIA-MAN-LIMITED-EDITION": ("Eternia Man Limited Edition", None, 14),
+        "RED-VELVET": ("Red Velvet", "Eau de Parfum", 22),
+        "MISS-ARMAF-MAGNIFIQ": ("Miss Armaf Magnifiq", "Eau de Parfum", 22),
+        "SHK-IV-BY-SAOUD-ALKAABI": ("SHK IV by Saoud Alkaabi", "Eau de Parfum", 22),
+        "RED-SKY": ("Red Sky", "Eau de Parfum", 22),
+        "BUCEPHALUS-NO-X": ("Bucephalus No. X", "Eau de Parfum", 20),
+        "NICHE-PLATINUM": ("Niche Platinum", "Eau de Parfum", 23),
+        "LE-PARFAIT-AZURE-FEMME": ("Le Parfait Azure Femme", "Eau de Parfum", 23),
+        "MAGNIFICENT-POUR-FEMME": ("Magnificent Pour Femme", "Eau de Parfum", 24),
+        "LET-S-MOVE-TANGO": ("Let's Move Tango", "Eau de Parfum", 24),
+        "MAGNIFICENT-JARDIN": ("Magnificent Jardin", "Eau de Parfum", 24),
+        "CLUB-DE-NUIT-INTENSE-MAN-PARFUM-EXTREME-EDITION": ("Club de Nuit Intense Man Parfum Extreme Edition", "Parfum", 26),
+        "BLUE-SKY": ("Blue Sky", "Eau de Parfum", 26),
+        "BLUE-HOMME": ("Blue Homme", "Eau de Toilette", 26),
+    }
+    for suffix, (name, concentration, page) in expected.items():
+        row = products[f"SH-ARMAF-OFFICIAL-{suffix}"]
+        assert row["canonical_name"] == name
+        assert row.get("concentration") == concentration
+        evidence = f"https://armaf.com/collections/all-fragrances-not-gift-set?page={page}"
+        assert row["source_evidence_url"] == evidence
+        assert row["identity_status"] == "source_listed_name"
