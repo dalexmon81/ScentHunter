@@ -85,7 +85,10 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 .navitem .navicon{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin-bottom:3px!important;font-size:0!important;line-height:0!important}
 .navitem .navicon svg{width:30px!important;height:30px!important;fill:none!important;stroke:currentColor!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important;display:block!important}
 
- .delivery-context{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px;align-items:center}.delivery-context label{grid-column:1/-1;color:#d7d7d3;font-size:12px;font-weight:800;letter-spacing:.4px}.delivery-context select,.delivery-context input{min-width:0;width:100%;border:1px solid #3b403e;border-radius:13px;background:#121615;color:#f7f7f5;padding:12px;font-size:14px}.delivery-context select{grid-column:1/-1}.delivery-context input{grid-column:1/-1}.delivery-context select:invalid{color:#a9aaae}</style>
+ .delivery-context{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px;align-items:center}.delivery-context label{grid-column:1/-1;color:#d7d7d3;font-size:12px;font-weight:800;letter-spacing:.4px}.delivery-context select,.delivery-context input{min-width:0;width:100%;border:1px solid #3b403e;border-radius:13px;background:#121615;color:#f7f7f5;padding:12px;font-size:14px}.delivery-context select{grid-column:1/-1}.delivery-context input{grid-column:1/-1}.delivery-context select:invalid{color:#a9aaae}
+/* Account profile */
+.profile-wrap{padding:8px 2px 90px}.profile-card{border:1px solid #303238;border-radius:18px;background:#121416;padding:18px;margin:12px 0}.profile-card h2{margin:0 0 8px;font-size:21px}.profile-card p{color:#aeb0b4;font-size:13px;line-height:1.45}.profile-form{display:grid;gap:10px;margin-top:14px}.profile-form input,.profile-form select{width:100%;border:1px solid #3b403e;border-radius:13px;background:#0c0e0f;color:#f7f7f5;padding:13px;font-size:14px}.profile-action{border-radius:13px;background:#e7b83f;color:#111;padding:14px;font-weight:900}.profile-secondary{border:1px solid #48494b;border-radius:13px;background:#191b1d;color:#eee;padding:12px;font-weight:800}.profile-message{font-size:13px;color:#e7b83f;min-height:18px;margin-top:9px}.profile-destination{border-top:1px solid #303238;padding:12px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}.profile-destination small{display:block;color:#aeb0b4;margin-top:4px}.profile-pill{color:#7ed99a;font-size:11px;font-weight:900}
+</style>
 <style>
 .nav{position:fixed!important;left:50%!important;right:auto!important;bottom:0!important;top:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;z-index:9999!important;margin:0!important}
 .app{padding-bottom:calc(110px + env(safe-area-inset-bottom))!important}
@@ -368,6 +371,41 @@ body{position:relative}
 <div id="wishlistView" class="view">
   <div class="wishlist-head"><h2>Wishlist</h2><span id="wishlistCount" class="wishlist-count">0 profumi</span></div>
   <div id="wishlistList"></div>
+</div>
+<div id="profileView" class="view">
+  <div class="profile-wrap">
+    <div class="wishlist-head"><h2>Il tuo account</h2></div>
+    <section id="profileAuth" class="profile-card">
+      <h2>Accedi a ScentHunter</h2>
+      <p>Salva il tuo Paese di residenza e le destinazioni di consegna. Puoi continuare a cercare anche senza account.</p>
+      <div class="profile-form">
+        <input id="profileEmail" type="email" autocomplete="email" placeholder="Email">
+        <input id="profilePassword" type="password" autocomplete="current-password" placeholder="Password (almeno 12 caratteri per registrarti)">
+        <div id="profileRegisterFields" style="display:none" class="profile-form">
+          <select id="profileResidence"><option value="LU">Lussemburgo</option><option value="BE">Belgio</option><option value="FR">Francia</option><option value="DE">Germania</option><option value="IT">Italia</option><option value="NL">Paesi Bassi</option></select>
+          <input id="profileResidencePostal" maxlength="24" placeholder="CAP di residenza (facoltativo)">
+        </div>
+        <button id="profileSubmit" class="profile-action" type="button">ACCEDI</button>
+        <button id="profileMode" class="profile-secondary" type="button">Crea un account</button>
+      </div>
+      <div id="profileAuthMessage" class="profile-message" role="status"></div>
+    </section>
+    <section id="profileSignedIn" class="profile-card" style="display:none">
+      <h2 id="profileWelcome">Account</h2>
+      <p id="profileResidenceSummary"></p>
+      <h3>Destinazioni salvate</h3>
+      <div id="profileDestinations"></div>
+      <div class="profile-form">
+        <input id="profileDestinationLabel" maxlength="80" placeholder="Etichetta (es. Casa in Italia)">
+        <select id="profileDestinationCountry"><option value="LU">Lussemburgo</option><option value="BE">Belgio</option><option value="FR">Francia</option><option value="DE">Germania</option><option value="IT">Italia</option><option value="NL">Paesi Bassi</option></select>
+        <input id="profileDestinationPostal" maxlength="24" placeholder="CAP (facoltativo)">
+        <label style="font-size:13px;color:#ddd"><input id="profileDestinationDefault" type="checkbox" style="width:auto"> Usa come destinazione predefinita</label>
+        <button id="profileAddDestination" class="profile-action" type="button">SALVA DESTINAZIONE</button>
+      </div>
+      <div id="profileAccountMessage" class="profile-message" role="status"></div>
+      <button id="profileLogout" class="profile-secondary" type="button">ESCI DALL'ACCOUNT</button>
+    </section>
+  </div>
 </div>
 </main>
 
@@ -729,10 +767,12 @@ document.addEventListener("click",e=>{
   const nav=e.target.closest(".navitem[data-view]");
   if(nav){
     document.querySelectorAll(".navitem").forEach(n=>n.classList.remove("active"));nav.classList.add("active");
-    const isWish=nav.dataset.view==="wishlist";
-    document.getElementById("exploreView").classList.toggle("active",!isWish);
-    document.getElementById("wishlistView").classList.toggle("active",isWish);
-    if(isWish)renderWishlist();
+    const view=nav.dataset.view;
+    document.getElementById("exploreView").classList.toggle("active",view==="explore");
+    document.getElementById("wishlistView").classList.toggle("active",view==="wishlist");
+    document.getElementById("profileView").classList.toggle("active",view==="profile");
+    if(view==="wishlist")renderWishlist();
+    if(view==="profile")loadProfile();
   }
 });
 
@@ -1408,6 +1448,75 @@ async function searchPerfume(){
 
 searchButton.addEventListener("click",searchPerfume);
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume();}});
+
+/* Account UI: bearer token is kept in memory only; reload requires login again. */
+let scentHunterAccessToken="";
+let profileRegisterMode=false;
+const profileCountries={LU:"Lussemburgo",BE:"Belgio",FR:"Francia",DE:"Germania",IT:"Italia",NL:"Paesi Bassi"};
+function profileAuthHeaders(){return scentHunterAccessToken?{Authorization:"Bearer "+scentHunterAccessToken}:{}}
+async function profileApi(path,options={}){
+  const response=await fetch(backend()+path,{...options,headers:{"Accept":"application/json","Content-Type":"application/json",...profileAuthHeaders(),...(options.headers||{})}});
+  let data={};try{data=await response.json()}catch(_){}
+  if(!response.ok)throw new Error(data.detail||("HTTP "+response.status));
+  return data;
+}
+function profileMessage(id,message){const el=document.getElementById(id);if(el)el.textContent=message||""}
+function setProfileMode(register){
+  profileRegisterMode=Boolean(register);
+  document.getElementById("profileRegisterFields").style.display=profileRegisterMode?"grid":"none";
+  document.getElementById("profileSubmit").textContent=profileRegisterMode?"CREA ACCOUNT":"ACCEDI";
+  document.getElementById("profileMode").textContent=profileRegisterMode?"Ho già un account":"Crea un account";
+  document.getElementById("profilePassword").autocomplete=profileRegisterMode?"new-password":"current-password";
+  profileMessage("profileAuthMessage","");
+}
+async function loadProfile(){
+  if(!scentHunterAccessToken)return;
+  try{const data=await profileApi("/account/me");showSignedInProfile(data)}
+  catch(_){scentHunterAccessToken="";document.getElementById("profileAuth").style.display="block";document.getElementById("profileSignedIn").style.display="none"}
+}
+function showSignedInProfile(data){
+  const a=data.account||{};
+  document.getElementById("profileAuth").style.display="none";
+  document.getElementById("profileSignedIn").style.display="block";
+  document.getElementById("profileWelcome").textContent=a.email||"Account";
+  document.getElementById("profileResidenceSummary").textContent="Residenza: "+(profileCountries[a.residence_country_code]||a.residence_country_code)+(a.residence_postal_code?" · "+a.residence_postal_code:"");
+  const list=document.getElementById("profileDestinations");
+  const destinations=Array.isArray(data.destinations)?data.destinations:[];
+  list.innerHTML=destinations.length?destinations.map(d=>`<div class="profile-destination"><div><strong>${esc(d.label)}</strong><small>${esc(profileCountries[d.country_code]||d.country_code)}${d.postal_code?" · "+esc(d.postal_code):""}</small></div><div style="text-align:right">${d.is_default?'<span class="profile-pill">PREDEFINITA</span>':`<button class="profile-secondary" type="button" data-profile-default="${esc(d.id)}">Imposta predefinita</button>`}<br><button class="profile-secondary" type="button" data-profile-delete="${esc(d.id)}" style="margin-top:6px">Elimina</button></div></div>`).join(""):'<p>Nessuna destinazione salvata.</p>';
+}
+document.getElementById("profileMode").addEventListener("click",()=>setProfileMode(!profileRegisterMode));
+document.getElementById("profileSubmit").addEventListener("click",async()=>{
+  const email=document.getElementById("profileEmail").value.trim(),password=document.getElementById("profilePassword").value;
+  if(!email||!password){profileMessage("profileAuthMessage","Inserisci email e password.");return}
+  const body={email,password};
+  if(profileRegisterMode){body.residence_country_code=document.getElementById("profileResidence").value;body.residence_postal_code=document.getElementById("profileResidencePostal").value.trim()||null}
+  const button=document.getElementById("profileSubmit");button.disabled=true;
+  try{const data=await profileApi(profileRegisterMode?"/account/register":"/account/login",{method:"POST",body:JSON.stringify(body)});scentHunterAccessToken=data.access_token;showSignedInProfile(await profileApi("/account/me"));profileMessage("profileAccountMessage","Accesso effettuato.")}
+  catch(e){profileMessage("profileAuthMessage",e.message==="email_already_registered"?"Email già registrata. Prova ad accedere.":e.message==="invalid_email_or_password"?"Email o password non corrette.":e.message)}
+  finally{button.disabled=false}
+});
+document.getElementById("profileAddDestination").addEventListener("click",async()=>{
+  const body={label:document.getElementById("profileDestinationLabel").value.trim(),country_code:document.getElementById("profileDestinationCountry").value,postal_code:document.getElementById("profileDestinationPostal").value.trim()||null,is_default:document.getElementById("profileDestinationDefault").checked};
+  try{await profileApi("/account/destinations",{method:"POST",body:JSON.stringify(body)});showSignedInProfile(await profileApi("/account/me"));document.getElementById("profileDestinationLabel").value="";document.getElementById("profileDestinationPostal").value="";profileMessage("profileAccountMessage","Destinazione salvata.")}
+  catch(e){profileMessage("profileAccountMessage",e.message)}
+});
+document.getElementById("profileDestinations").addEventListener("click",async e=>{
+  const makeDefault=e.target.closest("[data-profile-default]"),remove=e.target.closest("[data-profile-delete]");
+  try{
+    if(makeDefault)await profileApi("/account/destinations/"+encodeURIComponent(makeDefault.dataset.profileDefault)+"/default",{method:"PUT"});
+    if(remove)await profileApi("/account/destinations/"+encodeURIComponent(remove.dataset.profileDelete),{method:"DELETE"});
+    if(makeDefault||remove)showSignedInProfile(await profileApi("/account/me"));
+  }catch(err){profileMessage("profileAccountMessage",err.message)}
+});
+document.getElementById("profileLogout").addEventListener("click",async()=>{
+  try{await profileApi("/account/logout",{method:"POST"})}catch(_){}
+  scentHunterAccessToken="";
+  document.getElementById("profileAuth").style.display="block";
+  document.getElementById("profileSignedIn").style.display="none";
+  document.getElementById("profilePassword").value="";
+  profileMessage("profileAuthMessage","Sei uscito dall'account.");
+});
+
 renderWishlist();syncHearts();
 </script>
 </body></html>
