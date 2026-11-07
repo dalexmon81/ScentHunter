@@ -30069,6 +30069,783 @@
       ],
       "concentration": "Eau de Parfum",
       "collection_name": "Uno Range"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Intoxicate Mystique",
+      "name": "La Fede Intoxicate Mystique",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Intoxicate Mystique",
+      "aliases": [
+        "La Fede Intoxicate Mystique",
+        "Khadlaj La Fede Intoxicate Mystique"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-EDGE-INTENSE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Edge Intense",
+      "name": "La Fede Edge Intense",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Edge Intense",
+      "aliases": [
+        "La Fede Edge Intense",
+        "Khadlaj La Fede Edge Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-EDGE-ORIGINAL-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Edge Original",
+      "name": "La Fede Edge Original",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Edge Original",
+      "aliases": [
+        "La Fede Edge Original",
+        "Khadlaj La Fede Edge Original"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-SYMBOL-OF-LOVE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Symbol of Love",
+      "name": "La Fede Symbol of Love",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Symbol of Love",
+      "aliases": [
+        "La Fede Symbol of Love",
+        "Khadlaj La Fede Symbol of Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-SYMBOL-OF-POWER-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Symbol of Power",
+      "name": "La Fede Symbol of Power",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Symbol of Power",
+      "aliases": [
+        "La Fede Symbol of Power",
+        "Khadlaj La Fede Symbol of Power"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CHOCO-BROWN-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Choco Brown",
+      "name": "La Fede Choco Brown",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Choco Brown",
+      "aliases": [
+        "La Fede Choco Brown",
+        "Khadlaj La Fede Choco Brown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-WHITE-FOREST-STRAWBERRY-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede White Forest Strawberry",
+      "name": "La Fede White Forest Strawberry",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede White Forest Strawberry",
+      "aliases": [
+        "La Fede White Forest Strawberry",
+        "Khadlaj La Fede White Forest Strawberry"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-TOFFEE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Toffee",
+      "name": "La Fede Celeste Toffee",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Celeste Toffee",
+      "aliases": [
+        "La Fede Celeste Toffee",
+        "Khadlaj La Fede Celeste Toffee"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-FLUER-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Fluer",
+      "name": "La Fede Celeste Fluer",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Celeste Fluer",
+      "aliases": [
+        "La Fede Celeste Fluer",
+        "Khadlaj La Fede Celeste Fluer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-JOICE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Joice",
+      "name": "La Fede Celeste Joice",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Celeste Joice",
+      "aliases": [
+        "La Fede Celeste Joice",
+        "Khadlaj La Fede Celeste Joice"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-AQUA-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Aqua",
+      "name": "La Fede Celeste Aqua",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Celeste Aqua",
+      "aliases": [
+        "La Fede Celeste Aqua",
+        "Khadlaj La Fede Celeste Aqua"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-BLUE-ELIXIR-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Intoxicate Blue Elixir",
+      "name": "La Fede Intoxicate Blue Elixir",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Intoxicate Blue Elixir",
+      "aliases": [
+        "La Fede Intoxicate Blue Elixir",
+        "Khadlaj La Fede Intoxicate Blue Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Intoxicate",
+      "name": "La Fede Intoxicate",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Intoxicate",
+      "aliases": [
+        "La Fede Intoxicate",
+        "Khadlaj La Fede Intoxicate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-MANGA-SPLASH-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Manga Splash",
+      "name": "La Fede Aura Manga Splash",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Aura Manga Splash",
+      "aliases": [
+        "La Fede Aura Manga Splash",
+        "Khadlaj La Fede Aura Manga Splash"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-PISTA-DESSERT-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Pista Dessert",
+      "name": "La Fede Aura Pista Dessert",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Aura Pista Dessert",
+      "aliases": [
+        "La Fede Aura Pista Dessert",
+        "Khadlaj La Fede Aura Pista Dessert"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-OPERA-NOIR-L-OR-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Opera Noir L'Or",
+      "name": "La Fede Opera Noir L'Or",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Opera Noir L'Or",
+      "aliases": [
+        "La Fede Opera Noir L'Or",
+        "Khadlaj La Fede Opera Noir L'Or"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-OPERA-ROSE-L-OR-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Opera Rose L'Or",
+      "name": "La Fede Opera Rose L'Or",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Opera Rose L'Or",
+      "aliases": [
+        "La Fede Opera Rose L'Or",
+        "Khadlaj La Fede Opera Rose L'Or"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CRYSTALLIA-IMPERIO-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Crystallia Imperio",
+      "name": "La Fede Crystallia Imperio",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Crystallia Imperio",
+      "aliases": [
+        "La Fede Crystallia Imperio",
+        "Khadlaj La Fede Crystallia Imperio"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CRYSTALLIA-PRIMASO-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Crystallia Primaso",
+      "name": "La Fede Crystallia Primaso",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Crystallia Primaso",
+      "aliases": [
+        "La Fede Crystallia Primaso",
+        "Khadlaj La Fede Crystallia Primaso"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-EXTREME-BLUE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Extreme Blue",
+      "name": "La Fede Magnum Extreme Blue",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Magnum Extreme Blue",
+      "aliases": [
+        "La Fede Magnum Extreme Blue",
+        "Khadlaj La Fede Magnum Extreme Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-WILD-GREEN-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Wild Green",
+      "name": "La Fede Magnum Wild Green",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Magnum Wild Green",
+      "aliases": [
+        "La Fede Magnum Wild Green",
+        "Khadlaj La Fede Magnum Wild Green"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-GOLD-EDITION-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Gold Edition",
+      "name": "La Fede Magnum Gold Edition",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Magnum Gold Edition",
+      "aliases": [
+        "La Fede Magnum Gold Edition",
+        "Khadlaj La Fede Magnum Gold Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-SILVER-EDITION-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Silver Edition",
+      "name": "La Fede Magnum Silver Edition",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Magnum Silver Edition",
+      "aliases": [
+        "La Fede Magnum Silver Edition",
+        "Khadlaj La Fede Magnum Silver Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-KISS-OF-ROSE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Kiss of Rose",
+      "name": "La Fede Aura Kiss of Rose",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Aura Kiss of Rose",
+      "aliases": [
+        "La Fede Aura Kiss of Rose",
+        "Khadlaj La Fede Aura Kiss of Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-CRISP-FLOWER-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Crisp Flower",
+      "name": "La Fede Aura Crisp Flower",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Aura Crisp Flower",
+      "aliases": [
+        "La Fede Aura Crisp Flower",
+        "Khadlaj La Fede Aura Crisp Flower"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-BELLE-REVE-SEGRATO-VIOLA-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Belle Reve Segrato Viola",
+      "name": "La Fede Belle Reve Segrato Viola",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Belle Reve Segrato Viola",
+      "aliases": [
+        "La Fede Belle Reve Segrato Viola",
+        "Khadlaj La Fede Belle Reve Segrato Viola"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-BELLA-REVE-DOLCE-FLORE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Bella Reve Dolce Flore",
+      "name": "La Fede Bella Reve Dolce Flore",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Bella Reve Dolce Flore",
+      "aliases": [
+        "La Fede Bella Reve Dolce Flore",
+        "Khadlaj La Fede Bella Reve Dolce Flore"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-STATESMAN-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Statesman",
+      "name": "La Fede Statesman",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Statesman",
+      "aliases": [
+        "La Fede Statesman",
+        "Khadlaj La Fede Statesman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-FIRST-LADY-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede First Lady",
+      "name": "La Fede First Lady",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede First Lady",
+      "aliases": [
+        "La Fede First Lady",
+        "Khadlaj La Fede First Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-KINGSMAN-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Kingsman",
+      "name": "La Fede Kingsman",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Kingsman",
+      "aliases": [
+        "La Fede Kingsman",
+        "Khadlaj La Fede Kingsman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MISS-PREMIERE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Miss Premiere",
+      "name": "La Fede Miss Premiere",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Miss Premiere",
+      "aliases": [
+        "La Fede Miss Premiere",
+        "Khadlaj La Fede Miss Premiere"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-MARRON-OUD-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Marron Oud",
+      "name": "Code Marron Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Marron Oud",
+      "aliases": [
+        "Code Marron Oud",
+        "Khadlaj Code Marron Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-ROUGE-AMOUR-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Rouge Amour",
+      "name": "Code Rouge Amour",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Rouge Amour",
+      "aliases": [
+        "Code Rouge Amour",
+        "Khadlaj Code Rouge Amour"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-VERDE-SUBLIME-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Verde Sublime",
+      "name": "Code Verde Sublime",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Verde Sublime",
+      "aliases": [
+        "Code Verde Sublime",
+        "Khadlaj Code Verde Sublime"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-LAVISH-LUNA-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Lavish Luna",
+      "name": "La Fede Lavish Luna",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Lavish Luna",
+      "aliases": [
+        "La Fede Lavish Luna",
+        "Khadlaj La Fede Lavish Luna"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-LAVISH-ROUGE-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Lavish Rouge",
+      "name": "La Fede Lavish Rouge",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Lavish Rouge",
+      "aliases": [
+        "La Fede Lavish Rouge",
+        "Khadlaj La Fede Lavish Rouge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-LAVISH-BLUSH-LAFEDE14",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Lavish Blush",
+      "name": "La Fede Lavish Blush",
+      "family_id": "khadlaj_catalog",
+      "family_name": "La Fede Lavish Blush",
+      "aliases": [
+        "La Fede Lavish Blush",
+        "Khadlaj La Fede Lavish Blush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "La Fede Eau De Parfum"
     }
   ],
   "variants": [
@@ -31866,8 +32643,7 @@
       "product_id": "SH-PARIS-CORNER-FRENETIC-MEN-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Frenetic Men 100 ml",
-        "Paris Corner Frenetic Men 100ml"
+        "Frenetic Men 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-MEN-DETAIL11-100-000"
     },
@@ -31875,8 +32651,7 @@
       "product_id": "SH-PARIS-CORNER-FRENETIC-RED-TEMPT-DETAIL11",
       "size_ml": 80,
       "aliases": [
-        "Frenetic Red Tempt 80 ml",
-        "Paris Corner Frenetic Red Tempt 80ml"
+        "Frenetic Red Tempt 80 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-RED-TEMPT-DETAIL11-80-000"
     },
@@ -31884,8 +32659,7 @@
       "product_id": "SH-PARIS-CORNER-FRENETIC-TOBACCO-HONEY-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Frenetic Tobacco Honey 100 ml",
-        "Paris Corner Frenetic Tobacco Honey 100ml"
+        "Frenetic Tobacco Honey 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-TOBACCO-HONEY-DETAIL11-100-000"
     },
@@ -31893,8 +32667,7 @@
       "product_id": "SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Identity Oud Crescent 100 ml",
-        "Paris Corner Identity Oud Crescent 100ml"
+        "Identity Oud Crescent 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT-DETAIL11-100-000"
     },
@@ -31902,8 +32675,7 @@
       "product_id": "SH-PARIS-CORNER-IDENTITY-ROSE-LEATHER-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Identity Rose & Leather 100 ml",
-        "Paris Corner Identity Rose & Leather 100ml"
+        "Identity Rose & Leather 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-IDENTITY-ROSE-LEATHER-DETAIL11-100-000"
     },
@@ -31911,8 +32683,7 @@
       "product_id": "SH-PARIS-CORNER-IDENTITY-UNIQUE-PORTRAIT-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Identity Unique Portrait 100 ml",
-        "Paris Corner Identity Unique Portrait 100ml"
+        "Identity Unique Portrait 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-IDENTITY-UNIQUE-PORTRAIT-DETAIL11-100-000"
     },
@@ -31920,8 +32691,7 @@
       "product_id": "SH-PARIS-CORNER-INTENSE-OUD-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Intense Oud 100 ml",
-        "Paris Corner Intense Oud 100ml"
+        "Intense Oud 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-INTENSE-OUD-DETAIL11-100-000"
     },
@@ -31929,8 +32699,7 @@
       "product_id": "SH-PARIS-CORNER-INTENSE-OUD-SAFFRON-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Intense Oud Saffron 100 ml",
-        "Paris Corner Intense Oud Saffron 100ml"
+        "Intense Oud Saffron 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-INTENSE-OUD-SAFFRON-DETAIL11-100-000"
     },
@@ -31938,8 +32707,7 @@
       "product_id": "SH-PARIS-CORNER-LE-CHARME-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Le Charme 100 ml",
-        "Paris Corner Le Charme 100ml"
+        "Le Charme 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-LE-CHARME-DETAIL11-100-000"
     },
@@ -31947,8 +32715,7 @@
       "product_id": "SH-PARIS-CORNER-PROTOCOL-EDITION-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Protocol Edition 100 ml",
-        "Paris Corner Protocol Edition 100ml"
+        "Protocol Edition 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-PROTOCOL-EDITION-DETAIL11-100-000"
     },
@@ -31956,8 +32723,7 @@
       "product_id": "SH-PARIS-CORNER-RESURRECTION-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Resurrection 100 ml",
-        "Paris Corner Resurrection 100ml"
+        "Resurrection 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-RESURRECTION-DETAIL11-100-000"
     },
@@ -31965,8 +32731,7 @@
       "product_id": "SH-PARIS-CORNER-THE-TRIUMPHANT-SAPPHIRE-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "The Triumphant Sapphire 100 ml",
-        "Paris Corner The Triumphant Sapphire 100ml"
+        "The Triumphant Sapphire 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-THE-TRIUMPHANT-SAPPHIRE-DETAIL11-100-000"
     },
@@ -31974,8 +32739,7 @@
       "product_id": "SH-PARIS-CORNER-TOXIC-HEART-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Toxic Heart 100 ml",
-        "Paris Corner Toxic Heart 100ml"
+        "Toxic Heart 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-TOXIC-HEART-DETAIL11-100-000"
     },
@@ -31983,8 +32747,7 @@
       "product_id": "SH-PARIS-CORNER-YOU-RE-DRUGGED-EMIR-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "You're Drugged Emir 100 ml",
-        "Paris Corner You're Drugged Emir 100ml"
+        "You're Drugged Emir 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-YOU-RE-DRUGGED-EMIR-DETAIL11-100-000"
     },
@@ -31992,8 +32755,7 @@
       "product_id": "SH-PARIS-CORNER-FRENETIC-DELICIEUSE-DETAIL11",
       "size_ml": 80,
       "aliases": [
-        "Frenetic Delicieuse 80 ml",
-        "Paris Corner Frenetic Delicieuse 80ml"
+        "Frenetic Delicieuse 80 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-DELICIEUSE-DETAIL11-80-000"
     },
@@ -32001,8 +32763,7 @@
       "product_id": "SH-PARIS-CORNER-FRENETIC-HOMME-INTENSE-DETAIL11",
       "size_ml": 80,
       "aliases": [
-        "Frenetic Homme Intense 80 ml",
-        "Paris Corner Frenetic Homme Intense 80ml"
+        "Frenetic Homme Intense 80 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-FRENETIC-HOMME-INTENSE-DETAIL11-80-000"
     },
@@ -32010,8 +32771,7 @@
       "product_id": "SH-PARIS-CORNER-HARRIER-ABSOULTE-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Harrier Absoulte 100 ml",
-        "Paris Corner Harrier Absoulte 100ml"
+        "Harrier Absoulte 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-HARRIER-ABSOULTE-DETAIL11-100-000"
     },
@@ -32019,8 +32779,7 @@
       "product_id": "SH-PARIS-CORNER-WILD-AND-TOBACCO-EMIR-DETAIL11",
       "size_ml": 75,
       "aliases": [
-        "Wild and Tobacco Emir 75 ml",
-        "Paris Corner Wild and Tobacco Emir 75ml"
+        "Wild and Tobacco Emir 75 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WILD-AND-TOBACCO-EMIR-DETAIL11-75-000"
     },
@@ -32028,8 +32787,7 @@
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Lueur d'Espoir Noche 100 ml",
-        "Paris Corner Lueur d'Espoir Noche 100ml"
+        "Lueur d'Espoir Noche 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE-DETAIL11-100-000"
     },
@@ -32037,8 +32795,7 @@
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Lueur d'Espoir Arena 100 ml",
-        "Paris Corner Lueur d'Espoir Arena 100ml"
+        "Lueur d'Espoir Arena 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA-DETAIL11-100-000"
     },
@@ -32046,8 +32803,7 @@
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Lueur d'Espoir Ambre 100 ml",
-        "Paris Corner Lueur d'Espoir Ambre 100ml"
+        "Lueur d'Espoir Ambre 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE-DETAIL11-100-000"
     },
@@ -32055,8 +32811,7 @@
       "product_id": "SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Wayfarer Eau de Parfum 100 ml",
-        "Paris Corner Wayfarer Eau de Parfum 100ml"
+        "Wayfarer Eau de Parfum 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM-DETAIL11-100-000"
     },
@@ -32064,8 +32819,7 @@
       "product_id": "SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Empire de la Rouge 100 ml",
-        "Paris Corner Empire de la Rouge 100ml"
+        "Empire de la Rouge 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE-DETAIL11-100-000"
     },
@@ -32073,8 +32827,7 @@
       "product_id": "SH-PARIS-CORNER-VIVANT-SUNLIT-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Vivant Sunlit 100 ml",
-        "Paris Corner Vivant Sunlit 100ml"
+        "Vivant Sunlit 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-VIVANT-SUNLIT-DETAIL11-100-000"
     },
@@ -32082,8 +32835,7 @@
       "product_id": "SH-PARIS-CORNER-WAYFARER-INFUSION-DETAIL11",
       "size_ml": 100,
       "aliases": [
-        "Wayfarer Infusion 100 ml",
-        "Paris Corner Wayfarer Infusion 100ml"
+        "Wayfarer Infusion 100 ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-DETAIL11-100-000"
     },
@@ -32091,8 +32843,7 @@
       "product_id": "SH-KHADLAJ-CODE-VIOLA-NECTAR-DETAIL12",
       "size_ml": 100,
       "aliases": [
-        "Code Viola Nectar 100 ml",
-        "Khadlaj Code Viola Nectar 100ml"
+        "Code Viola Nectar 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-CODE-VIOLA-NECTAR-DETAIL12-100-000"
     },
@@ -32100,8 +32851,7 @@
       "product_id": "SH-KHADLAJ-UNO-SENSUALE-DETAIL12",
       "size_ml": 100,
       "aliases": [
-        "Uno Sensuale 100 ml",
-        "Khadlaj Uno Sensuale 100ml"
+        "Uno Sensuale 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-UNO-SENSUALE-DETAIL12-100-000"
     },
@@ -32109,8 +32859,7 @@
       "product_id": "SH-KHADLAJ-MAYA-DETAIL12",
       "size_ml": 20,
       "aliases": [
-        "Maya 20 ml",
-        "Khadlaj Maya 20ml"
+        "Maya 20 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-MAYA-DETAIL12-20-000"
     },
@@ -32118,8 +32867,7 @@
       "product_id": "SH-KHADLAJ-UNO-LUSSO-DETAIL13",
       "size_ml": 100,
       "aliases": [
-        "Uno Lusso 100 ml",
-        "Khadlaj Uno Lusso 100ml"
+        "Uno Lusso 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-UNO-LUSSO-DETAIL13-100-000",
       "concentration": "Eau de Parfum"
@@ -32128,8 +32876,7 @@
       "product_id": "SH-KHADLAJ-UNO-INTIMO-DETAIL13",
       "size_ml": 100,
       "aliases": [
-        "Uno Intimo 100 ml",
-        "Khadlaj Uno Intimo 100ml"
+        "Uno Intimo 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-UNO-INTIMO-DETAIL13-100-000",
       "concentration": "Eau de Parfum"
@@ -32138,10 +32885,342 @@
       "product_id": "SH-KHADLAJ-UNO-DURABLE-DETAIL13",
       "size_ml": 100,
       "aliases": [
-        "Uno Durable 100 ml",
-        "Khadlaj Uno Durable 100ml"
+        "Uno Durable 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-UNO-DURABLE-DETAIL13-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Intoxicate Mystique 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE-LAFEDE14-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-EDGE-INTENSE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Edge Intense 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-EDGE-INTENSE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-EDGE-ORIGINAL-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Edge Original 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-EDGE-ORIGINAL-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-SYMBOL-OF-LOVE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Symbol of Love 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-SYMBOL-OF-LOVE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-SYMBOL-OF-POWER-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Symbol of Power 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-SYMBOL-OF-POWER-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CHOCO-BROWN-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Choco Brown 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CHOCO-BROWN-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-WHITE-FOREST-STRAWBERRY-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede White Forest Strawberry 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-WHITE-FOREST-STRAWBERRY-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-TOFFEE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Celeste Toffee 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELESTE-TOFFEE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-FLUER-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Celeste Fluer 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELESTE-FLUER-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-JOICE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Celeste Joice 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELESTE-JOICE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELESTE-AQUA-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Celeste Aqua 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELESTE-AQUA-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-BLUE-ELIXIR-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Intoxicate Blue Elixir 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-INTOXICATE-BLUE-ELIXIR-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Intoxicate 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-INTOXICATE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-MANGA-SPLASH-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Aura Manga Splash 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-AURA-MANGA-SPLASH-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-PISTA-DESSERT-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Aura Pista Dessert 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-AURA-PISTA-DESSERT-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-OPERA-NOIR-L-OR-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Opera Noir L'Or 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-OPERA-NOIR-L-OR-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-OPERA-ROSE-L-OR-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Opera Rose L'Or 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-OPERA-ROSE-L-OR-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CRYSTALLIA-IMPERIO-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Crystallia Imperio 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CRYSTALLIA-IMPERIO-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CRYSTALLIA-PRIMASO-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Crystallia Primaso 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CRYSTALLIA-PRIMASO-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-EXTREME-BLUE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Magnum Extreme Blue 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-MAGNUM-EXTREME-BLUE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-WILD-GREEN-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Magnum Wild Green 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-MAGNUM-WILD-GREEN-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-GOLD-EDITION-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Magnum Gold Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-MAGNUM-GOLD-EDITION-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MAGNUM-SILVER-EDITION-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Magnum Silver Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-MAGNUM-SILVER-EDITION-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-KISS-OF-ROSE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Aura Kiss of Rose 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-AURA-KISS-OF-ROSE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-AURA-CRISP-FLOWER-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Aura Crisp Flower 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-AURA-CRISP-FLOWER-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-BELLE-REVE-SEGRATO-VIOLA-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Belle Reve Segrato Viola 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-BELLE-REVE-SEGRATO-VIOLA-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-BELLA-REVE-DOLCE-FLORE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Bella Reve Dolce Flore 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-BELLA-REVE-DOLCE-FLORE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-STATESMAN-LAFEDE14",
+      "size_ml": 75,
+      "aliases": [
+        "La Fede Statesman 75 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-STATESMAN-LAFEDE14-75-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-FIRST-LADY-LAFEDE14",
+      "size_ml": 75,
+      "aliases": [
+        "La Fede First Lady 75 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-FIRST-LADY-LAFEDE14-75-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-KINGSMAN-LAFEDE14",
+      "size_ml": 75,
+      "aliases": [
+        "La Fede Kingsman 75 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-KINGSMAN-LAFEDE14-75-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-MISS-PREMIERE-LAFEDE14",
+      "size_ml": 75,
+      "aliases": [
+        "La Fede Miss Premiere 75 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-MISS-PREMIERE-LAFEDE14-75-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-MARRON-OUD-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "Code Marron Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-CODE-MARRON-OUD-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-ROUGE-AMOUR-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "Code Rouge Amour 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-CODE-ROUGE-AMOUR-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-VERDE-SUBLIME-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "Code Verde Sublime 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-CODE-VERDE-SUBLIME-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-LAVISH-LUNA-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Lavish Luna 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-LAVISH-LUNA-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-LAVISH-ROUGE-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Lavish Rouge 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-LAVISH-ROUGE-LAFEDE14-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-LAVISH-BLUSH-LAFEDE14",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Lavish Blush 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-LAVISH-BLUSH-LAFEDE14-100-000",
       "concentration": "Eau de Parfum"
     }
   ]
