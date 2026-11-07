@@ -47,7 +47,7 @@ def test_password_hash_is_salted_and_verifiable():
 def test_register_issues_httponly_secure_cookie_and_persists_session():
     client, engine, factory = client_for_test()
     try:
-        response = client.post("/account/register", json={
+        response = client.post("/account/register", headers={"Origin": "https://testserver"}, json={
             "email": " Buyer@Example.com ",
             "password": "a-very-long-test-password",
             "residence_country_code": "lu",
@@ -90,7 +90,7 @@ def test_login_sets_new_browser_session_and_logout_revokes_it():
             "residence_country_code": "LU",
         })
         client.post("/account/logout", headers=csrf_headers(client))
-        login = client.post("/account/login", json={
+        login = client.post("/account/login", headers={"Origin": "https://testserver"}, json={
             "email": "OWNER@example.com",
             "password": "a-very-long-test-password",
         })
