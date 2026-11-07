@@ -154,9 +154,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1596
+    assert report["fragrances"] == 1598
     assert report["variants"] == 149
-    assert report["products_without_variants"] == 1468
+    assert report["products_without_variants"] == 1469
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -391,8 +391,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1596
-    assert len(variants) == 150
+    assert len(products) == 1598
+    assert len(variants) == 151
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
@@ -488,5 +488,8 @@ def test_armaf_official_page_products_and_concentration_variants_are_traceable()
     assert "The Lion's Club Monarque" in products["SH-ARMAF-LION-S-CLUB-MONARQUE-P337"]["aliases"]
     assert "Craze Man Parfum" in products["SH-ARMAF-CRAZE-FOR-MEN-P032"]["aliases"]
     assert "Club de Nuit Urban" in products["SH-ARMAF-36ca3d7f"]["aliases"]
+    assert products["SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-WOMAN-PARFUM-EXTREME-EDITION"]["concentration"] == "Parfum"
+    assert products["SH-ARMAF-OFFICIAL-NICHE-PURPLE-AMETHYST-FLEUR"]["concentration"] == "Eau de Parfum"
+    assert variants["SHV-SH-ARMAF-OFFICIAL-CLUB-DE-NUIT-WOMAN-PARFUM-EXTREME-EDITION-105-000"]["size_ml"] == 105
     assert "Club de Nuit Precieux 1 Extrait de Parfum" in products["SH-ARMAF-224191af"]["aliases"]
     assert "Club de Nuit Woman Extrait de Parfum" in products["SH-ARMAF-7a645342"]["aliases"]
