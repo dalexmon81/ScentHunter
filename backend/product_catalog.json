@@ -4216,7 +4216,7 @@
       "source_url": "https://www.alwataniah.com/collections"
     },
     {
-      "product_id": "SH-FRENCH-AVENUE-43ebcbc7",
+      "product_id": "SH-0030",
       "brand": "French Avenue",
       "brand_name": "French Avenue",
       "canonical_name": "Liquid Brun",
@@ -4228,10 +4228,19 @@
         "French Avenue Liquid Brun"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/"
+      "source_url": "https://frenchavenue.com/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290360375694"
+      ],
+      "source_product_url": "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916",
+      "source_evidence_url": "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
     },
     {
-      "product_id": "SH-FRENCH-AVENUE-620eee27",
+      "product_id": "SH-0031",
       "brand": "French Avenue",
       "brand_name": "French Avenue",
       "canonical_name": "Liquid Brun Limited Edition",
@@ -4243,7 +4252,16 @@
         "French Avenue Liquid Brun Limited Edition"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/"
+      "source_url": "https://frenchavenue.com/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        150
+      ],
+      "gtins": [
+        "6298042001831"
+      ],
+      "source_product_url": "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
+      "source_evidence_url": "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-7ab73d00",
@@ -10952,6 +10970,26 @@
       ],
       "variant_id": "SHV-SH-SWISS-ARABIAN-8a079897-75-000",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-0030",
+      "variant_id": "VAR-f87146c82d167f4c",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Liquid Brun Eau de Parfum 100 ml",
+        "French Avenue Liquid Brun EDP 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-0031",
+      "variant_id": "VAR-f5aff76b4bb5de8a",
+      "size_ml": 150,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Liquid Brun Limited Edition Extrait de Parfum 150 ml",
+        "French Avenue Liquid Brun Limited Edition 150ml"
+      ]
     }
   ]
 }
