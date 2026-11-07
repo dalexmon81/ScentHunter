@@ -352,7 +352,15 @@ def test_discovery_failure_marks_its_own_run_without_touching_another_running_ru
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
-        session.add(Store(name="Fake Store", slug="fake-store", currency="EUR", status="active"))
+        store = Store(name="Fake Store", slug="fake-store", currency="EUR", status="active")
+        session.add(store)
+        session.flush()
+        session.add(StoreAuthorization(
+            store_id=store.id, status="approved", collection_method="other",
+            scopes=["product_discovery", "offer_data"],
+            authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.commit()
     with factory() as session:
         store = session.scalar(select(Store).where(Store.slug == "fake-store"))
