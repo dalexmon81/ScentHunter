@@ -1,5 +1,13 @@
 """Central ProductMatcher offer identity resolution service."""
 
+def _safe_log(logger, message):
+    try:
+        logger(message)
+    except Exception:
+        # Logging must not turn a fail-closed identity result into a failed search.
+        pass
+
+
 def resolve_offer_identity(result, query, product_matcher, store_labels, normalize_store, logger=print):
     """Resolve one raw retailer offer through the central ProductMatcher.
 
@@ -68,10 +76,7 @@ def resolve_offer_identity(result, query, product_matcher, store_labels, normali
 
         match = match_method(matcher_offer, str(query or "").strip())
     except Exception as exc:
-        logger(
-            f"product_matcher_MATCH_ERROR: {type(exc).__name__}: {exc}",
-            flush=True,
-        )
+        _safe_log(logger, f"product_matcher_MATCH_ERROR: {type(exc).__name__}: {exc}")
         output.update({
             "_match_status": "unresolved",
             "catalog_id": None,
@@ -90,10 +95,7 @@ def resolve_offer_identity(result, query, product_matcher, store_labels, normali
             try:
                 rejection_reason = rejection_method(matcher_offer)
             except Exception as exc:
-                logger(
-                    f"product_matcher_REJECTION_STATUS_ERROR: {type(exc).__name__}: {exc}",
-                    flush=True,
-                )
+                _safe_log(logger, f"product_matcher_REJECTION_STATUS_ERROR: {type(exc).__name__}: {exc}")
 
         if rejection_reason:
             output.update({
@@ -116,10 +118,7 @@ def resolve_offer_identity(result, query, product_matcher, store_labels, normali
                 requested_family = family_resolver(str(query or "").strip())
             except Exception as exc:
                 requested_family = None
-                logger(
-                    f"product_matcher_FAMILY_SCOPE_ERROR: {type(exc).__name__}: {exc}",
-                    flush=True,
-                )
+                _safe_log(logger, f"product_matcher_FAMILY_SCOPE_ERROR: {type(exc).__name__}: {exc}")
             if requested_family is not None:
                 output.update({
                     "_match_status": "rejected",
