@@ -10,6 +10,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
+from app.services.runtime_subprocess_snapshot import runtime_subprocess_snapshot
 
 from app.services.store_identity import normalize_store_key as _normalise_store
 from app.services.catalog_readiness import catalog_has_indexed_store, stores_missing_indexed_catalog
@@ -2972,28 +2973,7 @@ def root():
     return {'app':'ScentHunter','status':'running','architecture':APP_VERSION,'error':'frontend/index.html not found'}
 
 def _runtime_subprocesses():
-    """Read-only runtime snapshot of scraper worker subprocesses on Linux."""
-    items=[]
-    proc_root=Path('/proc')
-    if proc_root.exists():
-        for entry in proc_root.iterdir():
-            if not entry.name.isdigit():
-                continue
-            pid=int(entry.name)
-            if pid == os.getpid():
-                continue
-            try:
-                cmdline=(entry / 'cmdline').read_bytes().replace(b'\\x00',b' ').decode('utf-8','replace').strip()
-                if not cmdline:
-                    continue
-                if "python" not in cmdline.lower():
-                    continue
-                stat=(entry / 'stat').read_text(errors='replace').split()
-                state=stat[2] if len(stat)>2 else None
-                items.append({"pid":pid,"state":state,"cmdline":cmdline[:500]})
-            except (FileNotFoundError,PermissionError,OSError):
-                continue
-    return items
+    return runtime_subprocess_snapshot(Path('/proc'), os.getpid())
 
 def _semaphore_snapshot(semaphore):
     return {
