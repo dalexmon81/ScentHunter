@@ -40,7 +40,7 @@ class MaisonAsrarLockAndKeyTests(unittest.TestCase):
                 record = next(p for p in family["products"] if p["canonical_name"] == name)
                 self.assertEqual(record["formats_ml"], [100])
 
-    def test_listing_descriptors_are_aliases_not_duplicate_products(self):
+    def test_black_grapefruit_is_separate_and_bloom_alias_is_preserved(self):
         products = [p for p in CATALOG["products"] if p.get("brand") == "Maison Asrar"]
         self.assertEqual(sum(p["canonical_name"] == "Black Grapefruit" for p in products), 1)
         self.assertTrue(any(p["canonical_name"] == "Black Grapefruit" and p.get("identity_status") == "source_listed_name" for p in products))
