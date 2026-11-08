@@ -212,6 +212,21 @@
       "brand": "Zimaya",
       "url": "https://it.zimayaperfumes.com/en/products/al-barari-shore",
       "note": "Official Zimaya Europe product page explicitly states 100ML | EDP for Al Barari Shore."
+    },
+    {
+      "brand": "Games of Spades",
+      "url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "note": "Official Jo Milano Paris product page explicitly lists Game of Spades King, Parfum formulation, and the listed ml size options."
+    },
+    {
+      "brand": "Games of Spades",
+      "url": "https://jomilanoparis.com/products/game-of-spades-rouge",
+      "note": "Official Jo Milano Paris product page explicitly lists Game of Spades Rouge Extrait, Parfum formulation, and the listed ml size options."
+    },
+    {
+      "brand": "Games of Spades",
+      "url": "https://jomilanoparis.com/products/game-of-spades-royale",
+      "note": "Official Jo Milano Paris product page explicitly lists Game of Spades Royale, Parfum formulation, and the listed ml size options."
     }
   ],
   "products": [
@@ -4407,6 +4422,59 @@
         {
           "concentration": "Extrait de Parfum",
           "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Games of Spades",
+      "fragrance": "King",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "variants": [
+        {
+          "concentration": "Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Parfum",
+          "size_ml": 30
+        },
+        {
+          "concentration": "Parfum",
+          "size_ml": 10
+        }
+      ]
+    },
+    {
+      "brand": "Games of Spades",
+      "fragrance": "Rouge Extrait",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
+      "variants": [
+        {
+          "concentration": "Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Parfum",
+          "size_ml": 30
+        }
+      ]
+    },
+    {
+      "brand": "Games of Spades",
+      "fragrance": "Royale",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-royale",
+      "variants": [
+        {
+          "concentration": "Parfum",
+          "size_ml": 30
+        },
+        {
+          "concentration": "Parfum",
+          "size_ml": 100
+        },
+        {
+          "concentration": "Parfum",
+          "size_ml": 50
         }
       ]
     }
