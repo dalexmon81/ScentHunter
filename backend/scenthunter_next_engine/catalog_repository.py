@@ -125,12 +125,16 @@ class CatalogRepository:
             variant_aliases = _aliases(record.get("aliases"))
             label = variant_aliases[0] if variant_aliases else None
             try:
+                raw_product_form = record.get("product_form")
+                product_form = normalize_product_form(raw_product_form)
+                if raw_product_form is not None and str(raw_product_form).strip() and product_form is None:
+                    raise ValueError("unsupported product_form in catalog variant")
                 variant = CanonicalVariant(
                     variant_id=variant_id,
                     size_ml=size_ml,
                     label=label,
                     aliases=variant_aliases,
-                    product_form=normalize_product_form(record.get("product_form")),
+                    product_form=product_form,
                 )
             except ValueError:
                 skipped_variants += 1
