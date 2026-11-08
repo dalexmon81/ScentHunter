@@ -1,3 +1,4 @@
+# Includes Maison Asrar official detail-page, variant and provenance regression tests.
 name: Catalog seed validation
 
 on:
