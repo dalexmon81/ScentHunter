@@ -31,11 +31,11 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Afnan | 87 | 1 | 86 |
 | Aromatix | 12 | 0 | 12 |
 | Maison Alhambra | 203 | 0 | 203 |
-| Zimaya | 72 | 10 | 62 |
+| Zimaya | 77 | 15 | 62 |
 | Al Haramain | 101 | 0 | 101 |
-| **Total requested brands** | **2,049** | **232** | **1,817** |
+| **Total requested brands** | **2,054** | **135** | **1,919** |
 
-The full seed contains 2,052 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
+The full seed contains 2,057 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
 ## Recorded source hosts
 
@@ -59,7 +59,7 @@ The full seed contains 2,052 identities. The remaining three belong to other bra
 | Afnan | afnan.com (83); de.afnan.com (1); www.afnaneurope.com (3) |
 | Aromatix | www.notino.be (12) |
 | Maison Alhambra | maisonalhambra-usa.com (203) |
-| Zimaya | zimayaperfumes.com (72) |
+| Zimaya | zimayaperfumes.com (74); de.zimayaperfumes.com (1); fr.zimayaperfumes.com (1); ro.zimayaperfumes.com (1) |
 | Al Haramain | shop.alharamainperfumes.com (101) |
 
 ## Priority evidence gaps
@@ -234,6 +234,40 @@ The existing Afnan identity **9 PM Night Out** was cross-checked against Afnan's
 - No new canonical identity was created; the existing Afnan row was upgraded.
 
 Afnan now has 87 identities: 1 `source_verified_name` and 86 `source_listed_name`. The requested 20-brand subtotal remains 2,049 identities; the evidence-status subtotal is now 232 verified and 1,817 listed. The full seed remains 2,052 products and now contains 219 explicit variants.
+
+Sources:
+- https://de.afnan.com/en/products/9pm-night-out
+- https://afnan.com/blogs/news/afnan-perfumes-unveils-9pm-night-out-on-the-global-stage
+
+
+### Zimaya official new-launch additions
+
+A review of Zimaya's official New Launches collection and regional brand storefronts identified five standalone perfumes absent from the existing 72-row Zimaya subset. Each has an individual Zimaya product page and explicit 100 ml EDP specification. They were added as new canonical identities with official `source_url` values and explicit 100 ml EDP variants:
+
+| Canonical identity | Official product page | Size / concentration |
+|---|---|---|
+| Kibria Supremo | https://ro.zimayaperfumes.com/products/kibria-supremo | 100 ml / Eau de Parfum |
+| Oscar Platinum | https://fr.zimayaperfumes.com/products/oscar-platinum | 100 ml / Eau de Parfum |
+| Zukhruf Peach Please | https://de.zimayaperfumes.com/en/products/zukhruf-peach | 100 ml / Eau de Parfum |
+| Mazaaj Rhythm | https://zimayaperfumes.com/products/mazaaj-rhythm | 100 ml / Eau de Parfum |
+| Tiramisu S’mores | https://zimayaperfumes.com/products/tiramisu-s-mores | 100 ml / Eau de Parfum |
+
+These are distinct perfumes, not gift sets or body-care items. Their product identities were not already present under alternate names in the Zimaya seed. Zimaya now has 77 identities: 15 `source_verified_name` and 62 `source_listed_name`.
+
+Sources:
+- Official Zimaya new launches: https://zimayaperfumes.com/collections/new-launch-1
+- Official product detail pages listed in the table above.
+
+### Afnan official-page verification: 9 PM Night Out
+
+The existing Afnan identity **9 PM Night Out** was cross-checked against Afnan's official regional product page:
+- Product page: https://de.afnan.com/en/products/9pm-night-out
+- Official specifications: Extrait de Parfum, 100 ml, unisex
+- Official launch announcement: https://afnan.com/blogs/news/afnan-perfumes-unveils-9pm-night-out-on-the-global-stage (17 February 2026)
+- Catalog action: updated `source_url`, changed evidence status to `source_verified_name`, set concentration to `Extrait de Parfum`, and added an explicit 100 ml variant.
+- No new canonical identity was created; the existing Afnan row was upgraded.
+
+Afnan now has 87 identities: 1 `source_verified_name` and 86 `source_listed_name`. The requested 20-brand subtotal is 2,054 identities: 135 `source_verified_name` and 1,919 `source_listed_name`. The full seed contains 2,057 products and 224 explicit variants.
 
 Sources:
 - https://de.afnan.com/en/products/9pm-night-out
