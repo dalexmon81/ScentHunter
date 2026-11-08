@@ -197,6 +197,21 @@
       "brand": "Al Wataniah",
       "url": "https://www.alwataniah.com/products/turquois",
       "note": "Official Al Wataniah product page explicitly identifies Turquois as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
+    },
+    {
+      "brand": "Zimaya",
+      "url": "https://it.zimayaperfumes.com/en/products/siada-nova",
+      "note": "Official Zimaya Europe product page explicitly states 100ML | EDP for Siada Nova."
+    },
+    {
+      "brand": "Zimaya",
+      "url": "https://it.zimayaperfumes.com/en/products/siada-regal",
+      "note": "Official Zimaya Europe product page explicitly states 100ML | EDP for Siada Regal."
+    },
+    {
+      "brand": "Zimaya",
+      "url": "https://it.zimayaperfumes.com/en/products/al-barari-shore",
+      "note": "Official Zimaya Europe product page explicitly states 100ML | EDP for Al Barari Shore."
     }
   ],
   "products": [
@@ -4292,6 +4307,39 @@
       "brand": "Al Wataniah",
       "fragrance": "Turquois",
       "source_url": "https://www.alwataniah.com/products/turquois",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Zimaya",
+      "fragrance": "Siada Nova",
+      "source_url": "https://it.zimayaperfumes.com/en/products/siada-nova",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Zimaya",
+      "fragrance": "Siada Regal",
+      "source_url": "https://it.zimayaperfumes.com/en/products/siada-regal",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Zimaya",
+      "fragrance": "Al Barari Shore",
+      "source_url": "https://it.zimayaperfumes.com/en/products/al-barari-shore",
       "variants": [
         {
           "concentration": "Eau de Parfum",
