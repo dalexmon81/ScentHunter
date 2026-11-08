@@ -386,3 +386,8 @@ Fonti: https://www.pariscornerperfumes.com/collections/all?page=6 e https://www.
 ## Paris Corner — pagina ufficiale 8 (2026-11-08)
 
 Aggiunte **9 identità** mancanti dalla pagina 8: Wild and Tobacco Emir, You're Drugged Emir, Zahi, Zahri Amara, Zaman Al Ula, Zodiac, Zodiac Lunaris, Zodiac Solmaris, Zodiac Stratos. Fonte ufficiale: https://www.pariscornerperfumes.com/collections/all?page=8 . Gli altri nomi di profumo visibili in questa pagina erano già presenti nel catalogo e non sono stati duplicati. Il conteggio riportato dal sito per la collezione è dinamico (249 prodotti nella pagina consultata) e non equivale al numero di identità canoniche di profumo.
+
+
+## French Avenue — collezione Genesis (2026-11-08)
+
+Aggiunte 11 identità della collezione ufficiale Genesis: Genesis Scorpio, Genesis Leo, Genesis Virgo, Genesis Cancer, Genesis Capricorn, Genesis Aries, Genesis Libra, Genesis Gemini, Genesis Taurus, Genesis Aquarius, Genesis Pisces. Fonte: https://frenchavenue.com/collections/genesis . La pagina ufficiale espone 12 prodotti in questa collezione; i nomi sono stati normalizzati come "Genesis [segno zodiacale]" per evitare collisioni con nomi generici di altri brand.
