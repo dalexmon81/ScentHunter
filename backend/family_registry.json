@@ -15287,6 +15287,16 @@
       ],
       "products": [
         {
+          "canonical_name": "Barwaaz Saddle Brown",
+          "aliases": [
+            "Barwaaz Saddle Brown",
+            "Khadlaj Barwaaz Saddle Brown"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Biscotti Caramel Pop",
           "aliases": [
             "Biscotti Caramel Pop",
@@ -15386,6 +15396,16 @@
           ]
         },
         {
+          "canonical_name": "Desert Rose",
+          "aliases": [
+            "Desert Rose",
+            "Khadlaj Desert Rose"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Empire Victor",
           "aliases": [
             "Empire Victor",
@@ -15410,6 +15430,16 @@
           "aliases": [
             "Gaith",
             "Khadlaj Gaith"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ghadeer Gold",
+          "aliases": [
+            "Ghadeer Gold",
+            "Khadlaj Ghadeer Gold"
           ],
           "formats_ml": [
             100
@@ -15575,6 +15605,16 @@
           ]
         },
         {
+          "canonical_name": "Musk Wa Oud",
+          "aliases": [
+            "Musk Wa Oud",
+            "Khadlaj Musk Wa Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Musk Wa Ward",
           "aliases": [
             "Musk Wa Ward",
@@ -15599,6 +15639,16 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Nuha",
+          "aliases": [
+            "Nuha",
+            "Khadlaj Nuha"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {
@@ -15702,6 +15752,16 @@
           ]
         },
         {
+          "canonical_name": "Private Blend Tobac Extra",
+          "aliases": [
+            "Private Blend Tobac Extra",
+            "Khadlaj Private Blend Tobac Extra"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Pure Musk",
           "aliases": [
             "Pure Musk",
@@ -15719,6 +15779,26 @@
           ],
           "formats_ml": [
             60
+          ]
+        },
+        {
+          "canonical_name": "Rasayel Shagaf",
+          "aliases": [
+            "Rasayel Shagaf",
+            "Khadlaj Rasayel Shagaf"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rasayel Vid",
+          "aliases": [
+            "Rasayel Vid",
+            "Khadlaj Rasayel Vid"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15980,7 +16060,12 @@
           "canonical_name": "Ghadeer Silver",
           "aliases": [
             "Ghadeer Silver",
-            "Khadlaj Ghadeer Silver"
+            "Khadlaj Ghadeer Silver",
+            "Ghadeer Silver Women",
+            "Ghadeer Silver for Women"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -16037,6 +16122,13 @@
           "aliases": [
             "Karus Oud Fire",
             "Khadlaj Karus Oud Fire"
+          ]
+        },
+        {
+          "canonical_name": "Karus Secret Musk",
+          "aliases": [
+            "Karus Secret Musk",
+            "Khadlaj Karus Secret Musk"
           ]
         },
         {
@@ -16149,6 +16241,13 @@
           "aliases": [
             "Musk Pour Narcis",
             "Khadlaj Musk Pour Narcis"
+          ]
+        },
+        {
+          "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
+          "aliases": [
+            "Musk Pure Musk Blend Creation of Iqbal",
+            "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
           ]
         },
         {
@@ -16285,6 +16384,15 @@
           ]
         },
         {
+          "canonical_name": "Sensuous Night",
+          "aliases": [
+            "Sensuous Night",
+            "Khadlaj Sensuous Night",
+            "Sensuos Night",
+            "Khadlaj Sensuos Night"
+          ]
+        },
+        {
           "canonical_name": "Shahi Oud",
           "aliases": [
             "Shahi Oud",
@@ -16350,29 +16458,6 @@
           ],
           "formats_ml": [
             60
-          ]
-        },
-        {
-          "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
-          "aliases": [
-            "Musk Pure Musk Blend Creation of Iqbal",
-            "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
-          ]
-        },
-        {
-          "canonical_name": "Karus Secret Musk",
-          "aliases": [
-            "Karus Secret Musk",
-            "Khadlaj Karus Secret Musk"
-          ]
-        },
-        {
-          "canonical_name": "Sensuous Night",
-          "aliases": [
-            "Sensuous Night",
-            "Khadlaj Sensuous Night",
-            "Sensuos Night",
-            "Khadlaj Sensuos Night"
           ]
         }
       ]
@@ -16468,7 +16553,8 @@
             "Shiyaaka Snow",
             "Khadlaj Shiyaaka Snow",
             "Special Edition Shiyaaka Snow",
-            "Shiyaaka Snow EDP"
+            "Shiyaaka Snow EDP",
+            "Khadlaj Special Edition Shiyaaka Snow"
           ],
           "formats_ml": [
             100
@@ -16538,6 +16624,18 @@
             "La Fede Aura Pista Dessert",
             "Khadlaj La Fede Aura Pista Dessert",
             "Aura Pista Dessert"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "La Fede Aura Vanilla Milk",
+          "aliases": [
+            "La Fede Aura Vanilla Milk",
+            "Khadlaj La Fede Aura Vanilla Milk",
+            "Aura Vanilla Milk",
+            "Khadlaj Aura Vanilla Milk"
           ],
           "formats_ml": [
             100
