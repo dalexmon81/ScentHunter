@@ -34,7 +34,7 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
         names = self._brand_names("Gulf Orchid")
         for name in GULF_ORCHID:
             with self.subTest(name=name):
-                self.assertIn(name.casefold(), names)
+                self.assertIn(self._normalize(name), names)
 
     def test_no_duplicate_brand_name_pairs(self):
         pairs = [(p.get("brand"), p["canonical_name"].casefold()) for p in self.products]
