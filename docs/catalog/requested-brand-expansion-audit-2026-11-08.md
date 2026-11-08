@@ -306,3 +306,22 @@ Sono state importate solo identità di profumi e oli profumati nominati nel cata
 - Product ID duplicati: **0**; variant ID duplicati: **0**; varianti orfane: **0**; prodotti senza famiglia registry: **0**.
 
 La copertura del marchio non è ancora completa: sono state esaminate solo alcune pagine selezionate del catalogo ufficiale.
+
+
+## Incremento successivo — Lattafa pagine 2/3 e Afnan Europe pagina 2 (2026-11-08)
+
+Aggiunte **17 identità canoniche** dalle pagine ufficiali:
+
+- **Lattafa: +13** — Pure Crystal, Nasmaat, Layaan, Sherif, Choco Overdose, Mallow Madness, Cookie Crave, Whipped Pleasure, Vanilla Freak, Taureau De Combat, Nebras Elixir, Nadira e Safeer. Fonti: https://lattafa.com/product-category/perfumes/page/2/ e https://lattafa.com/product-category/perfumes/page/3/ . Le due ultime identità sono state attribuite alla pagina 3.
+- **Afnan: +4** — Highness IV, Highness V, Highness IX e Highness X. Fonte: https://www.afnaneurope.com/collections/all-products?page=2 .
+
+Set, gift set e travel kit sono stati esclusi. Non sono stati inventati dati su formati, prezzi, disponibilità o codici prodotto.
+
+### Integrity snapshot aggiornato
+- **1414** identità canoniche.
+- **141** righe variante.
+- **31** famiglie nel registry.
+- Lattafa: **89**; Afnan: **87**.
+- Product ID duplicati: **0**; variant ID duplicati: **0**; varianti orfane: **0**; prodotti senza famiglia corrispondente: **0**.
+
+Il catalogo dei marchi resta parziale: il conteggio descrive le identità attualmente censite, non una copertura totale garantita.
