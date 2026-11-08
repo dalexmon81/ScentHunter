@@ -1450,7 +1450,9 @@
           "canonical_name": "Empire x RRQ",
           "aliases": [
             "Empire x RRQ",
-            "Mykonos Empire x RRQ"
+            "Mykonos Empire x RRQ",
+            "Empire (Mykonos x RRQ)",
+            "Mykonos Empire (Mykonos x RRQ)"
           ]
         },
         {
@@ -1492,7 +1494,9 @@
           "canonical_name": "Glitch",
           "aliases": [
             "Glitch",
-            "Mykonos Glitch"
+            "Mykonos Glitch",
+            "Glitch (Mykonos x SetiawanAde)",
+            "Mykonos Glitch (Mykonos x SetiawanAde)"
           ]
         },
         {
@@ -1703,49 +1707,6 @@
           "aliases": [
             "Verve",
             "Mykonos Verve"
-          ]
-        },
-        {
-          "canonical_name": "MyEgo (Mykonos x AlterEgo)",
-          "aliases": [
-            "MyEgo (Mykonos x AlterEgo)",
-            "Mykonos MyEgo (Mykonos x AlterEgo)"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Empire (Mykonos x RRQ)",
-          "aliases": [
-            "Empire (Mykonos x RRQ)",
-            "Mykonos Empire (Mykonos x RRQ)"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Glitch (Mykonos x SetiawanAde)",
-          "aliases": [
-            "Glitch (Mykonos x SetiawanAde)",
-            "Mykonos Glitch (Mykonos x SetiawanAde)"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Invade (Mykonos x SetiawanAde)",
-          "aliases": [
-            "Invade (Mykonos x SetiawanAde)",
-            "Mykonos Invade (Mykonos x SetiawanAde)"
-          ],
-          "formats_ml": [
-            50
           ]
         }
       ]
