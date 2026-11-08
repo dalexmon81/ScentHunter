@@ -37,7 +37,8 @@
       "Swiss Arabian"
     ],
     "games_of_spades_manufacturer": "Jo Milano Paris",
-    "aromatix_line_candidates": 10
+    "aromatix_line_candidates": 10,
+    "french_avenue_official_detail_additions": 3
   },
   "sources": [
     {
@@ -1291,10 +1292,10 @@
     {
       "brand": "French Avenue",
       "fragrance_name": "Jasmere",
-      "evidence_source": "Azmara",
-      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "not_inferred"
+      "evidence_source": "French Avenue official product page",
+      "source_url": "https://frenchavenue.com/products/jasmere",
+      "evidence_level": "official_product_detail",
+      "variant_details": "Official French Avenue product page; EDP 100 ml stated, not added as a variant row."
     },
     {
       "brand": "French Avenue",
@@ -1307,10 +1308,10 @@
     {
       "brand": "French Avenue",
       "fragrance_name": "Amber Empire",
-      "evidence_source": "Azmara",
-      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "not_inferred"
+      "evidence_source": "French Avenue official product page",
+      "source_url": "https://frenchavenue.com/products/amber-empire",
+      "evidence_level": "official_product_detail",
+      "variant_details": "Official French Avenue product page; canonical name verified. No size/concentration variant inferred."
     },
     {
       "brand": "French Avenue",
@@ -1331,10 +1332,10 @@
     {
       "brand": "French Avenue",
       "fragrance_name": "Safari Breeze",
-      "evidence_source": "Azmara",
-      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "not_inferred"
+      "evidence_source": "French Avenue official product page",
+      "source_url": "https://sa.frenchavenue.com/products/safari-breeze",
+      "evidence_level": "official_product_detail",
+      "variant_details": "Official French Avenue KSA product page; EDP 100 ml stated, not added as a variant row."
     },
     {
       "brand": "Bujairami",
