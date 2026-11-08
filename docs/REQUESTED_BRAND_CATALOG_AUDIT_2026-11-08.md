@@ -122,3 +122,24 @@ First-party collection pages:
 
 
 CI note: the catalog validation workflow now explicitly includes the stacked target branch `catalog/maison-asrar-verified-variants-2026-11-08`; this PR head was advanced after the base-branch trigger update so the pull-request validation can run without changing `main`.
+
+
+### Khadlaj follow-up: last nine seeded identities receive first-party variants (8 November 2026)
+
+The nine Khadlaj identities that still lacked a variant after the first collection pass were checked against additional brand-owned product pages and official new-launch collections. All nine now have an explicit first-party size/concentration variant:
+
+| Identity | Official product page | Variant |
+|---|---|---|
+| Panache Eleganza | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women | 100 ml Extrait de Parfum |
+| Stellar Musk | https://khadlaj-perfumes.com/collections/women-perfume/products/stellar-musk-100-ml-edp-spray-for-women | 100 ml Eau de Parfum |
+| Stellar Oud | https://khadlaj-perfumes.com/products/stellar-oud-100-ml-edp-spray-for-men-women | 100 ml Eau de Parfum |
+| Onyx Galaxy | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men | 100 ml Eau de Parfum |
+| Muse | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women | 100 ml Eau de Parfum |
+| Sueno | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women | 100 ml Extrait de Parfum |
+| Saraya | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women | 60 ml Extrait de Parfum |
+| Zayaan Silver | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men | 100 ml Eau de Parfum |
+| Qarar | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum | 60 ml Extrait de Parfum |
+
+**Updated Khadlaj result:** 116 canonical identities / 116 explicit variant rows. No Khadlaj identity in the current seed remains without a variant. The five product cards not surfaced by the ninth page of the 101-item Perfume Sprays collection remain a source-discovery limitation; the nine records above were found through separate official product/new-launch pages, not guessed from the missing cards.
+
+**Updated whole-catalog result on this branch:** 2,061 product identities / 362 variants. Integrity checks report zero duplicate product IDs, duplicate brand/canonical-name pairs, duplicate variant IDs, orphan variants or variant-size mismatches. The full GitHub Actions catalog validation passed on commit `ae6e83b1f08973feef8190a3c9cd4e81864ad7d7` (run 42472046924). The subsequent audit-only update does not alter catalog data.
