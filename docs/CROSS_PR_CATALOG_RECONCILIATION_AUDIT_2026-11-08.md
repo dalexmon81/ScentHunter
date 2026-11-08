@@ -133,7 +133,7 @@ The following individual catalog validation runs were checked and passed:
 
 These green runs validate each branch separately. They do **not** prove the combined catalog is free of cross-PR duplicate product or variant records.
 
-PR #565's current head still has no workflow run on its exact SHA. Its base branch, `catalog/maison-alhambra-eu-official-2026-11-08`, is not in the workflow's `pull_request.branches` allowlist; a comment was added to #565 asking for that trigger/validation gap to be addressed.
+PR #565's current head still has no workflow run on its exact SHA. Its base branch, `catalog/lattafa-four-official-products-2026-11-08`, is not in the workflow's `pull_request.branches` allowlist; a comment was added to #565 asking for that trigger/validation gap to be addressed.
 
 PR #568 adds automated regression guards for unique normalized product identities, product/variant IDs, variant tuples, orphan variants and exact duplicate rows within each family. Its catalog validation job passed on the exact PR head. These checks validate the candidate tree in which the workflow runs; they do not magically combine all open branches into one tree. No merge has been performed as part of this audit.
 
