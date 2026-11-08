@@ -13,6 +13,7 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-fragrantica-84-reconciliation-2026-11-08
       - catalog/velixir-official-28-variant-reconciliation-v2-2026-11-08
+      - catalog/maison-asrar-124-identity-108-variant-reconciliation-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
