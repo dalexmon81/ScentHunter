@@ -92,3 +92,17 @@ Lattafa official perfume category exposes current names including Fahad, Khamrah
 - Family registry: synchronized with the canonical identities for these two brands.
 
 Important: the official Lattafa page's pagination is not fully verified, and the Paris Corner 255-item collection was not fully extracted. Do not mark either brand complete based on this increment. Continue page-by-page, capture all results and filter non-perfume products before claiming completion.
+
+
+## Registry integrity reconciliation — 2026-11-08
+
+A full cross-check found 203 canonical catalog identities that were not yet represented in the discovery family registry. These have now been synchronized into their existing `family_id` groups (and one missing family group was created). Final structural checks on this snapshot:
+- 1,031 canonical products
+- 141 variant rows
+- 31 discovery families
+- 0 duplicate product IDs
+- 0 duplicate variant IDs
+- 0 orphan variant rows
+- 0 canonical products missing from the discovery registry
+
+This is an important integrity repair, not proof that the requested brand assortments are complete. The source-coverage audit remains open.
