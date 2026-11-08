@@ -19,10 +19,11 @@
     "games_of_spades_unverified_registry_entry": "Jack remains in the family registry as a discovery-only/historical candidate, but is not imported into the canonical product seed because no current official Jo Milano Paris listing or product detail page was verified in this pass.",
     "pending_candidates": "Bujairami Hectic and Arabiyat Prestige Mahd Al Dhahab Extrait remain discovery candidates only. Their retailer evidence is recorded, but neither was imported into the canonical seed because official brand-level identity evidence and/or concentration modeling is unresolved.",
     "bujairami_hectic": "Hectic is now admitted as a source-verified canonical name from the official Bujairami product page. Concentration, volume and GTIN are not imported because the official detail page omits them and retailer sources conflict.",
-    "mahd_al_dhahab_extrait": "Confirmed as a distinct canonical fragrance identity from the EDP. MyPerfumes Europe official Arabiyat perfumes store product detail identifies Extrait de Parfum 60 ml. Do not merge into EDP identity."
+    "mahd_al_dhahab_extrait": "Confirmed as a distinct canonical fragrance identity from the EDP. MyPerfumes Europe official Arabiyat perfumes store product detail identifies Extrait de Parfum 60 ml. Do not merge into EDP identity.",
+    "arabiyat_prestige_official_store": "The MyPerfumes Europe Arabiyat Prestige collection and individual product pages are used as the primary brand-store source. Product identity rows are separate from explicit size/concentration variants; no price or retailer stock is imported."
   },
   "summary": {
-    "product_name_candidates": 173,
+    "product_name_candidates": 193,
     "maison_asrar": 116,
     "maison_asrar_royal_collection": 9,
     "aromatix_x_french_avenue": 10,
@@ -43,7 +44,8 @@
     "games_of_spades_manufacturer": "Jo Milano Paris",
     "aromatix_line_candidates": 10,
     "french_avenue_official_detail_additions": 3,
-    "games_of_spades_official_listed": 29
+    "games_of_spades_official_listed": 29,
+    "arabiyat_prestige_official_store_additions": 20
   },
   "sources": [
     {
@@ -85,6 +87,11 @@
       "name": "Jo Milano Paris official product pages",
       "url": "https://jomilanoparis.com/products/",
       "supports": "Individual official product detail pages confirm named products and, where shown, product attributes. Coffret and gift-set records are excluded from standalone fragrance identities."
+    },
+    {
+      "name": "MyPerfumes Europe official Arabiyat Prestige collection",
+      "url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige",
+      "supports": "Official-store collection listing for Arabiyat Prestige fragrances with product detail links, sizes and concentrations."
     }
   ],
   "product_candidates": [
@@ -1719,6 +1726,186 @@
       "evidence_source": "Jo Milano Paris official all-products collection",
       "evidence_level": "official_collection_listing",
       "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Mahd Al Dhahab",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/mahd-al-dhahab",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Nyla Sherbet",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/nyla-sherbet",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 80 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Fahad Regal",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/fahad-regal",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Aristo",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/aristo",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Bóis Blanc",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/bois-blanc",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Cherry Musk",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cherry-musk",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Marasi For Her",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-her",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Marasi For Him",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-him",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Swar Serpentine",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-serpentine",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Swar D'Amour",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-damour",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Cursed",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cursed",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Ramad Oriental",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/ramad-oriental",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Kohl Opulence",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-opulence",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Kohl Luminous",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-luminous",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Gelato Raspberry Ripple",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/raspberry-ripple",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Gelato Black Current Lolly",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "La Di Da For Her",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-her",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "La Di Da For Him",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-him",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Uhud",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/uhud",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Safa",
+      "collection": "Arabiyat Prestige",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/safa",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
     }
   ],
   "remaining_harvest": {
