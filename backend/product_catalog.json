@@ -12052,6 +12052,22 @@
       "source_url": "https://assafperfumes.eu/perfumes/"
     },
     {
+      "product_id": "SH-BUJAIRAMI-10-10",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "10/10",
+      "name": "10/10",
+      "family_id": "bujairami_catalog",
+      "family_name": "10/10",
+      "aliases": [
+        "10/10",
+        "Bujairami 10/10"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-2000",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12066,6 +12082,86 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-22",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "22",
+      "name": "22",
+      "family_id": "bujairami_catalog",
+      "family_name": "22",
+      "aliases": [
+        "22",
+        "Bujairami 22"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-25",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "25",
+      "name": "25",
+      "family_id": "bujairami_catalog",
+      "family_name": "25",
+      "aliases": [
+        "25",
+        "Bujairami 25"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-26",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "26",
+      "name": "26",
+      "family_id": "bujairami_catalog",
+      "family_name": "26",
+      "aliases": [
+        "26",
+        "Bujairami 26"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-29",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "29",
+      "name": "29",
+      "family_id": "bujairami_catalog",
+      "family_name": "29",
+      "aliases": [
+        "29",
+        "Bujairami 29"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-33",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "33",
+      "name": "33",
+      "family_id": "bujairami_catalog",
+      "family_name": "33",
+      "aliases": [
+        "33",
+        "Bujairami 33"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-370cb2f2",
@@ -12083,6 +12179,22 @@
       "source_url": "https://bujairami.eu/shop/"
     },
     {
+      "product_id": "SH-BUJAIRAMI-50-SHADES",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "50 Shades",
+      "name": "50 Shades",
+      "family_id": "bujairami_catalog",
+      "family_name": "50 Shades",
+      "aliases": [
+        "50 Shades",
+        "Bujairami 50 Shades"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-6110beb5",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12096,6 +12208,38 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.eu/shop/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-A-LA-CARTE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "A La Carte",
+      "name": "A La Carte",
+      "family_id": "bujairami_catalog",
+      "family_name": "A La Carte",
+      "aliases": [
+        "A La Carte",
+        "Bujairami A La Carte"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ABOVE-THE-CLOUDS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Above The Clouds",
+      "name": "Above The Clouds",
+      "family_id": "bujairami_catalog",
+      "family_name": "Above The Clouds",
+      "aliases": [
+        "Above The Clouds",
+        "Bujairami Above The Clouds"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-ABSOLUTE-POWER",
@@ -12114,6 +12258,22 @@
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
     },
     {
+      "product_id": "SH-BUJAIRAMI-ABYSS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Abyss",
+      "name": "Abyss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Abyss",
+      "aliases": [
+        "Abyss",
+        "Bujairami Abyss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-ACE",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12128,6 +12288,182 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ADDICTION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Addiction",
+      "name": "Addiction",
+      "family_id": "bujairami_catalog",
+      "family_name": "Addiction",
+      "aliases": [
+        "Addiction",
+        "Bujairami Addiction"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ADORE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Adore",
+      "name": "Adore",
+      "family_id": "bujairami_catalog",
+      "family_name": "Adore",
+      "aliases": [
+        "Adore",
+        "Bujairami Adore"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ADVERSARY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Adversary",
+      "name": "Adversary",
+      "family_id": "bujairami_catalog",
+      "family_name": "Adversary",
+      "aliases": [
+        "Adversary",
+        "Bujairami Adversary"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AETHERA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aethera",
+      "name": "Aethera",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aethera",
+      "aliases": [
+        "Aethera",
+        "Bujairami Aethera"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AFFECTIONATE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Affectionate",
+      "name": "Affectionate",
+      "family_id": "bujairami_catalog",
+      "family_name": "Affectionate",
+      "aliases": [
+        "Affectionate",
+        "Bujairami Affectionate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AFFINITY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Affinity",
+      "name": "Affinity",
+      "family_id": "bujairami_catalog",
+      "family_name": "Affinity",
+      "aliases": [
+        "Affinity",
+        "Bujairami Affinity"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AFTER-DARK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "After Dark",
+      "name": "After Dark",
+      "family_id": "bujairami_catalog",
+      "family_name": "After Dark",
+      "aliases": [
+        "After Dark",
+        "Bujairami After Dark"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AFTER-LIGHT",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "After Light",
+      "name": "After Light",
+      "family_id": "bujairami_catalog",
+      "family_name": "After Light",
+      "aliases": [
+        "After Light",
+        "Bujairami After Light"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AFTERGLOW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Afterglow",
+      "name": "Afterglow",
+      "family_id": "bujairami_catalog",
+      "family_name": "Afterglow",
+      "aliases": [
+        "Afterglow",
+        "Bujairami Afterglow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AFTERNOON-BLISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Afternoon Bliss",
+      "name": "Afternoon Bliss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Afternoon Bliss",
+      "aliases": [
+        "Afternoon Bliss",
+        "Bujairami Afternoon Bliss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AFTERSHOCK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aftershock",
+      "name": "Aftershock",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aftershock",
+      "aliases": [
+        "Aftershock",
+        "Bujairami Aftershock"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-AGHA",
@@ -12162,6 +12498,278 @@
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
     },
     {
+      "product_id": "SH-BUJAIRAMI-AIR-AFFAIR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Air Affair",
+      "name": "Air Affair",
+      "family_id": "bujairami_catalog",
+      "family_name": "Air Affair",
+      "aliases": [
+        "Air Affair",
+        "Bujairami Air Affair"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AIRBORNE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Airborne",
+      "name": "Airborne",
+      "family_id": "bujairami_catalog",
+      "family_name": "Airborne",
+      "aliases": [
+        "Airborne",
+        "Bujairami Airborne"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AIRY-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Airy Oud",
+      "name": "Airy Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Airy Oud",
+      "aliases": [
+        "Airy Oud",
+        "Bujairami Airy Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AL-WAAD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Al Waad",
+      "name": "Al Waad",
+      "family_id": "bujairami_catalog",
+      "family_name": "Al Waad",
+      "aliases": [
+        "Al Waad",
+        "Bujairami Al Waad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ALPHA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Alpha",
+      "name": "Alpha",
+      "family_id": "bujairami_catalog",
+      "family_name": "Alpha",
+      "aliases": [
+        "Alpha",
+        "Bujairami Alpha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ALTITUDE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Altitude",
+      "name": "Altitude",
+      "family_id": "bujairami_catalog",
+      "family_name": "Altitude",
+      "aliases": [
+        "Altitude",
+        "Bujairami Altitude"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMARETTO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amaretto",
+      "name": "Amaretto",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amaretto",
+      "aliases": [
+        "Amaretto",
+        "Bujairami Amaretto"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMAZING",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amazing",
+      "name": "Amazing",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amazing",
+      "aliases": [
+        "Amazing",
+        "Bujairami Amazing"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMAZING-NIGHT",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amazing Night",
+      "name": "Amazing Night",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amazing Night",
+      "aliases": [
+        "Amazing Night",
+        "Bujairami Amazing Night"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMBER-ECLIPSE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Eclipse",
+      "name": "Amber Eclipse",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Eclipse",
+      "aliases": [
+        "Amber Eclipse",
+        "Bujairami Amber Eclipse"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMBER-FLOWERET",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Floweret",
+      "name": "Amber Floweret",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Floweret",
+      "aliases": [
+        "Amber Floweret",
+        "Bujairami Amber Floweret"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMBER-GROVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Grove",
+      "name": "Amber Grove",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Grove",
+      "aliases": [
+        "Amber Grove",
+        "Bujairami Amber Grove"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMBER-HILLS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Hills",
+      "name": "Amber Hills",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Hills",
+      "aliases": [
+        "Amber Hills",
+        "Bujairami Amber Hills"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMIRA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amira",
+      "name": "Amira",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amira",
+      "aliases": [
+        "Amira",
+        "Bujairami Amira"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMOURA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amoura",
+      "name": "Amoura",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amoura",
+      "aliases": [
+        "Amoura",
+        "Bujairami Amoura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AMPLIFY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amplify",
+      "name": "Amplify",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amplify",
+      "aliases": [
+        "Amplify",
+        "Bujairami Amplify"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AOUD-MINERAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aoud Mineral",
+      "name": "Aoud Mineral",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aoud Mineral",
+      "aliases": [
+        "Aoud Mineral",
+        "Bujairami Aoud Mineral"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-APEX",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12194,6 +12802,182 @@
       "source_evidence_url": "https://bujairami.com.au/products/apple-crumble-bujairami-original"
     },
     {
+      "product_id": "SH-BUJAIRAMI-AQUA-DEW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Dew",
+      "name": "Aqua Dew",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Dew",
+      "aliases": [
+        "Aqua Dew",
+        "Bujairami Aqua Dew"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AQUA-INFINITE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Infinite",
+      "name": "Aqua Infinite",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Infinite",
+      "aliases": [
+        "Aqua Infinite",
+        "Bujairami Aqua Infinite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AQUA-PREVAIL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Prevail",
+      "name": "Aqua Prevail",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Prevail",
+      "aliases": [
+        "Aqua Prevail",
+        "Bujairami Aqua Prevail"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AQUA-PURE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Pure",
+      "name": "Aqua Pure",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Pure",
+      "aliases": [
+        "Aqua Pure",
+        "Bujairami Aqua Pure"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AQUA-RUSH",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Rush",
+      "name": "Aqua Rush",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Rush",
+      "aliases": [
+        "Aqua Rush",
+        "Bujairami Aqua Rush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AQUA-SURGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Surge",
+      "name": "Aqua Surge",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Surge",
+      "aliases": [
+        "Aqua Surge",
+        "Bujairami Aqua Surge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AQUAFINA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aquafina",
+      "name": "Aquafina",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aquafina",
+      "aliases": [
+        "Aquafina",
+        "Bujairami Aquafina"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AQUAMAN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aquaman",
+      "name": "Aquaman",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aquaman",
+      "aliases": [
+        "Aquaman",
+        "Bujairami Aquaman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ARABIAN-BREW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arabian Brew",
+      "name": "Arabian Brew",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arabian Brew",
+      "aliases": [
+        "Arabian Brew",
+        "Bujairami Arabian Brew"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ARABIAN-GOLD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arabian Gold",
+      "name": "Arabian Gold",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arabian Gold",
+      "aliases": [
+        "Arabian Gold",
+        "Bujairami Arabian Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ARABIAN-LOVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arabian Love",
+      "name": "Arabian Love",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arabian Love",
+      "aliases": [
+        "Arabian Love",
+        "Bujairami Arabian Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-ARABIAN-VALLEY",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12208,6 +12992,150 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ARIZONA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arizona",
+      "name": "Arizona",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arizona",
+      "aliases": [
+        "Arizona",
+        "Bujairami Arizona"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ARTISTIC-LADY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Artistic Lady",
+      "name": "Artistic Lady",
+      "family_id": "bujairami_catalog",
+      "family_name": "Artistic Lady",
+      "aliases": [
+        "Artistic Lady",
+        "Bujairami Artistic Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ASCENSION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Ascension",
+      "name": "Ascension",
+      "family_id": "bujairami_catalog",
+      "family_name": "Ascension",
+      "aliases": [
+        "Ascension",
+        "Bujairami Ascension"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ASFAHAN-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Asfahan Oud",
+      "name": "Asfahan Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Asfahan Oud",
+      "aliases": [
+        "Asfahan Oud",
+        "Bujairami Asfahan Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ASSASSIN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Assassin",
+      "name": "Assassin",
+      "family_id": "bujairami_catalog",
+      "family_name": "Assassin",
+      "aliases": [
+        "Assassin",
+        "Bujairami Assassin"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ASTRAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Astral",
+      "name": "Astral",
+      "family_id": "bujairami_catalog",
+      "family_name": "Astral",
+      "aliases": [
+        "Astral",
+        "Bujairami Astral"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ASTRO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Astro",
+      "name": "Astro",
+      "family_id": "bujairami_catalog",
+      "family_name": "Astro",
+      "aliases": [
+        "Astro",
+        "Bujairami Astro"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AT-LAST",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "At Last",
+      "name": "At Last",
+      "family_id": "bujairami_catalog",
+      "family_name": "At Last",
+      "aliases": [
+        "At Last",
+        "Bujairami At Last"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AURORA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aurora",
+      "name": "Aurora",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aurora",
+      "aliases": [
+        "Aurora",
+        "Bujairami Aurora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-AUSSIE-GLOW",
@@ -12226,6 +13154,22 @@
       "source_evidence_url": "https://bujairami.com.au/products/aussie-glow-bujairami-original-niche"
     },
     {
+      "product_id": "SH-BUJAIRAMI-AUSTRALIAN-TONKA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Australian Tonka",
+      "name": "Australian Tonka",
+      "family_id": "bujairami_catalog",
+      "family_name": "Australian Tonka",
+      "aliases": [
+        "Australian Tonka",
+        "Bujairami Australian Tonka"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-AUSTRALIAN-WATERMELON",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12240,6 +13184,278 @@
       "identity_status": "source_verified_name",
       "source_url": "https://bujairami.com.au/products/australian-watermelon-bujairami-original-creation",
       "source_evidence_url": "https://bujairami.com.au/products/australian-watermelon-bujairami-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BACCARAT-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Baccarat Oud",
+      "name": "Baccarat Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Baccarat Oud",
+      "aliases": [
+        "Baccarat Oud",
+        "Bujairami Baccarat Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BACKSTAGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Backstage",
+      "name": "Backstage",
+      "family_id": "bujairami_catalog",
+      "family_name": "Backstage",
+      "aliases": [
+        "Backstage",
+        "Bujairami Backstage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BAD-N-BOUJEE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad N Boujee",
+      "name": "Bad N Boujee",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad N Boujee",
+      "aliases": [
+        "Bad N Boujee",
+        "Bujairami Bad N Boujee"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BAD-OBSESSION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad Obsession",
+      "name": "Bad Obsession",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad Obsession",
+      "aliases": [
+        "Bad Obsession",
+        "Bujairami Bad Obsession"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BAD-ROMANCE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad Romance",
+      "name": "Bad Romance",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad Romance",
+      "aliases": [
+        "Bad Romance",
+        "Bujairami Bad Romance"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BADDIE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Baddie",
+      "name": "Baddie",
+      "family_id": "bujairami_catalog",
+      "family_name": "Baddie",
+      "aliases": [
+        "Baddie",
+        "Bujairami Baddie"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BAHEBAK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bahebak",
+      "name": "Bahebak",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bahebak",
+      "aliases": [
+        "Bahebak",
+        "Bujairami Bahebak"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BAKED-BLISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Baked Bliss",
+      "name": "Baked Bliss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Baked Bliss",
+      "aliases": [
+        "Baked Bliss",
+        "Bujairami Baked Bliss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BALLERINA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Ballerina",
+      "name": "Ballerina",
+      "family_id": "bujairami_catalog",
+      "family_name": "Ballerina",
+      "aliases": [
+        "Ballerina",
+        "Bujairami Ballerina"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BANANA-BOOZ",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Banana Booz",
+      "name": "Banana Booz",
+      "family_id": "bujairami_catalog",
+      "family_name": "Banana Booz",
+      "aliases": [
+        "Banana Booz",
+        "Bujairami Banana Booz"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BANGER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Banger",
+      "name": "Banger",
+      "family_id": "bujairami_catalog",
+      "family_name": "Banger",
+      "aliases": [
+        "Banger",
+        "Bujairami Banger"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BARE-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bare Oud",
+      "name": "Bare Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bare Oud",
+      "aliases": [
+        "Bare Oud",
+        "Bujairami Bare Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BARREL-BREEZE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Barrel Breeze",
+      "name": "Barrel Breeze",
+      "family_id": "bujairami_catalog",
+      "family_name": "Barrel Breeze",
+      "aliases": [
+        "Barrel Breeze",
+        "Bujairami Barrel Breeze"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BE-HAPPY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Be Happy",
+      "name": "Be Happy",
+      "family_id": "bujairami_catalog",
+      "family_name": "Be Happy",
+      "aliases": [
+        "Be Happy",
+        "Bujairami Be Happy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BEACH-VIBE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Beach Vibe",
+      "name": "Beach Vibe",
+      "family_id": "bujairami_catalog",
+      "family_name": "Beach Vibe",
+      "aliases": [
+        "Beach Vibe",
+        "Bujairami Beach Vibe"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BEAST",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Beast",
+      "name": "Beast",
+      "family_id": "bujairami_catalog",
+      "family_name": "Beast",
+      "aliases": [
+        "Beast",
+        "Bujairami Beast"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BEASTMODE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Beastmode",
+      "name": "Beastmode",
+      "family_id": "bujairami_catalog",
+      "family_name": "Beastmode",
+      "aliases": [
+        "Beastmode",
+        "Bujairami Beastmode"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-BEAUTIFUL-LADY",
@@ -12258,6 +13474,534 @@
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
     },
     {
+      "product_id": "SH-BUJAIRAMI-BEAUTY-AND-THE-BEAST",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Beauty and the Beast",
+      "name": "Beauty and the Beast",
+      "family_id": "bujairami_catalog",
+      "family_name": "Beauty and the Beast",
+      "aliases": [
+        "Beauty and the Beast",
+        "Bujairami Beauty and the Beast"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BEE-STING",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bee Sting",
+      "name": "Bee Sting",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bee Sting",
+      "aliases": [
+        "Bee Sting",
+        "Bujairami Bee Sting"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BEFORE-SUNRISE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Before Sunrise",
+      "name": "Before Sunrise",
+      "family_id": "bujairami_catalog",
+      "family_name": "Before Sunrise",
+      "aliases": [
+        "Before Sunrise",
+        "Bujairami Before Sunrise"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BELISSIMO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Belissimo",
+      "name": "Belissimo",
+      "family_id": "bujairami_catalog",
+      "family_name": "Belissimo",
+      "aliases": [
+        "Belissimo",
+        "Bujairami Belissimo"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BELLE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Belle",
+      "name": "Belle",
+      "family_id": "bujairami_catalog",
+      "family_name": "Belle",
+      "aliases": [
+        "Belle",
+        "Bujairami Belle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BENZO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Benzo",
+      "name": "Benzo",
+      "family_id": "bujairami_catalog",
+      "family_name": "Benzo",
+      "aliases": [
+        "Benzo",
+        "Bujairami Benzo"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BIG-LOVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Big Love",
+      "name": "Big Love",
+      "family_id": "bujairami_catalog",
+      "family_name": "Big Love",
+      "aliases": [
+        "Big Love",
+        "Bujairami Big Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BILLION-DOLLAR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Billion Dollar",
+      "name": "Billion Dollar",
+      "family_id": "bujairami_catalog",
+      "family_name": "Billion Dollar",
+      "aliases": [
+        "Billion Dollar",
+        "Bujairami Billion Dollar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BILLIONAIRES-CLUB",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Billionaires Club",
+      "name": "Billionaires Club",
+      "family_id": "bujairami_catalog",
+      "family_name": "Billionaires Club",
+      "aliases": [
+        "Billionaires Club",
+        "Bujairami Billionaires Club"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BILLIONAIRES-CLUB-INTENSE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Billionaires Club Intense",
+      "name": "Billionaires Club Intense",
+      "family_id": "bujairami_catalog",
+      "family_name": "Billionaires Club Intense",
+      "aliases": [
+        "Billionaires Club Intense",
+        "Bujairami Billionaires Club Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BITTER-SWEET",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bitter Sweet",
+      "name": "Bitter Sweet",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bitter Sweet",
+      "aliases": [
+        "Bitter Sweet",
+        "Bujairami Bitter Sweet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLACK-EMPIRE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Black Empire",
+      "name": "Black Empire",
+      "family_id": "bujairami_catalog",
+      "family_name": "Black Empire",
+      "aliases": [
+        "Black Empire",
+        "Bujairami Black Empire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLACK-RESERVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Black Reserve",
+      "name": "Black Reserve",
+      "family_id": "bujairami_catalog",
+      "family_name": "Black Reserve",
+      "aliases": [
+        "Black Reserve",
+        "Bujairami Black Reserve"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLACK-TIE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Black Tie",
+      "name": "Black Tie",
+      "family_id": "bujairami_catalog",
+      "family_name": "Black Tie",
+      "aliases": [
+        "Black Tie",
+        "Bujairami Black Tie"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLACKJACK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blackjack",
+      "name": "Blackjack",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blackjack",
+      "aliases": [
+        "Blackjack",
+        "Bujairami Blackjack"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLANC-BLOOM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blanc Bloom",
+      "name": "Blanc Bloom",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blanc Bloom",
+      "aliases": [
+        "Blanc Bloom",
+        "Bujairami Blanc Bloom"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLAZING",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blazing",
+      "name": "Blazing",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blazing",
+      "aliases": [
+        "Blazing",
+        "Bujairami Blazing"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLISSFUL-JULIET",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blissful Juliet",
+      "name": "Blissful Juliet",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blissful Juliet",
+      "aliases": [
+        "Blissful Juliet",
+        "Bujairami Blissful Juliet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLOOD-CHERRY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blood Cherry",
+      "name": "Blood Cherry",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blood Cherry",
+      "aliases": [
+        "Blood Cherry",
+        "Bujairami Blood Cherry"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLOOD-SUEDE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blood Suede",
+      "name": "Blood Suede",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blood Suede",
+      "aliases": [
+        "Blood Suede",
+        "Bujairami Blood Suede"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLOODLINE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bloodline",
+      "name": "Bloodline",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bloodline",
+      "aliases": [
+        "Bloodline",
+        "Bujairami Bloodline"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLOOM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bloom",
+      "name": "Bloom",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bloom",
+      "aliases": [
+        "Bloom",
+        "Bujairami Bloom"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLOSSOM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blossom",
+      "name": "Blossom",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blossom",
+      "aliases": [
+        "Blossom",
+        "Bujairami Blossom"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-CHILL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Chill",
+      "name": "Blue Chill",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Chill",
+      "aliases": [
+        "Blue Chill",
+        "Bujairami Blue Chill"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-CITRUS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Citrus",
+      "name": "Blue Citrus",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Citrus",
+      "aliases": [
+        "Blue Citrus",
+        "Bujairami Blue Citrus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-FIRE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Fire",
+      "name": "Blue Fire",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Fire",
+      "aliases": [
+        "Blue Fire",
+        "Bujairami Blue Fire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-HEAT",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Heat",
+      "name": "Blue Heat",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Heat",
+      "aliases": [
+        "Blue Heat",
+        "Bujairami Blue Heat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-KNIGHTS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Knights",
+      "name": "Blue Knights",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Knights",
+      "aliases": [
+        "Blue Knights",
+        "Bujairami Blue Knights"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-NOTE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Note",
+      "name": "Blue Note",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Note",
+      "aliases": [
+        "Blue Note",
+        "Bujairami Blue Note"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-SERENADE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Serenade",
+      "name": "Blue Serenade",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Serenade",
+      "aliases": [
+        "Blue Serenade",
+        "Bujairami Blue Serenade"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-STEEL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Steel",
+      "name": "Blue Steel",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Steel",
+      "aliases": [
+        "Blue Steel",
+        "Bujairami Blue Steel"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-VOYAGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Voyage",
+      "name": "Blue Voyage",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Voyage",
+      "aliases": [
+        "Blue Voyage",
+        "Bujairami Blue Voyage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUE-WATER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blue Water",
+      "name": "Blue Water",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blue Water",
+      "aliases": [
+        "Blue Water",
+        "Bujairami Blue Water"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-BLUSH",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12272,6 +14016,86 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BLUSH-MILK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Blush Milk",
+      "name": "Blush Milk",
+      "family_id": "bujairami_catalog",
+      "family_name": "Blush Milk",
+      "aliases": [
+        "Blush Milk",
+        "Bujairami Blush Milk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOHEMIEN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bohemien",
+      "name": "Bohemien",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bohemien",
+      "aliases": [
+        "Bohemien",
+        "Bujairami Bohemien"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOMBSHELL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bombshell",
+      "name": "Bombshell",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bombshell",
+      "aliases": [
+        "Bombshell",
+        "Bujairami Bombshell"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BONFIRE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bonfire",
+      "name": "Bonfire",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bonfire",
+      "aliases": [
+        "Bonfire",
+        "Bujairami Bonfire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOOZ",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Booz",
+      "name": "Booz",
+      "family_id": "bujairami_catalog",
+      "family_name": "Booz",
+      "aliases": [
+        "Booz",
+        "Bujairami Booz"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-BOOZ-EXTREME",
@@ -12290,6 +14114,38 @@
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
     },
     {
+      "product_id": "SH-BUJAIRAMI-BORN-NOMAD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Born Nomad",
+      "name": "Born Nomad",
+      "family_id": "bujairami_catalog",
+      "family_name": "Born Nomad",
+      "aliases": [
+        "Born Nomad",
+        "Bujairami Born Nomad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOSS-LADY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Boss Lady",
+      "name": "Boss Lady",
+      "family_id": "bujairami_catalog",
+      "family_name": "Boss Lady",
+      "aliases": [
+        "Boss Lady",
+        "Bujairami Boss Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-BOSS-LIFE",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12306,6 +14162,86 @@
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
     },
     {
+      "product_id": "SH-BUJAIRAMI-BOSS-LIFE-EXTREME",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Boss Life Extreme",
+      "name": "Boss Life Extreme",
+      "family_id": "bujairami_catalog",
+      "family_name": "Boss Life Extreme",
+      "aliases": [
+        "Boss Life Extreme",
+        "Bujairami Boss Life Extreme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOSSMAN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bossman",
+      "name": "Bossman",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bossman",
+      "aliases": [
+        "Bossman",
+        "Bujairami Bossman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOTTLED-ISLAND",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bottled Island",
+      "name": "Bottled Island",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bottled Island",
+      "aliases": [
+        "Bottled Island",
+        "Bujairami Bottled Island"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOTTLED-PARADISE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bottled Paradise",
+      "name": "Bottled Paradise",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bottled Paradise",
+      "aliases": [
+        "Bottled Paradise",
+        "Bujairami Bottled Paradise"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOTTLED-RED-CITY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bottled Red City",
+      "name": "Bottled Red City",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bottled Red City",
+      "aliases": [
+        "Bottled Red City",
+        "Bujairami Bottled Red City"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-BOUJEE",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12320,6 +14256,294 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOUJEE-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Boujee Oud",
+      "name": "Boujee Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Boujee Oud",
+      "aliases": [
+        "Boujee Oud",
+        "Bujairami Boujee Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOUNDLESS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Boundless",
+      "name": "Boundless",
+      "family_id": "bujairami_catalog",
+      "family_name": "Boundless",
+      "aliases": [
+        "Boundless",
+        "Bujairami Boundless"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BRAVO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bravo",
+      "name": "Bravo",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bravo",
+      "aliases": [
+        "Bravo",
+        "Bujairami Bravo"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BREATHLESS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Breathless",
+      "name": "Breathless",
+      "family_id": "bujairami_catalog",
+      "family_name": "Breathless",
+      "aliases": [
+        "Breathless",
+        "Bujairami Breathless"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BREEZY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Breezy",
+      "name": "Breezy",
+      "family_id": "bujairami_catalog",
+      "family_name": "Breezy",
+      "aliases": [
+        "Breezy",
+        "Bujairami Breezy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BRIGHT-ESSENCE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bright Essence",
+      "name": "Bright Essence",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bright Essence",
+      "aliases": [
+        "Bright Essence",
+        "Bujairami Bright Essence"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BRUMBIE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Brumbie",
+      "name": "Brumbie",
+      "family_id": "bujairami_catalog",
+      "family_name": "Brumbie",
+      "aliases": [
+        "Brumbie",
+        "Bujairami Brumbie"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BURN-SLOW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Burn Slow",
+      "name": "Burn Slow",
+      "family_id": "bujairami_catalog",
+      "family_name": "Burn Slow",
+      "aliases": [
+        "Burn Slow",
+        "Bujairami Burn Slow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BURNING-AMBITION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Burning Ambition",
+      "name": "Burning Ambition",
+      "family_id": "bujairami_catalog",
+      "family_name": "Burning Ambition",
+      "aliases": [
+        "Burning Ambition",
+        "Bujairami Burning Ambition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BURNING-LOVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Burning Love",
+      "name": "Burning Love",
+      "family_id": "bujairami_catalog",
+      "family_name": "Burning Love",
+      "aliases": [
+        "Burning Love",
+        "Bujairami Burning Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BURNT-SUGAR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Burnt Sugar",
+      "name": "Burnt Sugar",
+      "family_id": "bujairami_catalog",
+      "family_name": "Burnt Sugar",
+      "aliases": [
+        "Burnt Sugar",
+        "Bujairami Burnt Sugar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BUTTER-ME-UP",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Butter Me Up",
+      "name": "Butter Me Up",
+      "family_id": "bujairami_catalog",
+      "family_name": "Butter Me Up",
+      "aliases": [
+        "Butter Me Up",
+        "Bujairami Butter Me Up"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BUZZIN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Buzzin",
+      "name": "Buzzin",
+      "family_id": "bujairami_catalog",
+      "family_name": "Buzzin",
+      "aliases": [
+        "Buzzin",
+        "Bujairami Buzzin"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CAFE-CREME",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cafe Creme",
+      "name": "Cafe Creme",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cafe Creme",
+      "aliases": [
+        "Cafe Creme",
+        "Bujairami Cafe Creme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CAFFE-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Caffe OUD",
+      "name": "Caffe OUD",
+      "family_id": "bujairami_catalog",
+      "family_name": "Caffe OUD",
+      "aliases": [
+        "Caffe OUD",
+        "Bujairami Caffe OUD"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CALABRIAN-SUN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Calabrian Sun",
+      "name": "Calabrian Sun",
+      "family_id": "bujairami_catalog",
+      "family_name": "Calabrian Sun",
+      "aliases": [
+        "Calabrian Sun",
+        "Bujairami Calabrian Sun"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CALABRIAN-WEAR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Calabrian Wear",
+      "name": "Calabrian Wear",
+      "family_id": "bujairami_catalog",
+      "family_name": "Calabrian Wear",
+      "aliases": [
+        "Calabrian Wear",
+        "Bujairami Calabrian Wear"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CANDLEWOOD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Candlewood",
+      "name": "Candlewood",
+      "family_id": "bujairami_catalog",
+      "family_name": "Candlewood",
+      "aliases": [
+        "Candlewood",
+        "Bujairami Candlewood"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-CANDY-CAROUSEL",
@@ -12354,6 +14578,150 @@
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
     },
     {
+      "product_id": "SH-BUJAIRAMI-CANDYLAND",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Candyland",
+      "name": "Candyland",
+      "family_id": "bujairami_catalog",
+      "family_name": "Candyland",
+      "aliases": [
+        "Candyland",
+        "Bujairami Candyland"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CAPTIVATING",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Captivating",
+      "name": "Captivating",
+      "family_id": "bujairami_catalog",
+      "family_name": "Captivating",
+      "aliases": [
+        "Captivating",
+        "Bujairami Captivating"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CARAMEL-DRIFT",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Caramel Drift",
+      "name": "Caramel Drift",
+      "family_id": "bujairami_catalog",
+      "family_name": "Caramel Drift",
+      "aliases": [
+        "Caramel Drift",
+        "Bujairami Caramel Drift"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CARAMELLE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Caramelle",
+      "name": "Caramelle",
+      "family_id": "bujairami_catalog",
+      "family_name": "Caramelle",
+      "aliases": [
+        "Caramelle",
+        "Bujairami Caramelle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CARNIVAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Carnival",
+      "name": "Carnival",
+      "family_id": "bujairami_catalog",
+      "family_name": "Carnival",
+      "aliases": [
+        "Carnival",
+        "Bujairami Carnival"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CARTEL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cartel",
+      "name": "Cartel",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cartel",
+      "aliases": [
+        "Cartel",
+        "Bujairami Cartel"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CASABLANCA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Casablanca",
+      "name": "Casablanca",
+      "family_id": "bujairami_catalog",
+      "family_name": "Casablanca",
+      "aliases": [
+        "Casablanca",
+        "Bujairami Casablanca"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CASANOVA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Casanova",
+      "name": "Casanova",
+      "family_id": "bujairami_catalog",
+      "family_name": "Casanova",
+      "aliases": [
+        "Casanova",
+        "Bujairami Casanova"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CASCADE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cascade",
+      "name": "Cascade",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cascade",
+      "aliases": [
+        "Cascade",
+        "Bujairami Cascade"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-CATCH-ME-AT-SUNSET",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12368,6 +14736,166 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CAVALIER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cavalier",
+      "name": "Cavalier",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cavalier",
+      "aliases": [
+        "Cavalier",
+        "Bujairami Cavalier"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CENTRE-STAGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Centre Stage",
+      "name": "Centre Stage",
+      "family_id": "bujairami_catalog",
+      "family_name": "Centre Stage",
+      "aliases": [
+        "Centre Stage",
+        "Bujairami Centre Stage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHAI-TIME",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Chai Time",
+      "name": "Chai Time",
+      "family_id": "bujairami_catalog",
+      "family_name": "Chai Time",
+      "aliases": [
+        "Chai Time",
+        "Bujairami Chai Time"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHAMBER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Chamber",
+      "name": "Chamber",
+      "family_id": "bujairami_catalog",
+      "family_name": "Chamber",
+      "aliases": [
+        "Chamber",
+        "Bujairami Chamber"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHARMED",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Charmed",
+      "name": "Charmed",
+      "family_id": "bujairami_catalog",
+      "family_name": "Charmed",
+      "aliases": [
+        "Charmed",
+        "Bujairami Charmed"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHASING-SUNSETS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Chasing Sunsets",
+      "name": "Chasing Sunsets",
+      "family_id": "bujairami_catalog",
+      "family_name": "Chasing Sunsets",
+      "aliases": [
+        "Chasing Sunsets",
+        "Bujairami Chasing Sunsets"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHECK-MATE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Check Mate",
+      "name": "Check Mate",
+      "family_id": "bujairami_catalog",
+      "family_name": "Check Mate",
+      "aliases": [
+        "Check Mate",
+        "Bujairami Check Mate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHEEKY-DRIZZLE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cheeky Drizzle",
+      "name": "Cheeky Drizzle",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cheeky Drizzle",
+      "aliases": [
+        "Cheeky Drizzle",
+        "Bujairami Cheeky Drizzle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHEEKY-PASH",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cheeky Pash",
+      "name": "Cheeky Pash",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cheeky Pash",
+      "aliases": [
+        "Cheeky Pash",
+        "Bujairami Cheeky Pash"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHERRY-BERRY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cherry Berry",
+      "name": "Cherry Berry",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cherry Berry",
+      "aliases": [
+        "Cherry Berry",
+        "Bujairami Cherry Berry"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-CHERRY-CHERRY-LADY",
@@ -12387,6 +14915,86 @@
       "concentration": "Extrait de Parfum"
     },
     {
+      "product_id": "SH-BUJAIRAMI-CHERRY-FEVER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cherry Fever",
+      "name": "Cherry Fever",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cherry Fever",
+      "aliases": [
+        "Cherry Fever",
+        "Bujairami Cherry Fever"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHERRY-LIGHTNING",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cherry Lightning",
+      "name": "Cherry Lightning",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cherry Lightning",
+      "aliases": [
+        "Cherry Lightning",
+        "Bujairami Cherry Lightning"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHERRY-REIGN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cherry Reign",
+      "name": "Cherry Reign",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cherry Reign",
+      "aliases": [
+        "Cherry Reign",
+        "Bujairami Cherry Reign"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHERRY-RIOT",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cherry Riot",
+      "name": "Cherry Riot",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cherry Riot",
+      "aliases": [
+        "Cherry Riot",
+        "Bujairami Cherry Riot"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHIC-STAR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Chic Star",
+      "name": "Chic Star",
+      "family_id": "bujairami_catalog",
+      "family_name": "Chic Star",
+      "aliases": [
+        "Chic Star",
+        "Bujairami Chic Star"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-CHIC-WOOD",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12401,6 +15009,54 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHOCO-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Choco Oud",
+      "name": "Choco Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Choco Oud",
+      "aliases": [
+        "Choco Oud",
+        "Bujairami Choco Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHOSEN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Chosen",
+      "name": "Chosen",
+      "family_id": "bujairami_catalog",
+      "family_name": "Chosen",
+      "aliases": [
+        "Chosen",
+        "Bujairami Chosen"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHOSEN-ONE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Chosen One",
+      "name": "Chosen One",
+      "family_id": "bujairami_catalog",
+      "family_name": "Chosen One",
+      "aliases": [
+        "Chosen One",
+        "Bujairami Chosen One"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-CHROMA",
@@ -12419,6 +15075,134 @@
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
     },
     {
+      "product_id": "SH-BUJAIRAMI-CHUBBY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Chubby",
+      "name": "Chubby",
+      "family_id": "bujairami_catalog",
+      "family_name": "Chubby",
+      "aliases": [
+        "Chubby",
+        "Bujairami Chubby"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CINDER-KISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cinder Kiss",
+      "name": "Cinder Kiss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cinder Kiss",
+      "aliases": [
+        "Cinder Kiss",
+        "Bujairami Cinder Kiss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CINNAMAN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "CinnaMan",
+      "name": "CinnaMan",
+      "family_id": "bujairami_catalog",
+      "family_name": "CinnaMan",
+      "aliases": [
+        "CinnaMan",
+        "Bujairami CinnaMan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CITRUS-BREEZE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Citrus Breeze",
+      "name": "Citrus Breeze",
+      "family_id": "bujairami_catalog",
+      "family_name": "Citrus Breeze",
+      "aliases": [
+        "Citrus Breeze",
+        "Bujairami Citrus Breeze"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CITRUS-FEVER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Citrus Fever",
+      "name": "Citrus Fever",
+      "family_id": "bujairami_catalog",
+      "family_name": "Citrus Fever",
+      "aliases": [
+        "Citrus Fever",
+        "Bujairami Citrus Fever"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CITRUS-MIRAGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Citrus Mirage",
+      "name": "Citrus Mirage",
+      "family_id": "bujairami_catalog",
+      "family_name": "Citrus Mirage",
+      "aliases": [
+        "Citrus Mirage",
+        "Bujairami Citrus Mirage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CITRUS-SPARK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Citrus Spark",
+      "name": "Citrus Spark",
+      "family_id": "bujairami_catalog",
+      "family_name": "Citrus Spark",
+      "aliases": [
+        "Citrus Spark",
+        "Bujairami Citrus Spark"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CITRUSA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Citrusa",
+      "name": "Citrusa",
+      "family_id": "bujairami_catalog",
+      "family_name": "Citrusa",
+      "aliases": [
+        "Citrusa",
+        "Bujairami Citrusa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-CITY-LIFE",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12433,6 +15217,166 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CLARA-BELLE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Clara Belle",
+      "name": "Clara Belle",
+      "family_id": "bujairami_catalog",
+      "family_name": "Clara Belle",
+      "aliases": [
+        "Clara Belle",
+        "Bujairami Clara Belle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CLASSIC-LIFE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Classic Life",
+      "name": "Classic Life",
+      "family_id": "bujairami_catalog",
+      "family_name": "Classic Life",
+      "aliases": [
+        "Classic Life",
+        "Bujairami Classic Life"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CLASSY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Classy",
+      "name": "Classy",
+      "family_id": "bujairami_catalog",
+      "family_name": "Classy",
+      "aliases": [
+        "Classy",
+        "Bujairami Classy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CLEAN-SLATE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Clean Slate",
+      "name": "Clean Slate",
+      "family_id": "bujairami_catalog",
+      "family_name": "Clean Slate",
+      "aliases": [
+        "Clean Slate",
+        "Bujairami Clean Slate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CLOUD-KISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cloud Kiss",
+      "name": "Cloud Kiss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cloud Kiss",
+      "aliases": [
+        "Cloud Kiss",
+        "Bujairami Cloud Kiss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CLOUD-NINE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cloud Nine",
+      "name": "Cloud Nine",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cloud Nine",
+      "aliases": [
+        "Cloud Nine",
+        "Bujairami Cloud Nine"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CLUBS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Clubs",
+      "name": "Clubs",
+      "family_id": "bujairami_catalog",
+      "family_name": "Clubs",
+      "aliases": [
+        "Clubs",
+        "Bujairami Clubs"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COASTAL-MIST",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Coastal Mist",
+      "name": "Coastal Mist",
+      "family_id": "bujairami_catalog",
+      "family_name": "Coastal Mist",
+      "aliases": [
+        "Coastal Mist",
+        "Bujairami Coastal Mist"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COBRA-KISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cobra Kiss",
+      "name": "Cobra Kiss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cobra Kiss",
+      "aliases": [
+        "Cobra Kiss",
+        "Bujairami Cobra Kiss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COCO-CRAZY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Coco Crazy",
+      "name": "Coco Crazy",
+      "family_id": "bujairami_catalog",
+      "family_name": "Coco Crazy",
+      "aliases": [
+        "Coco Crazy",
+        "Bujairami Coco Crazy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-COCO-DREAM",
@@ -12451,6 +15395,182 @@
       "source_evidence_url": "https://bujairami.com.au/products/coco-dream-original-creation"
     },
     {
+      "product_id": "SH-BUJAIRAMI-COCONARA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Coconara",
+      "name": "Coconara",
+      "family_id": "bujairami_catalog",
+      "family_name": "Coconara",
+      "aliases": [
+        "Coconara",
+        "Bujairami Coconara"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CODEBREAKER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Codebreaker",
+      "name": "Codebreaker",
+      "family_id": "bujairami_catalog",
+      "family_name": "Codebreaker",
+      "aliases": [
+        "Codebreaker",
+        "Bujairami Codebreaker"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COLD-CRUSH",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cold Crush",
+      "name": "Cold Crush",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cold Crush",
+      "aliases": [
+        "Cold Crush",
+        "Bujairami Cold Crush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CONFESSIONS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Confessions",
+      "name": "Confessions",
+      "family_id": "bujairami_catalog",
+      "family_name": "Confessions",
+      "aliases": [
+        "Confessions",
+        "Bujairami Confessions"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CONFESSIONS-ABSOLU",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Confessions Absolu",
+      "name": "Confessions Absolu",
+      "family_id": "bujairami_catalog",
+      "family_name": "Confessions Absolu",
+      "aliases": [
+        "Confessions Absolu",
+        "Bujairami Confessions Absolu"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CONFETTI-KISSES",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Confetti Kisses",
+      "name": "Confetti Kisses",
+      "family_id": "bujairami_catalog",
+      "family_name": "Confetti Kisses",
+      "aliases": [
+        "Confetti Kisses",
+        "Bujairami Confetti Kisses"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COOKIES-AND-CREAM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cookies and Cream",
+      "name": "Cookies and Cream",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cookies and Cream",
+      "aliases": [
+        "Cookies and Cream",
+        "Bujairami Cookies and Cream"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COPA-NOVA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Copa Nova",
+      "name": "Copa Nova",
+      "family_id": "bujairami_catalog",
+      "family_name": "Copa Nova",
+      "aliases": [
+        "Copa Nova",
+        "Bujairami Copa Nova"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COPACABANA-CRUSH",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Copacabana Crush",
+      "name": "Copacabana Crush",
+      "family_id": "bujairami_catalog",
+      "family_name": "Copacabana Crush",
+      "aliases": [
+        "Copacabana Crush",
+        "Bujairami Copacabana Crush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CORAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Coral",
+      "name": "Coral",
+      "family_id": "bujairami_catalog",
+      "family_name": "Coral",
+      "aliases": [
+        "Coral",
+        "Bujairami Coral"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COSMIC",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cosmic",
+      "name": "Cosmic",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cosmic",
+      "aliases": [
+        "Cosmic",
+        "Bujairami Cosmic"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
       "product_id": "SH-BUJAIRAMI-COSMIC-FEVER",
       "brand": "Bujairami",
       "brand_name": "Bujairami",
@@ -12465,6 +15585,262 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=1",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COUNTESS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Countess",
+      "name": "Countess",
+      "family_id": "bujairami_catalog",
+      "family_name": "Countess",
+      "aliases": [
+        "Countess",
+        "Bujairami Countess"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CRACKA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cracka",
+      "name": "Cracka",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cracka",
+      "aliases": [
+        "Cracka",
+        "Bujairami Cracka"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CRAVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crave",
+      "name": "Crave",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crave",
+      "aliases": [
+        "Crave",
+        "Bujairami Crave"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CRAZY-IN-LOVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crazy in Love",
+      "name": "Crazy in Love",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crazy in Love",
+      "aliases": [
+        "Crazy in Love",
+        "Bujairami Crazy in Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CRAZY-MANGO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crazy Mango",
+      "name": "Crazy Mango",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crazy Mango",
+      "aliases": [
+        "Crazy Mango",
+        "Bujairami Crazy Mango"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CREAM-CRAVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cream & Crave",
+      "name": "Cream & Crave",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cream & Crave",
+      "aliases": [
+        "Cream & Crave",
+        "Bujairami Cream & Crave"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CREAMY-OUD-BLISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Creamy Oud Bliss",
+      "name": "Creamy Oud Bliss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Creamy Oud Bliss",
+      "aliases": [
+        "Creamy Oud Bliss",
+        "Bujairami Creamy Oud Bliss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CROWN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crown",
+      "name": "Crown",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crown",
+      "aliases": [
+        "Crown",
+        "Bujairami Crown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CROWN-CHAI",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crown Chai",
+      "name": "Crown Chai",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crown Chai",
+      "aliases": [
+        "Crown Chai",
+        "Bujairami Crown Chai"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CROWN-OF-FANGS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crown of Fangs",
+      "name": "Crown of Fangs",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crown of Fangs",
+      "aliases": [
+        "Crown of Fangs",
+        "Bujairami Crown of Fangs"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CROWNWOOD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crownwood",
+      "name": "Crownwood",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crownwood",
+      "aliases": [
+        "Crownwood",
+        "Bujairami Crownwood"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CRYING-MOON",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crying Moon",
+      "name": "Crying Moon",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crying Moon",
+      "aliases": [
+        "Crying Moon",
+        "Bujairami Crying Moon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CRYPTIC",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cryptic",
+      "name": "Cryptic",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cryptic",
+      "aliases": [
+        "Cryptic",
+        "Bujairami Cryptic"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CRYSTAL-GLOW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Crystal Glow",
+      "name": "Crystal Glow",
+      "family_id": "bujairami_catalog",
+      "family_name": "Crystal Glow",
+      "aliases": [
+        "Crystal Glow",
+        "Bujairami Crystal Glow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CUBAN-NIGHTS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cuban Nights",
+      "name": "Cuban Nights",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cuban Nights",
+      "aliases": [
+        "Cuban Nights",
+        "Bujairami Cuban Nights"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CYPRUS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cyprus",
+      "name": "Cyprus",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cyprus",
+      "aliases": [
+        "Cyprus",
+        "Bujairami Cyprus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/range/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/range/"
     },
     {
       "product_id": "SH-BUJAIRAMI-DAMN-WILD",
