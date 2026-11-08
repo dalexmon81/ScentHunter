@@ -8,12 +8,6 @@ on:
       - catalog/assaf-range-harvest-2026-11-08
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
       - catalog/afnan-lattafa-official-harvest-2026-11-08
-      - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
-      - catalog/complete-brand-expansion-2026-11
-      - catalog/assaf-range-harvest-2026-11-08
-      - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
-      - catalog/complete-brand-expansion-2026-11
-      - catalog/assaf-range-harvest-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -25,6 +19,7 @@ on:
       - catalog/assaf-range-harvest-2026-11-08
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
       - catalog/afnan-lattafa-official-harvest-2026-11-08
+      - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
 
 permissions:
   contents: read
