@@ -641,6 +641,36 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
+    def test_paris_corner_recent_fragrances_have_official_product_evidence_and_100ml_variants(self):
+        expected = {
+            "Molten Caramel": "https://www.pariscornerperfumes.com/products/molten-caramel",
+            "Marshmallow Blush": "https://www.pariscornerperfumes.com/products/marshmallow-blush",
+            "Date Caramel": "https://www.pariscornerperfumes.com/products/date-caramel",
+            "Farah": "https://www.pariscornerperfumes.com/products/farah",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, official_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), official_url)
+                self.assertEqual(row.get("source_evidence_url"), official_url)
+                self.assertIn(100, row.get("formats_ml", []))
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"] and v.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("source_evidence_url"), official_url)
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
