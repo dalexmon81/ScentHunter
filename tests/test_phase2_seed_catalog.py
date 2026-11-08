@@ -36,6 +36,7 @@ def sample_catalog() -> dict:
                 "variant_id": "V1",
                 "product_id": "P1",
                 "size_ml": 50,
+                "product_form": "fine_fragrance",
             }
         ],
         "offers": [],
@@ -123,6 +124,24 @@ def test_seed_apply_imports_identity_without_creating_variant_or_offer(tmp_path)
             "LEFT JOIN product_variants v ON v.fragrance_id = f.id "
             "WHERE v.id IS NULL"
         ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT product_form FROM product_variants"
+        ).fetchone()[0] == "fine_fragrance"
+
+
+def test_seed_blocks_unknown_product_form_without_writing_database(tmp_path):
+    catalog = sample_catalog()
+    catalog["variants"][0]["product_form"] = "deodorizer"
+    catalog_path = tmp_path / "unknown-product-form.json"
+    database_path = tmp_path / "unknown-product-form.sqlite3"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    result = run_seed(catalog_path, f"sqlite:///{database_path}")
+    assert result.returncode == 2
+    report = json.loads(result.stdout)
+    assert report["status"] == "blocked"
+    assert any("unsupported product_form" in item for item in report["examples"])
+    assert report["database_written"] is False
+    assert not database_path.exists()
 
 
 def test_seed_blocks_orphan_variant_without_writing_database(tmp_path):
@@ -154,9 +173,9 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert report["status"] == "validated"
     assert report["source_brand_records"] == 0
     assert report["brands"] == 21
-    assert report["fragrances"] == 1891
-    assert report["variants"] == 245
-    assert report["products_without_variants"] == 1668
+    assert report["fragrances"] == 2059
+    assert report["variants"] == 296
+    assert report["products_without_variants"] == 1820
     assert report["offers_imported"] == 0
     assert report["database_written"] is False
 
@@ -194,6 +213,10 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
     assert first_report["database_counts"]["legacy_product_id_map"] == len(products)
     assert first_report["database_counts"]["product_variants"] == len(variants)
     assert first_report["database_counts"]["legacy_variant_id_map"] == len(variants)
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM product_variants WHERE product_form IS NOT NULL"
+        ).fetchone()[0] == 8
 
     engine = create_engine(database_url)
     try:
@@ -238,7 +261,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
 
         # Re-running the migration must preserve all rows and the target revision.
         migration_again = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "0002_ingestion_raw"],
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
             cwd=BACKEND, env=env, capture_output=True, text=True, check=False,
         )
         assert migration_again.returncode == 0, migration_again.stderr
@@ -391,8 +414,8 @@ def test_real_catalog_requested_brands_are_present_and_variants_are_traceable():
     }
     brands = {row["brand_name"] for row in products}
     assert requested <= brands
-    assert len(products) == 1891
-    assert len(variants) == 245
+    assert len(products) == 2059
+    assert len(variants) == 296
     assert len({row["product_id"] for row in products}) == len(products)
     assert len({row["variant_id"] for row in variants}) == len(variants)
     ids = {row["product_id"] for row in products}
