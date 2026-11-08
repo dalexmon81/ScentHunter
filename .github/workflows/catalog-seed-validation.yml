@@ -72,4 +72,5 @@ jobs:
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
+          backend.tests.test_mykonos_official_detail_evidence
           -v
