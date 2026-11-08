@@ -13803,9 +13803,13 @@
         "Uniq Oud Forever",
         "Armaf Uniq Oud Forever"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/uniq-oud-forever-2-0-oz",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=8",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-ARMAF-3eb5a44e",
@@ -34046,6 +34050,25 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://lattafa.com/product-category/new-launches/"
+    },
+    {
+      "product_id": "SH-ARMAF-UNIQ-EFFECTS-OF-UNIQ",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Uniq Effects of Uniq",
+      "name": "Uniq Effects of Uniq",
+      "family_id": "armaf_catalog",
+      "family_name": "Uniq Effects of Uniq",
+      "aliases": [
+        "Uniq Effects of Uniq",
+        "Armaf Uniq Effects of Uniq"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/uniq-effects-of-uniq-2-0-oz",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
     }
   ],
   "variants": [
@@ -37077,6 +37100,26 @@
         "Atlas Canyon 55 ml",
         "Lattafa Atlas Canyon 55ml"
       ]
+    },
+    {
+      "product_id": "SH-ARMAF-f650f6a8",
+      "variant_id": "SHV-SH-ARMAF-f650f6a8-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Uniq Oud Forever 60 ml",
+        "Armaf Uniq Oud Forever 60ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-UNIQ-EFFECTS-OF-UNIQ",
+      "variant_id": "SHV-SH-ARMAF-UNIQ-EFFECTS-OF-UNIQ-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Uniq Effects of Uniq 60 ml",
+        "Armaf Uniq Effects of Uniq 60ml"
+      ],
+      "concentration": "Eau de Parfum"
     }
   ]
 }
