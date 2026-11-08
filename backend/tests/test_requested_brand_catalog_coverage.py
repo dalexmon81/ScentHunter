@@ -494,5 +494,37 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", matching[0])
 
 
+    def test_afnan_supremacy_incense_official_detail_and_variant_are_verified(self):
+        row = next(
+            p for p in CATALOG["products"]
+            if p.get("brand_name") == "Afnan"
+            and p.get("canonical_name") == "SUPREMACY INCENSE"
+        )
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://afnan.com/products/supremacy-incense")
+        self.assertTrue(any(
+            v.get("product_id") == row["product_id"]
+            and v.get("size_ml") == 100
+            and v.get("concentration") == "Eau de Parfum"
+            for v in CATALOG["variants"]
+        ))
+
+    def test_swiss_arabian_incense_01_official_detail_and_variant_are_verified(self):
+        row = next(
+            p for p in CATALOG["products"]
+            if p.get("brand_name") == "Swiss Arabian"
+            and p.get("canonical_name") == "Incense 01"
+        )
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://fr.swissarabian.com/products/incense-01")
+        self.assertTrue(any(
+            v.get("product_id") == row["product_id"]
+            and v.get("size_ml") == 50
+            and v.get("concentration") == "Extrait de Parfum"
+            for v in CATALOG["variants"]
+        ))
+
+
+
 if __name__ == "__main__":
     unittest.main()
