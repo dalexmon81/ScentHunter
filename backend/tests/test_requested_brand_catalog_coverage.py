@@ -492,10 +492,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(matching), 1)
                 self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
-                if row.get("concentration"):
-                    self.assertEqual(matching[0].get("concentration"), row["concentration"])
-                else:
-                    self.assertNotIn("concentration", matching[0])
+                self.assertNotIn("concentration", matching[0])
 
 
 if __name__ == "__main__":
