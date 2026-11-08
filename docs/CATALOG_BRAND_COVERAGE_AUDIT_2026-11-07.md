@@ -1583,3 +1583,28 @@ GitHub Actions run **#42420558957** for test commit **f0c4b4872d8faf1208f4237538
 - `backend/catalog_overlays/official_brand_listing_reconciliation_2026-11-08.json` records 28 Velixir and 53 Mykonos name candidates with source links and the unresolved catalog reconciliation.
 - No retailer offers, prices, stock, shipping costs, or inferred GTINs were imported.
 - No production database, production configuration, or store authorization was changed.
+
+
+## Pass 29 — Games of Spades official collection reconciliation (2026-11-08)
+
+### Source and identity hierarchy
+- Manufacturer: Jo Milano Paris.
+- Requested fragrance line / catalog brand label: Games of Spades.
+- Official collection source: https://jomilanoparis.com/collections/all?page=1 and https://jomilanoparis.com/collections/all?page=2 .
+- Official individual product pages were also checked for King, Queen, Wildcard, All In, Jackpot, Rouge, Royale, Blind Bid and Gold.
+- The official site separates perfume products from gift sets/coffrets. Gift sets are not added as standalone canonical fragrance identities.
+
+### Catalog changes
+- Before this pass, the canonical catalog had four Games of Spades identities: King, Queen, Ace and Wildcard.
+- The family registry already included Jack, but the canonical product catalog did not. Jack was added.
+- Added 26 source-listed canonical fragrance identities to `backend/product_catalog.json`: Jack, All In, Bid, Black Sapphire, Blind Bid, Bluff, Bonus, Boston, Diamond, Double Bonus, Emerald, Full House Refresh, Gold, High Roller, Jackpot, Moon, No Limit, Opal, Platinum, Rouge, Royale, Ruby, Topaz, Trick, Win and Yellow Sapphire.
+- The canonical catalog now contains 30 Games of Spades fragrance identities. The family registry contains 30 matching identities.
+- New product IDs use the stable `SH-GOS-<normalized-name>` form; no existing IDs were changed.
+- No variants were created. Product pages show different sizes and concentration presentations for some products (for example Rouge / Rouge Extrait); these require explicit variant modeling and are not treated as separate fragrance identities in this pass.
+- No GTIN, price, availability, shipping cost, retailer offer or stock was imported.
+
+### Validation and limitations
+- New identities are source-listed from the official Jo Milano Paris product collection; individual product detail evidence is attached where available.
+- The 26 additions are canonical name identities, not a claim that every historic/discontinued Game of Spades release is represented.
+- The new test `backend/tests/test_games_of_spades_catalog.py` asserts catalog/registry consistency, unique IDs and brand/name pairs, and that no commercial offer fields or unverified variants are added.
+- GitHub Actions must pass on the latest PR head before this pass is called CI-verified.
