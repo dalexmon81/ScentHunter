@@ -48,7 +48,7 @@ class LattafaFourOfficialProductsTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("identity_status"), "source_verified_name")
                 self.assertEqual(matches[0].get("source_url"), url)
                 self.assertEqual(matches[0].get("source_evidence_url"), url)
-                self.assertEqual(matches[0].get("formats_ml"), [100])
+                self.assertEqual(matches[0].get("formats_ml"), [PRODUCT_SIZES.get(name, 100)])
 
     def test_each_product_has_one_100ml_variant_without_inferred_concentration(self):
         for name in PRODUCTS:
