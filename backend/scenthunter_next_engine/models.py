@@ -11,6 +11,21 @@ from enum import Enum
 from typing import Any, Mapping
 
 
+class ProductForm(str, Enum):
+    """Evidence-backed product kind; independent from concentration and size."""
+
+    FINE_FRAGRANCE = "fine_fragrance"
+    PERFUME_OIL = "perfume_oil"
+    DEODORANT = "deodorant"
+    BODY_MIST = "body_mist"
+    HAIR_MIST = "hair_mist"
+    BODY_CARE = "body_care"
+    HOME_FRAGRANCE = "home_fragrance"
+    GIFT_SET = "gift_set"
+    DISCOVERY_SET = "discovery_set"
+    UNKNOWN = "unknown"
+
+
 class MatchStatus(str, Enum):
     """Outcome of resolving a retailer offer against the canonical catalog."""
 
