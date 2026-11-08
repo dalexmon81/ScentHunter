@@ -85,3 +85,6 @@ jobs:
           backend.tests.test_khadlaj_official_new_launch_variants
           backend.tests.test_paris_corner_europe_official_variants
           -v
+      - name: Validate Paris Corner official size variants
+        if: github.head_ref == 'catalog/paris-corner-official-size-variants-2026-11-08'
+        run: python -m unittest backend.tests.test_paris_corner_official_size_variants -v
