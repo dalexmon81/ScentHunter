@@ -32,7 +32,13 @@ class ParisCornerCatalogParityTests(unittest.TestCase):
         self.assertTrue(all(p.get("family_id") == "paris_corner_catalog" for p in self.products))
 
     def test_sources_are_official_paris_corner_pages(self):
-        official_prefixes = (\n            "https://www.pariscornerperfumes.com/",\n            "https://de.pariscornereurope.com/en/products/",\n        )\n        self.assertTrue(\n            all((p.get("source_url") or "").startswith(official_prefixes) for p in self.products)\n        )
+        official_prefixes = (
+            "https://www.pariscornerperfumes.com/",
+            "https://de.pariscornereurope.com/en/products/",
+        )
+        self.assertTrue(
+            all((p.get("source_url") or "").startswith(official_prefixes) for p in self.products)
+        )
 
     def test_brand_collection_label_is_not_a_canonical_fragrance(self):
         self.assertFalse(any(p["canonical_name"].casefold() == "ministry of gourmand" for p in self.products))
