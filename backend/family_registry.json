@@ -10318,24 +10318,13 @@
           ]
         },
         {
-          "canonical_name": "Vanilla Aura",
-          "aliases": [
-            "Vanilla Aura",
-            "Gulf Orchid Vanilla Aura"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Voyage",
-          "aliases": [
-            "Vanilla Voyage",
-            "Gulf Orchid Vanilla Voyage"
-          ]
-        },
-        {
           "canonical_name": "Vanilla Addiction",
           "aliases": [
             "Vanilla Addiction",
             "Gulf Orchid Vanilla Addiction"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10343,6 +10332,9 @@
           "aliases": [
             "Mango Ice",
             "Gulf Orchid Mango Ice"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10371,6 +10363,9 @@
           "aliases": [
             "Pink Marshmallow",
             "Gulf Orchid Pink Marshmallow"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10378,6 +10373,9 @@
           "aliases": [
             "Coco Blanco",
             "Gulf Orchid Coco Blanco"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10385,6 +10383,9 @@
           "aliases": [
             "Exotic Oud",
             "Gulf Orchid Exotic Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10392,6 +10393,9 @@
           "aliases": [
             "Vanilla Latte",
             "Gulf Orchid Vanilla Latte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10399,6 +10403,9 @@
           "aliases": [
             "Cookie Bite",
             "Gulf Orchid Cookie Bite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10420,6 +10427,99 @@
           "aliases": [
             "Piña Colada Musk",
             "Gulf Orchid Piña Colada Musk"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Candy Bite",
+          "aliases": [
+            "Candy Bite",
+            "Gulf Orchid Candy Bite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Maestro",
+          "aliases": [
+            "Maestro",
+            "Gulf Orchid Maestro"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rice Milk",
+          "aliases": [
+            "Rice Milk",
+            "Gulf Orchid Rice Milk"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Baklava Bite",
+          "aliases": [
+            "Baklava Bite",
+            "Gulf Orchid Baklava Bite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Almalek",
+          "aliases": [
+            "Almalek",
+            "Gulf Orchid Almalek"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ahlam",
+          "aliases": [
+            "Ahlam",
+            "Gulf Orchid Ahlam"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Fresh Oud",
+          "aliases": [
+            "Fresh Oud",
+            "Gulf Orchid Fresh Oud"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Huyam",
+          "aliases": [
+            "Huyam",
+            "Gulf Orchid Huyam"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Awham",
+          "aliases": [
+            "Awham",
+            "Gulf Orchid Awham"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
