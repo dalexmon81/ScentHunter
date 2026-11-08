@@ -32463,6 +32463,51 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/musamam-black-intense/"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-JASMERE",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Jasmere",
+      "name": "Jasmere",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Jasmere",
+      "aliases": [
+        "Jasmere",
+        "French Avenue Jasmere"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/jasmere"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-AMBER-EMPIRE",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Amber Empire",
+      "name": "Amber Empire",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Amber Empire",
+      "aliases": [
+        "Amber Empire",
+        "French Avenue Amber Empire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/amber-empire"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-SAFARI-BREEZE",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Safari Breeze",
+      "name": "Safari Breeze",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Safari Breeze",
+      "aliases": [
+        "Safari Breeze",
+        "French Avenue Safari Breeze"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://sa.frenchavenue.com/products/safari-breeze"
     }
   ],
   "variants": [
