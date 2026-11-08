@@ -14,7 +14,8 @@
     "deduplicate_by_normalized_brand_and_name": true,
     "canonical_import_requires_variant_review": true,
     "brand_listing_is_not_proof_of_exclusive_or_complete_catalog": true,
-    "games_of_spades_hierarchy": "Games of Spades is the fragrance collection/brand label used in ScentHunter; Jo Milano Paris is the manufacturer. Gift sets/coffrets are excluded as separate canonical fragrances. Concentration variants such as Rouge Extrait are not separate canonical fragrance identities unless product model requires it."
+    "games_of_spades_hierarchy": "Games of Spades is the fragrance collection/brand label used in ScentHunter; Jo Milano Paris is the manufacturer. Gift sets/coffrets are excluded as separate canonical fragrances. Concentration variants such as Rouge Extrait are not separate canonical fragrance identities unless product model requires it.",
+    "brand_line_hierarchy": "Where the requested catalog line is distinct from the manufacturer, keep the requested line as brand/collection and store the parent house separately as manufacturer. Aromatix is cataloged as Aromatix, with French Avenue as manufacturer."
   },
   "summary": {
     "product_name_candidates": 174,
@@ -35,7 +36,8 @@
       "Armaf",
       "Swiss Arabian"
     ],
-    "games_of_spades_manufacturer": "Jo Milano Paris"
+    "games_of_spades_manufacturer": "Jo Milano Paris",
+    "aromatix_line_candidates": 10
   },
   "sources": [
     {
@@ -1125,114 +1127,134 @@
       "variant_details": "not_inferred"
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Teas Me",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Frostbite",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Naughty Dates",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Sun Kissed",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Forbidden Fruit",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Magnetiq",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Platine Blanc",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "X Xandal",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Royal Taboo",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
-      "brand": "Aromatix X French Avenue",
+      "brand": "Aromatix",
       "fragrance_name": "Carnal Desire",
-      "collection": "Signature Aromatix Collection",
+      "collection": "Aromatix × French Avenue",
       "evidence_source": "Shop Aromatix collection page",
       "source_url": "https://shoparomatix.com/pages/aromatic-collection",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "EDP 100 ml explicitly stated on source collection page",
       "concentration": "EDP",
-      "size_ml": 100
+      "size_ml": 100,
+      "manufacturer": "French Avenue",
+      "evidence_note": "Aromatix is the requested line/brand label in the ScentHunter catalog; French Avenue is the parent manufacturer/house. Do not create a second French Avenue identity for the same scent."
     },
     {
       "brand": "Lattafa",
