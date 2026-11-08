@@ -37,6 +37,23 @@ class ArmafDetailEvidenceTests(unittest.TestCase):
                 }
                 self.assertTrue(expected_sizes.issubset(sizes))
 
+    def test_variants_inherit_officially_verified_concentration(self):
+        products = {
+            p["product_id"]: p
+            for p in CATALOG["products"]
+            if p.get("brand") == "Armaf"
+        }
+        for variant in CATALOG["variants"]:
+            product = products.get(variant["product_id"])
+            if not product or product["canonical_name"] not in EXPECTED:
+                continue
+            expected_concentration, expected_sizes = EXPECTED[product["canonical_name"]]
+            if not expected_sizes:
+                continue
+            with self.subTest(variant=variant["variant_id"]):
+                self.assertEqual(variant.get("concentration"), expected_concentration)
+                self.assertEqual(variant.get("source_url"), product["source_url"])
+
 
 if __name__ == "__main__":
     unittest.main()
