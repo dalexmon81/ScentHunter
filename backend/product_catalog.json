@@ -1281,9 +1281,12 @@
         "Black",
         "Maison Asrar Black"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/black-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/black-eau-de-perfum-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-41bd4808",
@@ -1431,9 +1434,12 @@
         "Desire",
         "Maison Asrar Desire"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/desire-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/desire-eau-de-perfum-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-1a2046f1",
@@ -36988,6 +36994,26 @@
         "Maison Asrar Dear Jasmine Eau de Parfum 100 ml"
       ],
       "variant_id": "SHV-SH-MAISON-ASRAR-f17a24a5-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-3269274a",
+      "size_ml": 100,
+      "aliases": [
+        "Desire 100 ml",
+        "Maison Asrar Desire Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-3269274a-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-cc3d301b",
+      "size_ml": 100,
+      "aliases": [
+        "Black 100 ml",
+        "Maison Asrar Black Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-cc3d301b-100-EDP",
       "concentration": "Eau de Parfum"
     }
   ]
