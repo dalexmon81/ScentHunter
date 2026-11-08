@@ -53,9 +53,24 @@ class KhadlajCatalogParityTests(unittest.TestCase):
         self.assertGreater(len(sprays["products"]), 0)
 
     def test_perfume_oil_identity_is_not_recast_as_a_spray_variant(self):
-        maya = next(p for p in next(f for f in self.families if f["family_id"] == "khadlaj_catalog")["products"] if p["canonical_name"] == "Maya")
+        maya = next(p for p in self.products if p["canonical_name"] == "Maya")
         self.assertEqual(maya.get("formats_ml"), [20])
-        self.assertFalse(any(p["canonical_name"] == "Maya" for p in self.products))
+        self.assertEqual(maya.get("source_url"), "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae")
+        maya_variants = [v for v in CATALOG["variants"] if v["product_id"] == maya["product_id"]]
+        self.assertEqual(len(maya_variants), 1)
+        self.assertEqual(maya_variants[0].get("size_ml"), 20)
+        self.assertNotIn("concentration", maya_variants[0])
+        self.assertNotIn("concentration", maya)
+
+    def test_hareem_al_sultan_blue_is_cataloged_as_a_35ml_perfume_oil(self):
+        blue = next(p for p in self.products if p["canonical_name"] == "Hareem Al Sultan Blue")
+        self.assertEqual(blue.get("formats_ml"), [35])
+        self.assertEqual(blue.get("source_url"), "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml")
+        blue_variants = [v for v in CATALOG["variants"] if v["product_id"] == blue["product_id"]]
+        self.assertEqual(len(blue_variants), 1)
+        self.assertEqual(blue_variants[0].get("size_ml"), 35)
+        self.assertNotIn("concentration", blue_variants[0])
+        self.assertNotIn("concentration", blue)
 
 
 if __name__ == "__main__":

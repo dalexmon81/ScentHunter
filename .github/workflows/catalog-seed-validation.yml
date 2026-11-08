@@ -18,6 +18,7 @@ on:
       - catalog/paris-corner-ministry-of-oud-reconciliation-2026-11-08
       - catalog/paris-corner-pendora-registry-fixes-2026-11-08
       - catalog/khadlaj-la-fede-official-harvest-2026-11-08
+      - catalog/khadlaj-main-range-official-reconciliation-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -39,6 +40,7 @@ on:
       - catalog/paris-corner-ministry-of-oud-reconciliation-2026-11-08
       - catalog/paris-corner-pendora-registry-fixes-2026-11-08
       - catalog/khadlaj-la-fede-official-harvest-2026-11-08
+      - catalog/khadlaj-main-range-official-reconciliation-2026-11-08
 
 permissions:
   contents: read
@@ -89,6 +91,7 @@ jobs:
           backend.tests.test_mykonos_authorized_retailer_variants
           backend.tests.test_maison_asrar_official_product_pages
           backend.tests.test_khadlaj_official_new_launch_variants
+          backend.tests.test_khadlaj_main_range_official_reconciliation
           backend.tests.test_paris_corner_europe_official_variants
           backend.tests.test_paris_corner_ministry_of_oud_reconciliation
           backend.tests.test_paris_corner_pendora_registry_fixes
