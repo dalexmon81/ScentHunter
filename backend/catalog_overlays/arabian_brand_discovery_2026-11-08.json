@@ -34,39 +34,138 @@
     }
   ],
   "requested_brands": [
-    {"brand": "Velixir", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Mykonos", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Maison Asrar", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Khadlaj", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Bujairami", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Paris Corner", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Assaf", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Al Wataniah", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Armaf", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "French Avenue", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Arabiyat Prestige", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Gulf Orchid", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Swiss Arabian", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Games of Spades", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Lattafa", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Afnan", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Aromatix", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Maison Alhambra", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Zimaya", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Al Haramain", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
-    {"brand": "Al Ambra", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"}
+    {
+      "brand": "Velixir",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Mykonos",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Maison Asrar",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Khadlaj",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Bujairami",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Paris Corner",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Assaf",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Al Wataniah",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Armaf",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "French Avenue",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Gulf Orchid",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Swiss Arabian",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Games of Spades",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Lattafa",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Afnan",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Aromatix",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Maison Alhambra",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Zimaya",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    },
+    {
+      "brand": "Al Haramain",
+      "status": "needs_product_level_harvest",
+      "requested_scope": "all_publicly_listed_fragrances_and_variants"
+    }
   ],
   "collection_scopes": [
-    {"brand": "Maison Asrar", "collection": "Royal Collection", "status": "needs_product_level_harvest"},
-    {"brand": "Velixir", "collection": "Full line", "status": "needs_product_level_harvest"},
-    {"brand": "Mykonos", "collection": "Full line", "status": "needs_product_level_harvest"},
-    {"brand": "Aromatix", "collection": "Full line", "status": "needs_presence_check_and_harvest"},
-    {"brand": "Games of Spades", "collection": "Full line", "status": "needs_dedicated_product_sources"}
+    {
+      "brand": "Maison Asrar",
+      "collection": "Royal Collection",
+      "status": "needs_product_level_harvest"
+    },
+    {
+      "brand": "Velixir",
+      "collection": "Full line",
+      "status": "needs_product_level_harvest"
+    },
+    {
+      "brand": "Mykonos",
+      "collection": "Full line",
+      "status": "needs_product_level_harvest"
+    },
+    {
+      "brand": "Aromatix",
+      "collection": "Full line",
+      "status": "needs_presence_check_and_harvest"
+    },
+    {
+      "brand": "Games of Spades",
+      "collection": "Full line",
+      "status": "needs_dedicated_product_sources"
+    }
   ],
   "normalization_notes": [
-    "Treat Maison Alhambra and the user's spelling Alambra as an alias candidate; preserve Maison Alhambra as the display brand unless product evidence establishes a different manufacturer.",
     "Do not merge Games of Spades into another brand without product-level brand ownership evidence.",
     "Treat Velixir and Mykonos as brand/collection names pending individual product verification.",
-    "Do not infer that 'all stores sell' a brand from one retailer's collection index."
+    "Do not infer that 'all stores sell' a brand from one retailer's collection index.",
+    "Interpret the user's 'Alambra' request as Maison Alhambra. Azmara also lists a distinct retailer brand label 'Al Ambra'; it is not silently merged with Maison Alhambra or added as a separate requested brand."
   ]
 }
