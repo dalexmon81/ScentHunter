@@ -9,6 +9,7 @@ on:
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
       - catalog/afnan-lattafa-official-harvest-2026-11-08
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
+      - catalog/integrated-brand-catalog-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -21,6 +22,7 @@ on:
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
       - catalog/afnan-lattafa-official-harvest-2026-11-08
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
+      - catalog/integrated-brand-catalog-2026-11-08
 
 permissions:
   contents: read
@@ -65,4 +67,5 @@ jobs:
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
           backend.tests.test_paris_corner_official_collection_reconciliation
+          backend.tests.test_arabiyat_prestige_official_store
           -v
