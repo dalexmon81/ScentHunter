@@ -36,7 +36,8 @@ EXPECTED_GAMES_OF_SPADES = [
     "Topaz",
     "Trick",
     "Win",
-    "Yellow Sapphire"
+    "Yellow Sapphire",
+    "Blue Sapphire"
 ]
 
 
