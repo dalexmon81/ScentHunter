@@ -35131,6 +35131,210 @@
         100
       ],
       "collection_name": "Khadlaj Perfume Spray"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-THE-CREST",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "The Crest",
+      "name": "The Crest",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "The Crest",
+      "aliases": [
+        "The Crest",
+        "Al Wataniah The Crest"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ONYX",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Onyx",
+      "name": "Onyx",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Onyx",
+      "aliases": [
+        "Onyx",
+        "Al Wataniah Onyx"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-POLO-ESTATE-NAVY-GOLD",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Polo Estate Navy Gold",
+      "name": "Polo Estate Navy Gold",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Polo Estate Navy Gold",
+      "aliases": [
+        "Polo Estate Navy Gold",
+        "Al Wataniah Polo Estate Navy Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-KAYAAN-EXTRAIT",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Kayaan Extrait",
+      "name": "Kayaan Extrait",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Kayaan Extrait",
+      "aliases": [
+        "Kayaan Extrait",
+        "Al Wataniah Kayaan Extrait"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EVEREST",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Everest",
+      "name": "Everest",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Everest",
+      "aliases": [
+        "Everest",
+        "Al Wataniah Everest"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMERALD-PLUME",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Emerald Plume",
+      "name": "Emerald Plume",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Emerald Plume",
+      "aliases": [
+        "Emerald Plume",
+        "Al Wataniah Emerald Plume"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMERALD-ASCOT",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Emerald Ascot",
+      "name": "Emerald Ascot",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Emerald Ascot",
+      "aliases": [
+        "Emerald Ascot",
+        "Al Wataniah Emerald Ascot"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-ICE-BLUE",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Attar Al Wesal Ice Blue",
+      "name": "Attar Al Wesal Ice Blue",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Attar Al Wesal Ice Blue",
+      "aliases": [
+        "Attar Al Wesal Ice Blue",
+        "Al Wataniah Attar Al Wesal Ice Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-PEARL",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Sabah Al Ward Pearl",
+      "name": "Sabah Al Ward Pearl",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Sabah Al Ward Pearl",
+      "aliases": [
+        "Sabah Al Ward Pearl",
+        "Al Wataniah Sabah Al Ward Pearl"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-INTENSE",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Attar Al Wesal Intense",
+      "name": "Attar Al Wesal Intense",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Attar Al Wesal Intense",
+      "aliases": [
+        "Attar Al Wesal Intense",
+        "Al Wataniah Attar Al Wesal Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BLUSH-PAPILLON",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Blush Papillon",
+      "name": "Blush Papillon",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Blush Papillon",
+      "aliases": [
+        "Blush Papillon",
+        "Al Wataniah Blush Papillon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-CASHMERE-IVORY",
+      "brand": "Al Wataniah",
+      "brand_name": "Al Wataniah",
+      "canonical_name": "Cashmere Ivory",
+      "name": "Cashmere Ivory",
+      "family_id": "al_wataniah_catalog",
+      "family_name": "Cashmere Ivory",
+      "aliases": [
+        "Cashmere Ivory",
+        "Al Wataniah Cashmere Ivory"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.alwataniah.com/",
+      "source_evidence_url": "https://www.alwataniah.com/",
+      "collection_name": "Launching Soon"
     }
   ],
   "variants": [
