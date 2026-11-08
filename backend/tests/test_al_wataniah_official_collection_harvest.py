@@ -363,7 +363,12 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
         }
         self.assertEqual(len(products), 86)
         self.assertEqual(set(products), set(EXPECTED))
-        individually_verified = {\n            "Lemon Souffle", "Choco Truffle", "Kayaan Classic",\n            "Sabah Al Ward", "Sabah Al Ward Sugar", "Ain Emarat",\n            "Ain Emarat Extrait", "Royal Oak I",\n        }\n        for name, (collection, listing_url) in EXPECTED.items():
+        individually_verified = {
+            "Lemon Souffle", "Choco Truffle", "Kayaan Classic",
+            "Sabah Al Ward", "Sabah Al Ward Sugar", "Ain Emarat",
+            "Ain Emarat Extrait", "Royal Oak I",
+        }
+        for name, (collection, listing_url) in EXPECTED.items():
             with self.subTest(product=name):
                 product = products[name]
                 self.assertEqual(product.get("collection_name"), collection)
