@@ -28286,6 +28286,165 @@
       "concentration": "Extrait de Parfum"
     },
     {
+      "product_id": "SH-BUJAIRAMI-2ef0105b",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Glorious",
+      "name": "Glorious",
+      "family_id": "bujairami_catalog",
+      "family_name": "Glorious",
+      "aliases": [
+        "Glorious",
+        "Bujairami Glorious"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/glorious",
+      "source_evidence_url": "https://bujairami.com.au/products/glorious"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-98d6b788",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Ripper",
+      "name": "Ripper",
+      "family_id": "bujairami_catalog",
+      "family_name": "Ripper",
+      "aliases": [
+        "Ripper",
+        "Bujairami Ripper",
+        "Ripper Inspired by Creed Aventus"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/ripper-inspired-by-creed-avendus",
+      "source_evidence_url": "https://bujairami.com.au/products/ripper-inspired-by-creed-avendus",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-8434d403",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Madness Extreme",
+      "name": "Madness Extreme",
+      "family_id": "bujairami_catalog",
+      "family_name": "Madness Extreme",
+      "aliases": [
+        "Madness Extreme",
+        "Bujairami Madness Extreme"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/madness-extreme-inspired-by-ombre-nomade-louis-vuitton",
+      "source_evidence_url": "https://bujairami.com.au/products/madness-extreme-inspired-by-ombre-nomade-louis-vuitton"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-94286f44",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Woody Oud",
+      "name": "Woody Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Woody Oud",
+      "aliases": [
+        "Woody Oud",
+        "Bujairami Woody Oud",
+        "Woody oud Inspired by Tom Ford Oud Wood",
+        "Fair Dinkum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/fair-dinkum-inspired-by-tom-ford-oud-wood",
+      "source_evidence_url": "https://bujairami.com.au/products/fair-dinkum-inspired-by-tom-ford-oud-wood",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ea034b02",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Shortcake",
+      "name": "Shortcake",
+      "family_id": "bujairami_catalog",
+      "family_name": "Shortcake",
+      "aliases": [
+        "Shortcake",
+        "Bujairami Shortcake",
+        "Shortcake Inspired by Vanilla 28 Kayali"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/rise-up-inspired-vanilla-28-kayali",
+      "source_evidence_url": "https://bujairami.com.au/products/rise-up-inspired-vanilla-28-kayali"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-a717aa48",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Lavish",
+      "name": "Lavish",
+      "family_id": "bujairami_catalog",
+      "family_name": "Lavish",
+      "aliases": [
+        "Lavish",
+        "Bujairami Lavish"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/lavish-inspired-by-mfk-baccarat-rouge-540",
+      "source_evidence_url": "https://bujairami.com.au/products/lavish-inspired-by-mfk-baccarat-rouge-540",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-14aa4923",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "The Hype",
+      "name": "The Hype",
+      "family_id": "bujairami_catalog",
+      "family_name": "The Hype",
+      "aliases": [
+        "The Hype",
+        "Bujairami The Hype"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/the-hype-inspired-by-side-effect-initio-parfums-prives",
+      "source_evidence_url": "https://bujairami.com.au/products/the-hype-inspired-by-side-effect-initio-parfums-prives"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ef6cfd6c",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Lavish Life",
+      "name": "Lavish Life",
+      "family_id": "bujairami_catalog",
+      "family_name": "Lavish Life",
+      "aliases": [
+        "Lavish Life",
+        "Bujairami Lavish Life",
+        "Lavish life Inspired by Baccarat Rouge 540 Extrait"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/lavish-life-inspired-by-baccarat-rouge-540-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/lavish-life-inspired-by-baccarat-rouge-540-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-968e7cb7",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Vanacco",
+      "name": "Vanacco",
+      "family_id": "bujairami_catalog",
+      "family_name": "Vanacco",
+      "aliases": [
+        "Vanacco",
+        "Bujairami Vanacco"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/vanacco-inspired-by-tobacco-vanille-tom-ford",
+      "source_evidence_url": "https://bujairami.com.au/products/vanacco-inspired-by-tobacco-vanille-tom-ford"
+    },
+    {
       "product_id": "SH-ZIMAYA-WUJOOD",
       "brand": "Zimaya",
       "brand_name": "Zimaya",
@@ -35192,6 +35351,33 @@
       ],
       "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-50-000",
       "source_url": "https://bujairami.com.au/products/love-spell-original-creation-50ml"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-98d6b788",
+      "variant_id": "SHV-SH-BUJAIRAMI-98d6b788-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ripper 100 ml",
+        "Bujairami Ripper 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-94286f44",
+      "variant_id": "SHV-SH-BUJAIRAMI-94286f44-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Woody Oud 100 ml",
+        "Bujairami Woody Oud 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-a717aa48",
+      "variant_id": "SHV-SH-BUJAIRAMI-a717aa48-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Lavish 100 ml",
+        "Bujairami Lavish 100ml"
+      ]
     },
     {
       "product_id": "SH-ARMAF-88c7f40b",
