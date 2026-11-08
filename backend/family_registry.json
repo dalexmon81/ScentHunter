@@ -15304,7 +15304,8 @@
           ],
           "formats_ml": [
             100
-          ]
+          ],
+          "product_type": "Perfume Spray"
         },
         {
           "canonical_name": "Caffe Latte",
@@ -15361,11 +15362,13 @@
           "aliases": [
             "Code Viola Nectar",
             "Khadlaj Code Viola Nectar",
-            "Code Viola Necter"
+            "Code Viola Necter",
+            "La Fede Code Viola Nectar"
           ],
           "formats_ml": [
             100
-          ]
+          ],
+          "product_type": "Perfume Spray"
         },
         {
           "canonical_name": "Cream Velvet",
@@ -15402,14 +15405,19 @@
           ],
           "formats_ml": [
             100
-          ]
+          ],
+          "product_type": "Perfume Spray"
         },
         {
           "canonical_name": "Hareem Al Sultan Blue",
           "aliases": [
             "Hareem Al Sultan Blue",
             "Khadlaj Hareem Al Sultan Blue"
-          ]
+          ],
+          "formats_ml": [
+            35
+          ],
+          "product_type": "Perfume Oil"
         },
         {
           "canonical_name": "Hareem Al Sultan Gold",
@@ -15486,14 +15494,19 @@
           ],
           "formats_ml": [
             20
-          ]
+          ],
+          "product_type": "Perfume Oil"
         },
         {
           "canonical_name": "Mocha Latte",
           "aliases": [
             "Mocha Latte",
             "Khadlaj Mocha Latte"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "product_type": "Perfume Spray"
         },
         {
           "canonical_name": "Muse",
@@ -15597,7 +15610,8 @@
           "canonical_name": "Private Blend Musk Ice",
           "aliases": [
             "Private Blend Musk Ice",
-            "Khadlaj Private Blend Musk Ice"
+            "Khadlaj Private Blend Musk Ice",
+            "Musk Ice"
           ],
           "formats_ml": [
             100
@@ -15627,7 +15641,8 @@
           "canonical_name": "Rose And Romance",
           "aliases": [
             "Rose And Romance",
-            "Khadlaj Rose And Romance"
+            "Khadlaj Rose And Romance",
+            "Rose & Romance"
           ]
         },
         {
@@ -15717,11 +15732,13 @@
           "canonical_name": "Uno Sensuale",
           "aliases": [
             "Uno Sensuale",
-            "Khadlaj Uno Sensuale"
+            "Khadlaj Uno Sensuale",
+            "La Fede Uno Sensuale"
           ],
           "formats_ml": [
             100
-          ]
+          ],
+          "product_type": "Perfume Spray"
         },
         {
           "canonical_name": "Wow Oud",
@@ -15731,7 +15748,8 @@
           ],
           "formats_ml": [
             100
-          ]
+          ],
+          "product_type": "Perfume Spray"
         },
         {
           "canonical_name": "Zayaan Gold",
@@ -15826,6 +15844,416 @@
             "Sueno",
             "Khadlaj Sueno"
           ]
+        },
+        {
+          "canonical_name": "D'Love",
+          "aliases": [
+            "D'Love",
+            "Khadlaj D'Love"
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Desert Rose",
+          "aliases": [
+            "Desert Rose",
+            "Khadlaj Desert Rose"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "product_type": "Perfume Spray"
+        },
+        {
+          "canonical_name": "Johayna Green",
+          "aliases": [
+            "Johayna Green",
+            "Khadlaj Johayna Green"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Kayaan Gold",
+          "aliases": [
+            "Kayaan Gold",
+            "Khadlaj Kayaan Gold"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Opulence Bleu",
+          "aliases": [
+            "Opulence Bleu",
+            "Khadlaj Opulence Bleu"
+          ]
+        },
+        {
+          "canonical_name": "Pink Musk",
+          "aliases": [
+            "Pink Musk",
+            "Khadlaj Pink Musk"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Pure Musk",
+          "aliases": [
+            "Pure Musk",
+            "Khadlaj Pure Musk"
+          ],
+          "formats_ml": [
+            20,
+            100
+          ],
+          "product_type": "Perfume Oil and Spray"
+        },
+        {
+          "canonical_name": "Purple Musk",
+          "aliases": [
+            "Purple Musk",
+            "Khadlaj Purple Musk"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Rasayel Shagaf",
+          "aliases": [
+            "Rasayel Shagaf",
+            "Khadlaj Rasayel Shagaf"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "product_type": "Perfume Spray"
+        },
+        {
+          "canonical_name": "Rasayel Vid",
+          "aliases": [
+            "Rasayel Vid",
+            "Khadlaj Rasayel Vid"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "product_type": "Perfume Spray"
+        },
+        {
+          "canonical_name": "Vanilla Kiss",
+          "aliases": [
+            "Vanilla Kiss",
+            "Khadlaj Vanilla Kiss"
+          ]
+        },
+        {
+          "canonical_name": "Barwaaz Pure Navy",
+          "aliases": [
+            "Barwaaz Pure Navy",
+            "Khadlaj Barwaaz Pure Navy"
+          ]
+        },
+        {
+          "canonical_name": "Biscotti Melon Misk",
+          "aliases": [
+            "Biscotti Melon Misk",
+            "Khadlaj Biscotti Melon Misk"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "product_type": "Perfume Spray"
+        },
+        {
+          "canonical_name": "Ghadeer Gold",
+          "aliases": [
+            "Ghadeer Gold",
+            "Khadlaj Ghadeer Gold"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "product_type": "Perfume Spray"
+        },
+        {
+          "canonical_name": "Hareem Al Sultan Silver",
+          "aliases": [
+            "Hareem Al Sultan Silver",
+            "Khadlaj Hareem Al Sultan Silver"
+          ],
+          "formats_ml": [
+            35
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Nuha",
+          "aliases": [
+            "Nuha",
+            "Khadlaj Nuha"
+          ],
+          "formats_ml": [
+            85
+          ],
+          "product_type": "Perfume Spray"
+        },
+        {
+          "canonical_name": "Aaliya",
+          "aliases": [
+            "Aaliya",
+            "Khadlaj Aaliya"
+          ],
+          "formats_ml": [
+            27
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Al Riyan",
+          "aliases": [
+            "Al Riyan",
+            "Khadlaj Al Riyan",
+            "Al Riyaan"
+          ],
+          "formats_ml": [
+            17
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Alf Wardat",
+          "aliases": [
+            "Alf Wardat",
+            "Khadlaj Alf Wardat",
+            "Alf Wardaat"
+          ],
+          "formats_ml": [
+            30
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Amber Pure",
+          "aliases": [
+            "Amber Pure",
+            "Khadlaj Amber Pure"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Ana Wa Anta",
+          "aliases": [
+            "Ana Wa Anta",
+            "Khadlaj Ana Wa Anta"
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Anabia Blue",
+          "aliases": [
+            "Anabia Blue",
+            "Khadlaj Anabia Blue"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Anabia Red",
+          "aliases": [
+            "Anabia Red",
+            "Khadlaj Anabia Red"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Arabian Treasure",
+          "aliases": [
+            "Arabian Treasure",
+            "Khadlaj Arabian Treasure"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Azaari",
+          "aliases": [
+            "Azaari",
+            "Khadlaj Azaari"
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Ghazlaan",
+          "aliases": [
+            "Ghazlaan",
+            "Khadlaj Ghazlaan"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Haneen Gold",
+          "aliases": [
+            "Haneen Gold",
+            "Khadlaj Haneen Gold"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Ibhaar",
+          "aliases": [
+            "Ibhaar",
+            "Khadlaj Ibhaar"
+          ],
+          "formats_ml": [
+            18
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Jameel",
+          "aliases": [
+            "Jameel",
+            "Khadlaj Jameel"
+          ],
+          "formats_ml": [
+            25
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Lulu Al Khaleej",
+          "aliases": [
+            "Lulu Al Khaleej",
+            "Khadlaj Lulu Al Khaleej"
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Malika Red",
+          "aliases": [
+            "Malika Red",
+            "Khadlaj Malika Red"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Nagham",
+          "aliases": [
+            "Nagham",
+            "Khadlaj Nagham"
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Oud & Musk",
+          "aliases": [
+            "Oud & Musk",
+            "Khadlaj Oud & Musk"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Raniya",
+          "aliases": [
+            "Raniya",
+            "Khadlaj Raniya"
+          ],
+          "formats_ml": [
+            18
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Rasha",
+          "aliases": [
+            "Rasha",
+            "Khadlaj Rasha"
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Rimaal Brown",
+          "aliases": [
+            "Rimaal Brown",
+            "Khadlaj Rimaal Brown"
+          ],
+          "formats_ml": [
+            15
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Roohi Wa Roohak Gold",
+          "aliases": [
+            "Roohi Wa Roohak Gold",
+            "Khadlaj Roohi Wa Roohak Gold"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Safari Gold",
+          "aliases": [
+            "Safari Gold",
+            "Khadlaj Safari Gold"
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Shamookh Gold",
+          "aliases": [
+            "Shamookh Gold",
+            "Khadlaj Shamookh Gold"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
+        },
+        {
+          "canonical_name": "Shamookh Silver",
+          "aliases": [
+            "Shamookh Silver",
+            "Khadlaj Shamookh Silver"
+          ],
+          "formats_ml": [
+            20
+          ],
+          "product_type": "Perfume Oil"
         }
       ]
     },
