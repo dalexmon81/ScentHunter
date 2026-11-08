@@ -92,7 +92,10 @@ def test_legacy_notino_feed_path_checks_approval_before_fetch_and_persistence(
         affiliate_feed.import_configured_feed()
     with pytest.raises(affiliate_feed.FeedImportError, match="notino_feed_authorization_required"):
         affiliate_feed.import_feed_bytes(b"<rss/>")
+    search_result = affiliate_feed.search_feed("Liquid Brun")
 
+    assert search_result["status"] == "unavailable"
+    assert search_result["error"] == "notino_feed_authorization_required"
     assert fetch_calls == []
     assert persist_calls == []
     factory.kw["bind"].dispose()
