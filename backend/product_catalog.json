@@ -3078,8 +3078,11 @@
         "Dulzura Vanilla Envie",
         "Paris Corner Dulzura Vanilla Envie"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/dulzura-vanilla-envie",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-5fee5359",
@@ -16164,8 +16167,12 @@
         "Empire de la Rouge",
         "Paris Corner Empire de la Rouge"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/empire-de-la-rouge",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ENGLISH-LEATHER",
@@ -16359,8 +16366,11 @@
         "Green Bet",
         "Paris Corner Green Bet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/green-bet",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-HARRIER-ABSOLUTE",
@@ -16389,8 +16399,11 @@
         "Heer",
         "Paris Corner Heer"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/heer",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-HIDDEN-HALO",
@@ -16914,8 +16927,11 @@
         "Marshmallow Blush",
         "Paris Corner Marshmallow Blush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAWJ-APPLETINI",
@@ -17605,9 +17621,13 @@
         "Oravea",
         "Paris Corner Oravea"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/oravea",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-OUD-AND-VANILLE-EMIR",
@@ -23779,9 +23799,12 @@
         "Rawq",
         "Paris Corner Rawq"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/rawq",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-2455de10",
@@ -32084,8 +32107,11 @@
         "The Show Magnifique",
         "Paris Corner The Show Magnifique"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/the-show-magnifique",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ZARIYA",
@@ -36116,6 +36142,80 @@
         "Assaf Wild Colt Elixir 200ml"
       ],
       "variant_id": "SHV-SH-ASSAF-dd5cfa1c-200-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-9a9dbbff",
+      "size_ml": 100,
+      "aliases": [
+        "Dulzura Vanilla Envie 100 ml",
+        "Paris Corner Dulzura Vanilla Envie 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-9a9dbbff-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE",
+      "size_ml": 100,
+      "aliases": [
+        "Empire de la Rouge 100 ml",
+        "Paris Corner Empire de la Rouge 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-GREEN-BET",
+      "size_ml": 100,
+      "aliases": [
+        "Green Bet 100 ml",
+        "Paris Corner Green Bet 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-GREEN-BET-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HEER",
+      "size_ml": 100,
+      "aliases": [
+        "Heer 100 ml",
+        "Paris Corner Heer 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-HEER-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MARSHMALLOW-BLUSH",
+      "size_ml": 100,
+      "aliases": [
+        "Marshmallow Blush 100 ml",
+        "Paris Corner Marshmallow Blush 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-MARSHMALLOW-BLUSH-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ORAVEA",
+      "size_ml": 100,
+      "aliases": [
+        "Oravea 100 ml",
+        "Paris Corner Oravea 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ORAVEA-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-738e5876",
+      "size_ml": 100,
+      "aliases": [
+        "Rawq 100 ml",
+        "Paris Corner Rawq 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-738e5876-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-THESHOWMAGNIFIQUE",
+      "size_ml": 100,
+      "aliases": [
+        "The Show Magnifique 100 ml",
+        "Paris Corner The Show Magnifique 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-THESHOWMAGNIFIQUE-100-000"
     }
   ]
 }
