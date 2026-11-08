@@ -21391,6 +21391,454 @@
       "identity_status": "source_listed_name",
       "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-LATTAFA-BERRY-ON-TOP",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Berry On Top",
+      "name": "Berry On Top",
+      "family_id": "lattafa_catalog",
+      "family_name": "Berry On Top",
+      "aliases": [
+        "Berry On Top",
+        "Lattafa Berry On Top"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-WASHWASHA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Washwasha",
+      "name": "Washwasha",
+      "family_id": "lattafa_catalog",
+      "family_name": "Washwasha",
+      "aliases": [
+        "Washwasha",
+        "Lattafa Washwasha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MUSK-SALAMA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Musk Salama",
+      "name": "Musk Salama",
+      "family_id": "lattafa_catalog",
+      "family_name": "Musk Salama",
+      "aliases": [
+        "Musk Salama",
+        "Lattafa Musk Salama"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ECLAIRE-PISTACHE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Eclaire Pistache",
+      "name": "Eclaire Pistache",
+      "family_id": "lattafa_catalog",
+      "family_name": "Eclaire Pistache",
+      "aliases": [
+        "Eclaire Pistache",
+        "Lattafa Eclaire Pistache"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ECLAIRE-BANOFFI",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Eclaire Banoffi",
+      "name": "Eclaire Banoffi",
+      "family_id": "lattafa_catalog",
+      "family_name": "Eclaire Banoffi",
+      "aliases": [
+        "Eclaire Banoffi",
+        "Lattafa Eclaire Banoffi"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANA-ABIYEDH-SCARLET",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ana Abiyedh Scarlet",
+      "name": "Ana Abiyedh Scarlet",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ana Abiyedh Scarlet",
+      "aliases": [
+        "Ana Abiyedh Scarlet",
+        "Lattafa Ana Abiyedh Scarlet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-DYNASTY",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Dynasty",
+      "name": "Dynasty",
+      "family_id": "lattafa_catalog",
+      "family_name": "Dynasty",
+      "aliases": [
+        "Dynasty",
+        "Lattafa Dynasty"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANA-ABIYEDH-LEATHER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ana Abiyedh Leather",
+      "name": "Ana Abiyedh Leather",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ana Abiyedh Leather",
+      "aliases": [
+        "Ana Abiyedh Leather",
+        "Lattafa Ana Abiyedh Leather"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-FIRE-ON-ICE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Fire On Ice",
+      "name": "Fire On Ice",
+      "family_id": "lattafa_catalog",
+      "family_name": "Fire On Ice",
+      "aliases": [
+        "Fire On Ice",
+        "Lattafa Fire On Ice"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HABIK-WOMEN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Habik Women",
+      "name": "Habik Women",
+      "family_id": "lattafa_catalog",
+      "family_name": "Habik Women",
+      "aliases": [
+        "Habik Women",
+        "Lattafa Habik Women"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HABIK-MEN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Habik Men",
+      "name": "Habik Men",
+      "family_id": "lattafa_catalog",
+      "family_name": "Habik Men",
+      "aliases": [
+        "Habik Men",
+        "Lattafa Habik Men"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+    },
+    {
+      "product_id": "SH-AFNAN-HISTORIC-SAHARA",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Historic Sahara",
+      "name": "Historic Sahara",
+      "family_id": "afnan_catalog",
+      "family_name": "Historic Sahara",
+      "aliases": [
+        "Historic Sahara",
+        "Afnan Historic Sahara"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-KIAANA-ANGEL",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Kiaana Angel",
+      "name": "Kiaana Angel",
+      "family_id": "afnan_catalog",
+      "family_name": "Kiaana Angel",
+      "aliases": [
+        "Kiaana Angel",
+        "Afnan Kiaana Angel"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-LA-FLEUR-BOUQUET",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "LA FLEUR BOUQUET",
+      "name": "LA FLEUR BOUQUET",
+      "family_id": "afnan_catalog",
+      "family_name": "LA FLEUR BOUQUET",
+      "aliases": [
+        "LA FLEUR BOUQUET",
+        "Afnan LA FLEUR BOUQUET"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-LILIA",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "LILIA",
+      "name": "LILIA",
+      "family_id": "afnan_catalog",
+      "family_name": "LILIA",
+      "aliases": [
+        "LILIA",
+        "Afnan LILIA"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-MALAK",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Malak",
+      "name": "Malak",
+      "family_id": "afnan_catalog",
+      "family_name": "Malak",
+      "aliases": [
+        "Malak",
+        "Afnan Malak"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-MODEST-DEUX",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "MODEST DEUX",
+      "name": "MODEST DEUX",
+      "family_id": "afnan_catalog",
+      "family_name": "MODEST DEUX",
+      "aliases": [
+        "MODEST DEUX",
+        "Afnan MODEST DEUX"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-ORNAMENT-POUR-FEMME",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "ORNAMENT POUR FEMME",
+      "name": "ORNAMENT POUR FEMME",
+      "family_id": "afnan_catalog",
+      "family_name": "ORNAMENT POUR FEMME",
+      "aliases": [
+        "ORNAMENT POUR FEMME",
+        "Afnan ORNAMENT POUR FEMME"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-ORNAMENT-POUR-HOMME",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "ORNAMENT POUR HOMME",
+      "name": "ORNAMENT POUR HOMME",
+      "family_id": "afnan_catalog",
+      "family_name": "ORNAMENT POUR HOMME",
+      "aliases": [
+        "ORNAMENT POUR HOMME",
+        "Afnan ORNAMENT POUR HOMME"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-OUD-RISING",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "OUD RISING",
+      "name": "OUD RISING",
+      "family_id": "afnan_catalog",
+      "family_name": "OUD RISING",
+      "aliases": [
+        "OUD RISING",
+        "Afnan OUD RISING"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-PARIS-OUD",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "PARIS OUD",
+      "name": "PARIS OUD",
+      "family_id": "afnan_catalog",
+      "family_name": "PARIS OUD",
+      "aliases": [
+        "PARIS OUD",
+        "Afnan PARIS OUD"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-PATCHOULI-ON-FIRE",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "PATCHOULI ON FIRE",
+      "name": "PATCHOULI ON FIRE",
+      "family_id": "afnan_catalog",
+      "family_name": "PATCHOULI ON FIRE",
+      "aliases": [
+        "PATCHOULI ON FIRE",
+        "Afnan PATCHOULI ON FIRE"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-PORTRAIT-REVIVAL",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "PORTRAIT REVIVAL",
+      "name": "PORTRAIT REVIVAL",
+      "family_id": "afnan_catalog",
+      "family_name": "PORTRAIT REVIVAL",
+      "aliases": [
+        "PORTRAIT REVIVAL",
+        "Afnan PORTRAIT REVIVAL"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-RARE-PASSION",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "RARE PASSION",
+      "name": "RARE PASSION",
+      "family_id": "afnan_catalog",
+      "family_name": "RARE PASSION",
+      "aliases": [
+        "RARE PASSION",
+        "Afnan RARE PASSION"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-STARDUST",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Stardust",
+      "name": "Stardust",
+      "family_id": "afnan_catalog",
+      "family_name": "Stardust",
+      "aliases": [
+        "Stardust",
+        "Afnan Stardust"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-IN-OUD-LUXURY-COLLECTION",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "SUPREMACY IN OUD - LUXURY COLLECTION",
+      "name": "SUPREMACY IN OUD - LUXURY COLLECTION",
+      "family_id": "afnan_catalog",
+      "family_name": "SUPREMACY IN OUD - LUXURY COLLECTION",
+      "aliases": [
+        "SUPREMACY IN OUD - LUXURY COLLECTION",
+        "Afnan SUPREMACY IN OUD - LUXURY COLLECTION"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-INCENSE",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "SUPREMACY INCENSE",
+      "name": "SUPREMACY INCENSE",
+      "family_id": "afnan_catalog",
+      "family_name": "SUPREMACY INCENSE",
+      "aliases": [
+        "SUPREMACY INCENSE",
+        "Afnan SUPREMACY INCENSE"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-NOIR",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "SUPREMACY NOIR",
+      "name": "SUPREMACY NOIR",
+      "family_id": "afnan_catalog",
+      "family_name": "SUPREMACY NOIR",
+      "aliases": [
+        "SUPREMACY NOIR",
+        "Afnan SUPREMACY NOIR"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=2",
+      "source_evidence_url": "https://afnan.com/collections/all?page=2"
     }
   ],
   "variants": [
