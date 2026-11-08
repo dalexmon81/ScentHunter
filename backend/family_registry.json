@@ -3819,6 +3819,9 @@
           "aliases": [
             "Date Caramel",
             "Paris Corner Date Caramel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4116,6 +4119,9 @@
           "aliases": [
             "Indomitable",
             "Paris Corner Indomitable"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4393,6 +4399,9 @@
           "aliases": [
             "Mawj Moscow Mule",
             "Paris Corner Mawj Moscow Mule"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4776,6 +4785,9 @@
           "aliases": [
             "Perseviron Fig Hug",
             "Paris Corner Perseviron Fig Hug"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
