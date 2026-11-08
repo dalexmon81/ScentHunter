@@ -127,3 +127,10 @@ Expected branch totals after this addition: 1,943 canonical products and
 267 variants. These are counts of records in this branch seed, not a claim of
 complete worldwide fragrance coverage. CI still needs to execute against the
 new PR head.
+
+
+## Reconciliation of all official product-detail candidates — 2026-11-08
+
+Compared the Arabiyat Prestige records in `verified_fragrance_name_harvest_2026-11-08.json` with the canonical seed and family registry. Existing canonical identities were retained (no new fragrance identities were created). Twenty official product-detail candidates from the overlay were reconciled into `source_verified_name` provenance and their exact source URLs, size/concentration pairs were represented as explicit variant rows. The two already-verified Extrait variants (Mahd Al Dhahab Extrait and Marwa Extrait) were preserved. The other 18 products with official detail evidence received variants only at the exact size/concentration stated in the overlay. Spelling forms Bóis Blanc / Bois Blanc and Gelato Black Current Lolly / Gelato Black Currant Lolly are aliases of existing identities, not new products.
+
+The official-store regression now checks product provenance, exact variant tuples, family-registry format parity and global ID uniqueness using normalized alias matching. The catalog CI workflow includes this test. The Marwa listing-only entry remains unpromoted; no unsupported Marwa product evidence or format is inferred.
