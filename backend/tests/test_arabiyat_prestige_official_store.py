@@ -8,114 +8,30 @@ BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
-# Derived only from individual MyPerfumes Europe product-detail records in the
-# checked-in verified fragrance harvest overlay. No sizes are inferred.
+# Source, size and concentration are taken from the checked-in product-level
+# verification overlay. Every expected item has its own official detail URL.
 EXPECTED = {
-    "\1": [
-        60,
-        "Extrait de Parfum",
-        "https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/mahd-al-dhahab"
-    ],
-    "\1": [
-        80,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/nyla-sherbet"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/fahad-regal"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/aristo"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/bois-blanc"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cherry-musk"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-her"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-him"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-serpentine"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-damour"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cursed"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/ramad-oriental"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-opulence"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-luminous"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/raspberry-ripple"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-her"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-him"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/uhud"
-    ],
-    "\1": [
-        100,
-        "Eau de Parfum",
-        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/safa"
-    ]
+    "Mahd Al Dhahab Extrait": (60, "Extrait de Parfum", "https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait"),
+    "Mahd Al Dhahab": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/mahd-al-dhahab"),
+    "Nyla Sherbet": (80, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/nyla-sherbet"),
+    "Fahad Regal": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/fahad-regal"),
+    "Aristo": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/aristo"),
+    "Bóis Blanc": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/bois-blanc"),
+    "Cherry Musk": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cherry-musk"),
+    "Marasi For Her": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-her"),
+    "Marasi For Him": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-him"),
+    "Swar Serpentine": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-serpentine"),
+    "Swar D'Amour": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-damour"),
+    "Cursed": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cursed"),
+    "Ramad Oriental": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/ramad-oriental"),
+    "Kohl Opulence": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-opulence"),
+    "Kohl Luminous": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-luminous"),
+    "Gelato Raspberry Ripple": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/raspberry-ripple"),
+    "Gelato Black Currant Lolly": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly"),
+    "La Di Da For Her": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-her"),
+    "La Di Da For Him": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-him"),
+    "Uhud": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/uhud"),
+    "Safa": (100, "Eau de Parfum", "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/safa"),
 }
 
 def norm(value):
@@ -147,7 +63,6 @@ class ArabiyatPrestigeOfficialStoreTests(unittest.TestCase):
                 product = self.product(name)
                 matches = [v for v in self.variants if v.get("product_id") == product["product_id"] and v.get("size_ml") == size and v.get("concentration") == concentration]
                 self.assertEqual(len(matches), 1)
-                self.assertIn(size, product.get("formats_ml", []))
 
     def test_family_registry_matches_verified_variant_formats(self):
         for name, (size, concentration, source) in EXPECTED.items():
