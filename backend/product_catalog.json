@@ -17,7 +17,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/adonis",
-      "source_evidence_url": "https://velixirparfums.com/products/adonis"
+      "source_evidence_url": "https://velixirparfums.com/products/adonis",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-8b429b66",
@@ -34,7 +38,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-aphrodite-eau-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-aphrodite-eau-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-aphrodite-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-6b018fb1",
@@ -51,7 +59,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/apollo",
-      "source_evidence_url": "https://velixirparfums.com/products/apollo"
+      "source_evidence_url": "https://velixirparfums.com/products/apollo",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-599e6e9d",
@@ -68,7 +80,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/ares",
-      "source_evidence_url": "https://velixirparfums.com/products/ares"
+      "source_evidence_url": "https://velixirparfums.com/products/ares",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-058bec99",
@@ -85,7 +101,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-artemis-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-artemis-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-artemis-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-9b764bf3",
@@ -102,7 +122,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-asteria-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-asteria-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-asteria-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-7a65a419",
@@ -119,7 +143,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/athena",
-      "source_evidence_url": "https://velixirparfums.com/products/athena"
+      "source_evidence_url": "https://velixirparfums.com/products/athena",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-50b87cfb",
@@ -153,7 +181,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-concordia-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-concordia-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-concordia-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-c0952852",
@@ -170,7 +202,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/demeter-for-unisex-edp-100ml",
-      "source_evidence_url": "https://velixirparfums.com/products/demeter-for-unisex-edp-100ml"
+      "source_evidence_url": "https://velixirparfums.com/products/demeter-for-unisex-edp-100ml",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-36e7a5ca",
@@ -204,7 +240,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-galatea-eau-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-galatea-eau-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-galatea-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-e49794d3",
@@ -221,7 +261,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-parfums-harmonia",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-harmonia"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-harmonia",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-1089d534",
@@ -238,7 +282,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/helios",
-      "source_evidence_url": "https://velixirparfums.com/products/helios"
+      "source_evidence_url": "https://velixirparfums.com/products/helios",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-06211958",
@@ -255,7 +303,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/hera",
-      "source_evidence_url": "https://velixirparfums.com/products/hera"
+      "source_evidence_url": "https://velixirparfums.com/products/hera",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-71f3ac99",
@@ -272,7 +324,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-himeros-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-himeros-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-himeros-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-3a619af9",
@@ -289,7 +345,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/icarus",
-      "source_evidence_url": "https://velixirparfums.com/products/icarus"
+      "source_evidence_url": "https://velixirparfums.com/products/icarus",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-21cface3",
@@ -306,7 +366,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-morpheus-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-morpheus-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-morpheus-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-23a9f320",
@@ -323,7 +387,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/narcisus",
-      "source_evidence_url": "https://velixirparfums.com/products/narcisus"
+      "source_evidence_url": "https://velixirparfums.com/products/narcisus",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-153bbbed",
@@ -340,7 +408,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-parfums-nyx-eau-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-nyx-eau-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-nyx-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-cfe48ddb",
@@ -357,7 +429,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/orion",
-      "source_evidence_url": "https://velixirparfums.com/products/orion"
+      "source_evidence_url": "https://velixirparfums.com/products/orion",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-7e147c46",
@@ -391,7 +467,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/paladin",
-      "source_evidence_url": "https://velixirparfums.com/products/paladin"
+      "source_evidence_url": "https://velixirparfums.com/products/paladin",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-1738e7af",
@@ -425,7 +505,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-persephone-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-persephone-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-persephone-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-c43f9b63",
@@ -442,7 +526,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-poseidon-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-poseidon-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-poseidon-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-bc687534",
@@ -459,7 +547,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-parfums-selene-eau-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-selene-eau-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-selene-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-029d80ce",
@@ -476,7 +568,11 @@
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/products/velixir-uranus-for-unisex-eau-de-parfum",
-      "source_evidence_url": "https://velixirparfums.com/products/velixir-uranus-for-unisex-eau-de-parfum"
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-uranus-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-a5cf9e83",
@@ -18553,7 +18649,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-MUSE",
@@ -18569,7 +18668,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SUENO",
@@ -18585,7 +18687,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SARAYA",
@@ -18601,7 +18706,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-ZAYAAN-SILVER",
@@ -18617,7 +18725,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-QARAR",
@@ -18633,7 +18744,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-IHTHIRAAM",
@@ -18649,7 +18763,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-ICON",
@@ -18665,7 +18782,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-2000",
