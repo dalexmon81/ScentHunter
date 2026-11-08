@@ -372,7 +372,9 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                 detail_verified = {
                     "Lemon Souffle", "Choco Truffle", "Kayaan Classic", "Kayaan Terra",
                     "Kayaan Gold", "Kayaan Midnight", "Al Daiem", "Al Daiem Elixir",
-                    "Arya Peony Rose", "Royal Oak I", "Royal Oak II",
+                    "Arya Peony Rose", "Royal Oak I", "Royal Oak II", "Milele", "Turquois",
+                    "Cloud", "Crème", "Sabah Al Ward", "Sabah Al Ward Sugar", "Special Oud",
+                    "Attar Al Wesal",
                 }
                 if name in detail_verified:
                     self.assertEqual(product.get("identity_status"), "source_verified_name")
@@ -395,10 +397,10 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             if p.get("brand") == "Al Wataniah"
         }
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in alwataniah_ids]
-        self.assertEqual(len(variants), 11)
+        self.assertEqual(len(variants), 19)
         self.assertEqual(
             {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
-            {"Lemon Souffle", "Choco Truffle", "Kayaan Classic", "Kayaan Terra", "Kayaan Gold", "Kayaan Midnight", "Al Daiem", "Al Daiem Elixir", "Arya Peony Rose", "Royal Oak I", "Royal Oak II"},
+            {"Lemon Souffle", "Choco Truffle", "Kayaan Classic", "Kayaan Terra", "Kayaan Gold", "Kayaan Midnight", "Al Daiem", "Al Daiem Elixir", "Arya Peony Rose", "Royal Oak I", "Royal Oak II", "Milele", "Turquois", "Cloud", "Crème", "Sabah Al Ward", "Sabah Al Ward Sugar", "Special Oud", "Attar Al Wesal"},
         )
 
 
