@@ -25315,22 +25315,6 @@
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
-      "product_id": "SH-MAISON-ASRAR-996a03df",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
-      "canonical_name": "Black Grapefruit",
-      "name": "Black Grapefruit",
-      "family_id": "maison_asrar_catalog",
-      "family_name": "Black Grapefruit",
-      "aliases": [
-        "Black Grapefruit",
-        "Maison Asrar Black Grapefruit"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrar.com/collections/all"
-    },
-    {
       "product_id": "SH-MAISON-ASRAR-9a7a33ab",
       "brand": "Maison Asrar",
       "brand_name": "Maison Asrar",
@@ -25778,11 +25762,16 @@
       "family_name": "Black",
       "aliases": [
         "Black",
-        "Maison Asrar Black"
+        "Maison Asrar Black",
+        "Black Grapefruit",
+        "Maison Asrar Black Grapefruit"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/black-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/black-eau-de-perfum-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-cec0d89e",
@@ -38474,6 +38463,17 @@
         "Velixir Adonis 100ml"
       ],
       "source_evidence_url": "https://velixir.co.uk/collections/all"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-cc3d301b",
+      "variant_id": "SHV-SH-MAISON-ASRAR-cc3d301b-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Black 100 ml",
+        "Maison Asrar Black 100 ml",
+        "Black Grapefruit 100 ml"
+      ],
+      "source_evidence_url": "https://maisonasrar.com/products/black-eau-de-perfum-100ml"
     }
   ]
 }
