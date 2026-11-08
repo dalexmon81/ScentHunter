@@ -15,10 +15,11 @@
     "canonical_import_requires_variant_review": true,
     "brand_listing_is_not_proof_of_exclusive_or_complete_catalog": true,
     "games_of_spades_hierarchy": "Games of Spades is the fragrance collection/brand label used in ScentHunter; Jo Milano Paris is the manufacturer. Gift sets/coffrets are excluded as separate canonical fragrances. Concentration variants such as Rouge Extrait are not separate canonical fragrance identities unless product model requires it.",
-    "brand_line_hierarchy": "Where the requested catalog line is distinct from the manufacturer, keep the requested line as brand/collection and store the parent house separately as manufacturer. Aromatix is cataloged as Aromatix, with French Avenue as manufacturer."
+    "brand_line_hierarchy": "Where the requested catalog line is distinct from the manufacturer, keep the requested line as brand/collection and store the parent house separately as manufacturer. Aromatix is cataloged as Aromatix, with French Avenue as manufacturer.",
+    "games_of_spades_unverified_registry_entry": "Jack remains in the family registry as a discovery-only/historical candidate, but is not imported into the canonical product seed because no current official Jo Milano Paris listing or product detail page was verified in this pass."
   },
   "summary": {
-    "product_name_candidates": 174,
+    "product_name_candidates": 173,
     "maison_asrar": 116,
     "maison_asrar_royal_collection": 9,
     "aromatix_x_french_avenue": 10,
@@ -38,7 +39,8 @@
     ],
     "games_of_spades_manufacturer": "Jo Milano Paris",
     "aromatix_line_candidates": 10,
-    "french_avenue_official_detail_additions": 3
+    "french_avenue_official_detail_additions": 3,
+    "games_of_spades_official_listed": 29
   },
   "sources": [
     {
@@ -1419,16 +1421,6 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-queen",
       "evidence_source": "Jo Milano Paris official product page",
       "evidence_level": "official_product_detail",
-      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
-    },
-    {
-      "brand": "Games of Spades",
-      "manufacturer": "Jo Milano Paris",
-      "fragrance_name": "Jack",
-      "collection": "Games of Spades",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "evidence_source": "Jo Milano Paris official all-products collection",
-      "evidence_level": "official_collection_listing",
       "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
     },
     {
