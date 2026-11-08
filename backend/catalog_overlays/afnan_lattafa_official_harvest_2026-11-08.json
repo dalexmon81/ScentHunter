@@ -1,0 +1,205 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "official_brand_store_collection_harvest",
+  "created_at": "2026-11-08",
+  "status": "name_only_catalog_harvest",
+  "description": "Reconciles Afnan and Lattafa catalog identities against current official Europe collection listings. Adds only names explicitly shown on official collection pages; excludes sets and discovery kits as standalone identities.",
+  "policy": {
+    "identity_status": "source_listed_name",
+    "no_inferred_variants": true,
+    "no_offers_or_prices": true,
+    "no_inferred_concentrations": true
+  },
+  "sources": [
+    {
+      "brand": "Afnan",
+      "url": "https://www.afnaneurope.com/collections/all-products",
+      "source_type": "official Afnan Europe collection",
+      "listing_count": 69,
+      "scope": "Official page showed 69 products; fragrance products checked, gift sets/travel kits excluded. Existing Supremacy Tapis Rouge - Luxury Collection receives shorter official listing alias."
+    },
+    {
+      "brand": "Lattafa",
+      "url": "https://lattafaparfum.eu/de-de/collections/all",
+      "source_type": "official Lattafa Europe collection",
+      "scope": "Official all-fragrances page; product listing names harvested, gift sets and discovery sets excluded."
+    }
+  ],
+  "summary": {
+    "afnan_new_identities": 0,
+    "afnan_aliases_added": 1,
+    "lattafa_candidates": 23,
+    "lattafa_new_identities": 23,
+    "variants_added": 0
+  },
+  "products": [
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Eclaire",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Badee Al Oud Black Exposed",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Khamrah Qahwa",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "His Confession",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Her Confession",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Pride Eternal Vanille",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Badee Al Oud Honor & Glory",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Fakhar Men",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Badee Al Oud",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Yara",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "The Kingdom Men",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Khamrah Dukhan",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Atlas",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Badee Al Oud Amethyst",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Ana Abiyedh",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Pride Art of Arabia I",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Pride Nebras",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Opulent Oud",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "The Kingdom Women",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Pride Vintage Radio",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Pride Art Of Universe",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Ajwad Pink to Pink Creamy Elixir",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Fakhar Women",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
+      "alias_added": "Supremacy Tapis Rouge",
+      "source_url": "https://www.afnaneurope.com/collections/all-products",
+      "evidence_status": "official_store_collection_listing"
+    }
+  ]
+}
