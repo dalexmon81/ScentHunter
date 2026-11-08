@@ -123,6 +123,29 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     )
                 )
 
+    def test_afnan_9pm_night_out_official_product_page_and_variant_are_verified(self):
+        row = next(
+            (
+                product
+                for product in CATALOG.get("products", [])
+                if str(product.get("brand_name") or product.get("brand") or "").strip() == "Afnan"
+                and str(product.get("canonical_name") or product.get("name") or "").strip() == "9 PM Night Out"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://de.afnan.com/en/products/9pm-night-out")
+        self.assertEqual(row.get("concentration"), "Extrait de Parfum")
+        self.assertTrue(
+            any(
+                variant.get("product_id") == row["product_id"]
+                and variant.get("size_ml") == 100
+                and variant.get("concentration") == "Extrait de Parfum"
+                for variant in CATALOG.get("variants", [])
+            )
+        )
+
     def test_prune_hypnos_official_product_page_and_variant_are_verified(self):
         row = next(
             (
