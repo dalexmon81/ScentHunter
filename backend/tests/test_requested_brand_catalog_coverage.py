@@ -491,7 +491,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(matching), 1)
                 self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
-                self.assertNotIn("concentration", matching[0])
+                if name in {"Sansa", "Affair", "Tea Poetry"}:
+                    self.assertNotIn("concentration", matching[0])
+                else:
+                    self.assertEqual(matching[0].get("concentration"), row.get("concentration"))
+                    self.assertEqual(matching[0].get("concentration"), "Extrait de Parfum")
+                    self.assertEqual(matching[0].get("source_url"), row.get("source_url"))
+
+    def test_mykonos_travel_variants_inherit_official_parent_concentration(self):
+        products = {
+            row["product_id"]: row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Mykonos"
+        }
+        expected = {
+            "Dark Secret", "Musk Aura", "Satin Blanc", "Sparkling Rosé",
+            "Black Opera", "Moroccan Vanilla", "Utopia", "Hawaiian Crush",
+            "On The Rocks", "Royal Ispahan", "Crimson", "California",
+            "California Blue", "Penthouse", "Monaco Royale",
+        }
+        found = set()
+        for variant in CATALOG.get("variants", []):
+            if variant.get("size_ml") != 15:
+                continue
+            product = products.get(variant.get("product_id"))
+            if not product:
+                continue
+            name = str(product.get("canonical_name") or product.get("name") or "").strip()
+            if name not in expected:
+                continue
+            found.add(name)
+            with self.subTest(product=name):
+                self.assertEqual(variant.get("concentration"), product.get("concentration"))
+                self.assertEqual(variant.get("concentration"), "Extrait de Parfum")
+                self.assertEqual(variant.get("source_url"), product.get("source_url"))
+                self.assertTrue(str(variant.get("source_url") or "").startswith("https://officialmykonos.com/"))
+        self.assertEqual(found, expected)
 
 
 if __name__ == "__main__":
