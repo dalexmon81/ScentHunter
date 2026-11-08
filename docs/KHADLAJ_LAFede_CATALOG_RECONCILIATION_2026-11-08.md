@@ -67,7 +67,7 @@ Beyond the 35 La Fede entries above, the official store's other collections conf
 
 - Previous ScentHunter seed: 116 Khadlaj identities, 29 explicit variants.
 - This change: +35 verified identities and +35 explicit EDP variants.
-- New seed count: 168 Khadlaj identities and 81 variants.
+- New seed count: 177 Khadlaj identities and 91 variants.
 - The 96 named products visible in the official Perfume Sprays collection were already covered before this change.
 - The independent ScentRadar list still has names that need individual review; ScentRadar is not authoritative, and names not confirmed by Khadlaj's own product pages remain out of the catalog.
 - Six products from the official La Fede collection count have not yet been exposed in the retrieved collection-page text.
