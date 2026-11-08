@@ -11071,7 +11071,9 @@
       "family_name": "California",
       "aliases": [
         "California",
-        "Mykonos California"
+        "Mykonos California",
+        "California Signature",
+        "Mykonos California Signature"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml",
@@ -11415,7 +11417,8 @@
       "family_name": "Xoxo Rosy",
       "aliases": [
         "Xoxo Rosy",
-        "Mykonos Xoxo Rosy"
+        "Mykonos Xoxo Rosy",
+        "XoXo, Rosy"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11437,11 +11440,13 @@
         "Empire x RRQ",
         "Mykonos Empire x RRQ",
         "Empire (Mykonos x RRQ)",
-        "Mykonos Empire (Mykonos x RRQ)"
+        "Mykonos Empire (Mykonos x RRQ)",
+        "Empire",
+        "Mykonos Empire"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
@@ -11724,7 +11729,8 @@
       "family_name": "Nautilus",
       "aliases": [
         "Nautilus",
-        "Mykonos Nautilus"
+        "Mykonos Nautilus",
+        "Nautilius"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11824,7 +11830,8 @@
       "family_name": "Affair",
       "aliases": [
         "Affair",
-        "Mykonos Affair"
+        "Mykonos Affair",
+        "Intimate Affair"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11858,7 +11865,8 @@
       "family_name": "Shades Perfume",
       "aliases": [
         "Shades Perfume",
-        "Mykonos Shades Perfume"
+        "Mykonos Shades Perfume",
+        "Shades Parfum"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11890,7 +11898,8 @@
       "family_name": "Jynx",
       "aliases": [
         "Jynx",
-        "Mykonos Jynx"
+        "Mykonos Jynx",
+        "Jinx"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -12963,9 +12972,9 @@
         "Imperium",
         "Mykonos Imperium"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=2",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
       "formats_ml": [
         100
       ],
@@ -33722,6 +33731,488 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-MYKONOS-ADELINA",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Adelina",
+      "name": "Adelina",
+      "family_id": "mykonos_catalog",
+      "family_name": "Adelina",
+      "aliases": [
+        "Adelina",
+        "Mykonos Adelina"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-AVRA-KEHDABRA",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Avra Kehdabra",
+      "name": "Avra Kehdabra",
+      "family_id": "mykonos_catalog",
+      "family_name": "Avra Kehdabra",
+      "aliases": [
+        "Avra Kehdabra",
+        "Mykonos Avra Kehdabra",
+        "Mykonos x Paola Serena Avra Kehdabra"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.de/products/mykonos-x-paola-serena-avra-kehdabra",
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-x-paola-serena-avra-kehdabra",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-BERRY-CARAMEL-PANCAKE",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Berry Caramel Pancake",
+      "name": "Berry Caramel Pancake",
+      "family_id": "mykonos_catalog",
+      "family_name": "Berry Caramel Pancake",
+      "aliases": [
+        "Berry Caramel Pancake",
+        "Mykonos Berry Caramel Pancake"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.de/products/mykonos-berry-caramel-pancake",
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-berry-caramel-pancake",
+      "formats_ml": [
+        50
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-BLOODY-MARY",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Bloody Mary",
+      "name": "Bloody Mary",
+      "family_id": "mykonos_catalog",
+      "family_name": "Bloody Mary",
+      "aliases": [
+        "Bloody Mary",
+        "Mykonos Bloody Mary"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-CAFE-LYON",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Café Lyon",
+      "name": "Café Lyon",
+      "family_id": "mykonos_catalog",
+      "family_name": "Café Lyon",
+      "aliases": [
+        "Café Lyon",
+        "Cafe Lyon",
+        "Mykonos Café Lyon"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-cafe-lyon",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-cafe-lyon"
+    },
+    {
+      "product_id": "SH-MYKONOS-CELESTIAL",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Celestial",
+      "name": "Celestial",
+      "family_id": "mykonos_catalog",
+      "family_name": "Celestial",
+      "aliases": [
+        "Celestial",
+        "Mykonos Celestial"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-celestial",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-celestial"
+    },
+    {
+      "product_id": "SH-MYKONOS-CRYSTALS",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Crystals",
+      "name": "Crystals",
+      "family_id": "mykonos_catalog",
+      "family_name": "Crystals",
+      "aliases": [
+        "Crystals",
+        "Mykonos Crystals"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-DAYDREAM",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Daydream",
+      "name": "Daydream",
+      "family_id": "mykonos_catalog",
+      "family_name": "Daydream",
+      "aliases": [
+        "Daydream",
+        "Mykonos Daydream"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-daydream",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-daydream",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-DEJA-VU",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Déjà Vu",
+      "name": "Déjà Vu",
+      "family_id": "mykonos_catalog",
+      "family_name": "Déjà Vu",
+      "aliases": [
+        "Déjà Vu",
+        "Deja Vu",
+        "Mykonos Déjà Vu"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-deja-vu",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-deja-vu"
+    },
+    {
+      "product_id": "SH-MYKONOS-DOLCE-CHERRY",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Dolce Cherry",
+      "name": "Dolce Cherry",
+      "family_id": "mykonos_catalog",
+      "family_name": "Dolce Cherry",
+      "aliases": [
+        "Dolce Cherry",
+        "Mykonos Dolce Cherry",
+        "Mykonos x Sapeyeeee Dolce Cherry"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.de/products/mykonos-x-sapeyeeee-dolce-cherry",
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-x-sapeyeeee-dolce-cherry",
+      "formats_ml": [
+        50
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-ECLIPSE",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Eclipse",
+      "name": "Eclipse",
+      "family_id": "mykonos_catalog",
+      "family_name": "Eclipse",
+      "aliases": [
+        "Eclipse",
+        "Mykonos Eclipse"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-ELYSIAN",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Elysian",
+      "name": "Elysian",
+      "family_id": "mykonos_catalog",
+      "family_name": "Elysian",
+      "aliases": [
+        "Elysian",
+        "Mykonos Elysian"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-elysian",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-elysian"
+    },
+    {
+      "product_id": "SH-MYKONOS-FOREVER-MUSC",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Forever Musc",
+      "name": "Forever Musc",
+      "family_id": "mykonos_catalog",
+      "family_name": "Forever Musc",
+      "aliases": [
+        "Forever Musc",
+        "Mykonos Forever Musc"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-forever-musc",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-forever-musc",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-INCEPTION-REIMAGINED",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Inception Reimagined",
+      "name": "Inception Reimagined",
+      "family_id": "mykonos_catalog",
+      "family_name": "Inception Reimagined",
+      "aliases": [
+        "Inception Reimagined",
+        "Mykonos Inception Reimagined"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-inception-reimagined",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-inception-reimagined",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-INSPIRE-PERFUME",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Inspire Perfume",
+      "name": "Inspire Perfume",
+      "family_id": "mykonos_catalog",
+      "family_name": "Inspire Perfume",
+      "aliases": [
+        "Inspire Perfume",
+        "Mykonos Inspire Perfume",
+        "Inspire Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-inspire",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-inspire",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MYKONOS-ITS-NOT-ELLA",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "It's Not Ella",
+      "name": "It's Not Ella",
+      "family_id": "mykonos_catalog",
+      "family_name": "It's Not Ella",
+      "aliases": [
+        "It's Not Ella",
+        "Mykonos It's Not Ella"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-KINGSMAN",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Kingsman",
+      "name": "Kingsman",
+      "family_id": "mykonos_catalog",
+      "family_name": "Kingsman",
+      "aliases": [
+        "Kingsman",
+        "Mykonos Kingsman"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-kingsman",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-kingsman"
+    },
+    {
+      "product_id": "SH-MYKONOS-MONACO-ROYALE-BLACK",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Monaco Royale Black",
+      "name": "Monaco Royale Black",
+      "family_id": "mykonos_catalog",
+      "family_name": "Monaco Royale Black",
+      "aliases": [
+        "Monaco Royale Black",
+        "Mykonos Monaco Royale Black"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-monaco-royale-black",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-monaco-royale-black",
+      "formats_ml": [
+        50,
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-NASHI-PEAR-GARDEN",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Nashi Pear Garden",
+      "name": "Nashi Pear Garden",
+      "family_id": "mykonos_catalog",
+      "family_name": "Nashi Pear Garden",
+      "aliases": [
+        "Nashi Pear Garden",
+        "Mykonos Nashi Pear Garden"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-PRESIDENT",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "President",
+      "name": "President",
+      "family_id": "mykonos_catalog",
+      "family_name": "President",
+      "aliases": [
+        "President",
+        "Mykonos President"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-president",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-president"
+    },
+    {
+      "product_id": "SH-MYKONOS-ROULETTE",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Roulette",
+      "name": "Roulette",
+      "family_id": "mykonos_catalog",
+      "family_name": "Roulette",
+      "aliases": [
+        "Roulette",
+        "Mykonos Roulette"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-SHAPE-SHIFT",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Shape Shift",
+      "name": "Shape Shift",
+      "family_id": "mykonos_catalog",
+      "family_name": "Shape Shift",
+      "aliases": [
+        "Shape Shift",
+        "Mykonos Shape Shift"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-shape-shift",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-shape-shift",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-SOFT-HOUR-NCT-HAECHAN",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Soft Hour x NCT Haechan",
+      "name": "Soft Hour x NCT Haechan",
+      "family_id": "mykonos_catalog",
+      "family_name": "Soft Hour x NCT Haechan",
+      "aliases": [
+        "Soft Hour x NCT Haechan",
+        "Mykonos Soft Hour x NCT Haechan"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-x-nct-haechan-soft-hour",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-nct-haechan-soft-hour",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-UNDERCOVER",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Undercover",
+      "name": "Undercover",
+      "family_id": "mykonos_catalog",
+      "family_name": "Undercover",
+      "aliases": [
+        "Undercover",
+        "Mykonos Undercover"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-undercover",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-undercover"
+    },
+    {
+      "product_id": "SH-MYKONOS-VIOLETTE",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Violette",
+      "name": "Violette",
+      "family_id": "mykonos_catalog",
+      "family_name": "Violette",
+      "aliases": [
+        "Violette",
+        "Mykonos Violette",
+        "Mykonos x Violenzia Violette"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.de/products/mykonos-x-violenzia-violette",
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-x-violenzia-violette",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-WALLFLOWER",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Wallflower",
+      "name": "Wallflower",
+      "family_id": "mykonos_catalog",
+      "family_name": "Wallflower",
+      "aliases": [
+        "Wallflower",
+        "Mykonos Wallflower"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-wallflower",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-wallflower"
+    },
+    {
+      "product_id": "SH-MYKONOS-ZEUS",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Zeus",
+      "name": "Zeus",
+      "family_id": "mykonos_catalog",
+      "family_name": "Zeus",
+      "aliases": [
+        "Zeus",
+        "Mykonos Zeus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
     }
   ],
   "variants": [
@@ -34597,7 +35088,7 @@
         "Empire x RRQ 50 ml",
         "Mykonos Empire x RRQ 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-92e7627a",
@@ -34608,7 +35099,7 @@
         "Empire x RRQ 100 ml",
         "Mykonos Empire x RRQ 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-78b2bc55",
@@ -34861,7 +35352,7 @@
         "Imperium 100 ml",
         "Mykonos Imperium 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-678b254c",
@@ -36654,6 +37145,127 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "product_id": "SH-MYKONOS-DAYDREAM",
+      "variant_id": "SHV-SH-MYKONOS-DAYDREAM-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Daydream 100 ml",
+        "Mykonos Daydream 100 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-daydream"
+    },
+    {
+      "product_id": "SH-MYKONOS-FOREVER-MUSC",
+      "variant_id": "SHV-SH-MYKONOS-FOREVER-MUSC-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Forever Musc 100 ml",
+        "Mykonos Forever Musc 100 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-forever-musc"
+    },
+    {
+      "product_id": "SH-MYKONOS-INCEPTION-REIMAGINED",
+      "variant_id": "SHV-SH-MYKONOS-INCEPTION-REIMAGINED-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Inception Reimagined 100 ml",
+        "Mykonos Inception Reimagined 100 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-inception-reimagined"
+    },
+    {
+      "product_id": "SH-MYKONOS-MONACO-ROYALE-BLACK",
+      "variant_id": "SHV-SH-MYKONOS-MONACO-ROYALE-BLACK-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Monaco Royale Black 100 ml",
+        "Mykonos Monaco Royale Black 100 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-monaco-royale-black"
+    },
+    {
+      "product_id": "SH-MYKONOS-MONACO-ROYALE-BLACK",
+      "variant_id": "SHV-SH-MYKONOS-MONACO-ROYALE-BLACK-50-000",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Monaco Royale Black 50 ml",
+        "Mykonos Monaco Royale Black 50 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-monaco-royale-black"
+    },
+    {
+      "product_id": "SH-MYKONOS-SHAPE-SHIFT",
+      "variant_id": "SHV-SH-MYKONOS-SHAPE-SHIFT-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Shape Shift 100 ml",
+        "Mykonos Shape Shift 100 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-shape-shift"
+    },
+    {
+      "product_id": "SH-MYKONOS-SOFT-HOUR-NCT-HAECHAN",
+      "variant_id": "SHV-SH-MYKONOS-SOFT-HOUR-NCT-HAECHAN-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Soft Hour x NCT Haechan 100 ml",
+        "Mykonos Soft Hour x NCT Haechan 100 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-nct-haechan-soft-hour"
+    },
+    {
+      "product_id": "SH-MYKONOS-AVRA-KEHDABRA",
+      "variant_id": "VAR-3e8b7c1a5d9042f6",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Avra Kehdabra 100 ml",
+        "Mykonos Avra Kehdabra 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-x-paola-serena-avra-kehdabra"
+    },
+    {
+      "product_id": "SH-MYKONOS-DOLCE-CHERRY",
+      "variant_id": "VAR-5c2a9f7e1b6348d0",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Dolce Cherry 50 ml",
+        "Mykonos Dolce Cherry 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-x-sapeyeeee-dolce-cherry"
+    },
+    {
+      "product_id": "SH-MYKONOS-VIOLETTE",
+      "variant_id": "VAR-8d4f2a6c9b1703e5",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Violette 100 ml",
+        "Mykonos Violette 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-x-violenzia-violette"
+    },
+    {
+      "product_id": "SH-MYKONOS-BERRY-CARAMEL-PANCAKE",
+      "variant_id": "VAR-9a71c4e2b6d308f1",
+      "size_ml": 50,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Berry Caramel Pancake 50 ml",
+        "Mykonos Berry Caramel Pancake 50 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.de/products/mykonos-berry-caramel-pancake"
     }
   ]
 }
