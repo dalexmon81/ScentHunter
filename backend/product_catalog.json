@@ -46480,6 +46480,21 @@
         100
       ],
       "collection_name": "Uno Range"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "name": "Musk Pure Musk Blend Creation of Iqbal",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "aliases": [
+        "Musk Pure Musk Blend Creation of Iqbal",
+        "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
     }
   ],
   "variants": [
@@ -53188,175 +53203,6 @@
         "Bujairami G’Day 100 ml"
       ],
       "source_evidence_url": "https://bujairami.com.au/products/gday-bujairami-original-niche"
-    },
-    {
-      "product_id": "SH-MYKONOS-1ce7e53c",
-      "variant_id": "VAR-1e9df094931ebbc8",
-      "size_ml": 100,
-      "aliases": [
-        "Only You 100 ml",
-        "Mykonos Only You 100 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-d36ff1d7",
-      "variant_id": "VAR-09031cffc016128b",
-      "size_ml": 100,
-      "aliases": [
-        "Shades Perfume 100 ml",
-        "Mykonos Shades Perfume 100 ml"
-      ]
-    },
-    {
-      "product_id": "SH-MYKONOS-52353618",
-      "variant_id": "VAR-d670d5e57870d051",
-      "size_ml": 50,
-      "aliases": [
-        "Chai Crema Latte 50 ml",
-        "Mykonos Chai Crema Latte 50 ml"
-      ],
-      "concentration": "Extrait de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-aa3e1b8a",
-      "variant_id": "VAR-9347c182d43a5726",
-      "size_ml": 100,
-      "aliases": [
-        "Jynx 100 ml",
-        "Mykonos Jynx 100 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-10a2bd45",
-      "variant_id": "VAR-c85b51b351848757",
-      "size_ml": 50,
-      "aliases": [
-        "Rouge 50 ml",
-        "Mykonos Rouge 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-67332242",
-      "variant_id": "VAR-1049bd7f9da0f11b",
-      "size_ml": 50,
-      "aliases": [
-        "Seven Roses 50 ml",
-        "Mykonos Seven Roses 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-c8ea16e6",
-      "variant_id": "VAR-2ede8bb9014f17e5",
-      "size_ml": 50,
-      "aliases": [
-        "Ivory 50 ml",
-        "Mykonos Ivory 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-69a65dd6",
-      "variant_id": "VAR-a0b29c91585c891d",
-      "size_ml": 50,
-      "aliases": [
-        "Blossom 50 ml",
-        "Mykonos Blossom 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-e036b897",
-      "variant_id": "VAR-e3f6d5e0932c184c",
-      "size_ml": 50,
-      "aliases": [
-        "Zora 50 ml",
-        "Mykonos Zora 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-e036b897",
-      "variant_id": "VAR-453b03e6e8f38aaa",
-      "size_ml": 100,
-      "aliases": [
-        "Zora 100 ml",
-        "Mykonos Zora 100 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-070136ba",
-      "variant_id": "VAR-83c37ae2155edb4e",
-      "size_ml": 50,
-      "aliases": [
-        "Down to Earth 50 ml",
-        "Mykonos Down to Earth 50 ml"
-      ],
-      "concentration": "Extrait de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-35ac95ff",
-      "variant_id": "VAR-841cfe821206384e",
-      "size_ml": 50,
-      "aliases": [
-        "When in Paris 50 ml",
-        "Mykonos When in Paris 50 ml"
-      ],
-      "concentration": "Extrait de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-9ff7fa43",
-      "variant_id": "VAR-33df2e2a37ed2f86",
-      "size_ml": 50,
-      "aliases": [
-        "Pandan Sticky Rice 50 ml",
-        "Mykonos Pandan Sticky Rice 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-825c174b",
-      "variant_id": "VAR-4d100342b2fc51a6",
-      "size_ml": 50,
-      "aliases": [
-        "Pistachio Cream Cake 50 ml",
-        "Mykonos Pistachio Cream Cake 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-775acf3b",
-      "variant_id": "VAR-68fbe3965068cb62",
-      "size_ml": 50,
-      "aliases": [
-        "Blaze 50 ml",
-        "Mykonos Blaze 50 ml"
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-9abbf020",
-      "variant_id": "VAR-9d069ea6e932150a",
-      "size_ml": 50,
-      "aliases": [
-        "Memoir of Meri 50 ml",
-        "Mykonos Memoir of Meri 50 ml"
-      ],
-      "concentration": "Extrait de Parfum"
-    },
-    {
-      "product_id": "SH-MYKONOS-3b92f6c9",
-      "variant_id": "VAR-6fb98466e6c3bab2",
-      "size_ml": 50,
-      "aliases": [
-        "Once Upon Don 50 ml",
-        "Mykonos Once Upon Don 50 ml"
-      ],
-      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-807b8de9",
