@@ -15,6 +15,14 @@ PRODUCTS = {
     "Rave Now- rouge": ("https://lattafa.com/product/rave-now-rouge/", 100),
     "Fearless": ("https://lattafa.com/product/fearless/", 100),
     "Raw Human": ("https://lattafa.com/product/raw-human/", 100),
+    "Asad Polar": ("https://lattafa.com/product/asad-polar/", 100),
+    "Beyond Precious": ("https://lattafa.com/product/beyond-precious/", 100),
+    "Harlequin Cream – Give Me Gourmand": ("https://lattafa.com/product/harlequin-cream-give-me-gourmand/", 75),
+    "Rave Now- women": ("https://lattafa.com/product/rave-now-women/", 100),
+    "Rave Now- White": ("https://lattafa.com/product/rave-now-white/", 100),
+    "Rave Now- rouge": ("https://lattafa.com/product/rave-now-rouge/", 100),
+    "Fearless": ("https://lattafa.com/product/fearless/", 100),
+    "Raw Human": ("https://lattafa.com/product/raw-human/", 100),
 }
 
 
