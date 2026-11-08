@@ -1672,3 +1672,13 @@ The harvest overlay now records these cross-checks and the reason for holding bo
 - Evidence reviewed includes Fenice, Arabic Parfums, ParfumGroup, Parfimo, FragranceNet and Fragrantica. These are corroborating retailer/database sources, not the Arabiyat Prestige brand's own product detail page.
 - Kept the Extrait outside the canonical seed until an official brand or clearly authorized primary distributor product detail is confirmed. It must not be merged into the EDP as a concentration variant without authoritative evidence that the product identity is one and the same.
 - The candidate overlay now explicitly records this evidence gate and its no-inference rule.
+
+
+## Pass 34 — Arabiyat Prestige Mahd Al Dhahab Extrait primary-source confirmation (2026-11-08)
+
+- The source gate is now closed. The MyPerfumes Europe Arabiyat perfumes store, titled as the official store, exposes a dedicated product detail page for **Arabiyat Prestige — Mahd Al Dhahab Extrait De Parfum — 60ML**: https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait .
+- The official store separately lists **Mahd Al Dhahab EDP 100ML** and **Mahd Al Dhahab Extrait De Parfum 60ML**, confirming these are separate fragrance identities/presentations rather than one generic EDP with an inferred concentration option.
+- Added Mahd Al Dhahab Extrait as a distinct canonical product and added one explicit 60 ml Extrait de Parfum variant. The existing Mahd Al Dhahab EDP was not merged or renamed.
+- Fenice retailer and Parfumo independent database provide corroboration for the distinct Extrait release.
+- Added `backend/tests/test_arabiyat_prestige_extrait.py` for canonical separation, official source provenance, exact 60 ml Extrait variant, registry format and identity uniqueness.
+- Catalog totals after this addition: **1,923 canonical identities; 246 explicit variants**. No retailer offer, price, stock, shipping cost or GTIN was imported.
