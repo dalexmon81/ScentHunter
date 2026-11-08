@@ -1083,9 +1083,12 @@
         "Petra",
         "Maison Asrar Petra"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-2301938b",
@@ -1259,9 +1262,12 @@
         "Basma",
         "Maison Asrar Basma"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-basma-eau-de-parfum-100-ml-unisex",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-basma-eau-de-parfum-100-ml-unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-cc3d301b",
@@ -1323,9 +1329,12 @@
         "Casablanca",
         "Maison Asrar Casablanca"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-e1c73a0a",
@@ -2068,9 +2077,12 @@
         "Soudfa",
         "Maison Asrar Soudfa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-soudfa-eau-de-parfum-100-ml-for-women",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-soudfa-eau-de-parfum-100-ml-for-women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-239490ec",
@@ -2212,9 +2224,12 @@
         "Vanilla Rouge",
         "Maison Asrar Vanilla Rouge"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml",
+      "source_evidence_url": "https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-6b08fbc5",
@@ -36910,6 +36925,56 @@
         "Maison Asrar Fresh Iris Eau de Parfum 100 ml"
       ],
       "variant_id": "SHV-SH-MAISON-ASRAR-f778e873-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-a39f5b0c",
+      "size_ml": 100,
+      "aliases": [
+        "Basma 100 ml",
+        "Maison Asrar Basma Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-a39f5b0c-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-02826afd",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Rouge 100 ml",
+        "Maison Asrar Vanilla Rouge Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-02826afd-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-54c12160",
+      "size_ml": 100,
+      "aliases": [
+        "Petra 100 ml",
+        "Maison Asrar Petra Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-54c12160-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-6210ceb2",
+      "size_ml": 100,
+      "aliases": [
+        "Soudfa 100 ml",
+        "Maison Asrar Soudfa Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-6210ceb2-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-ad855115",
+      "size_ml": 100,
+      "aliases": [
+        "Casablanca 100 ml",
+        "Maison Asrar Casablanca Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-ad855115-100-EDP",
       "concentration": "Eau de Parfum"
     }
   ]
