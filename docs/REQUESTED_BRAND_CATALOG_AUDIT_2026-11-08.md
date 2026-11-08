@@ -387,7 +387,7 @@ Official source pages:
 
 ### Paris Corner: eleven additional official detail pages (8 November 2026)
 
-The official Paris Corner "New Arrivals Offer" collection linked directly to individual product pages for these fragrances. Eleven existing collection-level records were upgraded to source_verified_name, and explicit variants were added. One item, Ministry of Oud - Thailand Oud in Cairo, was present in the family registry but absent from the canonical product seed; it was added as one new canonical identity.
+The official Paris Corner "New Arrivals Offer" collection linked directly to individual product pages for these fragrances. Ten existing collection-level records were upgraded to source_verified_name, and explicit variants were added. One item, Ministry of Oud - Thailand Oud in Cairo, was present in the family registry but absent from the canonical product seed; it was added as one new canonical identity.
 
 | Canonical identity | Official product page | Size | Concentration stated |
 |---|---|---:|---|
