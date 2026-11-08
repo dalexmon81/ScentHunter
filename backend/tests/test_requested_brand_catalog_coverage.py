@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
-    "Bujairami": 161,
+    "Bujairami": 171,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -524,6 +524,41 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             with self.subTest(name=name):
                 row = products[name]
                 self.assertEqual(row.get("identity_status"), "source_verified_name" if "bujairami.com.au" in source_url else "source_listed_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+
+
+
+    def test_bujairami_third_batch_name_listed_100ml_products(self):
+        expected = {
+            "10/10": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/10-10/"),
+            "22": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/22/"),
+            "25": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/25/"),
+            "26": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/26/"),
+            "29": ("Extrait de Parfum", "https://bujairamiperfumes.eu/perfumes/29/"),
+            "33": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/33/"),
+            "50 Shades": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/50-shades/"),
+            "A La Carte": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/a-la-carte/"),
+            "Above The Clouds": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/above-the-clouds/"),
+            "Abyss": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/abyss/"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (concentration, source_url) in expected.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
                 self.assertEqual(row.get("source_url"), source_url)
                 self.assertEqual(row.get("concentration"), concentration)
                 self.assertEqual(row.get("formats_ml"), [100])
