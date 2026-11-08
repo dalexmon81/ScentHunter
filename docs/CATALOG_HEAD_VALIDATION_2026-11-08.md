@@ -68,3 +68,18 @@ Counts describe this branch snapshot, not every historical, regional or currentl
 1. Reconcile the Arabiyat Prestige official-store regression against current product-level evidence and exact variant rows before adding it to CI.
 2. Continue product-page verification of the 1,620 listing-backed identities; do not infer missing size, concentration, GTIN or SKU values.
 3. Keep PR #426 draft and unmerged; keep PR #424 separate. No production import, retailer authorization, deployment, live offers, prices or stock are included.
+
+
+## Assaf discovery-candidate expansion — 2026-11-08
+
+A public independent guide (FragranceGems) advertises 140 Assaf names, while explicitly stating that it is not the official Assaf site. A normalized name/alias reconciliation against the pre-update seed found 119 absent names.
+
+- Added 119 Assaf candidate identities with `identity_status=source_listed_name`.
+- Each candidate records `source_evidence_type=independent_reseller_guide`, the guide URL and `review_required=true`.
+- No size, concentration, GTIN/EAN, SKU, price, stock, shipping or availability was copied or inferred.
+- The Assaf family registry was synchronized for all added candidates.
+- This is a discovery expansion, not an official verification of 140 products. The candidates must be reconciled against Assaf-owned product pages before promotion to `source_verified_name`.
+- Current canonical seed: 1,845 product identities and 212 explicit variants. The earlier base snapshot had 1,726 identities / 212 variants; 119 candidate names were added.
+- CI has not yet been observed for this follow-up branch head. Do not call the regression test green until Actions reports a run for the exact commit.
+
+Source: https://assafperfumes.eu/perfumes/ (independent, not official).
