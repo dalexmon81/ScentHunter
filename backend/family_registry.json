@@ -10693,6 +10693,11 @@
           "aliases": [
             "King",
             "Games of Spades King"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            100
           ]
         },
         {
@@ -10700,6 +10705,11 @@
           "aliases": [
             "Queen",
             "Games of Spades Queen"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            100
           ]
         },
         {
@@ -10729,6 +10739,12 @@
             "All In",
             "Games of Spades All In",
             "Game of Spades All In"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            50,
+            100
           ]
         },
         {
@@ -10745,6 +10761,11 @@
             "Black Sapphire",
             "Games of Spades Black Sapphire",
             "Game of Spades Black Sapphire"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            90
           ]
         },
         {
@@ -10753,6 +10774,9 @@
             "Blind Bid",
             "Games of Spades Blind Bid",
             "Game of Spades Blind Bid"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10769,6 +10793,11 @@
             "Bonus",
             "Games of Spades Bonus",
             "Game of Spades Bonus"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            100
           ]
         },
         {
@@ -10785,6 +10814,11 @@
             "Diamond",
             "Games of Spades Diamond",
             "Game of Spades Diamond"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            100
           ]
         },
         {
@@ -10793,6 +10827,11 @@
             "Double Bonus",
             "Games of Spades Double Bonus",
             "Game of Spades Double Bonus"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            100
           ]
         },
         {
@@ -10801,6 +10840,10 @@
             "Emerald",
             "Games of Spades Emerald",
             "Game of Spades Emerald"
+          ],
+          "formats_ml": [
+            30,
+            100
           ]
         },
         {
@@ -10817,6 +10860,11 @@
             "Gold",
             "Games of Spades Gold",
             "Game of Spades Gold"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            90
           ]
         },
         {
@@ -10833,6 +10881,11 @@
             "Jackpot",
             "Games of Spades Jackpot",
             "Game of Spades Jackpot"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            100
           ]
         },
         {
@@ -10849,6 +10902,9 @@
             "No Limit",
             "Games of Spades No Limit",
             "Game of Spades No Limit"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10857,6 +10913,9 @@
             "Opal",
             "Games of Spades Opal",
             "Game of Spades Opal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10873,6 +10932,10 @@
             "Rouge",
             "Games of Spades Rouge",
             "Game of Spades Rouge"
+          ],
+          "formats_ml": [
+            30,
+            100
           ]
         },
         {
@@ -10881,6 +10944,11 @@
             "Royale",
             "Games of Spades Royale",
             "Game of Spades Royale"
+          ],
+          "formats_ml": [
+            30,
+            50,
+            100
           ]
         },
         {
@@ -10921,6 +10989,43 @@
             "Yellow Sapphire",
             "Games of Spades Yellow Sapphire",
             "Game of Spades Yellow Sapphire"
+          ]
+        },
+        {
+          "canonical_name": "Blue Sapphire",
+          "aliases": [
+            "Blue Sapphire",
+            "Games of Spades Blue Sapphire",
+            "Game of Spades Blue Sapphire"
+          ],
+          "formats_ml": [
+            90
+          ]
+        },
+        {
+          "canonical_name": "Emerald Extrait",
+          "aliases": [
+            "Emerald Extrait",
+            "Games of Spades Emerald Extrait",
+            "Game of Spades Emerald Extrait"
+          ],
+          "formats_ml": [
+            10,
+            50,
+            90
+          ]
+        },
+        {
+          "canonical_name": "Rouge Extrait",
+          "aliases": [
+            "Rouge Extrait",
+            "Games of Spades Rouge Extrait",
+            "Game of Spades Rouge Extrait"
+          ],
+          "formats_ml": [
+            10,
+            30,
+            100
           ]
         }
       ]
