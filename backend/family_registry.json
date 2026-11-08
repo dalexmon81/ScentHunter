@@ -6460,6 +6460,30 @@
           ]
         }
       ]
+    },
+    {
+      "family_id": "al_ambra_catalog",
+      "brand": "Al Ambra",
+      "query_aliases": [
+        "Al Ambra",
+        "Alambra"
+      ],
+      "products": [
+        {
+          "canonical_name": "Secret Adventure",
+          "aliases": [
+            "Secret Adventure",
+            "Al Ambra Secret Adventure"
+          ]
+        },
+        {
+          "canonical_name": "Cecil",
+          "aliases": [
+            "Cecil",
+            "Al Ambra Cecil"
+          ]
+        }
+      ]
     }
   ]
 }
