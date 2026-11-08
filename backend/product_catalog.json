@@ -18541,9 +18541,13 @@
         "Onyx Galaxy",
         "Khadlaj Onyx Galaxy"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-MUSE",
@@ -18557,9 +18561,14 @@
         "Muse",
         "Khadlaj Muse"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SUENO",
@@ -18605,9 +18614,14 @@
         "Zayaan Silver",
         "Khadlaj Zayaan Silver"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-QARAR",
@@ -18621,9 +18635,14 @@
         "Qarar",
         "Khadlaj Qarar"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-IHTHIRAAM",
@@ -18637,9 +18656,14 @@
         "Ihthiraam",
         "Khadlaj Ihthiraam"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-ICON",
@@ -18653,9 +18677,14 @@
         "Icon",
         "Khadlaj Icon"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-BUJAIRAMI-2000",
@@ -36548,6 +36577,65 @@
         "Khadlaj Sawaar Vanille Blanc 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-24969f48-100-000"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ONYX-GALAXY",
+      "size_ml": 100,
+      "aliases": [
+        "Onyx Galaxy 100 ml",
+        "Khadlaj Onyx Galaxy 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-000"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MUSE",
+      "size_ml": 100,
+      "aliases": [
+        "Muse 100 ml",
+        "Khadlaj Muse 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-MUSE-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ZAYAAN-SILVER",
+      "size_ml": 100,
+      "aliases": [
+        "Zayaan Silver 100 ml",
+        "Khadlaj Zayaan Silver 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ZAYAAN-SILVER-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-QARAR",
+      "size_ml": 60,
+      "aliases": [
+        "Qarar 60 ml",
+        "Khadlaj Qarar 60ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-QARAR-60-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-IHTHIRAAM",
+      "size_ml": 60,
+      "aliases": [
+        "Ihthiraam 60 ml",
+        "Khadlaj Ihthiraam 60ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-IHTHIRAAM-60-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ICON",
+      "size_ml": 100,
+      "aliases": [
+        "Icon 100 ml",
+        "Khadlaj Icon 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ICON-100-000",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
