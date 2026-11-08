@@ -71,7 +71,6 @@ on:
       - "backend/tests/test_catalog_first_vertical_slice.py"
       - "backend/tests/test_catalog_contract_alignment.py"
       - "backend/tests/test_store_connector_contract.py"
-      - "backend/tests/test_store_connector_contract.py"
       - "backend/tests/test_connector_ingestion_worker.py"
       - "backend/tests/test_offer_matching_worker.py"
       - "backend/tests/test_offer_promotion_worker.py"
@@ -189,6 +188,7 @@ jobs:
           backend/tests/test_remaining_universal_connectors.py
           backend/tests/test_connector_ingestion_worker.py
           backend/tests/test_connector_ingestion_session_defaults.py
+          backend/tests/test_notino_authorization_gate.py
 
       - name: Validate ingestion, matching, promotion and queue workers
         run: >-
