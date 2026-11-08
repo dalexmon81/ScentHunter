@@ -13,7 +13,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 99,
-    "Maison Asrar": 120,
+    "Maison Asrar": 124,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -635,6 +635,137 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertTrue(all(v.get("concentration") == row.get("concentration") for v in matching))
         self.assertIn("Narcissus", products["Narcisus"].get("aliases", []))
         self.assertIn("Harmony", products["Harmonia"].get("aliases", []))
+
+
+    def test_maison_asrar_cross_source_variants_and_identity_cleanup(self):
+        expected_sizes = {
+            "Belgravia": 100,
+            "Legacy": 100,
+            "Vanguard": 100,
+            "Regent": 100,
+            "Ameer": 100,
+            "Majesty": 100,
+            "Veyra": 100,
+            "Vanilla Aura": 100,
+            "Faris Al Arab": 100,
+            "Vanilla Voyage": 25,
+            "III Thriller": 100,
+            "Last Swim": 100,
+            "Pomme Rouge": 100,
+            "Haven": 100,
+            "Muharib": 100,
+            "Silent Surge": 100,
+            "Treasure": 100,
+            "Hunter": 100,
+            "Imperial": 100,
+            "Monarch": 100,
+            "1963": 100,
+            "Adorable": 100,
+            "Alonoud": 100,
+            "Basma": 100,
+            "Black": 100,
+            "Bloom Bloom": 100,
+            "Bonita": 100,
+            "Casablanca": 100,
+            "Cascade": 100,
+            "Coffee Blend": 100,
+            "Daham": 100,
+            "Date Night": 100,
+            "Dear Jasmine": 100,
+            "Desire": 100,
+            "Dubai London": 100,
+            "Dubai Miami": 100,
+            "Dubai Milano": 100,
+            "DXB": 100,
+            "DXB Jumeirah": 100,
+            "Emerald": 110,
+            "Fairy Tale": 100,
+            "Fakhama": 100,
+            "Flair": 100,
+            "Fresh Iris": 100,
+            "Gentle Oud": 80,
+            "Gold Noir": 110,
+            "Hamsat Gharam": 100,
+            "Hamsat Ghazal": 100,
+            "Hamsat Hob": 100,
+            "Hamsat Ishq": 100,
+            "Heritage": 100,
+            "Hikaya": 100,
+            "Hilm": 100,
+            "Icon": 100,
+            "Infina": 100,
+            "Italian Leather": 80,
+            "Jawhara Black": 100,
+            "Jawhara Rouge": 100,
+            "Joy": 100,
+            "Khateer": 100,
+            "Khayal": 100,
+            "Kiss My Lips": 90,
+            "Leo": 100,
+            "Librae": 100,
+            "Lily": 100,
+            "Lolita": 100,
+            "Lumiere": 110,
+            "Luna": 100,
+            "Magic Night": 100,
+            "Masterpiece": 100,
+            "Milky Way": 100,
+            "Nada": 100,
+            "Never Forget Me": 90,
+            "Night in Paris": 90,
+            "Oh Honey!": 100,
+            "Oscar": 100,
+            "Patchouli with Love": 100,
+            "Petra": 100,
+            "Pink Crush": 100,
+            "Red Velvet": 100,
+            "Rey": 100,
+            "Rose": 110,
+            "Rose Honey": 100,
+            "Rose Musk": 100,
+            "Rose Oud": 100,
+            "Rose Vanilla": 100,
+            "Rosé Absolute": 100,
+            "Rosé Bouquet": 100,
+            "Silver Elixer": 110,
+            "Soirée": 100,
+            "Soudfa": 100,
+            "Sunset in Capri": 90,
+            "Throne": 100,
+            "Throne Eclipse": 100,
+            "Timeless": 100,
+            "Tornado": 100,
+            "Trophy": 100,
+            "Turath": 100,
+            "Turath Malaki": 100,
+            "Vanilla Rouge": 100,
+            "Vanilla Seduction": 100,
+            "Vision": 100,
+            "Wadi": 100,
+            "Wood Intense": 80,
+            "Zenobia": 100,
+        }
+        edp_names = {"Belgravia", "Legacy", "Vanguard", "Regent", "Ameer", "Majesty", "Veyra", "Vanilla Aura", "Faris Al Arab", "Vanilla Voyage", "III Thriller", "Last Swim", "Pomme Rouge", "Haven", "Muharib", "Silent Surge", "Treasure", "Hunter", "Imperial", "Monarch", "Bonita", "Cascade", "Coffee Blend", "Daham", "Date Night", "Dubai London", "Dubai Miami", "Dubai Milano", "DXB", "DXB Jumeirah", "Fakhama", "Flair", "Gentle Oud", "Gold Noir", "Hamsat Ishq", "Heritage", "Hikaya", "Hilm", "Infina", "Italian Leather", "Joy", "Khateer", "Khayal", "Kiss My Lips", "Leo", "Librae", "Lily", "Lolita", "Lumiere", "Luna", "Masterpiece", "Milky Way", "Nada", "Never Forget Me", "Night in Paris", "Oh Honey!", "Patchouli with Love", "Pink Crush", "Red Velvet", "Rose", "Silver Elixer", "Soirée", "Throne", "Throne Eclipse", "Timeless", "Tornado", "Vanilla Seduction", "Vision", "Wadi", "Wood Intense"}
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Maison Asrar"}
+        variants = CATALOG.get("variants", [])
+        self.assertEqual(len(products), 125)
+        self.assertNotIn("Black Grapefruit", products)
+        self.assertIn("Rosé", products["Rose"].get("aliases", []))
+        self.assertIn("Silver Elixir", products["Silver Elixer"].get("aliases", []))
+        for name, size in expected_sizes.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertIn(size, row.get("formats_ml", []))
+                matching = [v for v in variants if v.get("product_id") == row["product_id"] and v.get("size_ml") == size]
+                self.assertEqual(len(matching), 1)
+                if name in edp_names:
+                    self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                    self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        for name in ["Amal", "Asala", "Red Carpet", "Runway Girl", "Shaheen Black", "Smokey Eyes"]:
+            with self.subTest(legacy_name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
 
 if __name__ == "__main__":
     unittest.main()
