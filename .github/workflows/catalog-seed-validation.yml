@@ -12,6 +12,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-99-identities-102-variants-clean-v2-2026-11-08
+      - catalog/maison-asrar-125-identities-113-variants-clean-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
