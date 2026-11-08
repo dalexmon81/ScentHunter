@@ -162,6 +162,41 @@
       "brand": "Arabiyat Prestige",
       "url": "https://arabiyatprestige.com/",
       "note": "Arabiyat Prestige storefront product cards explicitly state product name, concentration and size for these entries. No price, stock or offer data copied."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/emiran",
+      "note": "Official Al Wataniah product page explicitly identifies Emiran as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/layali",
+      "note": "Official Al Wataniah product page explicitly identifies Layali as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/special-oud",
+      "note": "Official Al Wataniah product page explicitly identifies Special Oud as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/castilla",
+      "note": "Official Al Wataniah product page explicitly identifies Castilla as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/kayaan-midnight",
+      "note": "Official Al Wataniah product page explicitly identifies Kayaan Midnight as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/fayroz",
+      "note": "Official Al Wataniah product page explicitly identifies Fayroz as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
+    },
+    {
+      "brand": "Al Wataniah",
+      "url": "https://www.alwataniah.com/products/turquois",
+      "note": "Official Al Wataniah product page explicitly identifies Turquois as Eau de Parfum, 100ml. Product identity/variant evidence only; current price and stock are not imported."
     }
   ],
   "products": [
@@ -4191,6 +4226,72 @@
       "brand": "Arabiyat Prestige",
       "fragrance": "Lychee Musk",
       "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Emiran",
+      "source_url": "https://www.alwataniah.com/products/emiran",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Layali",
+      "source_url": "https://www.alwataniah.com/products/layali",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Castilla",
+      "source_url": "https://www.alwataniah.com/products/castilla",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Kayaan Midnight",
+      "source_url": "https://www.alwataniah.com/products/kayaan-midnight",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Fayroz",
+      "source_url": "https://www.alwataniah.com/products/fayroz",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Al Wataniah",
+      "fragrance": "Turquois",
+      "source_url": "https://www.alwataniah.com/products/turquois",
       "variants": [
         {
           "concentration": "Eau de Parfum",
