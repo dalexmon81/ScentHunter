@@ -1,0 +1,40 @@
+"""Official Maison Asrar source evidence for three 100 ml EDP variants."""
+import json
+import unittest
+from pathlib import Path
+
+CATALOG = Path(__file__).resolve().parents[1] / "product_catalog.json"
+SOURCE = "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar"
+EXPECTED = {
+    "Jawhara Rouge": "SH-MAISON-ASRAR-d20dc7ce",
+    "Jawhara Black": "SH-MAISON-ASRAR-fce356db",
+    "Fresh Iris": "SH-MAISON-ASRAR-f778e873",
+}
+
+
+class MaisonAsrarOfficialVariantTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data = json.loads(CATALOG.read_text(encoding="utf-8"))
+        cls.products = {p["canonical_name"]: p for p in cls.data["products"] if p.get("brand_name") == "Maison Asrar"}
+
+    def test_three_official_100ml_edp_variants(self):
+        for name, product_id in EXPECTED.items():
+            with self.subTest(product=name):
+                product = self.products[name]
+                self.assertEqual(product["product_id"], product_id)
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_evidence_url"], SOURCE)
+                self.assertIn(100, product["formats_ml"])
+                variants = [v for v in self.data["variants"] if v["product_id"] == product_id]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0]["size_ml"], 100)
+                self.assertEqual(variants[0]["concentration"], "Eau de Parfum")
+
+    def test_variant_ids_remain_unique(self):
+        ids = [v["variant_id"] for v in self.data["variants"]]
+        self.assertEqual(len(ids), len(set(ids)))
+
+
+if __name__ == "__main__":
+    unittest.main()
