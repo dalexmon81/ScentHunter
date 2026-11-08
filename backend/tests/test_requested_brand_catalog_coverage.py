@@ -988,5 +988,23 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", matching[0])
 
 
+
+    def test_mykonos_every_variant_has_product_level_evidence_url(self):
+        products = {
+            row.get("product_id"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") in products
+        ]
+        missing = [
+            (products[row["product_id"]].get("canonical_name"), row.get("size_ml"))
+            for row in variants
+            if not row.get("source_evidence_url")
+        ]
+        self.assertEqual(missing, [])
+
 if __name__ == "__main__":
     unittest.main()
