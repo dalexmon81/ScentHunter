@@ -60,6 +60,8 @@ on:
       - "backend/app/api/legacy_catalog.py"
       - "backend/catalog_engine.py"
       - "backend/app/connectors/notino.py"
+      - "backend/scrapers/notino/**"
+      - "backend/tests/test_notino_authorization_gate.py"
       - "backend/app/connectors/base.py"
       - "backend/app/workers/ingestion_tasks.py"
       - "backend/app/workers/offer_promotion.py"
