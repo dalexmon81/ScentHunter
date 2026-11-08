@@ -16,7 +16,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 98,
     "Maison Asrar": 125,
-    "Khadlaj": 164,
+    "Khadlaj": 166,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
@@ -1073,15 +1073,21 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         pure = products["Pure Musk"]
         self.assertEqual(
             {(v.get("size_ml"), v.get("concentration")) for v in variants if v.get("product_id") == pure["product_id"]},
-            {(20, "Perfume Oil"), (100, "Eau de Parfum")},
+            {(20, "Perfume Oil")},
         )
+        pure_edp = products["Pure Musk EDP"]
+        self.assertEqual(
+            {(v.get("size_ml"), v.get("concentration")) for v in variants if v.get("product_id") == pure_edp["product_id"]},
+            {(100, "Eau de Parfum")},
+        )
+        self.assertIn("Ana Wa Anta", products)
         self.assertIn("Musk Ice", products["Private Blend Musk Ice"].get("aliases", []))
         self.assertIn("Creation De Reve", products["Maison Creation De Reve"].get("aliases", []))
         self.assertIn("Epoque Artistique", products["Maison Epoque Artistique"].get("aliases", []))
         self.assertIn("Flor Oud", products["Maison Flor Oud"].get("aliases", []))
         self.assertIn("L'Imaginaire", products["Maison L'Imaginaire"].get("aliases", []))
         self.assertIn("L'Or Noir", products["Maison L'Or Noir"].get("aliases", []))
-        for name in ("D'Love", "Barwaaz Pure Navy", "Ghadeer Gold", "Vanilla Kiss", "Ana Wa Anta", "Lulu Al Khaleej", "Nagham", "Rasha", "Safari Gold"):
+        for name in ("D'Love", "Barwaaz Pure Navy", "Ghadeer Gold", "Vanilla Kiss", "Lulu Al Khaleej", "Nagham", "Rasha", "Safari Gold"):
             self.assertIn(name, products)
 
 if __name__ == "__main__":
