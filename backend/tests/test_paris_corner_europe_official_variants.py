@@ -8,10 +8,11 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
 EXPECTED = {
-    "Date Caramel": ("SH-PARIS-CORNER-807b8de9", "https://de.pariscornereurope.com/en/products/date-caramel"),
-    "Indomitable": ("SH-PARIS-CORNER-INDOMITABLE", "https://de.pariscornereurope.com/en/products/indomitable"),
-    "Mawj Moscow Mule": ("SH-PARIS-CORNER-MAWJ-MOSCOW-MULE", "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml"),
-    "Perseviron Fig Hug": ("SH-PARIS-CORNER-18f3d5a4", "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml"),
+    "Date Caramel": ("SH-PARIS-CORNER-807b8de9", "https://de.pariscornereurope.com/en/products/date-caramel", "Eau de Parfum"),
+    "Indomitable": ("SH-PARIS-CORNER-INDOMITABLE", "https://de.pariscornereurope.com/en/products/indomitable", "Eau de Parfum"),
+    "Mawj Moscow Mule": ("SH-PARIS-CORNER-MAWJ-MOSCOW-MULE", "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml", "Eau de Parfum"),
+    "Perseviron Fig Hug": ("SH-PARIS-CORNER-18f3d5a4", "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml", "Eau de Parfum"),
+    "Tiramisu Speculoos": ("SH-PARIS-CORNER-TIRAMISU-SPECULOOS", "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml", None),
 }
 
 
@@ -30,7 +31,7 @@ class ParisCornerEuropeOfficialVariantTests(unittest.TestCase):
         )
 
     def test_official_pages_and_edp_variants(self):
-        for name, (product_id, url) in EXPECTED.items():
+        for name, (product_id, url, concentration) in EXPECTED.items():
             with self.subTest(product=name):
                 product = self.products[name]
                 self.assertEqual(product["product_id"], product_id)
@@ -38,12 +39,15 @@ class ParisCornerEuropeOfficialVariantTests(unittest.TestCase):
                 self.assertEqual(product["source_url"], url)
                 self.assertEqual(product["source_evidence_url"], url)
                 self.assertEqual(product["formats_ml"], [100])
-                self.assertEqual(product["concentration"], "Eau de Parfum")
+                if concentration is None:
+                    self.assertNotIn("concentration", product)
+                else:
+                    self.assertEqual(product["concentration"], concentration)
                 matches = [
                     v for v in self.variants
                     if v.get("product_id") == product_id
                     and v.get("size_ml") == 100
-                    and v.get("concentration") == "Eau de Parfum"
+                    and v.get("concentration") == concentration
                 ]
                 self.assertEqual(len(matches), 1)
 
@@ -51,6 +55,11 @@ class ParisCornerEuropeOfficialVariantTests(unittest.TestCase):
         product = self.products["Perseviron Fig Hug"]
         self.assertIn("Fig Hug", product["aliases"])
         self.assertIn("Paris Corner Fig Hug", product["aliases"])
+
+    def test_tiramisu_concentration_is_not_inferred(self):
+        product = self.products["Tiramisu Speculoos"]
+        self.assertEqual(product["formats_ml"], [100])
+        self.assertNotIn("concentration", product)
 
     def test_family_registry_formats_are_aligned(self):
         for name in EXPECTED:
