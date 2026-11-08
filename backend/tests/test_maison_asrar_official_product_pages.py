@@ -22,6 +22,14 @@ EXPECTED = {
     "Mohra": "https://maisonasrar.com/products/mohrab",
     "Luna": "https://maisonasrar.com/products/luna-eau-de-parfum-100ml",
     "Magic Night": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+    "Omniya": "https://maisonasrar.com/products/omniya",
+    "Qamar": "https://maisonasrar.com/products/qamar",
+    "Oh Honey!": "https://maisonasrar.com/products/oh-honey-eau-de-parfum",
+    "Patchouli with Love": "https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml",
+    "Pink Crush": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women",
+    "Oscar": "https://maisonasrar.com/products/oscar-eau-de-perfum-100ml",
+    "Petra": "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml",
+    "Never Forget Me": "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
 }
 
 
@@ -48,7 +56,10 @@ class MaisonAsrarOfficialProductPageTests(unittest.TestCase):
             with self.subTest(product=name):
                 product = self.products[name]
                 self.assertNotIn("formats_ml", product)
-                self.assertNotIn("concentration", product)
+                if name == "Patchouli with Love":
+                    self.assertEqual(product["concentration"], "Eau de Parfum")
+                else:
+                    self.assertNotIn("concentration", product)
 
 
 if __name__ == "__main__":

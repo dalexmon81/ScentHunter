@@ -22,6 +22,7 @@ on:
       - catalog/al-wataniah-eternal-classic-official-variants-2026-11-08
       - catalog/maison-asrar-official-page-provenance-2026-11-08
       - catalog/maison-asrar-more-official-pages-2026-11-08
+      - catalog/maison-asrar-official-pages-fourth-pass-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -47,6 +48,7 @@ on:
       - catalog/al-wataniah-eternal-classic-official-variants-2026-11-08
       - catalog/maison-asrar-official-page-provenance-2026-11-08
       - catalog/maison-asrar-more-official-pages-2026-11-08
+      - catalog/maison-asrar-official-pages-fourth-pass-2026-11-08
 
 permissions:
   contents: read
