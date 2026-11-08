@@ -186,3 +186,23 @@ Official source: https://khadlaj-perfumes.com/collections/khadlaj-new-launches .
 - 0 duplicate canonical names within Bujairami and Khadlaj
 
 Coverage remains incomplete for Khadlaj's 89-item new-launch collection and for the broader requested brand set. The counts above are not claims that every fragrance ever released by either brand is represented.
+
+
+## Further Khadlaj and French Avenue extraction — 2026-11-08
+
+Khadlaj's official new-launch page pagination was inspected through page 2. Added four more missing named perfumes visible there: Strawberry Shake, Nafais Magrib, Mansion and Peach Velvet. Current Khadlaj catalog count: **48**. The collection contains 89 items and pagination/load-more continues beyond the inspected pages; it is not complete.
+
+French Avenue's official all-products collection reports **142 products**. The visible first-page products were inspected and 10 missing fragrance identities were added: Spectre Wraith, Cocoa Morado, Amber Empire, Dusk Till Dawn, Royal Blend Sequoia, Noble Cedar, Jasmere, Atlantis Extrait, Ambroise Pour Femme, Aether and Imperial Ocean. Current French Avenue catalog count: **30**. This is a partial page-level extraction, not a complete import of all 142 entries. The page has product filters and a load-more control; more pagination/extraction is required.
+
+Sources:
+- https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2
+- https://frenchavenue.com/collections/all
+
+### Latest integrity snapshot
+- 1,260 canonical identities
+- 141 explicit variant rows
+- 31 discovery families
+- Bujairami: 121 identities
+- Khadlaj: 48 identities
+- French Avenue: 30 identities
+- 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variants; 0 canonical products missing from discovery registry
