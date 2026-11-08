@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - catalog/complete-brand-expansion-2026-11
+      - catalog/requested-brands-assaf-followup-2026-11-08
 
 permissions:
   contents: read
@@ -52,4 +53,5 @@ jobs:
           backend.tests.test_arabiyat_prestige_extrait
           backend.tests.test_arabiyat_prestige_marwa_extrait
           backend.tests.test_arabiyat_prestige_official_store
+          backend.tests.test_assaf_discovery_candidates
           -v
