@@ -17,10 +17,7 @@ OFFICIAL_DETAIL_PAGES = {
 class BujairamiOriginalDetailEvidenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.products = [
-            p for p in CATALOG["products"]
-            if p.get("brand") == "Bujairami"
-        ]
+        cls.products = [p for p in CATALOG["products"] if p.get("brand") == "Bujairami"]
         cls.by_name = {p["canonical_name"]: p for p in cls.products}
 
     def test_existing_canonical_identities_are_upgraded_not_duplicated(self):
@@ -28,9 +25,7 @@ class BujairamiOriginalDetailEvidenceTests(unittest.TestCase):
         for name in OFFICIAL_DETAIL_PAGES:
             with self.subTest(name=name):
                 self.assertIn(name, self.by_name)
-                self.assertEqual(
-                    sum(p["canonical_name"] == name for p in self.products), 1
-                )
+                self.assertEqual(sum(p["canonical_name"] == name for p in self.products), 1)
 
     def test_four_originals_have_individual_first_party_product_evidence(self):
         for name, url in OFFICIAL_DETAIL_PAGES.items():
@@ -50,10 +45,7 @@ class BujairamiOriginalDetailEvidenceTests(unittest.TestCase):
 
     def test_cumulative_bujairami_variants_remain_unchanged(self):
         product_ids = {p["product_id"] for p in self.products}
-        variants = [
-            v for v in CATALOG["variants"]
-            if v.get("product_id") in product_ids
-        ]
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") in product_ids]
         self.assertEqual(len(variants), 8)
         self.assertEqual(len({v["variant_id"] for v in variants}), 8)
 
