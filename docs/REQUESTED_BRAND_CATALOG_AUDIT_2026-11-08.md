@@ -18,7 +18,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Maison Asrar | 120 | 12 | 108 |
 | Khadlaj | 116 | 3 | 113 |
 | Bujairami | 142 | 20 | 122 |
-| Paris Corner | 245 | 6 | 239 |
+| Paris Corner | 245 | 7 | 238 |
 | Assaf | 140 | 0 | 140 |
 | Al Wataniah | 86 | 2 | 84 |
 | Armaf | 190 | 6 | 184 |
@@ -30,12 +30,12 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Lattafa | 114 | 4 | 110 |
 | Afnan | 87 | 1 | 86 |
 | Aromatix | 12 | 0 | 12 |
-| Maison Alhambra | 203 | 0 | 203 |
+| Maison Alhambra | 207 | 6 | 201 |
 | Zimaya | 77 | 15 | 62 |
 | Al Haramain | 101 | 0 | 101 |
-| **Total requested brands** | **2,054** | **135** | **1,919** |
+| **Total requested brands** | **2,058** | **142** | **1,916** |
 
-The full seed contains 2,057 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
+The full seed contains 2,061 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
 ## Recorded source hosts
 
@@ -58,7 +58,7 @@ The full seed contains 2,057 identities. The remaining three belong to other bra
 | Lattafa | lattafa.com (90); lattafaparfum.eu (23); www.essenciaarabe.com (1) |
 | Afnan | afnan.com (83); de.afnan.com (1); www.afnaneurope.com (3) |
 | Aromatix | www.notino.be (12) |
-| Maison Alhambra | maisonalhambra-usa.com (203) |
+| Maison Alhambra | maisonalhambra-usa.com (207) |
 | Zimaya | zimayaperfumes.com (74); de.zimayaperfumes.com (1); fr.zimayaperfumes.com (1); ro.zimayaperfumes.com (1) |
 | Al Haramain | shop.alharamainperfumes.com (101) |
 
@@ -267,8 +267,49 @@ The existing Afnan identity **9 PM Night Out** was cross-checked against Afnan's
 - Catalog action: updated `source_url`, changed evidence status to `source_verified_name`, set concentration to `Extrait de Parfum`, and added an explicit 100 ml variant.
 - No new canonical identity was created; the existing Afnan row was upgraded.
 
-Afnan now has 87 identities: 1 `source_verified_name` and 86 `source_listed_name`. The requested 20-brand subtotal is 2,054 identities: 135 `source_verified_name` and 1,919 `source_listed_name`. The full seed contains 2,057 products and 224 explicit variants.
+Afnan now has 87 identities: 1 `source_verified_name` and 86 `source_listed_name`. The requested 20-brand subtotal is 2,054 identities: 135 `source_verified_name` and 1,919 `source_listed_name`. The full seed contains 2,061 products and 230 explicit variants.
 
 Sources:
 - https://de.afnan.com/en/products/9pm-night-out
 - https://afnan.com/blogs/news/afnan-perfumes-unveils-9pm-night-out-on-the-global-stage
+
+
+## Paris Corner and Maison Alhambra official-page verification
+
+### Paris Corner: Midnight Sin by Daniel René
+
+The existing canonical identity **Midnight Sin by Daniel René** was matched to the official Paris Corner product page:
+- https://www.pariscornerperfumes.com/products/midnight-sin-by-daniel-rene
+- Official page explicitly lists size **100 ml** and the fragrance notes.
+- The page does not explicitly state concentration in the extracted product specification; therefore no concentration value was invented.
+- Catalog action: source URL upgraded from collection page to individual product page, evidence status changed to `source_verified_name`, and an explicit 100 ml variant was added without a concentration field.
+- No duplicate canonical identity was created.
+
+**Rifaaqat Ume** was also checked. The official Paris Corner UAE storefront's New Launches/collection listing identifies it as **85 ml**, but no individual official product detail page with a complete product specification was located in this pass. It remains a discovery lead and was not promoted to a verified canonical row or variant.
+
+### Maison Alhambra: four new canonical identities
+
+Four fragrances absent from the existing 203-row Maison Alhambra subset were confirmed on individual Maison Alhambra USA product pages. Each official page states Eau de Parfum and 100 ml. They were added as distinct canonical identities with official product URLs and explicit 100 ml EDP variants:
+
+| Canonical identity | Official product page | Size / concentration |
+|---|---|---|
+| Minerale Gold | https://maisonalhambra-usa.com/products/maison-alhambra-minerale-gold-eau-de-parfum-for-everyone | 100 ml / Eau de Parfum |
+| Victorioso Fearless | https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-fearless-eau-de-parfum-for-everyone | 100 ml / Eau de Parfum |
+| The Memory of Oud | https://maisonalhambra-usa.com/products/maison-alhambra-the-memory-of-oud-eau-de-parfum-for-everyone | 100 ml / Eau de Parfum |
+| Sceptre Oceana | https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-oceana-eau-de-parfum-for-everyone | 100 ml / Eau de Parfum |
+
+### Maison Alhambra: existing identities upgraded
+
+Two existing canonical identities were retained and their source URLs upgraded to individual product pages. Their official EDP/100 ml specifications are now represented by explicit variants:
+- **Leonie** — https://maisonalhambra-usa.com/collections/womens-best-seller/products/maison-alhambra-leonie-eau-de-parfum-for-women
+- **Leonie Intense** — https://maisonalhambra-usa.com/products/maison-alhambra-leonie-intense-eau-de-parfum-for-women
+
+Leonie already had a matching 100 ml EDP variant, so it was retained and not duplicated. Leonie Intense received a new explicit 100 ml EDP variant.
+
+Maison Alhambra now has 207 identities: 6 `source_verified_name` and 201 `source_listed_name`. Paris Corner remains at 245 identities, now with 7 `source_verified_name` and 238 `source_listed_name`.
+
+Official sources:
+- Paris Corner Midnight Sin: https://www.pariscornerperfumes.com/products/midnight-sin-by-daniel-rene
+- Paris Corner UAE New Launches: https://ae.pariscorner.com/
+- Maison Alhambra USA New In: https://maisonalhambra-usa.com/collections/new-in
+- Individual Maison Alhambra product pages in the tables above.
