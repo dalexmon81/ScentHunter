@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - catalog/complete-brand-expansion-2026-11
+      - catalog/assaf-range-harvest-2026-11-08
 
 permissions:
   contents: read
@@ -51,4 +52,5 @@ jobs:
           backend.tests.test_swiss_arabian_detail_evidence
           backend.tests.test_arabiyat_prestige_extrait
           backend.tests.test_arabiyat_prestige_marwa_extrait
+          backend.tests.test_assaf_range_harvest
           -v
