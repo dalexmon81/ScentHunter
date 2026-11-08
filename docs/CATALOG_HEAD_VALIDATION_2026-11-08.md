@@ -7,15 +7,15 @@
 - This is a structural audit of the exact branch files. It is not a CI result and not a production import.
 
 ## Canonical seed snapshot
-- Canonical product identities: **1723**
-- Explicit variant rows: **188**
+- Canonical product identities: **1726**
+- Explicit variant rows: **191**
 - Family registry groups: **34**
 - Product IDs duplicated: **0**
 - Variant IDs duplicated: **0**
 - Products missing source_url: **0**
 - Orphan variants: **0**
 - Duplicate brand + accent-normalized canonical-name pairs: **0**
-- Product identity evidence: **102 source_verified_name**, **1621 source_listed_name**.
+- Product identity evidence: **105 source_verified_name**, **1621 source_listed_name**.
 - Canonical products without an exact family-registry name match after accent/punctuation normalization: **0**.
 
 The evidence statuses are intentionally different. A collection/listing-backed name is a discovery candidate; it is not proof of an individual SKU, concentration, size, GTIN or current commercial availability.
@@ -69,7 +69,6 @@ A separate `fly-pilot.yml` workflow reports a failed status on this branch, but 
 ## Deferred source-level checks
 The following older regression modules are not part of this CI gate because their assertions currently expect product rows or product-level evidence that is not present in the canonical seed. They remain visible in the repository for follow-up; no missing product sizes or sources were invented to make them pass:
 - Khadlaj La Fede: 33 of the 36 registry discovery names remain registry-only; only three have been promoted after individual official product-detail verification.
-- `test_maison_asrar_lock_and_key.py`: Plot Twist, Love Key and Unsolved Mystery do not yet have the asserted canonical product and 100 ml variant records.
 - `test_arabiyat_prestige_extrait.py`, `test_arabiyat_prestige_marwa_extrait.py`, `test_arabiyat_prestige_official_store.py`: asserted detail-page provenance and explicit 60 ml variants are not yet established for the current seed.
 
 ## Remaining validation
@@ -77,6 +76,11 @@ The following older regression modules are not part of this CI gate because thei
 2. Complete product-level source verification for the 1,622 identities still marked `source_listed_name`.
 3. Keep PR #426 draft and unmerged; keep PR #424 separate. No production, retailer authorization, deployment, live-offer or pricing changes are included.
 
+
+## Maison Asrar Lock & Key detail verification
+- Added Plot Twist, Love Key and Unsolved Mystery as canonical Maison Asrar identities using individual product pages from the Gulf Orchid store. Gulf Orchid's corporate site lists Maison Asrar among its brands; the store product pages identify each fragrance as 100 ml EDP.
+- Added explicit 100 ml Eau de Parfum variant rows and retained the existing Maison Asrar family-registry records.
+- Added `backend.tests.test_maison_asrar_lock_and_key` to the CI workflow. No extra identity was created from retailer descriptors such as Black Grapefruit or Bloom; existing alias safeguards remain in the test.
 
 ## Khadlaj La Fede detail verification
 - Added three canonical La Fede identities that were already present in the family registry but missing from the product seed: Intoxicate Mystique, Celebrity Crush and Celebrity Fame.
@@ -88,4 +92,4 @@ The following older regression modules are not part of this CI gate because thei
 - Promoted the existing `Mahd Al Dhahab Extrait` canonical identity from collection/index-listed to `source_verified_name` using the individual MyPerfumes Europe official Arabiyat Prestige product detail: https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait
 - Added the explicitly stated **60 ml Extrait de Parfum** variant; the family registry already contained this identity and `formats_ml: [60]`, so no registry duplication was needed.
 - Added `backend.tests.test_arabiyat_prestige_extrait` to the CI workflow. Other Arabiyat and legacy brand modules remain deferred until their missing product-level evidence and catalog rows are reconciled.
-- Totals after this change: **1,723 identities**, **188 variants**, **102 source-verified names**, **1,621 source-listed names**.
+- Totals after this change: **1,726 identities**, **191 variants**, **105 source-verified names**, **1,621 source-listed names**.
