@@ -199,3 +199,26 @@ The existing canonical identity **Prune Hypnos** was checked against the officia
 Note: some third-party retailers describe Prune Hypnos as Extrait de Parfum, but the official French Avenue product page specifies EDP. The catalog follows the brand's own product specification. The similarly named Fragrantica entry “Prune Hypnose” is not used to rename the official product.
 
 Official source: https://frenchavenue.com/products/prune-hypnos
+
+
+### Follow-up source review: additional 2026 candidates (8 November 2026)
+
+A further source pass checked the remaining French Avenue candidates and possible new names. No additional canonical identities or variants were added in this pass because the available sources did not consistently establish brand-owned product specifications.
+
+**Prune Hypnos — primary-source cross-check.** The official French Avenue page at https://frenchavenue.com/products/prune-hypnos explicitly specifies Eau de Parfum (EDP), 100 ml (page specifications section). The catalog's existing EDP/100 ml variant is therefore supported by the brand page. Some third-party listings call the same item Extrait; those conflicting reseller values are not used.
+
+**Fleuriche Bisou Rose.** A French Avenue-branded regional page at https://french-avenue.ma/product/fleuriche-bisou-rose describes a 100 ml EDP, while distributor/retailer listings (including Novalux Europe) describe the EAN 6298042002487 as Extrait de Parfum, 100 ml. Since the accessible material does not resolve the concentration conflict against the primary global product page, this identity remains `source_listed_name` with no size/concentration variant added.
+
+**Papa Yeah!** A French Avenue-branded regional page at https://french-avenue.ma/product/papa-yeah-extradose describes a 100 ml EDP, while distributor/retailer listings (EAN 6298042002753) describe Extrait de Parfum, 100 ml. A separate fragrance database also lists it as a 2026 launch, but is not a primary product specification source. It remains `source_listed_name` with no variant added pending a clear global brand product page or authoritative product feed.
+
+**Crystal Oud, Ethos Aoud Oud, Les Extraits Absolus Shadow and Les Extraits Absolus Unknown.** These appear in fragrance databases as 2026 entries. For Ethos Aoud Oud, one database describes the fragrance as upcoming and explicitly states that size and bottle details are unknown. No individual official French Avenue product detail page or dependable primary specification was located in this pass. They remain discovery leads only.
+
+**Additional discovery names.** Vulcan Vox and Arsh Black Ice appear in secondary fragrance-house databases as 2026 names, but no individual official product detail pages were located in this pass. They were not inserted into the canonical catalog.
+
+Sources consulted for this follow-up include:
+- Official French Avenue Prune Hypnos detail page: https://frenchavenue.com/products/prune-hypnos
+- French Avenue-branded regional pages: https://french-avenue.ma/product/fleuriche-bisou-rose and https://french-avenue.ma/product/papa-yeah-extradose
+- Distributor product listings: https://novaluxeurope.com/en/marcas/french-avenue/
+- Secondary discovery indexes: https://www.fragrantica.com/designers/French-Avenue.html and https://basenotes.com/brands/french-avenue.26275552
+
+The key rule remains unchanged: discovery databases may reveal candidate names, but catalog concentration and size should be entered only when the underlying product evidence supports them.
