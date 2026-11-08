@@ -32,13 +32,80 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(pairs), len(set(pairs)))
 
-    def test_new_rows_remain_name_only(self):
+    def test_harvest_rows_with_first_party_variant_evidence_are_not_name_only(self):
+        variants_by_product = {}
+        for variant in self.catalog["variants"]:
+            variants_by_product.setdefault(variant["product_id"], []).append(variant)
+
         for product in self.catalog["products"]:
-            if product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
+            if not product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
+                continue
+            variants = variants_by_product.get(product["product_id"], [])
+            formats = product.get("formats_ml", [])
+            if formats:
+                self.assertTrue(product.get("source_evidence_url", "").startswith("https://khadlaj-perfumes.com/"))
+                self.assertEqual(product["identity_status"], "source_listed_name" if product["source_url"] == "https://khadlaj-perfumes.com/collections/perfumes-spray" else "source_verified_name")
+                for size in formats:
+                    matching = [v for v in variants if v["size_ml"] == size]
+                    self.assertEqual(len(matching), 1, product["canonical_name"])
+                    if product.get("concentration"):
+                        self.assertEqual(matching[0].get("concentration"), product["concentration"])
+            else:
                 self.assertEqual(product["identity_status"], "source_listed_name")
                 self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
                 self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
+                self.assertEqual(variants, [])
+
+    def test_additional_official_detail_variants_are_verified(self):
+        expected = {
+            "Panache Eleganza": (100, "Extrait de Parfum"),
+            "Stellar Musk": (100, "Eau de Parfum"),
+            "Stellar Oud": (100, "Eau de Parfum"),
+            "Onyx Galaxy": (100, "Eau de Parfum"),
+            "Muse": (100, "Eau de Parfum"),
+            "Sueno": (100, "Extrait de Parfum"),
+            "Saraya": (60, "Extrait de Parfum"),
+            "Zayaan Silver": (100, "Eau de Parfum"),
+            "Qarar": (60, "Extrait de Parfum"),
+        }
+        for name, (size, concentration) in expected.items():
+            with self.subTest(name=name):
+                product = next(
+                    p for p in self.catalog["products"]
+                    if p.get("brand") == "Khadlaj" and p.get("canonical_name") == name
+                )
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertIn(size, product["formats_ml"])
+                self.assertEqual(product["concentration"], concentration)
+                self.assertTrue(product["source_url"].startswith("https://khadlaj-perfumes.com/"))
+                variants = [
+                    v for v in self.catalog["variants"]
+                    if v["product_id"] == product["product_id"] and v["size_ml"] == size
+                ]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0]["concentration"], concentration)
+
+    def test_sensuos_spelling_is_an_alias_not_a_duplicate(self):
+        product = next(
+            p for p in self.catalog["products"]
+            if p.get("brand") == "Khadlaj" and p.get("canonical_name") == "Sensuous Night"
+        )
+        self.assertIn("Sensuos Night", product["aliases"])
+        self.assertIn("Sensous Night", product["aliases"])
+
+    def test_hareem_al_sultan_and_gold_are_distinct_variants(self):
+        regular = next(
+            p for p in self.catalog["products"]
+            if p.get("brand") == "Khadlaj" and p.get("canonical_name") == "Hareem Al Sultan"
+        )
+        gold = next(
+            p for p in self.catalog["products"]
+            if p.get("brand") == "Khadlaj" and p.get("canonical_name") == "Hareem Al Sultan Gold"
+        )
+        regular_variants = [v for v in self.catalog["variants"] if v["product_id"] == regular["product_id"]]
+        gold_variants = [v for v in self.catalog["variants"] if v["product_id"] == gold["product_id"]]
+        self.assertEqual([(v["size_ml"], v.get("concentration")) for v in regular_variants], [(75, "Eau de Parfum")])
+        self.assertEqual([(v["size_ml"], v.get("concentration")) for v in gold_variants], [(35, gold_variants[0].get("concentration"))])
 
 if __name__ == "__main__":
     unittest.main()
