@@ -18,7 +18,7 @@ MINIMUM_BRAND_COUNTS = {
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
-    "Al Wataniah": 86,
+    "Al Wataniah": 87,
     "Armaf": 190,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
@@ -463,6 +463,26 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_al_wataniah_shouq_official_product_identity_and_aliases(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Al Wataniah"
+        }
+        shouq = products["Shouq"]
+        self.assertEqual(shouq.get("identity_status"), "source_verified_name")
+        self.assertEqual(shouq.get("source_url"), "https://www.alwataniah.com/products/shouq")
+        self.assertFalse(any(v.get("product_id") == shouq["product_id"] for v in CATALOG.get("variants", [])))
+        expected_aliases = {
+            "Granada": "Al Andalus Granada",
+            "Qasar Al Watan": "Qasr Al Watan",
+            "Da'im": "Dai'm",
+        }
+        for canonical, alias in expected_aliases.items():
+            with self.subTest(canonical=canonical):
+                self.assertIn(alias, products[canonical].get("aliases", []))
 
 if __name__ == "__main__":
     unittest.main()
