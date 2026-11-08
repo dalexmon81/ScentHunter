@@ -79,21 +79,21 @@ def variant_identity(row: dict[str, Any]) -> tuple[str, Any, str]:
     )
 
 
-def index_baseline(catalog: dict[str, Any]) -> tuple[set, set, set, set]:
-    products = catalog.get("products", [])
-    variants = catalog.get("variants", [])
-    product_ids = {str(row.get("product_id") or "") for row in products}
-    product_keys = {product_identity(row) for row in products}
-    variant_ids = {str(row.get("variant_id") or "") for row in variants}
-    variant_keys = {variant_identity(row) for row in variants}
-    return product_ids, product_keys, variant_ids, variant_keys
+def index_baseline(catalog: dict[str, Any]) -> tuple[set, set]:
+    product_pairs = {
+        (str(row.get("product_id") or ""), product_identity(row))
+        for row in catalog.get("products", [])
+    }
+    variant_pairs = {
+        (str(row.get("variant_id") or ""), variant_identity(row))
+        for row in catalog.get("variants", [])
+    }
+    return product_pairs, variant_pairs
 
 
 def audit() -> int:
     baseline = git_json(BASE_REF, CATALOG_PATH)
-    base_product_ids, base_product_keys, base_variant_ids, base_variant_keys = (
-        index_baseline(baseline)
-    )
+    base_product_pairs, base_variant_pairs = index_baseline(baseline)
 
     products_by_identity: dict[tuple[str, str], dict[str, set[str]]] = defaultdict(
         lambda: defaultdict(set)
@@ -108,6 +108,18 @@ def audit() -> int:
         lambda: defaultdict(set)
     )
 
+    # Seed the comparison with the baseline itself. This catches a candidate
+    # that reuses an existing identity/tuple with a different ID, not only
+    # collisions between two newly-added branches.
+    for product_id, identity in base_product_pairs:
+        if product_id and all(identity):
+            products_by_identity[identity][product_id].add("BASELINE")
+            product_id_to_identity[product_id][identity].add("BASELINE")
+    for variant_id, key in base_variant_pairs:
+        if variant_id and key[0] and key[1] is not None:
+            variants_by_tuple[key][variant_id].add("BASELINE")
+            variant_id_to_tuple[variant_id][key].add("BASELINE")
+
     loaded = 0
     for ref in CANDIDATE_REFS:
         catalog = git_json(ref, CATALOG_PATH)
@@ -117,7 +129,7 @@ def audit() -> int:
             identity = product_identity(row)
             if not product_id or not all(identity):
                 continue
-            if product_id in base_product_ids and identity in base_product_keys:
+            if (product_id, identity) in base_product_pairs:
                 continue
             products_by_identity[identity][product_id].add(ref)
             product_id_to_identity[product_id][identity].add(ref)
@@ -127,7 +139,7 @@ def audit() -> int:
             key = variant_identity(row)
             if not variant_id or not key[0] or key[1] is None:
                 continue
-            if variant_id in base_variant_ids and key in base_variant_keys:
+            if (variant_id, key) in base_variant_pairs:
                 continue
             variants_by_tuple[key][variant_id].add(ref)
             variant_id_to_tuple[variant_id][key].add(ref)
