@@ -275,6 +275,8 @@ jobs:
           import os
           forbidden = (
               "NOTINO_CJ_FEED_URL",
+              "NOTINO_CJ_FEED_USERNAME",
+              "NOTINO_CJ_FEED_PASSWORD",
               "NOTINO_CJ_USERNAME",
               "NOTINO_CJ_PASSWORD",
               "SCENTHUNTER_NOTINO_FEED_URL",
