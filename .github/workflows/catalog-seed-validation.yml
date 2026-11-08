@@ -11,6 +11,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/velixir-official-audit-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -25,6 +26,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/gulf-orchid-official-audit-2026-11-08
 
 permissions:
   contents: read
@@ -73,4 +75,5 @@ jobs:
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_velixir_official_collection_audit
+          backend.tests.test_gulf_orchid_official_collection_audit
           -v
