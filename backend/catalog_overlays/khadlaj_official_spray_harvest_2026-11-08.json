@@ -1,0 +1,519 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "official_brand_collection_harvest",
+  "created_at": "2026-11-08",
+  "status": "official_collection_name_harvest",
+  "description": "Names harvested from eight visible pages of Khadlaj's official Perfume Sprays collection. This is a partial harvest of the 101-product collection: the storefront pagination displayed 96 of 101 products across the pages inspected; not all 101 could be individually retrieved. Duplicates across pages were deduplicated.",
+  "policy": {
+    "identity_status": "source_listed_name",
+    "no_inferred_variants": true,
+    "no_offers_or_prices": true,
+    "no_inferred_concentrations": true
+  },
+  "source": {
+    "brand": "Khadlaj",
+    "url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+    "source_type": "official brand perfume spray collection",
+    "displayed_total": 101,
+    "observed_products": 96,
+    "scope": "Eight collection pages were inspected; repeated listings across pages were deduplicated. No gift sets, air fresheners, bakhoor, or oils included."
+  },
+  "summary": {
+    "unique_names_checked": 61,
+    "new_catalog_identities": 61,
+    "existing_catalog_identities": 0,
+    "variants_added": 0,
+    "collection_total": 101,
+    "observed_page_products": 96
+  },
+  "products": [
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Pure Oud Barakat",
+      "observed_listing_name": "Oud Pure Oud Barakat",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Pure Oud Galazaid",
+      "observed_listing_name": "Oud Pure Oud Galazaid",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Pure Oud Jumeirah",
+      "observed_listing_name": "Oud Pure Oud Jumeirah",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Hareem Al Sultan",
+      "observed_listing_name": "Hareem Al Sultan",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Azure Velvet",
+      "observed_listing_name": "Azure Velvet",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Maison L'Imaginaire",
+      "observed_listing_name": "Maison L'Imaginaire",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Saqr Al Badiya",
+      "observed_listing_name": "Saqr Al Badiya",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Opus Reborn",
+      "observed_listing_name": "Opus Reborn",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Musk Pour Amber",
+      "observed_listing_name": "Musk Pour Amber",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Fursan Brown",
+      "observed_listing_name": "Fursan Brown",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Sara",
+      "observed_listing_name": "Sara",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "observed_listing_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Le Prestige King",
+      "observed_listing_name": "Le Prestige King",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "The Proposal Date Night",
+      "observed_listing_name": "The Proposal Date Night",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Le Prestige Royal",
+      "observed_listing_name": "Le Prestige Royal",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Le Prestige Empress",
+      "observed_listing_name": "Le Prestige Empress",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Le Prestige Bold",
+      "observed_listing_name": "Le Prestige Bold",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "The Proposal Special Occasion",
+      "observed_listing_name": "The Proposal Special Occasion",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "25 Experience",
+      "observed_listing_name": "Khadlaj 25 Experience",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "25 Trust",
+      "observed_listing_name": "Khadlaj 25 Trust",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "25 Loyalty",
+      "observed_listing_name": "Khadlaj 25 Loyalty",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "25 Heritage",
+      "observed_listing_name": "Khadlaj 25 Heritage",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "25 Integrity",
+      "observed_listing_name": "Khadlaj 25 Integrity",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Valor Mystique",
+      "observed_listing_name": "Valor Mystique",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Valor Honor",
+      "observed_listing_name": "Valor Honor",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Valor Chivalry",
+      "observed_listing_name": "Valor Chivalry",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Valor Enigma",
+      "observed_listing_name": "Valor Enigma",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Empire Empress",
+      "observed_listing_name": "Empire Empress",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Empire Crown",
+      "observed_listing_name": "Empire Crown",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Empire Regent",
+      "observed_listing_name": "Empire Regent",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Karus Blu Spice",
+      "observed_listing_name": "Karus Blu Spice",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Karus Secret Musk",
+      "observed_listing_name": "Karus Secret Musk",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Karus Oud Fire",
+      "observed_listing_name": "Karus Oud Fire",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Karus Amber Gold",
+      "observed_listing_name": "Karus Amber Gold",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Maison Creation De Reve",
+      "observed_listing_name": "Maison Creation de Reve",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Maison Epoque Artistique",
+      "observed_listing_name": "Maison Epoque Artistique",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Maison L'Or Noir",
+      "observed_listing_name": "Maison L'Or Noir",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Maison Flor Oud",
+      "observed_listing_name": "Maison Flor Oud",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Wild Indonesian Oud",
+      "observed_listing_name": "Wild Indonesian Oud Pure",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Mystical Indian Oud Pure",
+      "observed_listing_name": "Mystical Indian Oud Pure",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Pour Noble",
+      "observed_listing_name": "Oud Pour Noble",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Musk Pour Narcis",
+      "observed_listing_name": "Musk Pour Narcis",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Pour Shaikh",
+      "observed_listing_name": "Oud Pour Shaikh",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Pour Rouge",
+      "observed_listing_name": "Oud Pour Rouge",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Pour Blueberry",
+      "observed_listing_name": "Oud Pour Blueberry",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Infini Absolute",
+      "observed_listing_name": "Infini Absolute",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Cashmere Warm Oud",
+      "observed_listing_name": "Cashmere Warm Oud",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Cashmere Sunshine Musk",
+      "observed_listing_name": "Cashmere Sunshine Musk",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Noir",
+      "observed_listing_name": "Oud Noir",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Sensuous Night",
+      "observed_listing_name": "Sensuous Night",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Ombre Notes",
+      "observed_listing_name": "Ombre Notes",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Ghadeer Silver",
+      "observed_listing_name": "Ghadeer Silver",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Musk Al Sabah",
+      "observed_listing_name": "Musk Al Sabah",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Oud Al Sabah",
+      "observed_listing_name": "Oud Al Sabah",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Magnate Noble",
+      "observed_listing_name": "Magnate Noble",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Magnate Premier",
+      "observed_listing_name": "Magnate Premier",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Infini",
+      "observed_listing_name": "Infini",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Shahi Oud",
+      "observed_listing_name": "Shahi Oud",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Barwaaz Solid Grey",
+      "observed_listing_name": "Barwaaz Solid Grey",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Rose Couture",
+      "observed_listing_name": "Rose Couture",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Khadlaj",
+      "canonical_name": "Musk Couture",
+      "observed_listing_name": "Musk Couture",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    }
+  ]
+}
