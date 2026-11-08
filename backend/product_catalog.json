@@ -6166,10 +6166,18 @@
       "family_name": "Ghali Elegante",
       "aliases": [
         "Ghali Elegante",
-        "Zimaya Ghali Elegante"
+        "Zimaya Ghali Elegante",
+        "Ghali Elegant",
+        "Zimaya Ghali Elegant"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.zimayaperfumes.com/products/ghali-elegante",
+      "source_product_url": "https://us.zimayaperfumes.com/products/ghali-elegante",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/ghali-elegante",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-00b7385e",
@@ -33722,6 +33730,153 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-0a774ede",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Nectar Blush",
+      "name": "Shaghaf Nectar Blush",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Nectar Blush",
+      "aliases": [
+        "Shaghaf Nectar Blush",
+        "Swiss Arabian Shaghaf Nectar Blush"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/products/shaghaf-nectar-blush",
+      "source_product_url": "https://swissarabian.com/products/shaghaf-nectar-blush",
+      "source_evidence_url": "https://us.swissarabian.com/",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-8f452a7f",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Patchouli 01",
+      "name": "Patchouli 01",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Patchouli 01",
+      "aliases": [
+        "Patchouli 01",
+        "Swiss Arabian Patchouli 01"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/products/patchouli-01",
+      "source_product_url": "https://swissarabian.com/products/patchouli-01",
+      "source_evidence_url": "https://us.swissarabian.com/",
+      "formats_ml": [
+        50
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-9602cce3",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Marine",
+      "name": "Shaghaf Oud Marine",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Marine",
+      "aliases": [
+        "Shaghaf Oud Marine",
+        "Swiss Arabian Shaghaf Oud Marine"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/products/shaghaf-oud-marine",
+      "source_product_url": "https://swissarabian.com/products/shaghaf-oud-marine",
+      "source_evidence_url": "https://us.swissarabian.com/",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-efb9a4d5",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Echoes of St. Moritz",
+      "name": "Echoes of St. Moritz",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Echoes of St. Moritz",
+      "aliases": [
+        "Echoes of St. Moritz",
+        "Swiss Arabian Echoes of St. Moritz"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/products/echoes-of-st-moritz",
+      "source_product_url": "https://swissarabian.com/products/echoes-of-st-moritz",
+      "source_evidence_url": "https://us.swissarabian.com/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-98776d89",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Siada Regal",
+      "name": "Siada Regal",
+      "family_id": "zimaya_catalog",
+      "family_name": "Siada Regal",
+      "aliases": [
+        "Siada Regal",
+        "Zimaya Siada Regal"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.zimayaperfumes.com/products/siada-regal-perfume",
+      "source_product_url": "https://us.zimayaperfumes.com/products/siada-regal-perfume",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/siada-regal-perfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-6ccf8645",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Siada Nova",
+      "name": "Siada Nova",
+      "family_id": "zimaya_catalog",
+      "family_name": "Siada Nova",
+      "aliases": [
+        "Siada Nova",
+        "Zimaya Siada Nova"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.zimayaperfumes.com/products/siada-nova-perfume",
+      "source_product_url": "https://us.zimayaperfumes.com/products/siada-nova-perfume",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/siada-nova-perfume",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-b38fa6f8",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Nojoum",
+      "name": "Nojoum",
+      "family_id": "zimaya_catalog",
+      "family_name": "Nojoum",
+      "aliases": [
+        "Nojoum",
+        "Zimaya Nojoum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.zimayaperfumes.com/products/nojoum-perfume-oil",
+      "source_product_url": "https://us.zimayaperfumes.com/products/nojoum-perfume-oil",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/nojoum-perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Concentrated Perfume Oil"
     }
   ],
   "variants": [
@@ -36654,6 +36809,95 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-0a774ede",
+      "size_ml": 75,
+      "aliases": [
+        "Shaghaf Nectar Blush 75 ml",
+        "Swiss Arabian Shaghaf Nectar Blush 75ml"
+      ],
+      "variant_id": "SHV-SH-SWISS-ARABIAN-0a774ede-75-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.swissarabian.com/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-8f452a7f",
+      "size_ml": 50,
+      "aliases": [
+        "Patchouli 01 50 ml",
+        "Swiss Arabian Patchouli 01 50ml"
+      ],
+      "variant_id": "SHV-SH-SWISS-ARABIAN-8f452a7f-50-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.swissarabian.com/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-9602cce3",
+      "size_ml": 75,
+      "aliases": [
+        "Shaghaf Oud Marine 75 ml",
+        "Swiss Arabian Shaghaf Oud Marine 75ml"
+      ],
+      "variant_id": "SHV-SH-SWISS-ARABIAN-9602cce3-75-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.swissarabian.com/"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-efb9a4d5",
+      "size_ml": 100,
+      "aliases": [
+        "Echoes of St. Moritz 100 ml",
+        "Swiss Arabian Echoes of St. Moritz 100ml"
+      ],
+      "variant_id": "SHV-SH-SWISS-ARABIAN-efb9a4d5-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.swissarabian.com/"
+    },
+    {
+      "product_id": "SH-ZIMAYA-98776d89",
+      "size_ml": 100,
+      "aliases": [
+        "Siada Regal 100 ml",
+        "Zimaya Siada Regal 100ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-98776d89-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/siada-regal-perfume"
+    },
+    {
+      "product_id": "SH-ZIMAYA-6ccf8645",
+      "size_ml": 100,
+      "aliases": [
+        "Siada Nova 100 ml",
+        "Zimaya Siada Nova 100ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-6ccf8645-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/siada-nova-perfume"
+    },
+    {
+      "product_id": "SH-ZIMAYA-b38fa6f8",
+      "size_ml": 20,
+      "aliases": [
+        "Nojoum 20 ml",
+        "Zimaya Nojoum 20ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-b38fa6f8-20-000",
+      "concentration": "Concentrated Perfume Oil",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/nojoum-perfume-oil"
+    },
+    {
+      "product_id": "SH-ZIMAYA-52c46356",
+      "size_ml": 100,
+      "aliases": [
+        "Ghali Elegante 100 ml",
+        "Ghali Elegant 100 ml",
+        "Zimaya Ghali Elegant 100ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-52c46356-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.zimayaperfumes.com/products/ghali-elegante"
     }
   ]
 }
