@@ -3206,8 +3206,13 @@
         "Sawaar Vanille Blanc",
         "Khadlaj Sawaar Vanille Blanc"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "source_product_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-cdaa81f2",
@@ -36526,6 +36531,15 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-142e4d1e-100-000",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-24969f48",
+      "size_ml": 100,
+      "aliases": [
+        "Sawaar Vanille Blanc 100 ml",
+        "Khadlaj Sawaar Vanille Blanc 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-24969f48-100-000"
     }
   ]
 }

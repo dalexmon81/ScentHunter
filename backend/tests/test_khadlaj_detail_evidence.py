@@ -10,6 +10,7 @@ DETAILS = {
     "Cream Velvet": "https://khadlaj-perfumes.com/collections/all/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes",
     "Fursan White": "https://khadlaj-perfumes.com/collections/all/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae",
     "Cloud Candy": "https://khadlaj-perfumes.com/collections/all/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
+    "Sawaar Vanille Blanc": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
 }
 CONCENTRATIONS = {
     "Island Dreams": "Extrait de Parfum",
@@ -59,15 +60,18 @@ class KhadlajDetailEvidenceTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(matches), 1)
 
-    def test_ambiguous_sawaar_concentration_is_not_inferred(self):
+    def test_sawaar_size_is_retained_but_conflicting_concentration_is_not_inferred(self):
         product = self.product("Sawaar Vanille Blanc")
-        self.assertEqual(product.get("identity_status"), "source_listed_name")
-        self.assertNotIn("formats_ml", product)
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("formats_ml"), [100])
         self.assertNotIn("concentration", product)
-        self.assertFalse([
+        matches = [
             v for v in self.variants
             if v.get("product_id") == product["product_id"]
-        ])
+            and v.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertNotIn("concentration", matches[0])
 
 
 if __name__ == "__main__":
