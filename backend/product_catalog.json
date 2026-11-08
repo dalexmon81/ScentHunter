@@ -34065,26 +34065,6 @@
       "formats_ml": [
         100
       ]
-    },
-    {
-      "product_id": "SH-PARIS-CORNER-HARRIER-ABSOULTE",
-      "brand": "Paris Corner",
-      "brand_name": "Paris Corner",
-      "canonical_name": "Harrier Absoulte",
-      "name": "Harrier Absoulte",
-      "family_id": "paris_corner_catalog",
-      "family_name": "Harrier Absoulte",
-      "aliases": [
-        "Harrier Absoulte",
-        "Paris Corner Harrier Absoulte"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte",
-      "formats_ml": [
-        100
-      ],
-      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -37411,16 +37391,6 @@
       ]
     },
     {
-      "product_id": "SH-PARIS-CORNER-HARRIER-ABSOULTE",
-      "variant_id": "SHV-SH-PARIS-CORNER-HARRIER-ABSOULTE-100-EDP",
-      "size_ml": 100,
-      "concentration": "Eau de Parfum",
-      "aliases": [
-        "Harrier Absoulte 100 ml",
-        "Paris Corner Harrier Absoulte 100 ml"
-      ]
-    },
-    {
       "product_id": "SH-PARIS-CORNER-HARRIER-ABSOLUTE",
       "variant_id": "SHV-SH-PARIS-CORNER-HARRIER-ABSOLUTE-100-EDP",
       "size_ml": 100,
@@ -37428,7 +37398,8 @@
       "aliases": [
         "Harrier Absolute 100 ml",
         "Harrier Absoulte 100 ml",
-        "Paris Corner Harrier Absolute 100 ml"
+        "Paris Corner Harrier Absolute 100 ml",
+        "Paris Corner Harrier Absoulte 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte"
     }
