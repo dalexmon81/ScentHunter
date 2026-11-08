@@ -4511,6 +4511,17 @@
             "Swar Venin",
             "Arabiyat Prestige Swar Venin"
           ]
+        },
+        {
+          "canonical_name": "Marwa Extrait",
+          "aliases": [
+            "Marwa Extrait",
+            "Arabiyat Prestige Marwa Extrait",
+            "Marwa Extrait De Parfum"
+          ],
+          "formats_ml": [
+            60
+          ]
         }
       ]
     },
