@@ -46,14 +46,17 @@ class MykonosOfficialDetailEvidenceTests(unittest.TestCase):
             for row in CATALOG.get("products", [])
             if row.get("brand") == "Mykonos"
         }
+        travel_size_url = "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
         for variant in CATALOG.get("variants", []):
             parent = products.get(variant.get("product_id"))
             if parent and parent.get("canonical_name") in EXPECTED_DETAIL_PAGES:
+                expected_url = (
+                    travel_size_url
+                    if variant.get("size_ml") == 15
+                    else EXPECTED_DETAIL_PAGES[parent["canonical_name"]]
+                )
                 with self.subTest(variant_id=variant.get("variant_id")):
-                    self.assertEqual(
-                        variant.get("source_evidence_url"),
-                        EXPECTED_DETAIL_PAGES[parent["canonical_name"]],
-                    )
+                    self.assertEqual(variant.get("source_evidence_url"), expected_url)
 
 
 if __name__ == "__main__":
