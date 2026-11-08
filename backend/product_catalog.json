@@ -305,6 +305,11 @@
       "brand_id": "BR-92511d0bc971",
       "brand_name": "Guerlain",
       "aliases": []
+    },
+    {
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "aliases": []
     }
   ],
   "products": [
@@ -27164,6 +27169,206 @@
       ],
       "canonical_name": "Vol de Nuit",
       "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-1c9e24c0a493",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Cult",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Zimaya - Cult",
+        "Cult"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/cult"
+      ],
+      "family_id": null,
+      "canonical_name": "Cult",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-3ce66441d68a",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Exquisite",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Zimaya - Exquisite",
+        "Exquisite"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/exquisite"
+      ],
+      "family_id": null,
+      "canonical_name": "Exquisite",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-132bcd9554b6",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Sharaf Blend",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Zimaya - Sharaf Blend",
+        "Sharaf Blend"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/sharaf-blend-100ml"
+      ],
+      "family_id": null,
+      "canonical_name": "Sharaf Blend",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-7113a884653b",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Grandeur",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Zimaya - Grandeur",
+        "Grandeur"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/grandeur-100ml"
+      ],
+      "family_id": null,
+      "canonical_name": "Grandeur",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-278b38bc1d2a",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Wujood",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Zimaya - Wujood",
+        "Wujood"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/wujood-100ml"
+      ],
+      "family_id": null,
+      "canonical_name": "Wujood",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-1977430e097e",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Luxor",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Zimaya - Luxor",
+        "Luxor"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/luxor-100ml"
+      ],
+      "family_id": null,
+      "canonical_name": "Luxor",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-68476e686035",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Crysta Oud",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Zimaya - Crysta Oud",
+        "Crysta Oud"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/crysta-oud-100ml"
+      ],
+      "family_id": null,
+      "canonical_name": "Crysta Oud",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-84386590b75d",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Farah",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Zimaya - Farah",
+        "Farah"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/farah"
+      ],
+      "family_id": null,
+      "canonical_name": "Farah",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-e1ad21435dfa",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Amber Is Great",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Zimaya - Amber Is Great",
+        "Amber Is Great"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/amber-is-great-100ml"
+      ],
+      "family_id": null,
+      "canonical_name": "Amber Is Great",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-AUTO-855c301628ad",
+      "brand_id": "BR-8f9fee75b603",
+      "brand_name": "Zimaya",
+      "family_name": "Bahjah",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Zimaya - Bahjah",
+        "Bahjah"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite pagina ufficiale Zimaya: nome canonico, concentrazione, formato 100 ml e pubblico esplicitamente dichiarati.",
+      "verification_sources": [
+        "https://zimayaperfumes.com/products/bahja"
+      ],
+      "family_id": null,
+      "canonical_name": "Bahjah",
+      "canonical_image": null
     }
   ],
   "variants": [
@@ -33722,6 +33927,136 @@
         "Guerlain Vol de Nuit"
       ],
       "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-f0522f1eeacdf3df",
+      "product_id": "SH-AUTO-1c9e24c0a493",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Cult",
+        "Zimaya Cult",
+        "Cult"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-565141da1891c249",
+      "product_id": "SH-AUTO-3ce66441d68a",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Exquisite",
+        "Zimaya Exquisite",
+        "Exquisite"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-76314dad91b7f401",
+      "product_id": "SH-AUTO-132bcd9554b6",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Sharaf Blend",
+        "Zimaya Sharaf Blend",
+        "Sharaf Blend"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7b6b9a4faad2486c",
+      "product_id": "SH-AUTO-7113a884653b",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Grandeur",
+        "Zimaya Grandeur",
+        "Grandeur"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b62aabd5a3e40f0b",
+      "product_id": "SH-AUTO-278b38bc1d2a",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Wujood",
+        "Zimaya Wujood",
+        "Wujood"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-df55e73a00d3e035",
+      "product_id": "SH-AUTO-1977430e097e",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Luxor",
+        "Zimaya Luxor",
+        "Luxor"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b21f5d986e9e64f5",
+      "product_id": "SH-AUTO-68476e686035",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Crysta Oud",
+        "Zimaya Crysta Oud",
+        "Crysta Oud"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-78a31f3580173876",
+      "product_id": "SH-AUTO-84386590b75d",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Farah",
+        "Zimaya Farah",
+        "Farah"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-69f283c3def457ce",
+      "product_id": "SH-AUTO-e1ad21435dfa",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Amber Is Great",
+        "Zimaya Amber Is Great",
+        "Amber Is Great"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b34305d1e65d80e2",
+      "product_id": "SH-AUTO-855c301628ad",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Zimaya - Bahjah",
+        "Zimaya Bahjah",
+        "Bahjah"
+      ],
+      "store_mappings": []
     }
   ],
   "offers": [],
@@ -33734,10 +34069,10 @@
     "expanded_products_added": 950,
     "expanded_from_verified_catalog_size": 1006,
     "catalog_fix": "Generic canonical display metadata: explicit concentration and audience only; no product-specific exceptions.",
-    "product_count": 1389,
+    "product_count": 1399,
     "deduplication": "brand + canonical_name + concentration + gender",
     "gender_policy": "Only explicit catalog/source/title audience markers are normalized; unknown remains null.",
-    "variant_count": 511,
+    "variant_count": 521,
     "rayhaan_catalog_verification": {
       "verified_against": "https://rayhaanperfumes.com/collections/all",
       "official_product_names": 41,
@@ -33795,7 +34130,7 @@
     "unresolved_canonical_images": [
       "Roza"
     ],
-    "note": "No invented image URLs. The unresolved entries remain null until a direct image URL is verified.",
+    "note": "No invented image URLs. The unresolved entries remain null until a direct image URL is verified. Zimaya partial verified import: 10 identities and 10 x 100 ml variants added from official product pages on 2026-11-08; canonical images left null because direct product-specific image URLs were not independently verified.",
     "family_counts_verified": {
       "Rasasi Hawas": 33,
       "Valentino Born in Roma": 18,
@@ -33867,7 +34202,7 @@
     "last_audit": "2026-09-25",
     "image_audit": "Gucci image collision resolved using product-specific image sources; no identities merged.",
     "variant_deduplication": "Merged duplicate variant records by product_id + size_ml; unioned aliases/GTIN/MPN/store_mappings; no product identities merged.",
-    "brand_count": 61,
+    "brand_count": 62,
     "image_audit_v14": {
       "missing_images": 0,
       "image_collisions": 0,
@@ -34065,6 +34400,77 @@
       "scope": "Fragranze Guerlain presenti/superficiate nel catalogo Deloox; make-up, skincare, haircare, body care, gift set e miniature set non convertiti in identità perfume.",
       "image_policy": "canonical_image remains null for newly added Guerlain identities unless a direct product-specific image URL was verified; no image URL invented.",
       "note": "The Deloox brand catalog exposes a broader historical/active Guerlain fragrance assortment than the initial screenshot-based pass; this audit promotes those fragrance identities into the central catalog."
+    },
+    "zimaya_import_batch_2026_11_08": {
+      "status": "partial_verified_import",
+      "source": "https://zimayaperfumes.com/collections/all",
+      "official_collection_reported_count": 104,
+      "imported_verified_identities": 10,
+      "imported_variant_records": 10,
+      "product_scope": "Official product pages explicitly identify 100 ml Eau de Parfum and gender/audience; concentrated perfume oils excluded.",
+      "unresolved_collection_candidates": "Remaining official collection products require page-level verification; this is not a complete Zimaya import.",
+      "imported_products": [
+        {
+          "canonical_name": "Cult",
+          "product_id": "SH-AUTO-1c9e24c0a493",
+          "variant_id": "VAR-f0522f1eeacdf3df",
+          "source": "https://zimayaperfumes.com/products/cult"
+        },
+        {
+          "canonical_name": "Exquisite",
+          "product_id": "SH-AUTO-3ce66441d68a",
+          "variant_id": "VAR-565141da1891c249",
+          "source": "https://zimayaperfumes.com/products/exquisite"
+        },
+        {
+          "canonical_name": "Sharaf Blend",
+          "product_id": "SH-AUTO-132bcd9554b6",
+          "variant_id": "VAR-76314dad91b7f401",
+          "source": "https://zimayaperfumes.com/products/sharaf-blend-100ml"
+        },
+        {
+          "canonical_name": "Grandeur",
+          "product_id": "SH-AUTO-7113a884653b",
+          "variant_id": "VAR-7b6b9a4faad2486c",
+          "source": "https://zimayaperfumes.com/products/grandeur-100ml"
+        },
+        {
+          "canonical_name": "Wujood",
+          "product_id": "SH-AUTO-278b38bc1d2a",
+          "variant_id": "VAR-b62aabd5a3e40f0b",
+          "source": "https://zimayaperfumes.com/products/wujood-100ml"
+        },
+        {
+          "canonical_name": "Luxor",
+          "product_id": "SH-AUTO-1977430e097e",
+          "variant_id": "VAR-df55e73a00d3e035",
+          "source": "https://zimayaperfumes.com/products/luxor-100ml"
+        },
+        {
+          "canonical_name": "Crysta Oud",
+          "product_id": "SH-AUTO-68476e686035",
+          "variant_id": "VAR-b21f5d986e9e64f5",
+          "source": "https://zimayaperfumes.com/products/crysta-oud-100ml"
+        },
+        {
+          "canonical_name": "Farah",
+          "product_id": "SH-AUTO-84386590b75d",
+          "variant_id": "VAR-78a31f3580173876",
+          "source": "https://zimayaperfumes.com/products/farah"
+        },
+        {
+          "canonical_name": "Amber Is Great",
+          "product_id": "SH-AUTO-e1ad21435dfa",
+          "variant_id": "VAR-69f283c3def457ce",
+          "source": "https://zimayaperfumes.com/products/amber-is-great-100ml"
+        },
+        {
+          "canonical_name": "Bahjah",
+          "product_id": "SH-AUTO-855c301628ad",
+          "variant_id": "VAR-b34305d1e65d80e2",
+          "source": "https://zimayaperfumes.com/products/bahja"
+        }
+      ]
     }
   }
 }
