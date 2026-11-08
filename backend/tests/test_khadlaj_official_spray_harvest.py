@@ -20,10 +20,12 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
         return "".join(ch for ch in value.casefold() if ch.isalnum())
 
     def test_all_harvested_khadlaj_names_present(self):
-        names = {self.normalize(p["canonical_name"]) for p in self.catalog["products"] if p.get("brand") == "Khadlaj"}
+        products = [p for p in self.catalog["products"] if p.get("brand") == "Khadlaj"]
+        names = {self.normalize(p["canonical_name"]) for p in products}
+        aliases = {self.normalize(alias) for p in products for alias in p.get("aliases", [])}
         for name in EXPECTED:
             with self.subTest(name=name):
-                self.assertIn(self.normalize(name), names)
+                self.assertTrue(self.normalize(name) in names or self.normalize(name) in aliases)
 
     def test_no_duplicate_product_ids_or_brand_names(self):
         products = self.catalog["products"]
@@ -32,13 +34,28 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(pairs), len(set(pairs)))
 
-    def test_new_rows_remain_name_only(self):
-        for product in self.catalog["products"]:
-            if product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
-                self.assertEqual(product["identity_status"], "source_listed_name")
-                self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
-                self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
+    def test_harvested_rows_have_explicit_variant_evidence(self):
+        harvested = [
+            p for p in self.catalog["products"]
+            if p["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-")
+        ]
+        self.assertTrue(harvested)
+        for product in harvested:
+            with self.subTest(product=product["canonical_name"]):
+                expected_status = "source_verified_name" if product["canonical_name"] == "Ghadeer Silver" else "source_listed_name"
+                self.assertEqual(product["identity_status"], expected_status)
+                if product["canonical_name"] in {"Saqr Al Badiya", "Sensuous Night"}:
+                    self.assertIn("/products/", product["source_url"])
+                else:
+                    self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
+                variants = [
+                    v for v in self.catalog["variants"]
+                    if v.get("product_id") == product["product_id"]
+                ]
+                self.assertTrue(variants)
+                for variant in variants:
+                    self.assertTrue(variant.get("source_evidence_url"))
+                    self.assertIn(variant.get("size_ml"), product.get("formats_ml", []))
 
 if __name__ == "__main__":
     unittest.main()
