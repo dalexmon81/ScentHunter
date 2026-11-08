@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "brand_catalog_discovery",
+  "created_at": "2026-11-08",
+  "status": "discovery_only",
+  "description": "Brand and collection discovery manifest sourced from public retailer brand indexes. This file intentionally does not invent fragrance identities, product variants, EAN/GTINs, prices, stock, or retailer offers. Individual fragrance records must be harvested from product-level sources and deduplicated before canonical catalog import.",
+  "source_policy": {
+    "sources_are_discovery_indexes": true,
+    "retailer_counts_are_not_product_records": true,
+    "no_offers_imported": true,
+    "no_prices_or_availability_asserted": true,
+    "requires_product_level_verification_before_seed": true
+  },
+  "sources": [
+    {
+      "name": "Essencia Arabe - brand collections",
+      "url": "https://www.essenciaarabe.com/en/collections",
+      "evidence": "Its collection index lists Afnan, Al Haramain, Al Wataniah, Arabiyat Prestige, Armaf, Bujairami, French Avenue, Khadlaj, Lattafa, Maison Alhambra, Maison Asrar, Mykonos, Paris Corner, Swiss Arabian, Velixir, and Zimaya."
+    },
+    {
+      "name": "Azmara - all products brand filters",
+      "url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence": "Brand filter lists Afnan, Al Ambra, Al Haramain, Al Wataniah, Arabiyat Prestige, Armaf, Assaf, Bujairami, French Avenue, Gulf Orchid, Khadlaj, Lattafa, Maison Alhambra, Maison Asrar, Paris Corner, Swiss Arabian, and Zimaya."
+    },
+    {
+      "name": "Setara Cosmetics - brands",
+      "url": "https://setaracosmetics.it/pages/brands",
+      "evidence": "Brand index lists Aromatix, Al Haramain, Al Wataniah, Armaf, French Avenue, Gulf Orchid, Khadlaj, Lattafa, Maison Alhambra, Maison Asrar, Paris Corner, Swiss Arabian, and Zimaya."
+    },
+    {
+      "name": "Arabian Fragrance - collections",
+      "url": "https://arabianfragrance.de/de/collections",
+      "evidence": "Brand navigation lists Afnan, Al Haramain, Arabiyat Prestige, Armaf, Bujairami, French Avenue, Lattafa, Maison Asrar, Mykonos, Paris Corner, Swiss Arabian, and Velixir."
+    }
+  ],
+  "requested_brands": [
+    {"brand": "Velixir", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Mykonos", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Maison Asrar", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Khadlaj", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Bujairami", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Paris Corner", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Assaf", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Al Wataniah", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Armaf", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "French Avenue", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Arabiyat Prestige", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Gulf Orchid", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Swiss Arabian", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Games of Spades", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Lattafa", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Afnan", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Aromatix", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Maison Alhambra", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Zimaya", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Al Haramain", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"},
+    {"brand": "Al Ambra", "status": "needs_product_level_harvest", "requested_scope": "all_publicly_listed_fragrances_and_variants"}
+  ],
+  "collection_scopes": [
+    {"brand": "Maison Asrar", "collection": "Royal Collection", "status": "needs_product_level_harvest"},
+    {"brand": "Velixir", "collection": "Full line", "status": "needs_product_level_harvest"},
+    {"brand": "Mykonos", "collection": "Full line", "status": "needs_product_level_harvest"},
+    {"brand": "Aromatix", "collection": "Full line", "status": "needs_presence_check_and_harvest"},
+    {"brand": "Games of Spades", "collection": "Full line", "status": "needs_dedicated_product_sources"}
+  ],
+  "normalization_notes": [
+    "Treat Maison Alhambra and the user's spelling Alambra as an alias candidate; preserve Maison Alhambra as the display brand unless product evidence establishes a different manufacturer.",
+    "Do not merge Games of Spades into another brand without product-level brand ownership evidence.",
+    "Treat Velixir and Mykonos as brand/collection names pending individual product verification.",
+    "Do not infer that 'all stores sell' a brand from one retailer's collection index."
+  ]
+}
