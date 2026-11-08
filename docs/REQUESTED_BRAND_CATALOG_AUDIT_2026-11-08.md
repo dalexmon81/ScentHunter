@@ -467,3 +467,36 @@ Official collection context: https://www.pariscornerperfumes.com/collections/par
 - This ensures updates to the requested-brand harvest branch can trigger the catalog validation workflow when catalog, registry, tests or workflow files change.
 - The catalog seed validation run previously recorded for commit `bf8a819a698a0c04f6a5194533ed9edd8749f83b` completed successfully: job `validate-catalog-seed`, 116 tests.
 - The workflow trigger correction is commit `e10eef22210df859b45654dbef47a4aa56fd99c5`. A new workflow run was not returned by the GitHub Actions connector at the time of this update; do not treat the trigger fix itself as proof of a new successful run.
+
+
+## Mykonos catalogue and variant audit — 8 November 2026
+
+### Current seed snapshot
+
+The current catalog contains 72 Mykonos canonical identities and 73 explicit variants. A direct JSON audit found:
+- All declared `formats_ml` sizes for Mykonos have a matching variant row.
+- No Mykonos variant has a size absent from its parent product's `formats_ml`.
+- 19 Mykonos identities currently have no explicit variant row and no `formats_ml` value. They are not assigned guessed sizes or concentrations.
+- 19 further Mykonos identities use a generic official collection URL rather than an individual product detail URL; this includes some identities that already have size/concentration data. They need product-level source reconciliation.
+
+### Sources compared
+
+- Official Indonesian Mykonos storefront collection: https://officialmykonos.com/collections/all — currently indexed as 54 products. The visible product titles explicitly expose sizes/concentrations for at least the first product-page entries; a sold-out label is not evidence that a fragrance is discontinued.
+- Official Mykonos EU storefront search: https://mykonosperfumes.eu/search — separate regional storefront and assortment; includes perfume products as well as fragrance mists, which must not be counted as perfume variants.
+- Official Mykonos EU sitemap: https://mykonosperfumes.eu/pages/sitemap — identifies dedicated collections including 50 ml, 100 ml, Eau de Parfum, Extrait de Parfum, New Releases, and Fragrance Mists.
+- Fragrantica designer listing: https://www.fragrantica.com/designers/Mykonos.html — currently reports 84 entries. This is a secondary discovery index only, not sufficient by itself to add a canonical product, size, or concentration.
+
+### Reconciliation rules
+
+The figures 54, 72, and 84 describe different catalogues/scopes and must not be treated as interchangeable:
+- 54 is the current item count on the Indonesian official storefront collection.
+- 72 is the current ScentHunter Mykonos canonical identity count.
+- 84 is a secondary database's fragrance-entry count.
+
+No product should be added solely to make ScentHunter match the 84-entry secondary index. Candidate names must be confirmed on an official brand page or an official regional storefront before promotion. Regional variants, collaboration releases, discontinued products, and body mists must be classified separately.
+
+### Variant completion status
+
+Mykonos is not yet complete. The 73 existing variant rows are internally consistent with the size fields already declared, but this is not proof that every official size option has been captured. The next pass must inspect individual product pages for all 72 identities, record every explicitly offered size and concentration combination, and leave fields blank where official detail pages do not state them. For the 19 identities with no size/variant evidence, do not create a variant until a source confirms it.
+
+No catalog product or variant was added or removed during this audit.
