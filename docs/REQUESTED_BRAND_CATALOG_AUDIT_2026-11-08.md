@@ -68,3 +68,25 @@ The GitHub Actions connector returned no run for the immediately preceding commi
 
 
 **Provenance placement:** the travel-size page URL is stored on each 15 ml variant row as `source_evidence_url`; it is not substituted for the canonical identity's `source_url` or product-level provenance.
+
+
+### Gulf Orchid: nine official new-arrival perfumes (8 November 2026)
+
+The official Gulf Orchid New Arrivals collection includes these Gulf Orchid products alongside other brands and gift/set items. Seven identities — Belle, Amour, Chic, Phantom, Flamma, Vortex and Rosalia — are new additions in this reconciliation. Cloud 9 and Maestro were already present in parent PR #542 and are retained without adding duplicate product or variant records.
+
+| Canonical perfume | Official product page | Explicit specification |
+|---|---|---|
+| Belle | https://shop-gulforchid.com/products/belle | 100 ml, EDP |
+| Amour | https://shop-gulforchid.com/products/amour | 100 ml, EDP |
+| Chic | https://shop-gulforchid.com/products/chic | 100 ml, EDP |
+| Cloud 9 | https://shop-gulforchid.com/products/cloud-9 | 100 ml, EDP |
+| Phantom | https://shop-gulforchid.com/products/phantom | 100 ml, EDP |
+| Flamma | https://shop-gulforchid.com/products/flamma | 100 ml, EDP |
+| Vortex | https://shop-gulforchid.com/products/vortex | 100 ml, EDP |
+| Rosalia | https://shop-gulforchid.com/products/rosalia | 100 ml, EDP |
+| Maestro | https://shop-gulforchid.com/products/maestro | 100 ml, EDP |
+
+One canonical identity and one explicit 100 ml EDP variant is present per perfume in the combined catalog. Seven product/variant pairs are added here; Cloud 9 and Maestro are inherited from PR #542. The family registry is synchronized. Vanilla Aura and Vanilla Voyage remain excluded from Gulf Orchid because PR #542 corrected their brand attribution to Maison Asrar. No price, stock status, retailer offer, or inferred attribute was copied into the catalog.
+
+Source collection: https://shop-gulforchid.com/collections/new-arrivals
+
