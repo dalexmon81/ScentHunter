@@ -67,6 +67,7 @@ jobs:
           backend.tests.test_khadlaj_catalog_parity
           backend.tests.test_khadlaj_detail_evidence
           backend.tests.test_khadlaj_additional_detail_evidence
+          backend.tests.test_khadlaj_further_detail_evidence
           backend.tests.test_khadlaj_la_fede
           backend.tests.test_lattafa_catalog
           backend.tests.test_paris_corner_catalog_parity
