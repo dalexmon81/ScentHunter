@@ -1,6 +1,7 @@
 """Regression tests for official Al Haramain and Gulf Orchid name harvest."""
 import json
 import unittest
+import unicodedata
 from pathlib import Path
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "product_catalog.json"
@@ -14,14 +15,20 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
             cls.catalog = json.load(handle)
         cls.products = cls.catalog["products"]
 
+    @staticmethod
+    def _normalize(name):
+        value = unicodedata.normalize("NFKD", name)
+        value = "".join(ch for ch in value if not unicodedata.combining(ch))
+        return "".join(ch for ch in value.casefold() if ch.isalnum())
+
     def _brand_names(self, brand):
-        return {p["canonical_name"].casefold() for p in self.products if p.get("brand") == brand}
+        return {self._normalize(p["canonical_name"]) for p in self.products if p.get("brand") == brand}
 
     def test_all_al_haramain_store_names_present(self):
         names = self._brand_names("Al Haramain")
         for name in AL_HARAMAIN:
             with self.subTest(name=name):
-                self.assertIn(name.casefold(), names)
+                self.assertIn(self._normalize(name), names)
 
     def test_all_gulf_orchid_store_names_present(self):
         names = self._brand_names("Gulf Orchid")
