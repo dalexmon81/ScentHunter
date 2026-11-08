@@ -1664,3 +1664,11 @@ The harvest overlay now records these cross-checks and the reason for holding bo
 - A Luxembourg retailer page calls it 100 ml Extrait de Parfum and publishes UPC 9362014000157, but the URL slug says EDP. An EU retailer guide also lists it as Extrait. Due to this conflict, no concentration, size or GTIN is imported and no variant row is created.
 - Synchronized the Bujairami family registry and harvest overlay; added `backend/tests/test_bujairami_catalog.py` to guard official provenance and prevent inferred commercial/variant fields.
 - Current catalog count after this identity-only addition: **1,922 canonical identities; 245 explicit variants**. CI remains unverified on the current PR head.
+
+
+## Pass 33 — Mahd Al Dhahab Extrait source gate (2026-11-08)
+
+- Confirmed multiple retailer listings and an independent perfume database distinguish **Mahd Al Dhahab Extrait** from the existing **Mahd Al Dhahab EDP**. The Extrait is presented as a 2026 release, and retailers identify a 60 ml presentation.
+- Evidence reviewed includes Fenice, Arabic Parfums, ParfumGroup, Parfimo, FragranceNet and Fragrantica. These are corroborating retailer/database sources, not the Arabiyat Prestige brand's own product detail page.
+- Kept the Extrait outside the canonical seed until an official brand or clearly authorized primary distributor product detail is confirmed. It must not be merged into the EDP as a concentration variant without authoritative evidence that the product identity is one and the same.
+- The candidate overlay now explicitly records this evidence gate and its no-inference rule.
