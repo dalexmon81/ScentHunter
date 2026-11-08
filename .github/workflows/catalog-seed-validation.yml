@@ -12,6 +12,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/velixir-evidence-status-correction-2026-11-08
+      - catalog/maison-asrar-detail-source-refresh-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -27,6 +28,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/velixir-evidence-status-correction-2026-11-08
       - catalog/maison-asrar-detail-source-refresh-2026-11-08
+      - catalog/al-wataniah-detail-evidence-2026-11-08
 
 permissions:
   contents: read
@@ -57,6 +59,7 @@ jobs:
           backend.tests.test_maison_asrar_lock_and_key
           backend.tests.test_al_haramain_catalog
           backend.tests.test_al_wataniah_detail_evidence
+          backend.tests.test_al_wataniah_additional_detail_evidence
           backend.tests.test_french_avenue_catalog
           backend.tests.test_games_of_spades_catalog
           backend.tests.test_khadlaj_catalog_parity
