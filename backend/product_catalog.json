@@ -26198,9 +26198,13 @@
         "Mahd Al Dhahab Extrait",
         "Arabiyat Prestige Mahd Al Dhahab Extrait"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait",
+      "source_evidence_url": "https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait",
+      "source_product_url": "https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-dabe9232",
@@ -29978,6 +29982,16 @@
       ],
       "variant_id": "SHV-SH-AL-WATANIAH-5acf0b9a-100-000",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-aac6aa05",
+      "size_ml": 60,
+      "aliases": [
+        "Mahd Al Dhahab Extrait 60 ml",
+        "Arabiyat Prestige Mahd Al Dhahab Extrait 60 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-aac6aa05-60-EXTRAIT",
+      "concentration": "Extrait de Parfum"
     }
   ]
 }
