@@ -2,10 +2,10 @@
 
 ## Result
 
-The catalog was compared against the first-party discovery candidates in the preceding audit and the current canonical seed. Seven previously absent fragrance identities were confirmed from individual official product pages and added with explicit variants. Ten additional existing Zimaya identities (including Ghali Elegante) were upgraded from discovery-only to product-page-verified provenance with explicit variants.
+The catalog was compared against the first-party discovery candidates in the preceding audit and the current canonical seed. Fifteen previously absent fragrance identities were confirmed from individual official product pages and added with explicit variants. Ten additional existing Zimaya identities (including Ghali Elegante) were upgraded from discovery-only to product-page-verified provenance with explicit variants.
 
 - Swiss Arabian: 4 new identities.
-- Zimaya: 3 new identities (including one concentrated perfume oil, kept distinct from EDP spray products); 9 existing Zimaya identities upgraded with verified official detail pages and 100 ml EDP variants.
+- Zimaya: 11 new identities (including one concentrated perfume oil, kept distinct from EDP spray products); 9 existing Zimaya identities upgraded with verified official detail pages and 100 ml EDP variants.
 - Zimaya Ghali Elegante: retained as one canonical identity; official storefront spelling "Ghali Elegant" added as an alias.
 - No Afnan or Bujairami additions were made in this pass because the reviewed candidates already matched existing canonical identities or aliases.
 - No gift sets, deodorants, body sprays, room sprays, or retailer offers were added.
@@ -52,6 +52,23 @@ Nine more entries already present as discovery-only names were upgraded using th
 | Sharaf Divine | https://us.zimayaperfumes.com/products/sharaf-divine-perfume |
 
 These are not nine additional canonical identities; they are nine existing identities whose provenance and exact 100 ml EDP variant are now verified. The product IDs remain unchanged.
+
+## Further Zimaya sitemap reconciliation
+
+Eight additional fragrances were present in the official Zimaya product sitemap and had individual official product pages. Their pages specify 100 ml Eau de Parfum:
+
+| Canonical identity | Official product page |
+|---|---|
+| Modhesh Aura | https://us.zimayaperfumes.com/products/modhesh-aura-edp-100ml-perfume |
+| Ramsh Diva | https://us.zimayaperfumes.com/products/ramsh-pour-femme-edp-100ml-perfume |
+| Ramsh Imperium | https://us.zimayaperfumes.com/products/ramsh-imperium-edp-100ml-perfume |
+| Sawalif Helwa | https://us.zimayaperfumes.com/products/sawalif-helwa-100ml-edp |
+| Royal Paragon | https://us.zimayaperfumes.com/products/royal-paragon-edp-100ml-perfume |
+| Roses Are White | https://us.zimayaperfumes.com/products/roses-are-white-edp-100ml-perfume |
+| Rose Of Dreams | https://us.zimayaperfumes.com/products/rose-of-dreams-edp-100ml |
+| Reflect | https://us.zimayaperfumes.com/products/reflect-edp-100ml-perfume |
+
+The pages identify the products and their exact 100 ml EDP format. These eight identities were absent from the current catalog and are added as canonical products with one explicit 100 ml variant each. PR boxes and other non-fragrance items from the sitemap were excluded.
 
 ## Reconciliation and safety
 
