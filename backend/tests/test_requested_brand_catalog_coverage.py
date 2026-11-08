@@ -926,5 +926,41 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(variants[0].get("size_ml"), 100)
         self.assertEqual(variants[0].get("concentration"), "Extrait de Parfum")
 
+
+    def test_velixir_official_catalog_has_28_fragrances_and_24_edp_variant_pairs(self):
+        velixir = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Velixir"
+        }
+        expected_edp = {
+            "Adonis", "Aphrodite", "Apollo", "Ares", "Artemis", "Asteria",
+            "Athena", "Concordia", "Demeter", "Galatea", "Harmonia", "Helios",
+            "Hera", "Himeros", "Icarus", "Morpheus", "Narcisus", "Nyx",
+            "Orion", "Paladin", "Persephone", "Poseidon", "Selene", "Uranus",
+        }
+        expected_extrait = {"Comus", "Ether", "Orpheus", "Panacea"}
+        self.assertEqual(set(velixir), expected_edp | expected_extrait)
+        variants = CATALOG.get("variants", [])
+        for name in expected_edp:
+            with self.subTest(name=name):
+                row = velixir[name]
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [35, 100])
+                self.assertTrue(row.get("source_url", "").startswith("https://velixirparfums.com/products/"))
+                product_variants = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                ]
+                self.assertEqual(
+                    {(variant.get("size_ml"), variant.get("concentration")) for variant in product_variants},
+                    {(35, "Eau de Parfum"), (100, "Eau de Parfum")},
+                )
+        for name in expected_extrait:
+            with self.subTest(name=name):
+                row = velixir[name]
+                self.assertEqual(row.get("concentration"), "Extrait de Parfum")
+                self.assertTrue(row.get("source_url", "").startswith("https://velixirparfums.com/products/"))
+
 if __name__ == "__main__":
     unittest.main()
