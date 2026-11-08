@@ -6663,21 +6663,33 @@
           "aliases": [
             "Milele",
             "Al Wataniah Milele"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Turquois",
           "aliases": [
             "Turquois",
             "Al Wataniah Turquois"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Cloud",
           "aliases": [
             "Cloud",
             "Al Wataniah Cloud"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Al Daiem",
@@ -6766,7 +6778,11 @@
           "aliases": [
             "Attar Al Wesal",
             "Al Wataniah Attar Al Wesal"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Attar Al Wesal Elixir",
@@ -6808,7 +6824,11 @@
           "aliases": [
             "Crème",
             "Al Wataniah Crème"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Da'im",
@@ -7090,7 +7110,11 @@
           "aliases": [
             "Sabah Al Ward",
             "Al Wataniah Sabah Al Ward"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Sabah Al Ward Garden of Eden",
@@ -7104,7 +7128,11 @@
           "aliases": [
             "Sabah Al Ward Sugar",
             "Al Wataniah Sabah Al Ward Sugar"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Sahari",
@@ -7139,7 +7167,11 @@
           "aliases": [
             "Special Oud",
             "Al Wataniah Special Oud"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Sugar Rush",
