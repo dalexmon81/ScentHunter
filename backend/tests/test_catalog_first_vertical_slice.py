@@ -82,8 +82,9 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
                 )
                 session.add(store)
                 session.flush()
-            if store.offer_ttl_minutes is None:
-                store.offer_ttl_minutes = 1440
+            # Keep this disposable test deterministic: the six-day-old fixture
+            # must exceed the configured one-day freshness window.
+            store.offer_ttl_minutes = 1440
             assert store.status == "active"
             session.commit()
 
