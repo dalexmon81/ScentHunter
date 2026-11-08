@@ -16,7 +16,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/adonis",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-8b429b66",
@@ -32,7 +37,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-aphrodite-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-6b018fb1",
@@ -48,7 +58,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/apollo",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-599e6e9d",
@@ -64,7 +79,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/ares",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-058bec99",
@@ -80,7 +100,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-artemis-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-9b764bf3",
@@ -96,7 +121,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-asteria-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-7a65a419",
@@ -112,7 +142,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/athena",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-50b87cfb",
@@ -128,7 +163,8 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-6f7b377c",
@@ -144,7 +180,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-concordia-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-c0952852",
@@ -160,7 +201,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/demeter-for-unisex-edp-100ml",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-36e7a5ca",
@@ -176,7 +222,8 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-76046795",
@@ -192,7 +239,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-galatea-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-e49794d3",
@@ -208,7 +260,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-harmonia",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-1089d534",
@@ -224,7 +281,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/helios",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-06211958",
@@ -240,7 +302,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/hera",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-71f3ac99",
@@ -256,7 +323,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-himeros-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-3a619af9",
@@ -272,7 +344,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/icarus",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-21cface3",
@@ -288,7 +365,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-morpheus-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-23a9f320",
@@ -304,7 +386,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/narcisus",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-153bbbed",
@@ -320,7 +407,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-nyx-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-cfe48ddb",
@@ -336,7 +428,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/orion",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-7e147c46",
@@ -352,7 +449,8 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-8c915ae1",
@@ -368,7 +466,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/paladin",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-1738e7af",
@@ -384,7 +487,8 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-12baca03",
@@ -400,7 +504,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-persephone-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-c43f9b63",
@@ -416,7 +525,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-poseidon-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-bc687534",
@@ -432,7 +546,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-parfums-selene-eau-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-029d80ce",
@@ -448,7 +567,12 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "source_evidence_url": "https://velixirparfums.com/products/velixir-uranus-for-unisex-eau-de-parfum",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-a5cf9e83",
@@ -3397,7 +3521,12 @@
         "Paris Corner Date Caramel"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/date-caramel",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-a7bb1ce4",
@@ -6940,7 +7069,16 @@
         "Games of Spades King"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-95335183",
@@ -6955,7 +7093,14 @@
         "Games of Spades Queen"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-queen",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-9448efa2",
@@ -6970,7 +7115,10 @@
         "Games of Spades Ace"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-platinum",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-99ff65c5",
@@ -6985,7 +7133,17 @@
         "Games of Spades Wildcard"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-wildcard",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        30,
+        50,
+        100,
+        200
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-14a18233",
@@ -11533,7 +11691,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-d36ff1d7",
@@ -11550,7 +11711,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-52353618",
@@ -11566,7 +11730,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-aa3e1b8a",
@@ -11583,7 +11750,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-10a2bd45",
@@ -11599,7 +11769,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-67332242",
@@ -11615,7 +11788,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-c8ea16e6",
@@ -11631,7 +11807,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-69a65dd6",
@@ -11647,7 +11826,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-e036b897",
@@ -11663,7 +11845,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-070136ba",
@@ -11679,7 +11865,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-35ac95ff",
@@ -11695,7 +11884,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-9ff7fa43",
@@ -11711,7 +11903,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-825c174b",
@@ -11727,7 +11922,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-775acf3b",
@@ -11743,7 +11941,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-9abbf020",
@@ -11759,7 +11960,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-3b92f6c9",
@@ -11775,7 +11979,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all"
+      "source_evidence_url": "https://officialmykonos.com/collections/all",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-accabf2b",
@@ -15505,7 +15712,9 @@
       "family_name": "Attractus",
       "aliases": [
         "Attractus",
-        "Paris Corner Attractus"
+        "Paris Corner Attractus",
+        "Attratus",
+        "Paris Corner Attratus"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/attractus",
@@ -16091,7 +16300,9 @@
       "family_name": "Harrier Absolute",
       "aliases": [
         "Harrier Absolute",
-        "Paris Corner Harrier Absolute"
+        "Paris Corner Harrier Absolute",
+        "Harrier Absoulte",
+        "Paris Corner Harrier Absoulte"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all"
@@ -16232,7 +16443,12 @@
         "Paris Corner Indomitable"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/indomitable",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-INTENSE-OUD",
@@ -16695,7 +16911,12 @@
         "Paris Corner Mawj Moscow Mule"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-MEHWISH",
@@ -21295,11 +21516,17 @@
       "family_name": "Perseviron Fig Hug",
       "aliases": [
         "Perseviron Fig Hug",
-        "Paris Corner Perseviron Fig Hug"
+        "Paris Corner Perseviron Fig Hug",
+        "Fig Hug",
+        "Paris Corner Fig Hug"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-a00c4613",
@@ -25015,7 +25242,14 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-all-in",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        50,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BID",
@@ -25033,7 +25267,11 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=1",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BLACK-SAPPHIRE",
@@ -25051,7 +25289,13 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=1",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        90
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BLIND-BID",
@@ -25069,7 +25313,11 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-blind-bid",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-blind-bid",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BLUFF",
@@ -25087,7 +25335,11 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=1",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BONUS",
@@ -25123,7 +25375,12 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=1",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-DIAMOND",
@@ -25141,7 +25398,13 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=1",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
@@ -25159,7 +25422,13 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=1",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-EMERALD",
@@ -25177,7 +25446,12 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=2",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        50,
+        90
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-FULL-HOUSE-REFRESH",
@@ -25195,7 +25469,11 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=2",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-GOLD",
@@ -25213,7 +25491,13 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-gold",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-gold",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        90
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-HIGH-ROLLER",
@@ -25231,7 +25515,11 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=2",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-JACKPOT",
@@ -25249,7 +25537,13 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-MOON",
@@ -25339,7 +25633,12 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-ROYALE",
@@ -25375,7 +25674,11 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=2",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-TOPAZ",
@@ -25411,7 +25714,11 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=2",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-WIN",
@@ -25429,7 +25736,11 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=2",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-YELLOW-SAPPHIRE",
@@ -25447,7 +25758,12 @@
       "source_url": "https://jomilanoparis.com/collections/all?page=2",
       "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        30,
+        90
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-GELATO-RASPBERRY-RIPPLE",
@@ -30595,7 +30911,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -30921,7 +31238,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-island-sun-100-ml-extrait-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-7ecbb58c",
@@ -32558,7 +32876,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/sensous-night-edp-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-106",
@@ -33004,7 +33323,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "collection_name": "Khadlaj Perfume Spray"
     },
     {
       "product_id": "SH-KHADLAJ-CODE-VIOLA-NECTAR",
@@ -33018,7 +33339,8 @@
         "Code Viola Nectar",
         "Khadlaj Code Viola Nectar",
         "La Fede Code Viola Nectar",
-        "Khadlaj La Fede Code Viola Nectar"
+        "Khadlaj La Fede Code Viola Nectar",
+        "Code Viola Necter"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
@@ -33026,7 +33348,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "collection_name": "La Fede Eau De Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-D-LOVE",
@@ -33082,7 +33406,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "collection_name": "Khadlaj Perfume Spray"
     },
     {
       "product_id": "SH-KHADLAJ-GHADEER-GOLD",
@@ -33161,7 +33487,9 @@
       "formats_ml": [
         35
       ],
-      "concentration": "Perfume Oil"
+      "concentration": "Perfume Oil",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml",
+      "collection_name": "Concentrated Perfume Oils"
     },
     {
       "product_id": "SH-KHADLAJ-HAREEM-AL-SULTAN-SILVER",
@@ -33317,7 +33645,9 @@
       "formats_ml": [
         20
       ],
-      "concentration": "Perfume Oil"
+      "concentration": "Perfume Oil",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "collection_name": "Concentrated Perfume Oils"
     },
     {
       "product_id": "SH-KHADLAJ-MOCHA-LATTE",
@@ -33337,7 +33667,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "collection_name": "Caffe Khadlaj"
     },
     {
       "product_id": "SH-KHADLAJ-NAGHAM",
@@ -33708,7 +34040,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "collection_name": "Uno Range"
     },
     {
       "product_id": "SH-KHADLAJ-VANILLA-KISS",
@@ -33744,7 +34078,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/wow-oud-100-ml-edp-spray",
+      "collection_name": "Khadlaj Perfume Spray"
     },
     {
       "product_id": "SH-KHADLAJ-PRIVATE-BLEND-TOBAC-EXTRA",
@@ -33957,7 +34293,8 @@
       "aliases": [
         "La Fede Edge Intense",
         "Khadlaj La Fede Edge Intense",
-        "Edge Intense"
+        "Edge Intense",
+        "LA FEDE EDGE INTENSE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae",
@@ -33965,7 +34302,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-EDGE-ORIGINAL",
@@ -33978,7 +34316,8 @@
       "aliases": [
         "La Fede Edge Original",
         "Khadlaj La Fede Edge Original",
-        "Edge Original"
+        "Edge Original",
+        "LA FEDE EDGE ORIGINAL"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy",
@@ -33986,7 +34325,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-SYMBOL-OF-LOVE",
@@ -33999,7 +34339,8 @@
       "aliases": [
         "La Fede Symbol of Love",
         "Khadlaj La Fede Symbol of Love",
-        "Symbol of Love"
+        "Symbol of Love",
+        "LA FEDE SYMBOL OF LOVE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj",
@@ -34007,7 +34348,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-SYMBOL-OF-POWER",
@@ -34020,7 +34362,8 @@
       "aliases": [
         "La Fede Symbol of Power",
         "Khadlaj La Fede Symbol of Power",
-        "Symbol of Power"
+        "Symbol of Power",
+        "LA FEDE SYMBOL OF POWER"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj",
@@ -34028,7 +34371,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CHOCO-BROWN",
@@ -34041,7 +34385,8 @@
       "aliases": [
         "La Fede Choco Brown",
         "Khadlaj La Fede Choco Brown",
-        "Choco Brown"
+        "Choco Brown",
+        "LA FEDE CHOCO BROWN"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent",
@@ -34049,7 +34394,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-WHITE-FOREST-STRAWBERRY",
@@ -34062,7 +34408,8 @@
       "aliases": [
         "La Fede White Forest Strawberry",
         "Khadlaj La Fede White Forest Strawberry",
-        "White Forest Strawberry"
+        "White Forest Strawberry",
+        "LA FEDE WHITE FOREST STRAWBERRY"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online",
@@ -34070,7 +34417,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-TOFFEE",
@@ -34083,7 +34431,8 @@
       "aliases": [
         "La Fede Celeste Toffee",
         "Khadlaj La Fede Celeste Toffee",
-        "Celeste Toffee"
+        "Celeste Toffee",
+        "LA FEDE CELESTE TOFFEE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum",
@@ -34091,7 +34440,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-FLUER",
@@ -34107,7 +34457,8 @@
         "La Fede Celeste Fleur",
         "Khadlaj La Fede Celeste Fleur",
         "Celeste Fleur",
-        "Celeste Fluer"
+        "Celeste Fluer",
+        "LA FEDE CELESTE FLUER"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women",
@@ -34115,7 +34466,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-JOICE",
@@ -34128,7 +34480,8 @@
       "aliases": [
         "La Fede Celeste Joice",
         "Khadlaj La Fede Celeste Joice",
-        "Celeste Joice"
+        "Celeste Joice",
+        "LA FEDE CELESTE JOICE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents",
@@ -34136,7 +34489,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-AQUA",
@@ -34149,7 +34503,8 @@
       "aliases": [
         "La Fede Celeste Aqua",
         "Khadlaj La Fede Celeste Aqua",
-        "Celeste Aqua"
+        "Celeste Aqua",
+        "LA FEDE CELESTE AQUA"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women",
@@ -34157,7 +34512,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-INTOXICATE-BLUE-ELIXIR",
@@ -34170,7 +34526,8 @@
       "aliases": [
         "La Fede Intoxicate Blue Elixir",
         "Khadlaj La Fede Intoxicate Blue Elixir",
-        "Intoxicate Blue Elixir"
+        "Intoxicate Blue Elixir",
+        "LA FEDE INTOXICATE BLUE ELIXIR"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide",
@@ -34178,7 +34535,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-INTOXICATE",
@@ -34191,7 +34549,8 @@
       "aliases": [
         "La Fede Intoxicate",
         "Khadlaj La Fede Intoxicate",
-        "Intoxicate"
+        "Intoxicate",
+        "LA FEDE INTOXICATE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray",
@@ -34199,7 +34558,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-MANGA-SPLASH",
@@ -34212,7 +34572,8 @@
       "aliases": [
         "La Fede Aura Manga Splash",
         "Khadlaj La Fede Aura Manga Splash",
-        "Aura Manga Splash"
+        "Aura Manga Splash",
+        "LA FEDE AURA MANGA SPLASH"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women",
@@ -34220,7 +34581,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-PISTA-DESSERT",
@@ -34233,7 +34595,8 @@
       "aliases": [
         "La Fede Aura Pista Dessert",
         "Khadlaj La Fede Aura Pista Dessert",
-        "Aura Pista Dessert"
+        "Aura Pista Dessert",
+        "LA FEDE AURA PISTA DESSERT"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy",
@@ -34241,7 +34604,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-OPERA-NOIR-LOR",
@@ -34254,7 +34618,8 @@
       "aliases": [
         "La Fede Opera Noir L'Or",
         "Khadlaj La Fede Opera Noir L'Or",
-        "Opera Noir L'Or"
+        "Opera Noir L'Or",
+        "LA FEDE OPERA NOIR L'OR"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray",
@@ -34262,7 +34627,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-OPERA-ROSE-LOR",
@@ -34275,7 +34641,8 @@
       "aliases": [
         "La Fede Opera Rose L'Or",
         "Khadlaj La Fede Opera Rose L'Or",
-        "Opera Rose L'Or"
+        "Opera Rose L'Or",
+        "LA FEDE OPERA ROSE L'OR"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray",
@@ -34283,7 +34650,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CRYSTALLIA-IMPERIO",
@@ -34296,7 +34664,8 @@
       "aliases": [
         "La Fede Crystallia Imperio",
         "Khadlaj La Fede Crystallia Imperio",
-        "Crystallia Imperio"
+        "Crystallia Imperio",
+        "LA FEDE CRYSTALLIA IMPERIO"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray",
@@ -34304,7 +34673,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CRYSTALLIA-PRIMASO",
@@ -34317,7 +34687,8 @@
       "aliases": [
         "La Fede Crystallia Primaso",
         "Khadlaj La Fede Crystallia Primaso",
-        "Crystallia Primaso"
+        "Crystallia Primaso",
+        "LA FEDE CRYSTALLIA PRIMASO"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray",
@@ -34325,7 +34696,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-EXTREME-BLUE",
@@ -34338,7 +34710,8 @@
       "aliases": [
         "La Fede Magnum Extreme Blue",
         "Khadlaj La Fede Magnum Extreme Blue",
-        "Magnum Extreme Blue"
+        "Magnum Extreme Blue",
+        "LA FEDE MAGNUM EXTREME BLUE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray",
@@ -34346,7 +34719,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-WILD-GREEN",
@@ -34359,7 +34733,8 @@
       "aliases": [
         "La Fede Magnum Wild Green",
         "Khadlaj La Fede Magnum Wild Green",
-        "Magnum Wild Green"
+        "Magnum Wild Green",
+        "LA FEDE MAGNUM WILD GREEN"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray",
@@ -34367,7 +34742,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-GOLD-EDITION",
@@ -34380,7 +34756,8 @@
       "aliases": [
         "La Fede Magnum Gold Edition",
         "Khadlaj La Fede Magnum Gold Edition",
-        "Magnum Gold Edition"
+        "Magnum Gold Edition",
+        "LA FEDE MAGNUM GOLD EDITION"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray",
@@ -34388,7 +34765,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-SILVER-EDITION",
@@ -34401,7 +34779,8 @@
       "aliases": [
         "La Fede Magnum Silver Edition",
         "Khadlaj La Fede Magnum Silver Edition",
-        "Magnum Silver Edition"
+        "Magnum Silver Edition",
+        "LA FEDE MAGNUM SILVER EDITION"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray",
@@ -34409,7 +34788,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-KISS-OF-ROSE",
@@ -34422,7 +34802,8 @@
       "aliases": [
         "La Fede Aura Kiss of Rose",
         "Khadlaj La Fede Aura Kiss of Rose",
-        "Aura Kiss of Rose"
+        "Aura Kiss of Rose",
+        "LA FEDE AURA KISS OF ROSE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women",
@@ -34430,7 +34811,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-CRISP-FLOWER",
@@ -34443,7 +34825,8 @@
       "aliases": [
         "La Fede Aura Crisp Flower",
         "Khadlaj La Fede Aura Crisp Flower",
-        "Aura Crisp Flower"
+        "Aura Crisp Flower",
+        "LA FEDE AURA CRISP FLOWER"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women",
@@ -34451,7 +34834,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-BELLE-REVE-SEGRATO-VIOLA",
@@ -34464,7 +34848,8 @@
       "aliases": [
         "La Fede Belle Reve Segrato Viola",
         "Khadlaj La Fede Belle Reve Segrato Viola",
-        "Belle Reve Segrato Viola"
+        "Belle Reve Segrato Viola",
+        "LA FEDE BELLE REVE SEGRATO VIOLA"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray",
@@ -34472,7 +34857,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-BELLA-REVE-DOLCE-FLORE",
@@ -34485,7 +34871,8 @@
       "aliases": [
         "La Fede Bella Reve Dolce Flore",
         "Khadlaj La Fede Bella Reve Dolce Flore",
-        "Bella Reve Dolce Flore"
+        "Bella Reve Dolce Flore",
+        "LA FEDE BELLA REVE DOLCE FLORE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray",
@@ -34493,7 +34880,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-STATESMAN",
@@ -34506,7 +34894,8 @@
       "aliases": [
         "La Fede Statesman",
         "Khadlaj La Fede Statesman",
-        "Statesman"
+        "Statesman",
+        "LA FEDE STATESMAN"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae",
@@ -34514,7 +34903,8 @@
       "formats_ml": [
         75
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-FIRST-LADY",
@@ -34527,7 +34917,8 @@
       "aliases": [
         "La Fede First Lady",
         "Khadlaj La Fede First Lady",
-        "First Lady"
+        "First Lady",
+        "LA FEDE FIRST LADY"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae",
@@ -34535,7 +34926,8 @@
       "formats_ml": [
         75
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-KINGSMAN",
@@ -34548,7 +34940,8 @@
       "aliases": [
         "La Fede Kingsman",
         "Khadlaj La Fede Kingsman",
-        "Kingsman"
+        "Kingsman",
+        "LA FEDE KINGSMAN"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae",
@@ -34556,7 +34949,8 @@
       "formats_ml": [
         75
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MISS-PREMIERE",
@@ -34569,7 +34963,8 @@
       "aliases": [
         "La Fede Miss Premiere",
         "Khadlaj La Fede Miss Premiere",
-        "Miss Premiere"
+        "Miss Premiere",
+        "LA FEDE MISS PREMIERE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae",
@@ -34577,7 +34972,8 @@
       "formats_ml": [
         75
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-MARRON-OUD",
@@ -34686,7 +35082,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae",
+      "collection_name": "Uno Range"
     },
     {
       "product_id": "SH-KHADLAJ-5559cf95",
@@ -34707,7 +35105,9 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae",
+      "collection_name": "Uno Range"
     },
     {
       "product_id": "SH-KHADLAJ-ca77c4bb",
@@ -34720,7 +35120,8 @@
       "aliases": [
         "La Fede Lavish Luna",
         "Khadlaj La Fede Lavish Luna",
-        "Lavish Luna"
+        "Lavish Luna",
+        "LA FEDE LAVISH LUNA"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml",
@@ -34728,7 +35129,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-edp-spray-100-ml"
     },
     {
       "product_id": "SH-KHADLAJ-911b5613",
@@ -34741,7 +35143,8 @@
       "aliases": [
         "La Fede Lavish Rouge",
         "Khadlaj La Fede Lavish Rouge",
-        "Lavish Rouge"
+        "Lavish Rouge",
+        "LA FEDE LAVISH ROUGE"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml",
@@ -34749,7 +35152,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-rouge-edp-spray-100-ml"
     },
     {
       "product_id": "SH-KHADLAJ-59eacc5a",
@@ -34762,7 +35166,8 @@
       "aliases": [
         "La Fede Lavish Blush",
         "Khadlaj La Fede Lavish Blush",
-        "Lavish Blush"
+        "Lavish Blush",
+        "LA FEDE LAVISH BLUSH"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml",
@@ -34770,7 +35175,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-blush-edp-spray-100-ml"
     },
     {
       "product_id": "SH-KHADLAJ-a117683d",
@@ -45665,6 +46071,456 @@
       "identity_status": "source_verified_name",
       "source_url": "https://bujairami.com.au/products/sunset-bay-inspired-by-cap-camarat-memo-paris",
       "source_evidence_url": "https://bujairami.com.au/products/sunset-bay-inspired-by-cap-camarat-memo-paris"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-996a03df",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Black Grapefruit",
+      "name": "Black Grapefruit",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Black Grapefruit",
+      "aliases": [
+        "Black Grapefruit",
+        "Maison Asrar Black Grapefruit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://maisonasrar.com/collections/all",
+      "source_evidence_url": "https://maisonasrar.com/collections/all"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "name": "Musk Pure Musk Blend Creation of Iqbal",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "aliases": [
+        "Musk Pure Musk Blend Creation of Iqbal",
+        "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Tiramisu Speculoos",
+      "name": "Tiramisu Speculoos",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Tiramisu Speculoos",
+      "aliases": [
+        "Tiramisu Speculoos",
+        "Tiramisu Speculoos 100ML",
+        "Paris Corner Tiramisu Speculoos"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-AMBER-OUD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Amber Oud",
+      "name": "Ministry of Oud - Amber Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Amber Oud",
+      "aliases": [
+        "Ministry of Oud - Amber Oud",
+        "Paris Corner Ministry of Oud - Amber Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-GLADIATORS-OATH",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Gladiators Oath",
+      "name": "Ministry of Oud - Gladiators Oath",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Gladiators Oath",
+      "aliases": [
+        "Ministry of Oud - Gladiators Oath",
+        "Paris Corner Ministry of Oud - Gladiators Oath"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-MAESTRO-S-SYMPHONY",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Maestro's Symphony",
+      "name": "Ministry of Oud - Maestro's Symphony",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Maestro's Symphony",
+      "aliases": [
+        "Ministry of Oud - Maestro's Symphony",
+        "Paris Corner Ministry of Oud - Maestro's Symphony"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-NILE-WHISPERS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Nile Whispers",
+      "name": "Ministry of Oud - Nile Whispers",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Nile Whispers",
+      "aliases": [
+        "Ministry of Oud - Nile Whispers",
+        "Paris Corner Ministry of Oud - Nile Whispers"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-BEYOND-THE-WALL",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Beyond the Wall",
+      "name": "Ministry of Oud - Oud Beyond the Wall",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Beyond the Wall",
+      "aliases": [
+        "Ministry of Oud - Oud Beyond the Wall",
+        "Paris Corner Ministry of Oud - Oud Beyond the Wall"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-INDONESIAN",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Indonesian",
+      "name": "Ministry of Oud - Oud Indonesian",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Indonesian",
+      "aliases": [
+        "Ministry of Oud - Oud Indonesian",
+        "Paris Corner Ministry of Oud - Oud Indonesian"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-ROYAL",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Royal",
+      "name": "Ministry of Oud - Oud Royal",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Royal",
+      "aliases": [
+        "Ministry of Oud - Oud Royal",
+        "Paris Corner Ministry of Oud - Oud Royal"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-SATIN",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Satin",
+      "name": "Ministry of Oud - Oud Satin",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Satin",
+      "aliases": [
+        "Ministry of Oud - Oud Satin",
+        "Paris Corner Ministry of Oud - Oud Satin"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-ROMANCE-REVERIE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Romance Reverie",
+      "name": "Ministry of Oud - Romance Reverie",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Romance Reverie",
+      "aliases": [
+        "Ministry of Oud - Romance Reverie",
+        "Paris Corner Ministry of Oud - Romance Reverie"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-STRICTLY-OUD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Strictly Oud",
+      "name": "Ministry of Oud - Strictly Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Strictly Oud",
+      "aliases": [
+        "Ministry of Oud - Strictly Oud",
+        "Paris Corner Ministry of Oud - Strictly Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-GREATEST",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud Greatest",
+      "name": "Ministry of Oud Greatest",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud Greatest",
+      "aliases": [
+        "Ministry of Oud Greatest",
+        "Paris Corner Ministry of Oud Greatest"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLUE-SAPPHIRE",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Blue Sapphire",
+      "name": "Blue Sapphire",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Blue Sapphire",
+      "aliases": [
+        "Blue Sapphire",
+        "Games of Spades Blue Sapphire",
+        "Game of Spades Blue Sapphire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        30,
+        90
+      ],
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HARRIER-ABSOULTE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Harrier Absoulte",
+      "name": "Harrier Absoulte",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Harrier Absoulte",
+      "aliases": [
+        "Harrier Absoulte",
+        "Paris Corner Harrier Absoulte"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte",
+      "collection_name": "Pendora Scents",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-MARRON-OUD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Marron Oud",
+      "name": "Code Marron Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Marron Oud",
+      "aliases": [
+        "Code Marron Oud",
+        "Khadlaj Code Marron Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-ROUGE-AMOUR",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Rouge Amour",
+      "name": "Code Rouge Amour",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Rouge Amour",
+      "aliases": [
+        "Code Rouge Amour",
+        "Khadlaj Code Rouge Amour"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-VERDE-SUBLIME",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Verde Sublime",
+      "name": "Code Verde Sublime",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Verde Sublime",
+      "aliases": [
+        "Code Verde Sublime",
+        "Khadlaj Code Verde Sublime"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "La Fede Eau De Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ROSE-AND-ROMANCE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rose And Romance",
+      "name": "Rose And Romance",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rose And Romance",
+      "aliases": [
+        "Rose And Romance",
+        "Khadlaj Rose And Romance"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/discover-more/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/discover-more/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/discover-more/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Discover More"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SHIYAAKA-MEN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Shiyaaka Men",
+      "name": "Shiyaaka Men",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Shiyaaka Men",
+      "aliases": [
+        "Shiyaaka Men",
+        "Khadlaj Shiyaaka Men",
+        "Shiyaaka For Men",
+        "Khadlaj Shiyaaka For Men"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Shiyaaka Range"
+    },
+    {
+      "product_id": "SH-KHADLAJ-UNO-INTIMO",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Uno Intimo",
+      "name": "Uno Intimo",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Uno Intimo",
+      "aliases": [
+        "Uno Intimo",
+        "Khadlaj Uno Intimo",
+        "La Fede Uno Intimo"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "collection_name": "Uno Range"
     }
   ],
   "variants": [
@@ -49951,7 +50807,8 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy",
+      "source_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy"
     },
     {
       "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-CRUSH",
@@ -49965,7 +50822,8 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-CRUSH-100-EDP",
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME",
@@ -49979,7 +50837,8 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME-100-EDP",
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-AALIYA",
@@ -50104,7 +50963,8 @@
         "Khadlaj Bleu Glace",
         "Bleu Glacé"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-CODE-VIOLA-NECTAR",
@@ -50119,7 +50979,8 @@
         "Khadlaj Code Viola Nectar",
         "La Fede Code Viola Nectar"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-DESERT-ROSE",
@@ -50147,7 +51008,8 @@
         "Gaith",
         "Khadlaj Gaith"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-GHAZLAAN",
@@ -50289,7 +51151,8 @@
         "Mocha Latte",
         "Khadlaj Mocha Latte"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-NUHA",
@@ -50493,7 +51356,8 @@
         "Khadlaj Uno Sensuale",
         "La Fede Uno Sensuale"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-WOW-OUD",
@@ -50507,7 +51371,8 @@
         "Wow Oud",
         "Khadlaj Wow Oud"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/wow-oud-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/wow-oud-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/wow-oud-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-ICON",
@@ -51588,7 +52453,8 @@
         "Khadlaj La Fede Edge Intense",
         "Edge Intense"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-EDGE-ORIGINAL",
@@ -51603,7 +52469,8 @@
         "Khadlaj La Fede Edge Original",
         "Edge Original"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-SYMBOL-OF-LOVE",
@@ -51618,7 +52485,8 @@
         "Khadlaj La Fede Symbol of Love",
         "Symbol of Love"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-SYMBOL-OF-POWER",
@@ -51633,7 +52501,8 @@
         "Khadlaj La Fede Symbol of Power",
         "Symbol of Power"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CHOCO-BROWN",
@@ -51648,7 +52517,8 @@
         "Khadlaj La Fede Choco Brown",
         "Choco Brown"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-WHITE-FOREST-STRAWBERRY",
@@ -51663,7 +52533,8 @@
         "Khadlaj La Fede White Forest Strawberry",
         "White Forest Strawberry"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-TOFFEE",
@@ -51678,7 +52549,8 @@
         "Khadlaj La Fede Celeste Toffee",
         "Celeste Toffee"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-FLUER",
@@ -51696,7 +52568,8 @@
         "La Fede Celeste Fluer",
         "Celeste Fluer"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-JOICE",
@@ -51711,7 +52584,8 @@
         "Khadlaj La Fede Celeste Joice",
         "Celeste Joice"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CELESTE-AQUA",
@@ -51726,7 +52600,8 @@
         "Khadlaj La Fede Celeste Aqua",
         "Celeste Aqua"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-INTOXICATE-BLUE-ELIXIR",
@@ -51741,7 +52616,8 @@
         "Khadlaj La Fede Intoxicate Blue Elixir",
         "Intoxicate Blue Elixir"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-INTOXICATE",
@@ -51756,7 +52632,8 @@
         "Khadlaj La Fede Intoxicate",
         "Intoxicate"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-MANGA-SPLASH",
@@ -51771,7 +52648,8 @@
         "Khadlaj La Fede Aura Manga Splash",
         "Aura Manga Splash"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-PISTA-DESSERT",
@@ -51786,7 +52664,8 @@
         "Khadlaj La Fede Aura Pista Dessert",
         "Aura Pista Dessert"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-OPERA-NOIR-LOR",
@@ -51801,7 +52680,8 @@
         "Khadlaj La Fede Opera Noir L'Or",
         "Opera Noir L'Or"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-OPERA-ROSE-LOR",
@@ -51816,7 +52696,8 @@
         "Khadlaj La Fede Opera Rose L'Or",
         "Opera Rose L'Or"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CRYSTALLIA-IMPERIO",
@@ -51831,7 +52712,8 @@
         "Khadlaj La Fede Crystallia Imperio",
         "Crystallia Imperio"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CRYSTALLIA-PRIMASO",
@@ -51846,7 +52728,8 @@
         "Khadlaj La Fede Crystallia Primaso",
         "Crystallia Primaso"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-EXTREME-BLUE",
@@ -51861,7 +52744,8 @@
         "Khadlaj La Fede Magnum Extreme Blue",
         "Magnum Extreme Blue"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-WILD-GREEN",
@@ -51876,7 +52760,8 @@
         "Khadlaj La Fede Magnum Wild Green",
         "Magnum Wild Green"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-GOLD-EDITION",
@@ -51891,7 +52776,8 @@
         "Khadlaj La Fede Magnum Gold Edition",
         "Magnum Gold Edition"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MAGNUM-SILVER-EDITION",
@@ -51906,7 +52792,8 @@
         "Khadlaj La Fede Magnum Silver Edition",
         "Magnum Silver Edition"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-KISS-OF-ROSE",
@@ -51921,7 +52808,8 @@
         "Khadlaj La Fede Aura Kiss of Rose",
         "Aura Kiss of Rose"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-AURA-CRISP-FLOWER",
@@ -51936,7 +52824,8 @@
         "Khadlaj La Fede Aura Crisp Flower",
         "Aura Crisp Flower"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-BELLE-REVE-SEGRATO-VIOLA",
@@ -51951,7 +52840,8 @@
         "Khadlaj La Fede Belle Reve Segrato Viola",
         "Belle Reve Segrato Viola"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-BELLA-REVE-DOLCE-FLORE",
@@ -51966,7 +52856,8 @@
         "Khadlaj La Fede Bella Reve Dolce Flore",
         "Bella Reve Dolce Flore"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-STATESMAN",
@@ -51981,7 +52872,8 @@
         "Khadlaj La Fede Statesman",
         "Statesman"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-FIRST-LADY",
@@ -51996,7 +52888,8 @@
         "Khadlaj La Fede First Lady",
         "First Lady"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-KINGSMAN",
@@ -52011,7 +52904,8 @@
         "Khadlaj La Fede Kingsman",
         "Kingsman"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-MISS-PREMIERE",
@@ -52026,7 +52920,8 @@
         "Khadlaj La Fede Miss Premiere",
         "Miss Premiere"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-MARRON-OUD",
@@ -52099,9 +52994,11 @@
       "concentration": "Eau de Parfum",
       "aliases": [
         "Uno Durable 100 ml",
-        "Khadlaj Uno Durable 100ml"
+        "Khadlaj Uno Durable 100ml",
+        "Khadlaj Uno Durable 100 ml"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-5559cf95",
@@ -52110,9 +53007,11 @@
       "concentration": "Eau de Parfum",
       "aliases": [
         "Uno Lusso 100 ml",
-        "Khadlaj Uno Lusso 100ml"
+        "Khadlaj Uno Lusso 100ml",
+        "Khadlaj Uno Lusso 100 ml"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-ca77c4bb",
@@ -52121,9 +53020,11 @@
       "concentration": "Eau de Parfum",
       "aliases": [
         "La Fede Lavish Luna 100 ml",
-        "Khadlaj La Fede Lavish Luna 100ml"
+        "Khadlaj La Fede Lavish Luna 100ml",
+        "Khadlaj La Fede Lavish Luna 100 ml"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-edp-spray-100-ml"
     },
     {
       "product_id": "SH-KHADLAJ-911b5613",
@@ -52132,9 +53033,11 @@
       "concentration": "Eau de Parfum",
       "aliases": [
         "La Fede Lavish Rouge 100 ml",
-        "Khadlaj La Fede Lavish Rouge 100ml"
+        "Khadlaj La Fede Lavish Rouge 100ml",
+        "Khadlaj La Fede Lavish Rouge 100 ml"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-rouge-edp-spray-100-ml"
     },
     {
       "product_id": "SH-KHADLAJ-59eacc5a",
@@ -52143,9 +53046,11 @@
       "concentration": "Eau de Parfum",
       "aliases": [
         "La Fede Lavish Blush 100 ml",
-        "Khadlaj La Fede Lavish Blush 100ml"
+        "Khadlaj La Fede Lavish Blush 100ml",
+        "Khadlaj La Fede Lavish Blush 100 ml"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-blush-edp-spray-100-ml"
     },
     {
       "product_id": "SH-KHADLAJ-PURE-MUSK",
@@ -52324,6 +53229,1503 @@
         "Bujairami G’Day 100 ml"
       ],
       "source_evidence_url": "https://bujairami.com.au/products/gday-bujairami-original-niche"
+    },
+    {
+      "product_id": "SH-MYKONOS-1ce7e53c",
+      "variant_id": "VAR-1e9df094931ebbc8",
+      "size_ml": 100,
+      "aliases": [
+        "Only You 100 ml",
+        "Mykonos Only You 100 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-d36ff1d7",
+      "variant_id": "VAR-09031cffc016128b",
+      "size_ml": 100,
+      "aliases": [
+        "Shades Perfume 100 ml",
+        "Mykonos Shades Perfume 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MYKONOS-52353618",
+      "variant_id": "VAR-d670d5e57870d051",
+      "size_ml": 50,
+      "aliases": [
+        "Chai Crema Latte 50 ml",
+        "Mykonos Chai Crema Latte 50 ml"
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-aa3e1b8a",
+      "variant_id": "VAR-9347c182d43a5726",
+      "size_ml": 100,
+      "aliases": [
+        "Jynx 100 ml",
+        "Mykonos Jynx 100 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-10a2bd45",
+      "variant_id": "VAR-c85b51b351848757",
+      "size_ml": 50,
+      "aliases": [
+        "Rouge 50 ml",
+        "Mykonos Rouge 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-67332242",
+      "variant_id": "VAR-1049bd7f9da0f11b",
+      "size_ml": 50,
+      "aliases": [
+        "Seven Roses 50 ml",
+        "Mykonos Seven Roses 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-c8ea16e6",
+      "variant_id": "VAR-2ede8bb9014f17e5",
+      "size_ml": 50,
+      "aliases": [
+        "Ivory 50 ml",
+        "Mykonos Ivory 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-69a65dd6",
+      "variant_id": "VAR-a0b29c91585c891d",
+      "size_ml": 50,
+      "aliases": [
+        "Blossom 50 ml",
+        "Mykonos Blossom 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-e036b897",
+      "variant_id": "VAR-e3f6d5e0932c184c",
+      "size_ml": 50,
+      "aliases": [
+        "Zora 50 ml",
+        "Mykonos Zora 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-e036b897",
+      "variant_id": "VAR-453b03e6e8f38aaa",
+      "size_ml": 100,
+      "aliases": [
+        "Zora 100 ml",
+        "Mykonos Zora 100 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-070136ba",
+      "variant_id": "VAR-83c37ae2155edb4e",
+      "size_ml": 50,
+      "aliases": [
+        "Down to Earth 50 ml",
+        "Mykonos Down to Earth 50 ml"
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-35ac95ff",
+      "variant_id": "VAR-841cfe821206384e",
+      "size_ml": 50,
+      "aliases": [
+        "When in Paris 50 ml",
+        "Mykonos When in Paris 50 ml"
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-9ff7fa43",
+      "variant_id": "VAR-33df2e2a37ed2f86",
+      "size_ml": 50,
+      "aliases": [
+        "Pandan Sticky Rice 50 ml",
+        "Mykonos Pandan Sticky Rice 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-825c174b",
+      "variant_id": "VAR-4d100342b2fc51a6",
+      "size_ml": 50,
+      "aliases": [
+        "Pistachio Cream Cake 50 ml",
+        "Mykonos Pistachio Cream Cake 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-775acf3b",
+      "variant_id": "VAR-68fbe3965068cb62",
+      "size_ml": 50,
+      "aliases": [
+        "Blaze 50 ml",
+        "Mykonos Blaze 50 ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-9abbf020",
+      "variant_id": "VAR-9d069ea6e932150a",
+      "size_ml": 50,
+      "aliases": [
+        "Memoir of Meri 50 ml",
+        "Mykonos Memoir of Meri 50 ml"
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-3b92f6c9",
+      "variant_id": "VAR-6fb98466e6c3bab2",
+      "size_ml": 50,
+      "aliases": [
+        "Once Upon Don 50 ml",
+        "Mykonos Once Upon Don 50 ml"
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-807b8de9",
+      "variant_id": "SHV-SH-PARIS-CORNER-807b8de9-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Date Caramel 100 ml",
+        "Paris Corner Date Caramel 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INDOMITABLE",
+      "variant_id": "SHV-SH-PARIS-CORNER-INDOMITABLE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Indomitable 100 ml",
+        "Paris Corner Indomitable 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-MOSCOW-MULE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Moscow Mule 100 ml",
+        "Paris Corner Mawj Moscow Mule 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-18f3d5a4",
+      "variant_id": "SHV-SH-PARIS-CORNER-18f3d5a4-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Perseviron Fig Hug 100 ml",
+        "Paris Corner Perseviron Fig Hug 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS",
+      "variant_id": "SHV-SH-PARIS-CORNER-TIRAMISU-SPECULOOS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Tiramisu Speculoos 100 ml",
+        "Paris Corner Tiramisu Speculoos 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-AMBER-OUD",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-AMBER-OUD-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Amber Oud 100 ml",
+        "Paris Corner Ministry of Oud - Amber Oud 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-GLADIATORS-OATH",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-GLADIATORS-OATH-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Gladiators Oath 100 ml",
+        "Paris Corner Ministry of Oud - Gladiators Oath 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-MAESTRO-S-SYMPHONY",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-MAESTRO-S-SYMPHONY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Maestro's Symphony 100 ml",
+        "Paris Corner Ministry of Oud - Maestro's Symphony 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-NILE-WHISPERS",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-NILE-WHISPERS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Nile Whispers 100 ml",
+        "Paris Corner Ministry of Oud - Nile Whispers 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-BEYOND-THE-WALL",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-BEYOND-THE-WALL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Beyond the Wall 100 ml",
+        "Paris Corner Ministry of Oud - Oud Beyond the Wall 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-INDONESIAN",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-INDONESIAN-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Indonesian 100 ml",
+        "Paris Corner Ministry of Oud - Oud Indonesian 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-ROYAL",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-ROYAL-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Royal 100 ml",
+        "Paris Corner Ministry of Oud - Oud Royal 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-SATIN",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-SATIN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Satin 100 ml",
+        "Paris Corner Ministry of Oud - Oud Satin 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-ROMANCE-REVERIE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-ROMANCE-REVERIE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Romance Reverie 100 ml",
+        "Paris Corner Ministry of Oud - Romance Reverie 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-STRICTLY-OUD",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-STRICTLY-OUD-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Strictly Oud 100 ml",
+        "Paris Corner Ministry of Oud - Strictly Oud 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-GREATEST",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-GREATEST-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud Greatest 100 ml",
+        "Paris Corner Ministry of Oud Greatest 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-ebb650c6",
+      "variant_id": "SHV-SH-VELIXIR-ebb650c6-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Adonis 35 ml",
+        "Velixir Adonis 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/adonis"
+    },
+    {
+      "product_id": "SH-VELIXIR-ebb650c6",
+      "variant_id": "SHV-SH-VELIXIR-ebb650c6-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Adonis 100 ml",
+        "Velixir Adonis 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/adonis"
+    },
+    {
+      "product_id": "SH-VELIXIR-8b429b66",
+      "variant_id": "SHV-SH-VELIXIR-8b429b66-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Aphrodite 35 ml",
+        "Velixir Aphrodite 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-aphrodite-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-8b429b66",
+      "variant_id": "SHV-SH-VELIXIR-8b429b66-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Aphrodite 100 ml",
+        "Velixir Aphrodite 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-aphrodite-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-6b018fb1",
+      "variant_id": "SHV-SH-VELIXIR-6b018fb1-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Apollo 35 ml",
+        "Velixir Apollo 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/apollo"
+    },
+    {
+      "product_id": "SH-VELIXIR-6b018fb1",
+      "variant_id": "SHV-SH-VELIXIR-6b018fb1-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Apollo 100 ml",
+        "Velixir Apollo 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/apollo"
+    },
+    {
+      "product_id": "SH-VELIXIR-599e6e9d",
+      "variant_id": "SHV-SH-VELIXIR-599e6e9d-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ares 35 ml",
+        "Velixir Ares 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/ares"
+    },
+    {
+      "product_id": "SH-VELIXIR-599e6e9d",
+      "variant_id": "SHV-SH-VELIXIR-599e6e9d-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ares 100 ml",
+        "Velixir Ares 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/ares"
+    },
+    {
+      "product_id": "SH-VELIXIR-058bec99",
+      "variant_id": "SHV-SH-VELIXIR-058bec99-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Artemis 35 ml",
+        "Velixir Artemis 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-artemis-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-058bec99",
+      "variant_id": "SHV-SH-VELIXIR-058bec99-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Artemis 100 ml",
+        "Velixir Artemis 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-artemis-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-9b764bf3",
+      "variant_id": "SHV-SH-VELIXIR-9b764bf3-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asteria 35 ml",
+        "Velixir Asteria 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-asteria-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-9b764bf3",
+      "variant_id": "SHV-SH-VELIXIR-9b764bf3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asteria 100 ml",
+        "Velixir Asteria 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-asteria-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-7a65a419",
+      "variant_id": "SHV-SH-VELIXIR-7a65a419-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Athena 35 ml",
+        "Velixir Athena 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/athena"
+    },
+    {
+      "product_id": "SH-VELIXIR-7a65a419",
+      "variant_id": "SHV-SH-VELIXIR-7a65a419-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Athena 100 ml",
+        "Velixir Athena 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/athena"
+    },
+    {
+      "product_id": "SH-VELIXIR-6f7b377c",
+      "variant_id": "SHV-SH-VELIXIR-6f7b377c-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Concordia 35 ml",
+        "Velixir Concordia 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-concordia-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-6f7b377c",
+      "variant_id": "SHV-SH-VELIXIR-6f7b377c-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Concordia 100 ml",
+        "Velixir Concordia 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-concordia-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-c0952852",
+      "variant_id": "SHV-SH-VELIXIR-c0952852-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Demeter 35 ml",
+        "Velixir Demeter 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/demeter-for-unisex-edp-100ml"
+    },
+    {
+      "product_id": "SH-VELIXIR-c0952852",
+      "variant_id": "SHV-SH-VELIXIR-c0952852-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Demeter 100 ml",
+        "Velixir Demeter 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/demeter-for-unisex-edp-100ml"
+    },
+    {
+      "product_id": "SH-VELIXIR-76046795",
+      "variant_id": "SHV-SH-VELIXIR-76046795-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Galatea 35 ml",
+        "Velixir Galatea 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-galatea-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-76046795",
+      "variant_id": "SHV-SH-VELIXIR-76046795-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Galatea 100 ml",
+        "Velixir Galatea 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-galatea-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-e49794d3",
+      "variant_id": "SHV-SH-VELIXIR-e49794d3-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Harmonia 35 ml",
+        "Velixir Harmonia 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-parfums-harmonia"
+    },
+    {
+      "product_id": "SH-VELIXIR-e49794d3",
+      "variant_id": "SHV-SH-VELIXIR-e49794d3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Harmonia 100 ml",
+        "Velixir Harmonia 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-parfums-harmonia"
+    },
+    {
+      "product_id": "SH-VELIXIR-1089d534",
+      "variant_id": "SHV-SH-VELIXIR-1089d534-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Helios 35 ml",
+        "Velixir Helios 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/helios"
+    },
+    {
+      "product_id": "SH-VELIXIR-1089d534",
+      "variant_id": "SHV-SH-VELIXIR-1089d534-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Helios 100 ml",
+        "Velixir Helios 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/helios"
+    },
+    {
+      "product_id": "SH-VELIXIR-06211958",
+      "variant_id": "SHV-SH-VELIXIR-06211958-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Hera 35 ml",
+        "Velixir Hera 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/hera"
+    },
+    {
+      "product_id": "SH-VELIXIR-06211958",
+      "variant_id": "SHV-SH-VELIXIR-06211958-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Hera 100 ml",
+        "Velixir Hera 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/hera"
+    },
+    {
+      "product_id": "SH-VELIXIR-71f3ac99",
+      "variant_id": "SHV-SH-VELIXIR-71f3ac99-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Himeros 35 ml",
+        "Velixir Himeros 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-himeros-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-71f3ac99",
+      "variant_id": "SHV-SH-VELIXIR-71f3ac99-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Himeros 100 ml",
+        "Velixir Himeros 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-himeros-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-3a619af9",
+      "variant_id": "SHV-SH-VELIXIR-3a619af9-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Icarus 35 ml",
+        "Velixir Icarus 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/icarus"
+    },
+    {
+      "product_id": "SH-VELIXIR-3a619af9",
+      "variant_id": "SHV-SH-VELIXIR-3a619af9-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Icarus 100 ml",
+        "Velixir Icarus 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/icarus"
+    },
+    {
+      "product_id": "SH-VELIXIR-21cface3",
+      "variant_id": "SHV-SH-VELIXIR-21cface3-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Morpheus 35 ml",
+        "Velixir Morpheus 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-morpheus-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-21cface3",
+      "variant_id": "SHV-SH-VELIXIR-21cface3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Morpheus 100 ml",
+        "Velixir Morpheus 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-morpheus-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-23a9f320",
+      "variant_id": "SHV-SH-VELIXIR-23a9f320-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Narcisus 35 ml",
+        "Velixir Narcisus 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/narcisus"
+    },
+    {
+      "product_id": "SH-VELIXIR-23a9f320",
+      "variant_id": "SHV-SH-VELIXIR-23a9f320-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Narcisus 100 ml",
+        "Velixir Narcisus 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/narcisus"
+    },
+    {
+      "product_id": "SH-VELIXIR-153bbbed",
+      "variant_id": "SHV-SH-VELIXIR-153bbbed-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nyx 35 ml",
+        "Velixir Nyx 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-parfums-nyx-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-153bbbed",
+      "variant_id": "SHV-SH-VELIXIR-153bbbed-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nyx 100 ml",
+        "Velixir Nyx 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-parfums-nyx-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-cfe48ddb",
+      "variant_id": "SHV-SH-VELIXIR-cfe48ddb-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Orion 35 ml",
+        "Velixir Orion 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/orion"
+    },
+    {
+      "product_id": "SH-VELIXIR-cfe48ddb",
+      "variant_id": "SHV-SH-VELIXIR-cfe48ddb-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Orion 100 ml",
+        "Velixir Orion 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/orion"
+    },
+    {
+      "product_id": "SH-VELIXIR-8c915ae1",
+      "variant_id": "SHV-SH-VELIXIR-8c915ae1-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Paladin 35 ml",
+        "Velixir Paladin 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/paladin"
+    },
+    {
+      "product_id": "SH-VELIXIR-8c915ae1",
+      "variant_id": "SHV-SH-VELIXIR-8c915ae1-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Paladin 100 ml",
+        "Velixir Paladin 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/paladin"
+    },
+    {
+      "product_id": "SH-VELIXIR-12baca03",
+      "variant_id": "SHV-SH-VELIXIR-12baca03-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Persephone 35 ml",
+        "Velixir Persephone 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-persephone-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-12baca03",
+      "variant_id": "SHV-SH-VELIXIR-12baca03-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Persephone 100 ml",
+        "Velixir Persephone 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-persephone-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-c43f9b63",
+      "variant_id": "SHV-SH-VELIXIR-c43f9b63-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Poseidon 35 ml",
+        "Velixir Poseidon 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-poseidon-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-c43f9b63",
+      "variant_id": "SHV-SH-VELIXIR-c43f9b63-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Poseidon 100 ml",
+        "Velixir Poseidon 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-poseidon-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-bc687534",
+      "variant_id": "SHV-SH-VELIXIR-bc687534-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Selene 35 ml",
+        "Velixir Selene 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-parfums-selene-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-bc687534",
+      "variant_id": "SHV-SH-VELIXIR-bc687534-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Selene 100 ml",
+        "Velixir Selene 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-parfums-selene-eau-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-029d80ce",
+      "variant_id": "SHV-SH-VELIXIR-029d80ce-35-EDP",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uranus 35 ml",
+        "Velixir Uranus 35 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-uranus-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-VELIXIR-029d80ce",
+      "variant_id": "SHV-SH-VELIXIR-029d80ce-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uranus 100 ml",
+        "Velixir Uranus 100 ml"
+      ],
+      "source_url": "https://velixirparfums.com/products/velixir-uranus-for-unisex-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-10-PARFUM",
+      "size_ml": 10,
+      "concentration": "Parfum",
+      "aliases": [
+        "All In 10 ml",
+        "Games of Spades All In 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "All In 30 ml",
+        "Games of Spades All In 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-50-PARFUM",
+      "size_ml": 50,
+      "concentration": "Parfum",
+      "aliases": [
+        "All In 50 ml",
+        "Games of Spades All In 50 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "All In 100 ml",
+        "Games of Spades All In 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BID",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BID-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Bid 100 ml",
+        "Games of Spades Bid 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bid"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLACK-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLACK-SAPPHIRE-10-PARFUM",
+      "size_ml": 10,
+      "concentration": "Parfum",
+      "aliases": [
+        "Black Sapphire 10 ml",
+        "Games of Spades Black Sapphire 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLACK-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLACK-SAPPHIRE-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Black Sapphire 30 ml",
+        "Games of Spades Black Sapphire 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLACK-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLACK-SAPPHIRE-90-PARFUM",
+      "size_ml": 90,
+      "concentration": "Parfum",
+      "aliases": [
+        "Black Sapphire 90 ml",
+        "Games of Spades Black Sapphire 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLIND-BID",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLIND-BID-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Blind Bid 100 ml",
+        "Games of Spades Blind Bid 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blind-bid"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLUFF",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLUFF-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Bluff 100 ml",
+        "Games of Spades Bluff 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bluff-3-4-oz-parfum-spray-unisex"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BOSTON",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BOSTON-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Boston 30 ml",
+        "Games of Spades Boston 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-boston"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BOSTON",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BOSTON-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Boston 100 ml",
+        "Games of Spades Boston 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-boston"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DIAMOND",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DIAMOND-10-PARFUM",
+      "size_ml": 10,
+      "concentration": "Parfum",
+      "aliases": [
+        "Diamond 10 ml",
+        "Games of Spades Diamond 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-diamond"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DIAMOND",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DIAMOND-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Diamond 30 ml",
+        "Games of Spades Diamond 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-diamond"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DIAMOND",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DIAMOND-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Diamond 100 ml",
+        "Games of Spades Diamond 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-diamond"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DOUBLE-BONUS-10-PARFUM",
+      "size_ml": 10,
+      "concentration": "Parfum",
+      "aliases": [
+        "Double Bonus 10 ml",
+        "Games of Spades Double Bonus 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DOUBLE-BONUS-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Double Bonus 30 ml",
+        "Games of Spades Double Bonus 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DOUBLE-BONUS-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Double Bonus 100 ml",
+        "Games of Spades Double Bonus 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-FULL-HOUSE-REFRESH",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-FULL-HOUSE-REFRESH-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Full House Refresh 100 ml",
+        "Games of Spades Full House Refresh 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-full-house-refresh-3-4-oz-parfum-spray-unisex"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-GOLD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-GOLD-10-PARFUM",
+      "size_ml": 10,
+      "concentration": "Parfum",
+      "aliases": [
+        "Gold 10 ml",
+        "Games of Spades Gold 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-gold"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-GOLD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-GOLD-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Gold 30 ml",
+        "Games of Spades Gold 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-gold"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-GOLD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-GOLD-90-PARFUM",
+      "size_ml": 90,
+      "concentration": "Parfum",
+      "aliases": [
+        "Gold 90 ml",
+        "Games of Spades Gold 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-gold"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-HIGH-ROLLER",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-HIGH-ROLLER-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "High Roller 100 ml",
+        "Games of Spades High Roller 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-high-roller-3-4-oz-parfum-spray"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-JACKPOT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-JACKPOT-10-PARFUM",
+      "size_ml": 10,
+      "concentration": "Parfum",
+      "aliases": [
+        "Jackpot 10 ml",
+        "Games of Spades Jackpot 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-JACKPOT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-JACKPOT-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Jackpot 30 ml",
+        "Games of Spades Jackpot 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-JACKPOT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-JACKPOT-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Jackpot 100 ml",
+        "Games of Spades Jackpot 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-1b8843a4",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-1b8843a4-10-PARFUM",
+      "size_ml": 10,
+      "concentration": "Parfum",
+      "aliases": [
+        "King 10 ml",
+        "Games of Spades King 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-1b8843a4",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-1b8843a4-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "King 30 ml",
+        "Games of Spades King 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-1b8843a4",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-1b8843a4-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "King 100 ml",
+        "Games of Spades King 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-95335183",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-95335183-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Queen 100 ml",
+        "Games of Spades Queen 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-queen"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Rouge 30 ml",
+        "Games of Spades Rouge 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Rouge 100 ml",
+        "Games of Spades Rouge 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-RUBY",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-RUBY-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Ruby 100 ml",
+        "Games of Spades Ruby 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-ruby"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-TRICK",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-TRICK-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Trick 100 ml",
+        "Games of Spades Trick 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-trick-3-4-oz-parfum-spray-unisex"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-99ff65c5",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-99ff65c5-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Wildcard 30 ml",
+        "Games of Spades Wildcard 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-wildcard"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-99ff65c5",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-99ff65c5-50-PARFUM",
+      "size_ml": 50,
+      "concentration": "Parfum",
+      "aliases": [
+        "Wildcard 50 ml",
+        "Games of Spades Wildcard 50 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-wildcard"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-99ff65c5",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-99ff65c5-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Wildcard 100 ml",
+        "Games of Spades Wildcard 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-wildcard"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-99ff65c5",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-99ff65c5-200-PARFUM",
+      "size_ml": 200,
+      "concentration": "Parfum",
+      "aliases": [
+        "Wildcard 200 ml",
+        "Games of Spades Wildcard 200 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-wildcard"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-WIN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-WIN-100-PARFUM",
+      "size_ml": 100,
+      "concentration": "Parfum",
+      "aliases": [
+        "Win 100 ml",
+        "Games of Spades Win 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-win"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-YELLOW-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-YELLOW-SAPPHIRE-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Yellow Sapphire 30 ml",
+        "Games of Spades Yellow Sapphire 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-YELLOW-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-YELLOW-SAPPHIRE-90-PARFUM",
+      "size_ml": 90,
+      "concentration": "Parfum",
+      "aliases": [
+        "Yellow Sapphire 90 ml",
+        "Games of Spades Yellow Sapphire 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLUE-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLUE-SAPPHIRE-30-PARFUM",
+      "size_ml": 30,
+      "concentration": "Parfum",
+      "aliases": [
+        "Blue Sapphire 30 ml",
+        "Games of Spades Blue Sapphire 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLUE-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLUE-SAPPHIRE-90-PARFUM",
+      "size_ml": 90,
+      "concentration": "Parfum",
+      "aliases": [
+        "Blue Sapphire 90 ml",
+        "Games of Spades Blue Sapphire 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-10-EXTRAIT",
+      "size_ml": 10,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Emerald Extrait 10 ml",
+        "Games of Spades Emerald Extrait 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-50-EXTRAIT",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Emerald Extrait 50 ml",
+        "Games of Spades Emerald Extrait 50 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-90-EXTRAIT",
+      "size_ml": 90,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Emerald Extrait 90 ml",
+        "Games of Spades Emerald Extrait 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-10-EXTRAIT",
+      "size_ml": 10,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Rouge Extrait 10 ml",
+        "Games of Spades Rouge Extrait 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-30-EXTRAIT",
+      "size_ml": 30,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Rouge Extrait 30 ml",
+        "Games of Spades Rouge Extrait 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Rouge Extrait 100 ml",
+        "Games of Spades Rouge Extrait 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HARRIER-ABSOULTE",
+      "variant_id": "SHV-SH-PARIS-CORNER-HARRIER-ABSOULTE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Harrier Absoulte 100 ml",
+        "Paris Corner Harrier Absoulte 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/harrier-absoulte"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-MARRON-OUD",
+      "variant_id": "SHV-SH-KHADLAJ-CODE-MARRON-OUD-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Code Marron Oud 100 ml",
+        "Khadlaj Code Marron Oud 100 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-ROUGE-AMOUR",
+      "variant_id": "SHV-SH-KHADLAJ-CODE-ROUGE-AMOUR-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Code Rouge Amour 100 ml",
+        "Khadlaj Code Rouge Amour 100 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-CODE-VERDE-SUBLIME",
+      "variant_id": "SHV-SH-KHADLAJ-CODE-VERDE-SUBLIME-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Code Verde Sublime 100 ml",
+        "Khadlaj Code Verde Sublime 100 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-HAREEM-AL-SULTAN-BLUE",
+      "variant_id": "SHV-SH-KHADLAJ-HAREEM-AL-SULTAN-BLUE-35-000",
+      "size_ml": 35,
+      "aliases": [
+        "Hareem Al Sultan Blue 35 ml",
+        "Khadlaj Hareem Al Sultan Blue 35 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MAYA",
+      "variant_id": "SHV-SH-KHADLAJ-MAYA-20-000",
+      "size_ml": 20,
+      "aliases": [
+        "Maya 20 ml",
+        "Khadlaj Maya 20 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ROSE-AND-ROMANCE",
+      "variant_id": "SHV-SH-KHADLAJ-ROSE-AND-ROMANCE-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Rose And Romance 100 ml",
+        "Khadlaj Rose And Romance 100 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/collections/discover-more/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SHIYAAKA-MEN",
+      "variant_id": "SHV-SH-KHADLAJ-SHIYAAKA-MEN-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Shiyaaka Men 100 ml",
+        "Khadlaj Shiyaaka Men 100 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-UNO-INTIMO",
+      "variant_id": "SHV-SH-KHADLAJ-UNO-INTIMO-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Uno Intimo 100 ml",
+        "Khadlaj Uno Intimo 100 ml"
+      ],
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
