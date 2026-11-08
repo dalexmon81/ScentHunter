@@ -22991,6 +22991,86 @@
       "identity_status": "source_listed_name",
       "source_url": "https://maisonasrar.com/collections/all",
       "source_evidence_url": "https://maisonasrar.com/collections/all"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-7cf92290",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Deux II Expressions North Stag",
+      "name": "Deux II Expressions North Stag",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Deux II Expressions North Stag",
+      "aliases": [
+        "Deux II Expressions North Stag",
+        "Paris Corner Deux II Expressions North Stag"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-2e32400d",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Fire Your Desire Emir",
+      "name": "Fire Your Desire Emir",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Fire Your Desire Emir",
+      "aliases": [
+        "Fire Your Desire Emir",
+        "Paris Corner Fire Your Desire Emir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-4441115b",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Forbidden Sugar Emir",
+      "name": "Forbidden Sugar Emir",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Forbidden Sugar Emir",
+      "aliases": [
+        "Forbidden Sugar Emir",
+        "Paris Corner Forbidden Sugar Emir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-e95558d1",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Frenetic Delicieuse",
+      "name": "Frenetic Delicieuse",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Frenetic Delicieuse",
+      "aliases": [
+        "Frenetic Delicieuse",
+        "Paris Corner Frenetic Delicieuse"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-e388c2b5",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Frenetic Homme Intense",
+      "name": "Frenetic Homme Intense",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Frenetic Homme Intense",
+      "aliases": [
+        "Frenetic Homme Intense",
+        "Paris Corner Frenetic Homme Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
     }
   ],
   "variants": [
