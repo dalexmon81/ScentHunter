@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "description": "Canonical fragrance identity seed. Names are source-verified; missing commercial identifiers and size variants are intentionally left blank until verified.",
+  "description": "Canonical fragrance identity seed. Each identity carries explicit source provenance: source_verified_name denotes an official product-detail page, while source_listed_name denotes an official collection listing. Missing commercial identifiers and size variants remain blank until verified.",
   "products": [
     {
       "product_id": "SH-VELIXIR-ebb650c6",
@@ -27590,6 +27590,348 @@
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
       "source_evidence_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
       "collection": "Arabiyat Prestige"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AUSTRALIAN-WATERMELON",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Australian Watermelon",
+      "name": "Australian Watermelon",
+      "family_id": "bujairami_catalog",
+      "family_name": "Australian Watermelon",
+      "aliases": [
+        "Australian Watermelon",
+        "Bujairami Australian Watermelon"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/australian-watermelon-bujairami-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/australian-watermelon-bujairami-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-TOP-LIFE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Top Life",
+      "name": "Top Life",
+      "family_id": "bujairami_catalog",
+      "family_name": "Top Life",
+      "aliases": [
+        "Top Life",
+        "Bujairami Top Life"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/top-life",
+      "source_evidence_url": "https://bujairami.com.au/products/top-life"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-LUXE-NOIR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Luxe Noir",
+      "name": "Luxe Noir",
+      "family_id": "bujairami_catalog",
+      "family_name": "Luxe Noir",
+      "aliases": [
+        "Luxe Noir",
+        "Bujairami Luxe Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/luxe-noir-bujairami-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/luxe-noir-bujairami-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-SNOW-WHITE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Snow White",
+      "name": "Snow White",
+      "family_id": "bujairami_catalog",
+      "family_name": "Snow White",
+      "aliases": [
+        "Snow White",
+        "Bujairami Snow White"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/snow-white-bujairami-powdery-scent",
+      "source_evidence_url": "https://bujairami.com.au/products/snow-white-bujairami-powdery-scent"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-DOWN-UNDER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Down Under",
+      "name": "Down Under",
+      "family_id": "bujairami_catalog",
+      "family_name": "Down Under",
+      "aliases": [
+        "Down Under",
+        "Bujairami Down Under"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/down-under-bujairami-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/down-under-bujairami-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HIM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "HIM",
+      "name": "HIM",
+      "family_id": "bujairami_catalog",
+      "family_name": "HIM",
+      "aliases": [
+        "HIM",
+        "Bujairami HIM"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/bujairami-him",
+      "source_evidence_url": "https://bujairami.com.au/products/bujairami-him"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-GOLD-COAST",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Gold Coast",
+      "name": "Gold Coast",
+      "family_id": "bujairami_catalog",
+      "family_name": "Gold Coast",
+      "aliases": [
+        "Gold Coast",
+        "Bujairami Gold Coast"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/gold-coast-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/gold-coast-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-COCO-DREAM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Coco Dream",
+      "name": "Coco Dream",
+      "family_id": "bujairami_catalog",
+      "family_name": "Coco Dream",
+      "aliases": [
+        "Coco Dream",
+        "Bujairami Coco Dream"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/coco-dream-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/coco-dream-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-RIVERINA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Riverina",
+      "name": "Riverina",
+      "family_id": "bujairami_catalog",
+      "family_name": "Riverina",
+      "aliases": [
+        "Riverina",
+        "Bujairami Riverina"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/riverina-original-creation-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/riverina-original-creation-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AUSSIE-GLOW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aussie Glow",
+      "name": "Aussie Glow",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aussie Glow",
+      "aliases": [
+        "Aussie Glow",
+        "Bujairami Aussie Glow"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/aussie-glow-bujairami-original-niche",
+      "source_evidence_url": "https://bujairami.com.au/products/aussie-glow-bujairami-original-niche"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-MADEIRA-CAKE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Madeira Cake",
+      "name": "Madeira Cake",
+      "family_id": "bujairami_catalog",
+      "family_name": "Madeira Cake",
+      "aliases": [
+        "Madeira Cake",
+        "Bujairami Madeira Cake"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/madeira-bujairami-original",
+      "source_evidence_url": "https://bujairami.com.au/products/madeira-bujairami-original"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-APPLE-CRUMBLE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Apple Crumble",
+      "name": "Apple Crumble",
+      "family_id": "bujairami_catalog",
+      "family_name": "Apple Crumble",
+      "aliases": [
+        "Apple Crumble",
+        "Bujairami Apple Crumble"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/apple-crumble-bujairami-original",
+      "source_evidence_url": "https://bujairami.com.au/products/apple-crumble-bujairami-original"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-KNEFEH",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Knefeh",
+      "name": "Knefeh",
+      "family_id": "bujairami_catalog",
+      "family_name": "Knefeh",
+      "aliases": [
+        "Knefeh",
+        "Bujairami Knefeh"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/knefeh-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/knefeh-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-LOVE-SPELL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Love Spell",
+      "name": "Love Spell",
+      "family_id": "bujairami_catalog",
+      "family_name": "Love Spell",
+      "aliases": [
+        "Love Spell",
+        "Bujairami Love Spell"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/love-spell-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/love-spell-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-KING-STREET",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "King Street",
+      "name": "King Street",
+      "family_id": "bujairami_catalog",
+      "family_name": "King Street",
+      "aliases": [
+        "King Street",
+        "Bujairami King Street"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/king-street-original-creation-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/king-street-original-creation-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-THE-F-CK-UP",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "The F*ck Up",
+      "name": "The F*ck Up",
+      "family_id": "bujairami_catalog",
+      "family_name": "The F*ck Up",
+      "aliases": [
+        "The F*ck Up",
+        "Bujairami The F*ck Up"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairami.com.au/collections/originals",
+      "source_evidence_url": "https://bujairami.com.au/collections/originals"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HARBOUR-TEA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Harbour Tea",
+      "name": "Harbour Tea",
+      "family_id": "bujairami_catalog",
+      "family_name": "Harbour Tea",
+      "aliases": [
+        "Harbour Tea",
+        "Bujairami Harbour Tea"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/harbour-tea-original-creation-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/harbour-tea-original-creation-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-QUEENS-AVENUE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Queens Avenue",
+      "name": "Queens Avenue",
+      "family_id": "bujairami_catalog",
+      "family_name": "Queens Avenue",
+      "aliases": [
+        "Queens Avenue",
+        "Bujairami Queens Avenue"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/queens-ave-original-creation-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/queens-ave-original-creation-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-PISTACHIO-CAKE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Pistachio Cake",
+      "name": "Pistachio Cake",
+      "family_id": "bujairami_catalog",
+      "family_name": "Pistachio Cake",
+      "aliases": [
+        "Pistachio Cake",
+        "Bujairami Pistachio Cake"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/pistachio-cake-bujairami-original",
+      "source_evidence_url": "https://bujairami.com.au/products/pistachio-cake-bujairami-original"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-WOOLLOOMOOLOO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Woolloomooloo",
+      "name": "Woolloomooloo",
+      "family_id": "bujairami_catalog",
+      "family_name": "Woolloomooloo",
+      "aliases": [
+        "Woolloomooloo",
+        "Bujairami Woolloomooloo"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/woolloomooloo-original-creation-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/woolloomooloo-original-creation-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-CHERRY-CHERRY-LADY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Cherry Cherry Lady",
+      "name": "Cherry Cherry Lady",
+      "family_id": "bujairami_catalog",
+      "family_name": "Cherry Cherry Lady",
+      "aliases": [
+        "Cherry Cherry Lady",
+        "Bujairami Cherry Cherry Lady"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/cherry-cherry-lady-original-creation-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/cherry-cherry-lady-original-creation-extrait",
+      "concentration": "Extrait de Parfum"
     }
   ],
   "variants": [
@@ -29045,6 +29387,24 @@
         "Lattafa Asad Bourbon 100ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-ASAD-BOURBON-001-100-000"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-LOVE-SPELL",
+      "size_ml": 100,
+      "aliases": [
+        "Love Spell 100 ml",
+        "Bujairami Love Spell 100ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-100-000"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-LOVE-SPELL",
+      "size_ml": 50,
+      "aliases": [
+        "Love Spell 50 ml",
+        "Bujairami Love Spell 50ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-50-000"
     }
   ]
 }
