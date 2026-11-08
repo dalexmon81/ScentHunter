@@ -196,8 +196,7 @@ manufacturer detail page with explicit concentration identified). No values
 were guessed.
 
 PR #570's corrected Mykonos test suite passed on exact head
-`ad84d8894b5da3660a1bb4ed6452eacc1b86621c` (run 42526801677). PR #571 CI
-was still running when this audit section was added.
+`ad84d8894b5da3660a1bb4ed6452eacc1b86621c` (run 42526801677). PR #571 exact head `353fe5c98e5a1ef67121f6aa7d3374e9a611c55f` passed Catalog seed validation (run 42526898901). PR #570 exact head `ad84d8894b5da3660a1bb4ed6452eacc1b86621c` also passed (run 42526801677). Both remain draft and unmerged.
 
 ## Mykonos 15 ml travel variants — follow-up correction
 
