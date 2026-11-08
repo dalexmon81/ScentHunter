@@ -269,3 +269,21 @@ Sono stati esclusi deodoranti, discovery kit, set e confezioni multiple. Non son
 - **0** product ID duplicati; **0** variant ID duplicati; **0** varianti orfane; **0** prodotti canonici senza famiglia corrispondente nel registry.
 
 La copertura dei marchi resta parziale: le pagine e le categorie ufficiali non sono ancora state tutte estratte e classificate. Il conteggio non è una dichiarazione di completezza.
+
+## Ulteriore incremento — Lattafa pagine 11/13 e Afnan pagina 3 (2026-11-08)
+
+Aggiunte **31 nuove identità canoniche**:
+
+- **Lattafa: +23** — Mohra, Khamrah, Suqaraat, Al Noble Safeer, Al Noble Wazeer, Al Noble Ameer, Confidential Private Gold, Raghba, Velvet Rose, Qaed Al Fursan Unlimited, Hayaati Florence, Badee AL Oud Sublime, Maahir Black Edition, Maahir, Opulent Musk, Qaaed, Raed Luxe, Qimmah For Women, Qaed Al Fursan, Ramz Lattafa Gold, Ramz Lattafa Silver, Velvet Oud e Oud Mood. Fonti ufficiali: https://lattafa.com/product-category/lattafa-perfumes/page/11/ e https://lattafa.com/product-category/lattafa-perfumes/page/13/ .
+- **Afnan: +8** — SUPREMACY NOT ONLY INTENSE - LUXURY COLLECTION, SUPREMACY TAPIS ROUGE - LUXURY COLLECTION, TASNEEM, TOBACCO RUSH, TURATHI RED, VIOLET BOUQUET, WARD AL USSHAQ e ZABARJAD. Fonte ufficiale: https://afnan.com/collections/all?page=3 .
+
+Le varianti di volume, i deodoranti e i set non sono stati trasformati in identità separate. Le identità già registrate sono state mantenute senza duplicazione.
+
+### Integrity snapshot aggiornato
+- **1374** identità canoniche.
+- **141** righe variante.
+- **31** famiglie nel registry.
+- Lattafa: **53**; Afnan: **83**.
+- **0** product ID duplicati; **0** variant ID duplicati; **0** varianti orfane; **0** prodotti senza famiglia corrispondente nel registry.
+
+La copertura completa dei marchi resta da verificare; il numero attuale rappresenta solo le identità individuate e trascritte dalle pagine citate.
