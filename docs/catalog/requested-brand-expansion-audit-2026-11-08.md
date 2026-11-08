@@ -226,3 +226,27 @@ Inspected page 3 of Khadlaj's official 89-item new-launch collection and added f
 - Khadlaj: 52 identities
 - French Avenue: 42 identities
 - 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variants; 0 canonical products missing from discovery registry
+
+
+## Afnan, Lattafa and Al Haramain official-source increment — 2026-11-08
+
+### Afnan
+The official global all-products collection reports 120 items. The first rendered page was inspected; after excluding deodorants, gift sets, travel sets and discovery kits, 11 missing fragrance identities were added: ABIYAD MUKHALLAT, ABIYAD MUSK, ABIYAD SANDAL, ADWAA AL SHARQ, DEHN AL OUDH ABIYAD, Delicious Bouquet, Ebdaa Concentrated Perfume Oil, EDICT AMBERYTHME, EDICT MUSCTIQUE, EDICT OUDDICTION and FAKHAR AL JAMAAL. Cherry Bouquet and Historic Doria were already present. Current Afnan catalog count: **58**. This is not a full extraction of 120 items; further pages and product classification remain.
+Source: https://afnan.com/collections/all .
+
+### Lattafa
+The official Lattafa Perfumes category showed Raed Absolu, Raed Intensely and Liam Blue Shine, all missing from the catalog. Added all three. Current Lattafa count: **19**.
+Source: https://lattafa.com/product-category/lattafa-perfumes/ .
+
+### Al Haramain
+The official EU shop's all-products collection reports a multi-page catalogue (198 items). Added 25 missing fragrance / concentrated perfume oil identities visible in its listing: Junoon Oud, Detour Noir, Platinum Oud, Rose Oud, Wardi, Rawaa, Detour Rouge, Signature Blue, Portfolio Imperial Oud, Portfolio Royale Stallion, Oyuny, Opulent Sapphire, Manege Rouge, Portfolio Floral Sculpture, Portfolio Euphoric Roots, Musk Al Haramain Noir, Amber Musk, Mystique Musk Spray, Treasure, L'Aventure Gold, Royal Musk, Xplore Sapphire, Tanasuk, Almas Gold, Almas Silver, Dehnal Oudh Ateeq and Salam Attar. The actual added count is 25; product listing rows that represent multiple sizes of an existing fragrance were not duplicated as separate identities. Travel packs and gift sets were excluded. Current Al Haramain count: **61**. The 198-item shop count includes multiple variants and non-perfume formats, so it is not a count of 198 distinct fragrance identities.
+Source: https://shop.alharamainperfumes.com/eu/collection.html .
+
+### Latest integrity snapshot
+- 1,315 canonical identities
+- 141 explicit variant rows
+- 31 discovery families
+- Afnan: 58 identities; Lattafa: 19; Al Haramain: 61
+- 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variant rows; 0 canonical products missing from discovery registry
+
+The requested-brand source audit remains incomplete; these are incremental additions only.
