@@ -24,6 +24,7 @@ on:
       - catalog/afnan-lattafa-official-harvest-2026-11-08
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
+      - catalog/assaf-140-name-audit-2026-11-08
 
 permissions:
   contents: read
