@@ -239,6 +239,38 @@ the official product pages inspected in this pass confirmed sizes and
 fragrance identity/notes but did not explicitly state EDP/EDT/Extrait, so
 concentration was deliberately not inferred.
 
+
+## Assaf Gris Erik — variant-specific concentration
+
+Draft PR [#572](https://github.com/dalexmon81/ScentHunter/pull/572) adds
+`Eau de Parfum` and direct manufacturer provenance to the existing **100 ml**
+Gris Erik variant only. The official Assaf page is explicitly titled
+`EDP GRIS ERIK 100ML`:
+`https://assaf.ae/products/edp-gris-erik-100ml`.
+
+The 200 ml variant remains unchanged because its separate official page does
+not explicitly state EDP. The parent product remains without a single
+concentration label; this is a variant-level distinction, not a reason to
+propagate EDP to every size. PR #572 exact head
+`4b097f9f93508c5079d453439660a02d996ca604` passed Catalog seed validation
+(run 42526984354).
+
+### Cumulative correction count (proposed, not merged)
+
+Across four separate draft PRs based on the same catalog snapshot:
+- #569: 21 Armaf variants
+- #570: 15 Mykonos variants
+- #571: 7 French Avenue/Aromatix variants
+- #572: 1 Assaf variant
+
+That is **44 existing variants proposed for correction**. The original
+88-row concentration gap would therefore have **44 rows remaining** after
+these four PRs are integrated. This is a cross-PR arithmetic total, not the
+current base-branch count; none of these PRs has been merged.
+
+Remaining by brand on that proposed combined view: Paris Corner 25, French
+Avenue 5, Assaf 7, Bujairami 2, Khadlaj 1, Lattafa 1, Mykonos 3.
+
 ## Family-registry normalization debt found in the base snapshot
 
 A separate read-only scan of the exact base-branch registry blob
