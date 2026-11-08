@@ -16946,9 +16946,10 @@
         "Cotton Candy Musk",
         "Gulf Orchid Cotton Candy Musk"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy",
-      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy"
+      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-GULF-ORCHID-TAHARA-VANILLA-MUSK",
@@ -16962,9 +16963,10 @@
         "Tahara Vanilla Musk",
         "Gulf Orchid Tahara Vanilla Musk"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
+      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-20ML",
