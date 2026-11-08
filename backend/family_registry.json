@@ -3610,18 +3610,12 @@
           "canonical_name": "Attractus",
           "aliases": [
             "Attractus",
-            "Paris Corner Attractus"
+            "Paris Corner Attractus",
+            "Attratus",
+            "Paris Corner Attratus"
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Attratus",
-          "aliases": [
-            "Attratus",
-            "Paris Corner Attratus",
-            "Paris Corner Attratus"
           ]
         },
         {
@@ -4056,6 +4050,9 @@
             "Harrier Absoulte",
             "Paris Corner Harrier Absoulte",
             "Paris Corner Harrier Absoulte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
