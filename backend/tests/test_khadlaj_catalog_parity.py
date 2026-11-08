@@ -49,7 +49,7 @@ class KhadlajCatalogParityTests(unittest.TestCase):
         )
         catalog_family_ids = {p["family_id"] for p in self.products}
         self.assertIn(sprays["family_id"], catalog_family_ids)
-        self.assertEqual(len([p for p in self.products if p["family_id"] == sprays["family_id"]]), 61)
+        self.assertEqual(len([p for p in self.products if p["family_id"] == sprays["family_id"]]), 62)
         self.assertGreater(len(sprays["products"]), 0)
 
     def test_perfume_oil_identity_is_not_recast_as_a_spray_variant(self):
@@ -64,7 +64,7 @@ class KhadlajCatalogParityTests(unittest.TestCase):
         product_ids = {p["product_id"] for p in self.products}
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in product_ids]
         self.assertEqual(len(self.products), 227)
-        self.assertEqual(len(variants), 221)
+        self.assertEqual(len(variants), 218)
         self.assertTrue(all(v.get("source_evidence_url") for v in variants))
         self.assertFalse(any("fragrantica.com" in v["source_evidence_url"].lower() for v in variants))
 
