@@ -17,6 +17,7 @@ on:
       - catalog/bujairami-671-identities-8-variants-clean-2026-11-08
       - catalog/cumulative-requested-brands-2026-11-08
       - catalog/cumulative-source-reconciled-2026-11-08
+      - catalog/bujairami-uae-detail-evidence-2026-11-08
       - main
     paths:
       - "backend/product_catalog.json"
@@ -34,6 +35,7 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/cumulative-requested-brands-2026-11-08
       - catalog/cumulative-source-reconciled-2026-11-08
+      - catalog/bujairami-uae-detail-evidence-2026-11-08
 
 permissions:
   contents: read
@@ -87,5 +89,5 @@ jobs:
           backend.tests.test_velixir_official_product_variants
           backend.tests.test_mykonos_official_detail_evidence
           backend.tests.test_bujairami_original_detail_evidence
-          backend.tests.test_bujairami_original_detail_evidence
+          backend.tests.test_bujairami_uae_detail_evidence
           -v
