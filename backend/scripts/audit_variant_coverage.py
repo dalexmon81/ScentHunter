@@ -171,8 +171,8 @@ def main() -> int:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w", encoding="utf-8", newline="") as handle:
                 fields = [
-                    "brand", "fragrance", "variant_count",
-                    "variants_missing_size", "variants_missing_concentration",
+                    "brand", "fragrance", "variant_count", "complete_variant_count",
+                    "variants_needing_research", "variants_missing_size", "variants_missing_concentration",
                     "variants_missing_gtin",
                 ]
                 writer = csv.DictWriter(handle, fieldnames=fields)
