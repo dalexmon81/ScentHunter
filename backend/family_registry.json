@@ -4417,6 +4417,206 @@
             "Wildcard",
             "Games of Spades Wildcard"
           ]
+        },
+        {
+          "canonical_name": "All In",
+          "aliases": [
+            "All In",
+            "Games of Spades All In",
+            "Game of Spades All In"
+          ]
+        },
+        {
+          "canonical_name": "Bid",
+          "aliases": [
+            "Bid",
+            "Games of Spades Bid",
+            "Game of Spades Bid"
+          ]
+        },
+        {
+          "canonical_name": "Black Sapphire",
+          "aliases": [
+            "Black Sapphire",
+            "Games of Spades Black Sapphire",
+            "Game of Spades Black Sapphire"
+          ]
+        },
+        {
+          "canonical_name": "Blind Bid",
+          "aliases": [
+            "Blind Bid",
+            "Games of Spades Blind Bid",
+            "Game of Spades Blind Bid"
+          ]
+        },
+        {
+          "canonical_name": "Bluff",
+          "aliases": [
+            "Bluff",
+            "Games of Spades Bluff",
+            "Game of Spades Bluff"
+          ]
+        },
+        {
+          "canonical_name": "Bonus",
+          "aliases": [
+            "Bonus",
+            "Games of Spades Bonus",
+            "Game of Spades Bonus"
+          ]
+        },
+        {
+          "canonical_name": "Boston",
+          "aliases": [
+            "Boston",
+            "Games of Spades Boston",
+            "Game of Spades Boston"
+          ]
+        },
+        {
+          "canonical_name": "Diamond",
+          "aliases": [
+            "Diamond",
+            "Games of Spades Diamond",
+            "Game of Spades Diamond"
+          ]
+        },
+        {
+          "canonical_name": "Double Bonus",
+          "aliases": [
+            "Double Bonus",
+            "Games of Spades Double Bonus",
+            "Game of Spades Double Bonus"
+          ]
+        },
+        {
+          "canonical_name": "Emerald",
+          "aliases": [
+            "Emerald",
+            "Games of Spades Emerald",
+            "Game of Spades Emerald"
+          ]
+        },
+        {
+          "canonical_name": "Full House Refresh",
+          "aliases": [
+            "Full House Refresh",
+            "Games of Spades Full House Refresh",
+            "Game of Spades Full House Refresh"
+          ]
+        },
+        {
+          "canonical_name": "Gold",
+          "aliases": [
+            "Gold",
+            "Games of Spades Gold",
+            "Game of Spades Gold"
+          ]
+        },
+        {
+          "canonical_name": "High Roller",
+          "aliases": [
+            "High Roller",
+            "Games of Spades High Roller",
+            "Game of Spades High Roller"
+          ]
+        },
+        {
+          "canonical_name": "Jackpot",
+          "aliases": [
+            "Jackpot",
+            "Games of Spades Jackpot",
+            "Game of Spades Jackpot"
+          ]
+        },
+        {
+          "canonical_name": "Moon",
+          "aliases": [
+            "Moon",
+            "Games of Spades Moon",
+            "Game of Spades Moon"
+          ]
+        },
+        {
+          "canonical_name": "No Limit",
+          "aliases": [
+            "No Limit",
+            "Games of Spades No Limit",
+            "Game of Spades No Limit"
+          ]
+        },
+        {
+          "canonical_name": "Opal",
+          "aliases": [
+            "Opal",
+            "Games of Spades Opal",
+            "Game of Spades Opal"
+          ]
+        },
+        {
+          "canonical_name": "Platinum",
+          "aliases": [
+            "Platinum",
+            "Games of Spades Platinum",
+            "Game of Spades Platinum"
+          ]
+        },
+        {
+          "canonical_name": "Rouge",
+          "aliases": [
+            "Rouge",
+            "Games of Spades Rouge",
+            "Game of Spades Rouge"
+          ]
+        },
+        {
+          "canonical_name": "Royale",
+          "aliases": [
+            "Royale",
+            "Games of Spades Royale",
+            "Game of Spades Royale"
+          ]
+        },
+        {
+          "canonical_name": "Ruby",
+          "aliases": [
+            "Ruby",
+            "Games of Spades Ruby",
+            "Game of Spades Ruby"
+          ]
+        },
+        {
+          "canonical_name": "Topaz",
+          "aliases": [
+            "Topaz",
+            "Games of Spades Topaz",
+            "Game of Spades Topaz"
+          ]
+        },
+        {
+          "canonical_name": "Trick",
+          "aliases": [
+            "Trick",
+            "Games of Spades Trick",
+            "Game of Spades Trick"
+          ]
+        },
+        {
+          "canonical_name": "Win",
+          "aliases": [
+            "Win",
+            "Games of Spades Win",
+            "Game of Spades Win"
+          ]
+        },
+        {
+          "canonical_name": "Yellow Sapphire",
+          "aliases": [
+            "Yellow Sapphire",
+            "Games of Spades Yellow Sapphire",
+            "Game of Spades Yellow Sapphire"
+          ]
         }
       ]
     },
