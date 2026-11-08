@@ -24424,18 +24424,24 @@
       "product_id": "SH-FRENCH-AVENUE-6cc2b55d",
       "brand": "French Avenue",
       "brand_name": "French Avenue",
-      "canonical_name": "Genesis Aries",
-      "name": "Genesis Aries",
+      "canonical_name": "Aries",
+      "name": "Aries",
       "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Aries",
         "Aries",
-        "French Avenue Genesis Aries"
+        "French Avenue Genesis Aries",
+        "French Avenue Aries"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/genesis",
-      "source_evidence_url": "https://frenchavenue.com/collections/genesis"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/aries",
+      "source_evidence_url": "https://frenchavenue.com/collections/genesis",
+      "source_product_url": "https://frenchavenue.com/products/aries",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-b483bd39",
@@ -24492,18 +24498,24 @@
       "product_id": "SH-FRENCH-AVENUE-b7f6e788",
       "brand": "French Avenue",
       "brand_name": "French Avenue",
-      "canonical_name": "Genesis Aquarius",
-      "name": "Genesis Aquarius",
+      "canonical_name": "Aquarius",
+      "name": "Aquarius",
       "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Aquarius",
         "Aquarius",
-        "French Avenue Genesis Aquarius"
+        "French Avenue Genesis Aquarius",
+        "French Avenue Aquarius"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/genesis",
-      "source_evidence_url": "https://frenchavenue.com/collections/genesis"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/aquarius",
+      "source_evidence_url": "https://frenchavenue.com/collections/genesis",
+      "source_product_url": "https://frenchavenue.com/products/aquarius",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-5476618c",
@@ -24821,38 +24833,6 @@
       "aliases": [
         "Feroce Pour Homme",
         "French Avenue Feroce Pour Homme"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
-    },
-    {
-      "product_id": "SH-FRENCH-AVENUE-f129bb22",
-      "brand": "French Avenue",
-      "brand_name": "French Avenue",
-      "canonical_name": "Aquarius",
-      "name": "Aquarius",
-      "family_id": "french_avenue_catalog",
-      "family_name": "French Avenue",
-      "aliases": [
-        "Aquarius",
-        "French Avenue Aquarius"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
-    },
-    {
-      "product_id": "SH-FRENCH-AVENUE-f788e663",
-      "brand": "French Avenue",
-      "brand_name": "French Avenue",
-      "canonical_name": "Aries",
-      "name": "Aries",
-      "family_id": "french_avenue_catalog",
-      "family_name": "French Avenue",
-      "aliases": [
-        "Aries",
-        "French Avenue Aries"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://frenchavenue.com/collections/all",
@@ -36711,6 +36691,26 @@
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-7c1ece5a-100-000",
       "concentration": "Eau de Parfum",
       "gtin": "6291107459103"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-6cc2b55d",
+      "size_ml": 100,
+      "aliases": [
+        "Aries 100 ml",
+        "French Avenue Aries 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-6cc2b55d-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b7f6e788",
+      "size_ml": 100,
+      "aliases": [
+        "Aquarius 100 ml",
+        "French Avenue Aquarius 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-b7f6e788-100-000",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
