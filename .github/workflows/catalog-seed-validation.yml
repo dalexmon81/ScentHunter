@@ -16,6 +16,7 @@ on:
       - catalog/maison-asrar-fragrantica-official-reconciliation-2026-11-08
       - catalog/khadlaj-fragrantica-official-oil-spray-reconciliation-2026-11-08
       - catalog/bujairami-range-0-c-reconciliation-2026-11-08
+      - catalog/bujairami-range-d-f-reconciliation-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -34,6 +35,7 @@ on:
       - catalog/maison-asrar-fragrantica-official-reconciliation-2026-11-08
       - catalog/khadlaj-fragrantica-official-oil-spray-reconciliation-2026-11-08
       - catalog/bujairami-range-0-c-reconciliation-2026-11-08
+      - catalog/bujairami-range-d-f-reconciliation-2026-11-08
 
 permissions:
   contents: read
