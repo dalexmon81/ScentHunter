@@ -161,3 +161,28 @@ The current catalog contains **178 Paris Corner house-level identities**. This i
 - 31 discovery families
 - Paris Corner: 178 identities in catalog and registry
 - 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variant rows; 0 canonical products missing from discovery registry
+
+
+## Bujairami and Khadlaj official-source increment — 2026-11-08
+
+### Bujairami
+The official Bujairami UAE all-products collection reports 117 products. Pages 1–4 were inspected and **117 named fragrance products** were added to the canonical catalog, each with the corresponding page URL recorded as source evidence. The entries include Bujairami's own inspired-fragrance range and original creations as labelled by the shop. These are Bujairami-branded products; the inspired-by reference names are not treated as separate products or brands. The existing four Bujairami entries from the EU domain remain distinct and were not duplicated. Current Bujairami catalog count: **121** (117 UAE range entries + 4 pre-existing EU range entries). Pages inspected:
+- https://bujairami.ae/collections/all
+- https://bujairami.ae/collections/all?page=2
+- https://bujairami.ae/collections/all?page=3
+- https://bujairami.ae/collections/all?page=4
+
+### Khadlaj
+Added eight missing named fragrances from the official Khadlaj new-launch collection, with direct product-page provenance: Onyx Galaxy, Muse, Sueno, Saraya, Zayaan Silver, Qarar, Ihthiraam and Icon. The collection page reports 89 products, but only the first 12 were visible in the captured listing; therefore the eight additions are an incremental import, not a complete new-launch audit. No unsupported variants or offers were created.
+Official source: https://khadlaj-perfumes.com/collections/khadlaj-new-launches . Product pages are recorded individually in the catalog.
+
+### Latest integrity snapshot
+- 1,245 canonical identities
+- 141 explicit variant rows
+- 31 discovery families
+- Bujairami: 121 identities (117 from UAE official collection plus 4 pre-existing EU range identities)
+- Khadlaj: 44 identities
+- 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variants; 0 canonical products missing from discovery registry
+- 0 duplicate canonical names within Bujairami and Khadlaj
+
+Coverage remains incomplete for Khadlaj's 89-item new-launch collection and for the broader requested brand set. The counts above are not claims that every fragrance ever released by either brand is represented.
