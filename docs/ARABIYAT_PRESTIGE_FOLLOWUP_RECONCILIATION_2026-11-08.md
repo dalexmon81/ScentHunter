@@ -99,3 +99,31 @@ The previous seven-name list was overbroad: six names are already present in
 the family registry. Only Marwa Extrait is a newly verified registry/catalog
 reconciliation candidate from this pass. No canonical seed, family registry,
 offers, prices, stock, or GTIN fields were changed in this update.
+
+
+## Canonical seed reconciliation completed — Marwa Extrait
+
+The oversized catalog blob was retrieved directly by its Git blob SHA and
+parsed successfully. Before the write, it contained 1,942 canonical products
+and 266 variants. Exact comparison confirmed:
+- `Marwa` already existed as its own Arabiyat Prestige identity.
+- `Marwa Extrait` did not exist as a canonical identity.
+- The UPC `6295156402103` was not already mapped in the verified GTIN registry.
+
+The branch now contains one new canonical identity and one explicit variant:
+- Product: `SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103`
+- Variant: `SHV-SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103-60-000`
+- Format: 60 ml Extrait de Parfum
+- Verified GTIN-13/UPC: `6295156402103`
+- Evidence: official product-detail URL above
+
+The family registry now includes the new identity and 60 ml format. The
+verified GTIN-to-variant map points the UPC to this exact variant. A focused
+regression test was added at
+`backend/tests/test_arabiyat_prestige_marwa_extrait.py`, covering identity
+uniqueness, separation from Marwa EDP, registry parity and exact GTIN mapping.
+
+Expected branch totals after this addition: 1,943 canonical products and
+267 variants. These are counts of records in this branch seed, not a claim of
+complete worldwide fragrance coverage. CI still needs to execute against the
+new PR head.
