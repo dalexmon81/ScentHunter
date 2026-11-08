@@ -51,4 +51,4 @@ Each is marked `fine_fragrance` at the variant level. The remaining catalog vari
 
 ## Database
 
-The Alembic migration `0002_variant_product_form` adds nullable `product_variants.product_form`, a controlled-value check constraint and an index. Existing rows are not rewritten. The migration supports SQLite batch alteration and is intended to be applied through the normal migration process; this PR does not deploy it to any environment.
+The Alembic migration `0004_variant_product_form` adds nullable `product_variants.product_form`, a controlled-value check constraint and an index. Existing rows are not rewritten. The migration supports SQLite batch alteration and is intended to be applied through the normal migration process; this PR does not deploy it to any environment.
