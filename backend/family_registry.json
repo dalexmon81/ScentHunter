@@ -6901,7 +6901,11 @@
           "aliases": [
             "Fayyad",
             "Al Wataniah Fayyad"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Fikrah",
@@ -6964,14 +6968,22 @@
           "aliases": [
             "Layali",
             "Al Wataniah Layali"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Lazuli",
           "aliases": [
             "Lazuli",
             "Al Wataniah Lazuli"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Lily",
@@ -7013,14 +7025,22 @@
           "aliases": [
             "Nawal Alexandrite",
             "Al Wataniah Nawal Alexandrite"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Nawal Bronzite",
           "aliases": [
             "Nawal Bronzite",
             "Al Wataniah Nawal Bronzite"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Nawal Fluorite",
@@ -7167,7 +7187,11 @@
           "aliases": [
             "Sahari",
             "Al Wataniah Sahari"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Sevilla",
