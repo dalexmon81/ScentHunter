@@ -33065,8 +33065,12 @@
         "Khadlaj Barwaaz Pure Navy"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Khadlaj.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj.html"
+      "source_url": "https://tripletraders.com/products/barwaaz-pure-nacy-eau-de-parfum-by-khadlaj-100ml-3-4-fl-oz",
+      "source_evidence_url": "https://tripletraders.com/products/barwaaz-pure-nacy-eau-de-parfum-by-khadlaj-100ml-3-4-fl-oz",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-bbb43d66",
@@ -35615,8 +35619,11 @@
         "Khadlaj Vanilla Kiss"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/perfume/Khadlaj-Perfumes/Vanilla-Kiss-119157.html",
-      "source_evidence_url": "https://arabicoasiscy.com/products/vanilla-kiss-50ml-khadlaj"
+      "source_url": "https://arabicoasiscy.com/products/vanilla-kiss-50ml-khadlaj",
+      "source_evidence_url": "https://arabicoasiscy.com/products/vanilla-kiss-50ml-khadlaj",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-WOW-OUD",
@@ -40238,6 +40245,27 @@
         "Khadlaj Safari Gold 20 ml"
       ],
       "source_evidence_url": "https://www.notino.it/khadlaj/safari-gold-olio-profumato-unisex/"
+    },
+    {
+      "product_id": "SH-KHADLAJ-BARWAAZ-PURE-NAVY",
+      "variant_id": "SHV-SH-KHADLAJ-BARWAAZ-PURE-NAVY-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Barwaaz Pure Navy 100 ml",
+        "Khadlaj Barwaaz Pure Navy 100 ml"
+      ],
+      "source_evidence_url": "https://tripletraders.com/products/barwaaz-pure-nacy-eau-de-parfum-by-khadlaj-100ml-3-4-fl-oz"
+    },
+    {
+      "product_id": "SH-KHADLAJ-VANILLA-KISS",
+      "variant_id": "SHV-SH-KHADLAJ-VANILLA-KISS-50",
+      "size_ml": 50,
+      "aliases": [
+        "Vanilla Kiss 50 ml",
+        "Khadlaj Vanilla Kiss 50 ml"
+      ],
+      "source_evidence_url": "https://arabicoasiscy.com/products/vanilla-kiss-50ml-khadlaj"
     }
   ]
 }
