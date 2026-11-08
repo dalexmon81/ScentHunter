@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - catalog/complete-brand-expansion-2026-11
+      - catalog/consolidated-brand-expansion-2026-11-08
 
 permissions:
   contents: read
