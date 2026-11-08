@@ -47,4 +47,5 @@ jobs:
           backend.tests.test_lattafa_catalog
           backend.tests.test_paris_corner_catalog_parity
           backend.tests.test_swiss_arabian_detail_evidence
+          backend.tests.test_arabiyat_prestige_extrait
           -v
