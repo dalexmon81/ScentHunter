@@ -1,5 +1,7 @@
 """Regression guard for the user-requested fragrance brand coverage."""
 import json
+import re
+import unicodedata
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -850,6 +852,69 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         nautilus = next(row for row in products if row.get("canonical_name") == "Nautilus")
         self.assertIn("Jinx", jynx.get("aliases", []))
         self.assertIn("Nautilius", nautilus.get("aliases", []))
+
+
+    def test_mykonos_fragrantica_84_listing_has_all_81_fragrance_names(self):
+        def normalize(value):
+            value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
+            return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+        mykonos = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        ]
+        searchable = {
+            normalize(name)
+            for row in mykonos
+            for name in [row.get("canonical_name"), *(row.get("aliases") or [])]
+            if name
+        }
+        fragrantica_fragrance_names = (
+            "Adelina", "Affair", "Avra Kehdabra", "Baby Love", "Berry Caramel Pancake",
+            "Black Opera", "Blaze", "Bloody Mary", "Blossom", "Bonfire Vanilla",
+            "Cafe Drops", "Chai Crema Latte", "Coconut Dreams", "Conquer", "Constantine",
+            "Crimson", "Crystals", "Dolce Cherry", "Down to Earth", "Eclipse", "Empire",
+            "Enchanted", "Glitch", "Imperium", "Inception", "Inferno", "Invade", "Ivory",
+            "Jinx", "Luminos", "Marbella", "Matcha Latte", "Mayfair", "Memoir of Meri",
+            "Milk Drops", "Monaco Royale", "Moroccan Vanilla", "Nashi Pear Garden",
+            "Nautilius", "On The Rocks", "Once upon Don", "Pandan Sticky Rice",
+            "Penthouse", "Pink Beach", "Pink Drops", "Reflection", "Reflection Elixir",
+            "Rouge", "Roulette", "Royal Ispahan", "Seven Roses", "Slow Living", "Sorrento",
+            "Stilettos", "Untamed", "Utopia", "Verve", "Violette", "When in Paris", "Zeus",
+            "Dreamscape", "Silent Whisper", "Hawaiian Crush", "Tea Poetry", "California",
+            "California Blue", "California Club", "California Signature", "Vanilla Clouds",
+            "It's Not Ella", "Musk Aura", "Paradise", "Caramel Fudge Cookie", "XoXo, Rosy",
+            "Aphrodite", "Sansa", "Senja", "Zora", "Dark Secret", "Satin Blanc", "Sparkling Rosé",
+        )
+        missing = [
+            name for name in fragrantica_fragrance_names
+            if normalize(name) not in searchable
+        ]
+        self.assertEqual(missing, [])
+
+    def test_mykonos_empire_and_imperium_are_distinct_fragrances(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Empire x RRQ", products)
+        self.assertIn("Imperium", products)
+        self.assertNotIn("Imperium", products["Empire x RRQ"].get("aliases", []))
+        imperium = products["Imperium"]
+        self.assertEqual(
+            imperium.get("source_url"),
+            "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+        )
+        self.assertEqual(imperium.get("formats_ml"), [100])
+        self.assertEqual(imperium.get("concentration"), "Extrait de Parfum")
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == imperium.get("product_id")
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("size_ml"), 100)
+        self.assertEqual(variants[0].get("concentration"), "Extrait de Parfum")
 
 if __name__ == "__main__":
     unittest.main()
