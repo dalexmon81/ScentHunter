@@ -6,6 +6,7 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
 # Lower bounds from the reconciled 2026-11-08 catalog snapshot. These are
 # canonical fragrance identities, not SKU/variant counts or claims of
