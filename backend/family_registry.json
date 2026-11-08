@@ -3718,6 +3718,106 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "10/10",
+          "aliases": [
+            "10/10",
+            "Bujairami 10/10"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "22",
+          "aliases": [
+            "22",
+            "Bujairami 22"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "25",
+          "aliases": [
+            "25",
+            "Bujairami 25"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "26",
+          "aliases": [
+            "26",
+            "Bujairami 26"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "29",
+          "aliases": [
+            "29",
+            "Bujairami 29"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "33",
+          "aliases": [
+            "33",
+            "Bujairami 33"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "50 Shades",
+          "aliases": [
+            "50 Shades",
+            "Bujairami 50 Shades"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "A La Carte",
+          "aliases": [
+            "A La Carte",
+            "Bujairami A La Carte"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Above The Clouds",
+          "aliases": [
+            "Above The Clouds",
+            "Bujairami Above The Clouds"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Abyss",
+          "aliases": [
+            "Abyss",
+            "Bujairami Abyss"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
