@@ -15748,6 +15748,13 @@
           ]
         },
         {
+          "canonical_name": "Ana Wa Anta",
+          "aliases": [
+            "Ana Wa Anta",
+            "Khadlaj Ana Wa Anta"
+          ]
+        },
+        {
           "canonical_name": "Anabia Blue",
           "aliases": [
             "Anabia Blue",
@@ -16189,39 +16196,6 @@
           ]
         },
         {
-          "canonical_name": "La Fede Celebrity Crush",
-          "aliases": [
-            "La Fede Celebrity Crush",
-            "Khadlaj La Fede Celebrity Crush",
-            "LA FEDE CELEBRITY CRUSH"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "La Fede Celebrity Fame",
-          "aliases": [
-            "La Fede Celebrity Fame",
-            "Khadlaj La Fede Celebrity Fame",
-            "LA FEDE CELEBRITY FAME"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "La Fede Intoxicate Mystique",
-          "aliases": [
-            "La Fede Intoxicate Mystique",
-            "Khadlaj La Fede Intoxicate Mystique",
-            "INTOXICATE MYSTIQUE"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
           "canonical_name": "Le Prestige Bold",
           "aliases": [
             "Le Prestige Bold",
@@ -16658,7 +16632,17 @@
             "Khadlaj Pure Musk"
           ],
           "formats_ml": [
-            20,
+            20
+          ]
+        },
+        {
+          "canonical_name": "Pure Musk EDP",
+          "aliases": [
+            "Pure Musk EDP",
+            "Khadlaj Pure Musk EDP",
+            "Pure Musk 100 ml EDP"
+          ],
+          "formats_ml": [
             100
           ]
         },
