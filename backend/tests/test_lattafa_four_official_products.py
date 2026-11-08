@@ -82,6 +82,11 @@ class LattafaFourOfficialProductsTests(unittest.TestCase):
         for name in PRODUCTS:
             with self.subTest(product=name):
                 self.assertIn(name, registered)
+        lattafa_names = {
+            p.get("canonical_name") for p in self.products
+            if p.get("brand_name") == "Lattafa"
+        }
+        self.assertTrue(lattafa_names.issubset(registered))
         ids = [v.get("variant_id") for v in self.variants]
         self.assertEqual(len(ids), len(set(ids)))
 
