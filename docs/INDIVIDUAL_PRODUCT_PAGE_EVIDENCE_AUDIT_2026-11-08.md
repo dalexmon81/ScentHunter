@@ -36,7 +36,7 @@ This is a documentation-only evidence pass against the requested-brand catalog s
 
 ## Coverage and limitations
 
-- 17 individual product pages were reviewed across six brands.
+- 21 individual product pages were reviewed across six brands.
 - These are sample confirmations, not a full audit of the 1,872 listing-level identities.
 - No product was added or deleted, no identity status was changed, and no variant was created.
 - This document does not claim that any brand's catalog is complete.
@@ -72,5 +72,27 @@ The official storefront also lists adjacent products and gift sets that contain 
 - 17 individual product pages reviewed across six brands.
 - The second pass adds three individually verified Armaf identities.
 - The overall audit remains a sample, not a full audit of the 1,872 listing-level identities.
+- No product was added or deleted, no identity status was changed, and no variant was created.
+- Catalog JSON and production code remain unchanged.
+
+
+## Third pass — Lattafa individual product pages (8 November 2026)
+
+Four more existing Lattafa identities marked `source_listed_name` were checked against individual product pages on the official Lattafa storefront:
+
+| Existing catalog identity | Official product page | Explicit evidence on product page | Safe conclusion |
+|---|---|---|---|
+| Sheikh Al Shuyukh Supreme | https://lattafa.com/product/sheikh-al-shuyukh-supreme/ | Exact name; 100 ml; fragrance type Men | Individual identity verified; page does not explicitly state concentration in the captured product information |
+| Jouri | https://lattafa.com/product/jouri/ | Exact name; fragrance type Women; fragrance notes and product information | Individual identity verified; captured page does not establish size or concentration |
+| Ana Abiyedh Passion | https://lattafa.com/product/ana-abiyedh-passion/ | Exact name; 60 ml; fragrance type Women; fragrance notes and product information | Individual identity verified; page does not explicitly state concentration in the captured product information |
+| Ameerat Al Arab Sugar Crown | https://lattafa.com/product/ameerat-al-arab-sugar-crown/ | Exact name; 100 ml; fragrance type Women; fragrance notes | Individual identity verified; page does not explicitly state concentration in the captured product information |
+
+The product pages establish the named identities and the explicitly shown sizes/gender classifications. They do not provide a basis to fill concentration, so no concentration was inferred from related Lattafa products or from the collection category.
+
+## Updated coverage
+
+- 21 individual product pages reviewed across six brands.
+- This pass adds four individual Lattafa product pages.
+- The audit remains a sample, not a full audit of the 1,872 listing-level identities.
 - No product was added or deleted, no identity status was changed, and no variant was created.
 - Catalog JSON and production code remain unchanged.
