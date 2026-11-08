@@ -15755,6 +15755,9 @@
           "aliases": [
             "Onyx Galaxy",
             "Khadlaj Onyx Galaxy"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15762,6 +15765,9 @@
           "aliases": [
             "Saraya",
             "Khadlaj Saraya"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -15769,6 +15775,9 @@
           "aliases": [
             "Ihthiraam",
             "Khadlaj Ihthiraam"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -15776,6 +15785,9 @@
           "aliases": [
             "Icon",
             "Khadlaj Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15825,6 +15837,9 @@
           "aliases": [
             "Sueno",
             "Khadlaj Sueno"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
