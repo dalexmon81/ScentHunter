@@ -122,3 +122,38 @@ A separate search surfaced MaisonAlhambra.co, but its own pages disclose an Amaz
 - The audit remains a sample, not a full audit of the 1,872 listing-level identities.
 - No product was added or deleted, no identity status was changed, and no variant was created.
 - Catalog JSON and production code remain unchanged.
+
+
+## Fifth pass — barcode and catalog cross-check (8 November 2026)
+
+The official product-page evidence was compared with the actual Maison Alhambra records in the PR #439 catalog snapshot (`backend/product_catalog.json`, blob `a0e787b370902eb69860250b233feebe466054e2`).
+
+### Current catalog evidence coverage
+
+- Maison Alhambra identities in this snapshot: 207.
+- Identities with at least one GTIN recorded: 3.
+- Identities with a `source_product_url`: 3.
+- GTIN values found in those records: 3.
+- Duplicate GTINs within Maison Alhambra: 0.
+
+The three records already carrying matching individual product URLs and GTINs are Afro Leather (6291108736081), Anarch (6291107459080), and Athena (6290360599243). Their current `identity_status` values are nevertheless still `source_listed_name`, despite individual product-page evidence being recorded. This is a catalog provenance/status inconsistency worth correcting in a separate data-focused change after the evidence and status semantics are reviewed.
+
+Three other individually reviewed products — Alpine Homme Sport, Anchor Black and Aura D'eclat — have first-party product-page evidence recorded in this audit but currently have no `source_product_url`, GTIN, size or concentration in their catalog records. Their official page values are documented above; they have deliberately not been inserted into the seed in this documentation-only PR.
+
+### Negative finding: Amber & Leather is not enough to validate a perfume record
+
+The Maison Alhambra USA page found for the query "Amber & Leather" is specifically a **perfumed deodorant spray**, 250 ml, barcode 6291108731925 — not an Eau de Parfum product page:
+https://maisonalhambra-usa.com/products/maison-alhambra-amber-and-leather-perfumed-deodorant-spray-for-men
+
+The catalog identity `Amber & Leather` must therefore not inherit this deodorant's barcode or size as a perfume variant. A separate perfume product page is still required. This is a useful example of why product-form classification must precede GTIN matching.
+
+### Other Maison Alhambra identities searched in this pass
+
+No reliable matching first-party product-detail page was established in this pass for Amberley Ombre Blue, Amberley Pur Oud, Amberly Amoroso, or Bright Peach. Their existing collection-level evidence remains unchanged. No fields were inferred from search snippets, related products or third-party listings.
+
+## Updated coverage and status
+
+- 27 individually reviewed product pages remain the confirmed positive-page count in this audit.
+- This pass adds a structured catalog/GTIN consistency check and one explicit negative product-form finding; it does not add positive perfume product-page confirmations.
+- No catalog record, identity status, variant, GTIN, price, availability or production code was modified.
+- The PR remains documentation-only. A future data PR should separately promote only the identities whose evidence and status semantics are unambiguous, and include regression tests for duplicate GTINs and product-form collisions.
