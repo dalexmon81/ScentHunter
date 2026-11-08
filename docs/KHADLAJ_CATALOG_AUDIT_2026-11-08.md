@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-This rebased draft contains **210 canonical Khadlaj identities and 199 explicit variants**. Every variant row has a `source_evidence_url`; no variant uses Fragrantica as proof of size or concentration.
+This rebased draft contains **209 canonical Khadlaj identities and 199 explicit variants**. Every variant row has a `source_evidence_url`; no variant uses Fragrantica as proof of size or concentration.
 
 The catalog separates the main Khadlaj spray range, concentrated perfume oils, Shiyaaka and La Fede. It preserves the existing 116 Khadlaj identities on the current catalog base and adds reconciled identities and variants from the prior catalog branches plus visible official-store products.
 
@@ -57,6 +57,6 @@ The collection counts are a snapshot of the official store, not a statement abou
 
 ## Validation
 
-Structural checks before CI: 210 Khadlaj product IDs unique; 199 variant IDs unique; no orphan variants; 199/199 variants have evidence URLs; 210 identities and 199 variants retained on top of the Mykonos-rebased catalog base.
+Structural checks before CI: 209 Khadlaj product IDs unique; 199 variant IDs unique; no orphan variants; 199/199 variants have evidence URLs; 209 identities and 199 variants retained on top of the Mykonos-rebased catalog base.
 
 This PR remains a draft pending CI and reconciliation of the remaining official collection entries.
