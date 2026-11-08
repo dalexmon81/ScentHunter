@@ -464,5 +464,84 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+
+    def test_maison_asrar_covers_all_116_names_in_independent_eu_reference(self):
+        import unicodedata
+        import re
+
+        reference_names = {
+            "Belgravia", "Legacy", "Vanguard", "Regent", "Ameer", "Majesty",
+            "Veyra", "Vanilla Aura", "Faris Al Arab", "Vanilla Voyage",
+            "III Thriller", "Last Swim", "Pomme Rouge", "Haven", "Muharib",
+            "Silent Surge", "Treasure", "Hunter", "Imperial", "Monarch",
+            "1963", "Adorable", "Alonoud", "Aseel", "Basma", "Black",
+            "Bloom Bloom", "Bonita", "Casablanca", "Cascade", "Coffee Blend",
+            "Daham", "Date Night", "Dear Jasmine", "Desire", "Dubai London",
+            "Dubai Miami", "Dubai Milano", "DXB", "DXB Jumeirah", "Emerald",
+            "Emessa", "Fairy Tale", "Fairyland", "Fakhama", "Flair",
+            "Fresh Iris", "Gentle Oud", "Gold Noir", "Hamsat Gharam",
+            "Hamsat Ghazal", "Hamsat Hob", "Hamsat Ishq", "Harmony",
+            "Heritage", "Hikaya", "Hilm", "Icon", "Infina", "Italian Leather",
+            "Jawhara Black", "Jawhara Rouge", "Joy", "Khateer", "Khayal",
+            "Khayyal", "Kiss My Lips", "Larimar", "Leo", "Librae", "Lily",
+            "Lolita", "Lumiere", "Luna", "Magic Night", "Masterpiece",
+            "Milky Way", "Mohra", "Nada", "Never Forget Me", "Night in Paris",
+            "Oh Honey!", "Omniya", "Oscar", "Patchouli with Love", "Petra",
+            "Pink Crush", "Qamar", "Red Velvet", "Rey", "Rose", "Rose Honey",
+            "Rose Musk", "Rose Oud", "Rose Vanilla", "Rosé Absolute",
+            "Rosé Bouquet", "Rubellite", "Silver Elixer", "Soirée", "Soudfa",
+            "Sunset in Capri", "Throne", "Throne Eclipse", "Timeless",
+            "Tornado", "Trophy", "Turath", "Turath Malaki", "Vanilla Rouge",
+            "Vanilla Seduction", "Vision", "Wadi", "Whisper", "Wood Intense",
+            "Zenobia",
+        }
+
+        def key(value):
+            value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+            return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        ]
+        known_names = {
+            key(name)
+            for row in products
+            for name in [row.get("canonical_name", ""), *row.get("aliases", [])]
+        }
+        missing = sorted(name for name in reference_names if key(name) not in known_names)
+        self.assertEqual(len(reference_names), 116)
+        self.assertEqual(missing, [])
+
+    def test_maison_asrar_additional_names_have_correct_brand_evidence(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        expected = {
+            "Black Grapefruit": ("https://maisonasrar.com/collections/all", None),
+            "Plot Twist": ("https://shop-gulforchid.com/products/plot-twist", 100),
+            "Love Key": ("https://shop-gulforchid.com/products/love-key", 100),
+            "Unsolved Mystery": ("https://shop-gulforchid.com/products/unsolved-mystery", 100),
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("brand_name"), "Maison Asrar")
+                self.assertEqual(row.get("source_url"), source_url)
+                if size_ml is None:
+                    self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+                else:
+                    matches = [
+                        v for v in variants
+                        if v.get("product_id") == row["product_id"]
+                        and v.get("size_ml") == size_ml
+                        and v.get("concentration") == "Eau de Parfum"
+                    ]
+                    self.assertEqual(len(matches), 1)
+
 if __name__ == "__main__":
     unittest.main()
