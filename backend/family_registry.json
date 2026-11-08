@@ -3610,19 +3610,12 @@
           "canonical_name": "Attractus",
           "aliases": [
             "Attractus",
-            "Paris Corner Attractus"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Attractus",
-          "aliases": [
-            "Attractus",
             "Paris Corner Attractus",
             "Attratus",
             "Paris Corner Attratus"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
