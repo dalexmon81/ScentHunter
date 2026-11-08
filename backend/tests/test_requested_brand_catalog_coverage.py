@@ -12,7 +12,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 91,
+    "Mykonos": 99,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -553,6 +553,18 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 row = products[name]
                 self.assertEqual(row.get("source_url"), url)
                 self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants), "Do not invent an unconfirmed size/concentration variant")
+
+
+    def test_mykonos_fragrantica_legacy_names_are_tracked_without_invented_variants(self):
+        expected = ["Adelina", "Bloody Mary", "Crystals", "Eclipse", "Nashi Pear Garden", "Roulette", "Zeus", "It's Not Ella"]
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Mykonos"}
+        variants = CATALOG.get("variants", [])
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                self.assertEqual(products[name].get("identity_status"), "source_listed_name")
+                self.assertEqual(products[name].get("source_url"), "https://www.fragrantica.com/designers/Mykonos.html")
+                self.assertFalse(any(v.get("product_id") == products[name]["product_id"] for v in variants))
 
 if __name__ == "__main__":
     unittest.main()
