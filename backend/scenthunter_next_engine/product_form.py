@@ -101,11 +101,11 @@ def detect_product_form(title: object) -> str | None:
     checks = (
         ("discovery_set", (r"\bdiscovery set\b", r"\bdiscovery kit\b")),
         ("gift_set", (r"\bgift set\b", r"\bgiftset\b", r"\bcoffret\b")),
-        ("deodorant", (r"\bperfumed deodorant spray\b", r"\bdeodorant(?: spray)?\b", r"\bantiperspirant\b")),
+        ("deodorant", (r"\bperfumed deodorant spray\b", r"\bdeodorant(?: spray| stick)?\b", r"\bdeo stick\b", r"\bantiperspirant\b")),
         ("hair_mist", (r"\bhair mist\b",)),
         ("body_mist", (r"\bbody mist\b", r"\bbody spray\b", r"\bbody splash\b")),
         ("home_fragrance", (r"\bhome fragrance\b", r"\broom spray\b", r"\breed diffuser\b", r"\bdiffuser\b", r"\bscented candle\b")),
-        ("body_care", (r"\bbody lotion\b", r"\bbody cream\b", r"\bshower gel\b", r"\bhand cream\b", r"\bbody care\b")),
+        ("body_care", (r"\bbody lotion\b", r"\bbody cream\b", r"\bbody butter\b", r"\bbody wash\b", r"\bshower gel\b", r"\bhand cream\b", r"\bbody care\b")),
         ("perfume_oil", (r"\bconcentrated perfume oil\b", r"\bperfume oil\b", r"\bfragrance oil\b", r"\battar\b", r"\bmukhallat\b")),
         ("fine_fragrance", (r"\beau de parfum\b", r"\beau de toilette\b", r"\beau de cologne\b", r"\bextrait de parfum\b", r"\bedp\b", r"\bedt\b", r"\bedc\b")),
     )
