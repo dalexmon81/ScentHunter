@@ -143,3 +143,51 @@ The nine Khadlaj identities that still lacked a variant after the first collecti
 **Updated Khadlaj result:** 116 canonical identities / 116 explicit variant rows. No Khadlaj identity in the current seed remains without a variant. The five product cards not surfaced by the ninth page of the 101-item Perfume Sprays collection remain a source-discovery limitation; the nine records above were found through separate official product/new-launch pages, not guessed from the missing cards.
 
 **Updated whole-catalog result on this branch:** 2,061 product identities / 362 variants. Integrity checks report zero duplicate product IDs, duplicate brand/canonical-name pairs, duplicate variant IDs, orphan variants or variant-size mismatches. The full GitHub Actions catalog validation passed on commit `ae6e83b1f08973feef8190a3c9cd4e81864ad7d7` (run 42472046924). The subsequent audit-only update does not alter catalog data.
+
+
+### Bujairami: UAE and Australian Originals coverage audit (8 November 2026)
+
+#### UAE current assortment
+
+- Seed before this pass: **142 Bujairami identities / 2 variants**.
+- The brand-owned UAE `bujairami.ae/collections/all` collection reports 117 products. Its four visible pages (1–4) were compared with the seed: **all 117 names are already present**. No UAE identity was added or removed in this pass.
+
+#### Australian Originals assortment
+
+- The Bujairami-global `bujairami.com.au/collections/originals` collection reports 40 product entries. This resolves to **39 distinct names** because Love Spell is listed twice as separate 50 ml and 100 ml product pages. One of the 39 names is `Almura Body Spray`, which is not a perfume and remains excluded. The perfume scope is therefore **38 unique fragrances**.
+- Before this pass, 28 of those 38 perfume identities were already in the seed; the ten missing official product identities were added with direct brand-owned product pages:
+  - Sasha — https://bujairami.com.au/products/sasha-original-creation
+  - Iconic — https://bujairami.com.au/products/iconic-by-bujairami
+  - Australian Tonka — https://bujairami.com.au/products/australian-tonka-original-creation
+  - Happy Hour — https://bujairami.com.au/products/happy-hour-inspired-by-mango-mood-phlur
+  - Boujee Oud — https://bujairami.com.au/products/sexy-oud-original-creation-extrait
+  - Mousse Cake — https://bujairami.com.au/products/mousse-cake-original-creation
+  - No.1 Father — https://bujairami.com.au/products/no-1-father-original-creation
+  - Pretty F**ked Up — https://bujairami.com.au/products/pretty-f-ked-up-original-creation-50ml
+  - Vicious — https://bujairami.com.au/products/vicious-inspired-by-dirty-heaven-borntostandout
+  - Sunset Bay — https://bujairami.com.au/products/sunset-bay-inspired-by-cap-camarat-memo-paris
+- The seed now contains **152 identities**. The family registry was updated with the ten matching discovery records.
+
+#### First-party size/concentration evidence
+
+- Five new variant rows were added: Iconic 100 ml, Australian Tonka 100 ml, Happy Hour 100 ml, Pretty F**ked Up 50 ml and The F**ck Up 50 ml. The Love Spell 50 ml and 100 ml variants already existed; their variant source URLs were upgraded to the two direct product pages:
+  - https://bujairami.com.au/products/love-spell-original-creation-50ml
+  - https://bujairami.com.au/products/love-spell-original-creation
+- Boujee Oud is explicitly described as Extrait de Parfum, but its page does not state a size; concentration is recorded without inventing a size.
+- Sasha, Mousse Cake, No.1 Father, Vicious and Sunset Bay have product pages but no explicit size/concentration in the inspected visible details. They remain identity-only.
+- The body spray `Almura Body Spray` remains excluded from the perfume catalog.
+- Current Bujairami seed: **152 identities / 7 variants**. This is not a complete variant audit of the 152 products; sizes/concentrations for the 117 UAE products and many existing Australian products still need first-party product-page checks.
+
+#### Separate global Inspired range: scope not yet approved
+
+- The official Australian `bujairami.com.au/collections/inspired` collection reports **1,175 product entries**. This is a much larger regional range than the UAE collection and should not be treated as 1,175 unique canonical fragrances without deduplication; the listings may include separate sizes, versions and inspired products.
+- The first 64 visible product cards were compared against the current seed. **31 names did not match an existing canonical name or alias** in this first-page sample:
+  `Breezy`, `Glorious`, `Ripper`, `Madness Extreme`, `Tip-Top`, `Woody Oud`, `Shortcake`, `Lavish`, `The Hype`, `Lavish Life`, `Vanacco`, `I have Money`, `Million Dollar Smell`, `Night Out`, `Top Notch`, `Casanova XJ 1861`, `Shu Helou`, `Rush Hour`, `Party Monster`, `Drip`, `Halo`, `Greatness`, `Young OG`, `Right One`, `Bahebak`, `Carnival`, `Soprano`, `InstaSmash`, `Bad N Boujee`, `Astro`, `Booz`.
+- These are discovery leads only. Some may be separate inspired fragrances; others may be naming differences from existing products (for example, `Drip` vs `Drip No. 7`, or `Booz` vs `Booz Extreme`). No automatic merges or additions were made from the first-page sample.
+
+**Scope decision required before the next Bujairami expansion:** include the entire Australian Inspired collection (1,175 product entries, requiring deduplication and regional/size reconciliation), or limit the canonical brand range to the 117-product UAE collection plus the Australian Originals collection. The existing seed already mixes both regional sources, so this needs an explicit and consistent rule before a much larger ingestion.
+
+First-party collection references:
+- UAE collection: https://bujairami.ae/collections/all
+- Australian Originals: https://bujairami.com.au/collections/originals
+- Australian Inspired: https://bujairami.com.au/collections/inspired
