@@ -15927,8 +15927,12 @@
         "Charuto Mysterious Tobacco",
         "Paris Corner Charuto Mysterious Tobacco"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/paris-corner-perfumes",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-CHARUTO-REGAL-RESERVE",
@@ -16672,8 +16676,11 @@
         "Lueur d'Espoir Ambre",
         "Paris Corner Lueur d'Espoir Ambre"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/lueur-ambre",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA",
@@ -16687,8 +16694,12 @@
         "Lueur d'Espoir Arena",
         "Paris Corner Lueur d'Espoir Arena"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/lueur-arena",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE",
@@ -16702,8 +16713,11 @@
         "Lueur d'Espoir Noche",
         "Paris Corner Lueur d'Espoir Noche"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/lueur-noche",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA-INTENSE",
@@ -17881,9 +17895,13 @@
         "Rose de Nuit",
         "Paris Corner Rose de Nuit"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/rose-de-nuit",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-RUA",
@@ -17929,9 +17947,12 @@
         "Super Crush Emir",
         "Paris Corner Super Crush Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/super-crush-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-TASKEEN",
@@ -18025,9 +18046,12 @@
         "Tawaaq",
         "Paris Corner Tawaaq"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/tawaaq",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-THE-AOUD",
@@ -23441,9 +23465,13 @@
         "North Stag Huit VIII",
         "Paris Corner North Stag Huit VIII"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/north-stag-huit-viii",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ff1782d3",
@@ -23477,9 +23505,13 @@
         "North Stag Neuf IX",
         "Paris Corner North Stag Neuf IX"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/north-stag-neuf-ix",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-70730e4a",
@@ -23509,9 +23541,13 @@
         "North Stag Sept VII",
         "Paris Corner North Stag Sept VII"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/north-stag-sept-vii",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-038c48d3",
@@ -33635,6 +33671,24 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-THAILAND-OUD-IN-CAIRO",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Thailand Oud in Cairo",
+      "name": "Ministry of Oud - Thailand Oud in Cairo",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Thailand Oud in Cairo",
+      "aliases": [
+        "Ministry of Oud - Thailand Oud in Cairo",
+        "Paris Corner Ministry of Oud - Thailand Oud in Cairo"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-thailand-oud-in-cairo",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36216,6 +36270,111 @@
         "Paris Corner The Show Magnifique 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-THESHOWMAGNIFIQUE-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TAWAAQ",
+      "size_ml": 100,
+      "aliases": [
+        "Tawaaq 100 ml",
+        "Paris Corner Tawaaq 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-TAWAAQ-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE",
+      "size_ml": 100,
+      "aliases": [
+        "Lueur d'Espoir Noche 100 ml",
+        "Paris Corner Lueur d'Espoir Noche 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-NOCHE-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA",
+      "size_ml": 100,
+      "aliases": [
+        "Lueur d'Espoir Arena 100 ml",
+        "Paris Corner Lueur d'Espoir Arena 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-ARENA-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE",
+      "size_ml": 100,
+      "aliases": [
+        "Lueur d'Espoir Ambre 100 ml",
+        "Paris Corner Lueur d'Espoir Ambre 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-0ba59d9a",
+      "size_ml": 100,
+      "aliases": [
+        "North Stag Neuf IX 100 ml",
+        "Paris Corner North Stag Neuf IX 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-0ba59d9a-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-a050adcb",
+      "size_ml": 100,
+      "aliases": [
+        "North Stag Sept VII 100 ml",
+        "Paris Corner North Stag Sept VII 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-a050adcb-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ROSE-DE-NUIT",
+      "size_ml": 100,
+      "aliases": [
+        "Rose de Nuit 100 ml",
+        "Paris Corner Rose de Nuit 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ROSE-DE-NUIT-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-SUPER-CRUSH-EMIR",
+      "size_ml": 75,
+      "aliases": [
+        "Super Crush Emir 75 ml",
+        "Paris Corner Super Crush Emir 75ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-SUPER-CRUSH-EMIR-75-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-THAILAND-OUD-IN-CAIRO",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Thailand Oud in Cairo 100 ml",
+        "Paris Corner Ministry of Oud - Thailand Oud in Cairo 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-THAILAND-OUD-IN-CAIRO-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHARUTO-MYSTERIOUS-TOBACCO",
+      "size_ml": 100,
+      "aliases": [
+        "Charuto Mysterious Tobacco 100 ml",
+        "Paris Corner Charuto Mysterious Tobacco 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-CHARUTO-MYSTERIOUS-TOBACCO-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-0686a294",
+      "size_ml": 100,
+      "aliases": [
+        "North Stag Huit VIII 100 ml",
+        "Paris Corner North Stag Huit VIII 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-0686a294-100-000",
+      "concentration": "Extrait de Parfum"
     }
   ]
 }
