@@ -18,8 +18,8 @@ class KhadlajCatalogReconciliationTests(unittest.TestCase):
         self.assertEqual(len(self.products), 166)
         self.assertEqual(len(self.by_name), 166)
 
-    def test_156_variants_have_unique_ids_and_parent_sizes(self):
-        self.assertEqual(len(self.variants), 156)
+    def test_157_variants_have_unique_ids_and_parent_sizes(self):
+        self.assertEqual(len(self.variants), 157)
         ids = [v["variant_id"] for v in self.variants]
         self.assertEqual(len(ids), len(set(ids)))
         for variant in self.variants:
@@ -48,6 +48,17 @@ class KhadlajCatalogReconciliationTests(unittest.TestCase):
         spray_variants = [v for v in self.variants if v["product_id"] == spray["product_id"]]
         self.assertTrue(any(v["size_ml"] == 35 for v in oil_variants))
         self.assertTrue(any(v["size_ml"] == 75 for v in spray_variants))
+
+
+    def test_ghadeer_gold_has_official_100ml_edp_variant(self):
+        product = self.by_name["Ghadeer Gold"]
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("concentration"), "Eau de Parfum")
+        self.assertEqual(product.get("formats_ml"), [100])
+        variant = next(v for v in self.variants if v["product_id"] == product["product_id"])
+        self.assertEqual(variant.get("size_ml"), 100)
+        self.assertEqual(variant.get("concentration"), "Eau de Parfum")
+        self.assertEqual(variant.get("source_evidence_url"), product.get("source_url"))
 
     def test_maya_is_a_perfume_oil_not_a_spray_variant(self):
         product = self.by_name["Maya"]
