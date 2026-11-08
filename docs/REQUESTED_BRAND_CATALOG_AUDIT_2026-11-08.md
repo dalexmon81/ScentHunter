@@ -95,3 +95,40 @@ Source:
 - Reconcile regional aliases and retired/discontinued products.
 - Do not create duplicate canonical identities or infer sizes, concentrations, GTINs, offers, prices or stock.
 - Keep all changes in draft PRs until tests and review are complete.
+
+
+## Follow-up source comparison: Assaf and French Avenue
+
+### Assaf
+
+The current Assaf UAE storefront has an official "All perfumes" collection and separate official navigation for the Lady, Frankel, Arrogate and Enable collections. The first page currently exposes individual product listings such as Arrogate Pink, Attacks, Gris Erik, Miss Arrogate, Arrogate Pink Diva, Rebel Enable, Wild Colt Elixir, Arrogate Comete, Noble, First Night, Strike Black, I'm Here Enable, Frankel Imagination, Dangerous Arrogate, Arrogate Euphoria, Troy Enable, Addict Blue and Lip Stick.
+
+The catalog currently has 140 Assaf identities. The 140-name range at assafperfumes.eu is explicitly described by that site's own disclaimer as an **independent reseller guide**, not the official Assaf website. It is useful for discovery and candidate reconciliation, but should not be cited as brand-owned evidence. The current Assaf UAE storefront is official and should be used to upgrade individual names only after each product detail page is checked.
+
+Official collection:
+- https://assaf.ae/collections/all-perfumes
+- https://assaf.ae/collections/
+
+Independent discovery reference (not official):
+- https://assafperfumes.eu/perfumes/
+
+### French Avenue
+
+The official French Avenue storefront's `/collections/all` currently reports 142 products (141 in stock and one out of stock at the time inspected). Its separate "all fragrances for sale" collection reports 141 products. The first page visibly includes Liquid Brun, Liquid Brun Limited Edition, Spectre Ghost, Vulcan Feu, Azzure Aoud, Amber Empire, Dusk Till Dawn, Royal Blend Sequoia, Noble Cedar, Jasmere, Atlantis Extrait, Ambroise Pour Femme, Aether, Royal Blend, Imperial Ocean and Cocoa Morado.
+
+The catalog contains 117 French Avenue identities. This is not sufficient evidence to add 24 or 25 rows automatically: the storefront count can include product bundles/duplicate merchandising, and the full paginated collection needs reconciliation by individual product title and product page. Keep the 117 existing identities, and harvest only confirmed missing fragrance identities after checking the actual product pages.
+
+Official storefront:
+- https://frenchavenue.com/collections
+- https://frenchavenue.com/collections/all
+- https://frenchavenue.com/collections/all-fragrances-for-sale
+
+Fragrantica's designer index reports 157 perfumes, including editions through 2026 and many collection names. It is a useful secondary discovery checklist, not a replacement for official product-page verification:
+- https://www.fragrantica.com/designers/French-Avenue.html
+
+### Immediate next verification tasks
+
+1. Page through the complete official Assaf UAE perfume collection and compare each product detail URL against the existing 140 canonical identities. Do not use the independent 140-name list as proof of official completeness.
+2. Page through all French Avenue official collection pages (including pagination and new arrivals), normalize only safe spelling/case aliases, and reconcile the product titles with the 117 current identities.
+3. For any proposed addition, preserve the exact official product URL and record why it is a distinct fragrance rather than a size, concentration variant, bundle or renamed duplicate.
+4. Do not change `identity_status` from `source_listed_name` to `source_verified_name` on the basis of a brand homepage or collection landing page alone.
