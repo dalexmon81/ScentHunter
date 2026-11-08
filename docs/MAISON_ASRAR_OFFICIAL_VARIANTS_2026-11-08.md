@@ -2,7 +2,7 @@
 
 ## Scope
 
-Adds nine 100 ml Eau de Parfum variants to existing Maison Asrar canonical identities. No canonical identities are added or removed. No retailer offers, prices, stock, or availability are imported.
+Adds eleven 100 ml Eau de Parfum variants to existing Maison Asrar canonical identities. No canonical identities are added or removed. No retailer offers, prices, stock, or availability are imported.
 
 ## Manufacturer evidence
 
@@ -19,6 +19,8 @@ Maison Asrar's official product pages identify these variants:
 | Soudfa | 100 ml | Eau de Parfum | https://maisonasrar.com/products/maison-asrar-soudfa-eau-de-parfum-100-ml-for-women |
 | Casablanca | 100 ml | Eau de Parfum | https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml |
 | Dear Jasmine | 100 ml | Eau de Parfum | https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml |
+| Desire | 100 ml | Eau de Parfum | https://maisonasrar.com/products/desire-eau-de-perfum-100ml |
+| Black | 100 ml | Eau de Parfum | https://maisonasrar.com/products/black-eau-de-perfum-100ml |
 
 The product-page URL slugs explicitly encode the size and Eau de Parfum designation. The official page title and product descriptions identify the corresponding fragrances. The current storefront may show some pages as sold out; this catalog change records product identity and variant attributes, not current availability.
 
@@ -32,4 +34,4 @@ The product-page URL slugs explicitly encode the size and Eau de Parfum designat
 
 ## Validation
 
-`backend/tests/test_maison_asrar_official_variants.py` checks all nine identities, official page URLs, size, concentration, parent-format alignment, and global variant ID uniqueness.
+`backend/tests/test_maison_asrar_official_variants.py` checks all eleven identities, official page URLs, size, concentration, parent-format alignment, and global variant ID uniqueness.
