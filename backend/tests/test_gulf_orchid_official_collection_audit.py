@@ -62,6 +62,17 @@ class GulfOrchidOfficialCollectionAuditTests(unittest.TestCase):
         self.assertNotIn("Vanilla Aura", names)
         self.assertNotIn("Vanilla Voyage", names)
 
+    def test_family_registry_matches_the_audited_gulf_orchid_product_set(self):
+        registry_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with registry_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        family = next(
+            row for row in registry["families"]
+            if row.get("family_id") == "gulf_orchid_catalog"
+        )
+        names = {row.get("canonical_name") for row in family["products"]}
+        self.assertEqual(names, set(EXPECTED))
+
     def test_no_duplicate_gulf_orchid_product_names(self):
         names = [row.get("canonical_name", "").casefold() for row in self.products]
         self.assertEqual(len(names), len(set(names)))
