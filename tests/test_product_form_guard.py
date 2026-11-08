@@ -2,13 +2,17 @@
 import json
 import tempfile
 import unittest
+import sys
 from pathlib import Path
 
-from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
-from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
-from backend.scenthunter_next_engine.models import MatchStatus, RetailerOffer
-from backend.scenthunter_next_engine.offer_normalizer import normalize_offer
-from backend.scenthunter_next_engine.product_form import (
+BACKEND = Path(__file__).resolve().parents[1] / "backend"
+sys.path.insert(0, str(BACKEND))
+
+from scenthunter_next_engine.catalog_repository import CatalogRepository
+from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+from scenthunter_next_engine.models import MatchStatus, RetailerOffer
+from scenthunter_next_engine.offer_normalizer import normalize_offer
+from scenthunter_next_engine.product_form import (
     PRODUCT_FORM_VALUES,
     detect_product_form,
     normalize_product_form,
@@ -180,7 +184,7 @@ class ProductFormGuardTests(unittest.TestCase):
         self.assertEqual(repository.skipped_variant_count(), 1)
 
     def test_only_evidence_checked_variants_are_classified_in_real_seed(self):
-        catalog_path = Path(__file__).resolve().parents[1] / "backend" / "product_catalog.json"
+        catalog_path = BACKEND / "product_catalog.json"
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
         expected = {
             "Maison Alhambra": {
