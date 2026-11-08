@@ -1412,9 +1412,12 @@
         "Dear Jasmine",
         "Maison Asrar Dear Jasmine"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml",
+      "source_evidence_url": "https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-3269274a",
@@ -36975,6 +36978,16 @@
         "Maison Asrar Casablanca Eau de Parfum 100 ml"
       ],
       "variant_id": "SHV-SH-MAISON-ASRAR-ad855115-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-f17a24a5",
+      "size_ml": 100,
+      "aliases": [
+        "Dear Jasmine 100 ml",
+        "Maison Asrar Dear Jasmine Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-f17a24a5-100-EDP",
       "concentration": "Eau de Parfum"
     }
   ]
