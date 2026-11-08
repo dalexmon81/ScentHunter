@@ -1,4 +1,4 @@
-"""Regression tests for the official Bujairami Hectic identity."""
+"""Regression tests for Bujairami listing evidence and identity handling."""
 import json
 import unittest
 from pathlib import Path
@@ -9,17 +9,14 @@ REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf
 
 
 class BujairamiCatalogTests(unittest.TestCase):
-    def test_hectic_is_a_canonical_name_with_official_provenance(self):
+    def test_hectic_is_a_canonical_name_with_listing_provenance(self):
         matches = [
             p for p in CATALOG["products"]
             if p.get("brand") == "Bujairami" and p.get("canonical_name") == "Hectic"
         ]
         self.assertEqual(len(matches), 1)
-        self.assertEqual(
-            matches[0]["source_url"],
-            "https://bujairami.com.au/products/hectic-inspired-by-louis-vuitton-imagination-extrait",
-        )
-        self.assertEqual(matches[0]["identity_status"], "source_verified_name")
+        self.assertEqual(matches[0]["source_url"], "https://bujairami.ae/collections/all?page=2")
+        self.assertEqual(matches[0]["identity_status"], "source_listed_name")
 
     def test_hectic_is_in_bujairami_family_registry(self):
         family = next(f for f in REGISTRY["families"] if f["brand"] == "Bujairami")
@@ -36,10 +33,7 @@ class BujairamiCatalogTests(unittest.TestCase):
     def test_catalog_product_ids_and_brand_name_pairs_are_unique(self):
         products = CATALOG["products"]
         ids = [p["product_id"] for p in products]
-        pairs = [
-            (p.get("brand") or p.get("brand_name"), p.get("canonical_name") or p.get("name"))
-            for p in products
-        ]
+        pairs = [(p.get("brand") or p.get("brand_name"), p.get("canonical_name") or p.get("name")) for p in products]
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(pairs), len(set(pairs)))
 
