@@ -22703,6 +22703,278 @@
       "identity_status": "source_listed_name",
       "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
       "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-PURE-CRYSTAL",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Pure Crystal",
+      "name": "Pure Crystal",
+      "family_id": "lattafa_catalog",
+      "family_name": "Pure Crystal",
+      "aliases": [
+        "Pure Crystal",
+        "Lattafa Pure Crystal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-NASMAAT",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Nasmaat",
+      "name": "Nasmaat",
+      "family_id": "lattafa_catalog",
+      "family_name": "Nasmaat",
+      "aliases": [
+        "Nasmaat",
+        "Lattafa Nasmaat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-LAYAAN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Layaan",
+      "name": "Layaan",
+      "family_id": "lattafa_catalog",
+      "family_name": "Layaan",
+      "aliases": [
+        "Layaan",
+        "Lattafa Layaan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-SHERIF",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Sherif",
+      "name": "Sherif",
+      "family_id": "lattafa_catalog",
+      "family_name": "Sherif",
+      "aliases": [
+        "Sherif",
+        "Lattafa Sherif"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-CHOCO-OVERDOSE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Choco Overdose",
+      "name": "Choco Overdose",
+      "family_id": "lattafa_catalog",
+      "family_name": "Choco Overdose",
+      "aliases": [
+        "Choco Overdose",
+        "Lattafa Choco Overdose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MALLOW-MADNESS",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mallow Madness",
+      "name": "Mallow Madness",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mallow Madness",
+      "aliases": [
+        "Mallow Madness",
+        "Lattafa Mallow Madness"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-COOKIE-CRAVE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Cookie Crave",
+      "name": "Cookie Crave",
+      "family_id": "lattafa_catalog",
+      "family_name": "Cookie Crave",
+      "aliases": [
+        "Cookie Crave",
+        "Lattafa Cookie Crave"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-WHIPPED-PLEASURE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Whipped Pleasure",
+      "name": "Whipped Pleasure",
+      "family_id": "lattafa_catalog",
+      "family_name": "Whipped Pleasure",
+      "aliases": [
+        "Whipped Pleasure",
+        "Lattafa Whipped Pleasure"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-VANILLA-FREAK",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Vanilla Freak",
+      "name": "Vanilla Freak",
+      "family_id": "lattafa_catalog",
+      "family_name": "Vanilla Freak",
+      "aliases": [
+        "Vanilla Freak",
+        "Lattafa Vanilla Freak"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-TAUREAU-DE-COMBAT",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Taureau De Combat",
+      "name": "Taureau De Combat",
+      "family_id": "lattafa_catalog",
+      "family_name": "Taureau De Combat",
+      "aliases": [
+        "Taureau De Combat",
+        "Lattafa Taureau De Combat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEBRAS-ELIXIR",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Nebras Elixir",
+      "name": "Nebras Elixir",
+      "family_id": "lattafa_catalog",
+      "family_name": "Nebras Elixir",
+      "aliases": [
+        "Nebras Elixir",
+        "Lattafa Nebras Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-NADIRA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Nadira",
+      "name": "Nadira",
+      "family_id": "lattafa_catalog",
+      "family_name": "Nadira",
+      "aliases": [
+        "Nadira",
+        "Lattafa Nadira"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-LATTAFA-SAFEER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Safeer",
+      "name": "Safeer",
+      "family_id": "lattafa_catalog",
+      "family_name": "Safeer",
+      "aliases": [
+        "Safeer",
+        "Lattafa Safeer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/perfumes/page/2/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/page/2/"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-IV",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness IV",
+      "name": "Highness IV",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness IV",
+      "aliases": [
+        "Highness IV",
+        "Afnan Highness IV"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.afnaneurope.com/collections/all-products?page=2",
+      "source_evidence_url": "https://www.afnaneurope.com/collections/all-products?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-V",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness V",
+      "name": "Highness V",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness V",
+      "aliases": [
+        "Highness V",
+        "Afnan Highness V"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.afnaneurope.com/collections/all-products?page=2",
+      "source_evidence_url": "https://www.afnaneurope.com/collections/all-products?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-IX",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness IX",
+      "name": "Highness IX",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness IX",
+      "aliases": [
+        "Highness IX",
+        "Afnan Highness IX"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.afnaneurope.com/collections/all-products?page=2",
+      "source_evidence_url": "https://www.afnaneurope.com/collections/all-products?page=2"
+    },
+    {
+      "product_id": "SH-AFNAN-HIGHNESS-X",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Highness X",
+      "name": "Highness X",
+      "family_id": "afnan_catalog",
+      "family_name": "Highness X",
+      "aliases": [
+        "Highness X",
+        "Afnan Highness X"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.afnaneurope.com/collections/all-products?page=2",
+      "source_evidence_url": "https://www.afnaneurope.com/collections/all-products?page=2"
     }
   ],
   "variants": [
