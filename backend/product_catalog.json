@@ -20269,6 +20269,246 @@
       "identity_status": "source_listed_name",
       "source_url": "https://bujairami.ae/collections/all?page=4",
       "source_evidence_url": "https://bujairami.ae/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-STRAWBERRY-SHAKE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Strawberry Shake",
+      "name": "Strawberry Shake",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Strawberry Shake",
+      "aliases": [
+        "Strawberry Shake",
+        "Khadlaj Strawberry Shake"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+    },
+    {
+      "product_id": "SH-KHADLAJ-NAFAIS-MAGRIB",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Nafais Magrib",
+      "name": "Nafais Magrib",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Nafais Magrib",
+      "aliases": [
+        "Nafais Magrib",
+        "Khadlaj Nafais Magrib"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MANSION",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Mansion",
+      "name": "Mansion",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Mansion",
+      "aliases": [
+        "Mansion",
+        "Khadlaj Mansion"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+    },
+    {
+      "product_id": "SH-KHADLAJ-PEACH-VELVET",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Peach Velvet",
+      "name": "Peach Velvet",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Peach Velvet",
+      "aliases": [
+        "Peach Velvet",
+        "Khadlaj Peach Velvet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-SPECTRE-WRAITH",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Spectre Wraith",
+      "name": "Spectre Wraith",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Spectre Wraith",
+      "aliases": [
+        "Spectre Wraith",
+        "French Avenue Spectre Wraith"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-COCOA-MORADO",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Cocoa Morado",
+      "name": "Cocoa Morado",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Cocoa Morado",
+      "aliases": [
+        "Cocoa Morado",
+        "French Avenue Cocoa Morado"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-AMBER-EMPIRE",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Amber Empire",
+      "name": "Amber Empire",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Amber Empire",
+      "aliases": [
+        "Amber Empire",
+        "French Avenue Amber Empire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-DUSK-TILL-DAWN",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Dusk Till Dawn",
+      "name": "Dusk Till Dawn",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Dusk Till Dawn",
+      "aliases": [
+        "Dusk Till Dawn",
+        "French Avenue Dusk Till Dawn"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ROYAL-BLEND-SEQUOIA",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Royal Blend Sequoia",
+      "name": "Royal Blend Sequoia",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Royal Blend Sequoia",
+      "aliases": [
+        "Royal Blend Sequoia",
+        "French Avenue Royal Blend Sequoia"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-NOBLE-CEDAR",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Noble Cedar",
+      "name": "Noble Cedar",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Noble Cedar",
+      "aliases": [
+        "Noble Cedar",
+        "French Avenue Noble Cedar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-JASMERE",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Jasmere",
+      "name": "Jasmere",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Jasmere",
+      "aliases": [
+        "Jasmere",
+        "French Avenue Jasmere"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ATLANTIS-EXTRAIT",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Atlantis Extrait",
+      "name": "Atlantis Extrait",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Atlantis Extrait",
+      "aliases": [
+        "Atlantis Extrait",
+        "French Avenue Atlantis Extrait"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-AMBROISE-POUR-FEMME",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Ambroise Pour Femme",
+      "name": "Ambroise Pour Femme",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Ambroise Pour Femme",
+      "aliases": [
+        "Ambroise Pour Femme",
+        "French Avenue Ambroise Pour Femme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-AETHER",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Aether",
+      "name": "Aether",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Aether",
+      "aliases": [
+        "Aether",
+        "French Avenue Aether"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-IMPERIAL-OCEAN",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Imperial Ocean",
+      "name": "Imperial Ocean",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Imperial Ocean",
+      "aliases": [
+        "Imperial Ocean",
+        "French Avenue Imperial Ocean"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
     }
   ],
   "variants": [
