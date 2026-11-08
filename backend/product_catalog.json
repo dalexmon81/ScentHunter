@@ -2789,8 +2789,10 @@
         "Affogato Al Caffe",
         "Paris Corner Affogato Al Caffe"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/affogato-al-caffe",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/affogato-al-caffe",
+      "collection_name": "Paris Corner"
     },
     {
       "product_id": "SH-PARIS-CORNER-e1dc5fd3",
@@ -15657,8 +15659,10 @@
         "Attractus",
         "Paris Corner Attractus"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/attractus",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/attractus",
+      "collection_name": "Pendora Scents"
     },
     {
       "product_id": "SH-PARIS-CORNER-BANANA-BLISS",
@@ -17032,9 +17036,10 @@
         "Acadia Intenso Emir",
         "Paris Corner Acadia Intenso Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=1",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/acadia-intenso-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/acadia-intenso-emir",
+      "collection_name": "Emir"
     },
     {
       "product_id": "SH-PARIS-CORNER-ARCANA",
@@ -17304,9 +17309,10 @@
         "Minya Caramel Dulce",
         "Paris Corner Minya Caramel Dulce"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/minya-caramel-dulce",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-caramel-dulce",
+      "collection_name": "Minya"
     },
     {
       "product_id": "SH-PARIS-CORNER-MINYA-COCO-LUSH",
@@ -23272,9 +23278,10 @@
         "North Stag Hypnotic Oud Quinze XV",
         "Paris Corner North Stag Hypnotic Oud Quinze XV"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv",
+      "collection_name": "North Stag"
     },
     {
       "product_id": "SH-PARIS-CORNER-0ba59d9a",
@@ -23624,9 +23631,10 @@
         "Reham Rose Petals",
         "Paris Corner Reham Rose Petals"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/reham-rose-petals",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/reham-rose-petals",
+      "collection_name": "Reham"
     },
     {
       "product_id": "SH-PARIS-CORNER-dbb9189e",
@@ -29621,6 +29629,66 @@
       ],
       "variant_id": "SHV-SH-ARMAF-35441c5c-10-000",
       "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-8a274fa1",
+      "size_ml": 100,
+      "aliases": [
+        "Affogato Al Caffe 100 ml",
+        "Paris Corner Affogato Al Caffe 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-8a274fa1-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/affogato-al-caffe"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINYA-CARAMEL-DULCE",
+      "size_ml": 100,
+      "aliases": [
+        "Minya Caramel Dulce 100 ml",
+        "Paris Corner Minya Caramel Dulce 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-MINYA-CARAMEL-DULCE-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/minya-caramel-dulce"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-2455de10",
+      "size_ml": 100,
+      "aliases": [
+        "Reham Rose Petals 100 ml",
+        "Paris Corner Reham Rose Petals 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-2455de10-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/reham-rose-petals"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ACADIA-INTENSO-EMIR",
+      "size_ml": 100,
+      "aliases": [
+        "Acadia Intenso Emir 100 ml",
+        "Paris Corner Acadia Intenso Emir 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ACADIA-INTENSO-EMIR-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/acadia-intenso-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ATTRACTUS",
+      "size_ml": 100,
+      "aliases": [
+        "Attractus 100 ml",
+        "Paris Corner Attractus 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ATTRACTUS-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/attractus"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ff1782d3",
+      "size_ml": 100,
+      "aliases": [
+        "North Stag Hypnotic Oud Quinze XV 100 ml",
+        "Paris Corner North Stag Hypnotic Oud Quinze XV 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ff1782d3-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv"
     }
   ]
 }
