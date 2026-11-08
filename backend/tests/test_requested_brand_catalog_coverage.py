@@ -16,7 +16,7 @@ MINIMUM_BRAND_COUNTS = {
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
-    "Paris Corner": 245,
+    "Paris Corner": 258,
     "Assaf": 140,
     "Al Wataniah": 86,
     "Armaf": 190,
@@ -463,6 +463,58 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_paris_corner_ministry_of_oud_and_tiramisu_official_products(self):
+        expected = {
+            "Ministry of Oud - Amber Oud": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+            "Ministry of Oud - Gladiators Oath": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath",
+            "Ministry of Oud - Maestro's Symphony": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony",
+            "Ministry of Oud - Nile Whispers": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers",
+            "Ministry of Oud - Oud Beyond the Wall": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall",
+            "Ministry of Oud - Oud Indonesian": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+            "Ministry of Oud - Oud Royal": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+            "Ministry of Oud - Oud Satin": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+            "Ministry of Oud - Romance Reverie": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie",
+            "Ministry of Oud - Strictly Oud": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+            "Ministry of Oud Greatest": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+            "Tiramisu Speculoos": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"] and v.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertNotIn("concentration", matching[0])
+
+    def test_paris_corner_spelling_variants_are_aliases_not_new_products(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        expected = {
+            "Attractus": ["Attratus"],
+            "Harrier Absolute": ["Harrier Absoulte"],
+        }
+        for canonical, aliases in expected.items():
+            with self.subTest(canonical=canonical):
+                self.assertIn(canonical, products)
+                for alias in aliases:
+                    self.assertIn(alias, products[canonical].get("aliases", []))
 
 if __name__ == "__main__":
     unittest.main()
