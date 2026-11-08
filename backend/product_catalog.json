@@ -11990,9 +11990,10 @@
         "Club de Nuit Untold",
         "Armaf Club de Nuit Untold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-untold",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-untold",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-f0af9d9d",
@@ -12054,9 +12055,10 @@
         "Club de Nuit Intense Man Pure Parfum",
         "Armaf Club de Nuit Intense Man Pure Parfum"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-ARMAF-4c83dfcd",
@@ -12118,9 +12120,10 @@
         "Club de Nuit Woman",
         "Armaf Club de Nuit Woman"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-w",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-w",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-4494f7fc",
@@ -12134,9 +12137,10 @@
         "Club de Nuit Sillage",
         "Armaf Club de Nuit Sillage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-661683d6",
@@ -12998,9 +13002,9 @@
         "Club de Nuit Urban Man Elixir",
         "Armaf Club de Nuit Urban Man Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml",
       "concentration": "Eau de Parfum"
     },
     {
@@ -13015,9 +13019,9 @@
         "Club de Nuit Iconic",
         "Armaf Club de Nuit Iconic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
       "concentration": "Eau de Parfum"
     },
     {
@@ -29407,6 +29411,216 @@
       ],
       "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-50-000",
       "source_url": "https://bujairami.com.au/products/love-spell-original-creation-50ml"
+    },
+    {
+      "product_id": "SH-ARMAF-88c7f40b",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Untold 200 ml",
+        "ARMAF Club de Nuit Untold 200ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-88c7f40b-200-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-untold"
+    },
+    {
+      "product_id": "SH-ARMAF-88c7f40b",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Untold 105 ml",
+        "ARMAF Club de Nuit Untold 105ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-88c7f40b-105-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-untold"
+    },
+    {
+      "product_id": "SH-ARMAF-88c7f40b",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Untold 30 ml",
+        "ARMAF Club de Nuit Untold 30ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-88c7f40b-30-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-untold"
+    },
+    {
+      "product_id": "SH-ARMAF-88c7f40b",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Untold 10 ml",
+        "ARMAF Club de Nuit Untold 10ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-88c7f40b-10-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-untold"
+    },
+    {
+      "product_id": "SH-ARMAF-4494f7fc",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Sillage 105 ml",
+        "ARMAF Club de Nuit Sillage 105ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-4494f7fc-105-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men"
+    },
+    {
+      "product_id": "SH-ARMAF-4494f7fc",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Sillage 30 ml",
+        "ARMAF Club de Nuit Sillage 30ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-4494f7fc-30-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men"
+    },
+    {
+      "product_id": "SH-ARMAF-4494f7fc",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Sillage 10 ml",
+        "ARMAF Club de Nuit Sillage 10ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-4494f7fc-10-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men"
+    },
+    {
+      "product_id": "SH-ARMAF-4494f7fc",
+      "size_ml": 250,
+      "aliases": [
+        "Club de Nuit Sillage 250 ml",
+        "ARMAF Club de Nuit Sillage 250ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-4494f7fc-250-000",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men"
+    },
+    {
+      "product_id": "SH-ARMAF-58e48fd1",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Woman 200 ml",
+        "ARMAF Club de Nuit Woman 200ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-58e48fd1-200-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-w"
+    },
+    {
+      "product_id": "SH-ARMAF-58e48fd1",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Woman 105 ml",
+        "ARMAF Club de Nuit Woman 105ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-58e48fd1-105-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-w"
+    },
+    {
+      "product_id": "SH-ARMAF-58e48fd1",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Woman 30 ml",
+        "ARMAF Club de Nuit Woman 30ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-58e48fd1-30-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-w"
+    },
+    {
+      "product_id": "SH-ARMAF-58e48fd1",
+      "size_ml": 250,
+      "aliases": [
+        "Club de Nuit Woman 250 ml",
+        "ARMAF Club de Nuit Woman 250ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-58e48fd1-250-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-w"
+    },
+    {
+      "product_id": "SH-ARMAF-58e48fd1",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Woman 10 ml",
+        "ARMAF Club de Nuit Woman 10ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-58e48fd1-10-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-w"
+    },
+    {
+      "product_id": "SH-ARMAF-cb6f0532",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Urban Man Elixir 105 ml",
+        "ARMAF Club de Nuit Urban Man Elixir 105ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-cb6f0532-105-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml"
+    },
+    {
+      "product_id": "SH-ARMAF-cb6f0532",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Urban Man Elixir 30 ml",
+        "ARMAF Club de Nuit Urban Man Elixir 30ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-cb6f0532-30-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml"
+    },
+    {
+      "product_id": "SH-ARMAF-cb6f0532",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Urban Man Elixir 10 ml",
+        "ARMAF Club de Nuit Urban Man Elixir 10ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-cb6f0532-10-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml"
+    },
+    {
+      "product_id": "SH-ARMAF-cb6f0532",
+      "size_ml": 250,
+      "aliases": [
+        "Club de Nuit Urban Man Elixir 250 ml",
+        "ARMAF Club de Nuit Urban Man Elixir 250ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-cb6f0532-250-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml"
+    },
+    {
+      "product_id": "SH-ARMAF-35441c5c",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Iconic 200 ml",
+        "ARMAF Club de Nuit Iconic 200ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-35441c5c-200-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-ARMAF-35441c5c",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Iconic 105 ml",
+        "ARMAF Club de Nuit Iconic 105ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-35441c5c-105-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-ARMAF-35441c5c",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Iconic 30 ml",
+        "ARMAF Club de Nuit Iconic 30ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-35441c5c-30-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-ARMAF-35441c5c",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Iconic 10 ml",
+        "ARMAF Club de Nuit Iconic 10ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-35441c5c-10-000",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
     }
   ]
 }
