@@ -33716,6 +33716,26 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cloud 9",
+      "name": "Cloud 9",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Cloud 9",
+      "aliases": [
+        "Cloud 9",
+        "Gulf Orchid Cloud 9"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/cloud-9",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9"
     }
   ],
   "variants": [
@@ -36468,6 +36488,16 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud 9 100 ml",
+        "Gulf Orchid Cloud 9 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-CLOUD-9-100-000",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
