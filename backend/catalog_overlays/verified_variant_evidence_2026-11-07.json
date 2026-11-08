@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-11-07",
+  "checked_at": "2026-11-08",
   "purpose": "Source-backed product variant evidence; no retailer offer data.",
   "rules": [
     "Only exact brand/fragrance matches are enriched.",
@@ -227,6 +227,16 @@
       "brand": "Games of Spades",
       "url": "https://jomilanoparis.com/products/game-of-spades-royale",
       "note": "Official Jo Milano Paris product page explicitly lists Game of Spades Royale, Parfum formulation, and the listed ml size options."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/cloud-9",
+      "note": "Official Gulf Orchid product page explicitly identifies Cloud 9 as 100 ML EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/matcha-latte",
+      "note": "Official Gulf Orchid product page explicitly identifies Matcha Latte as 100 ML EDP."
     }
   ],
   "products": [
@@ -4475,6 +4485,28 @@
         {
           "concentration": "Parfum",
           "size_ml": 50
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Cloud 9",
+      "source_url": "https://shop-gulforchid.com/products/cloud-9",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Matcha Latte",
+      "source_url": "https://shop-gulforchid.com/products/matcha-latte",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
         }
       ]
     }
