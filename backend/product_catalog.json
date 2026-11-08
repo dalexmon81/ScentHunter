@@ -32740,10 +32740,14 @@
         "Nawal Alexandrite",
         "Al Wataniah Nawal Alexandrite"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/nawal-alexandrite",
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-alexandrite",
+      "collection_name": "Classic",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-WATANI-NOIR",
@@ -32910,10 +32914,14 @@
         "Nawal Bronzite",
         "Al Wataniah Nawal Bronzite"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/nawal-bronzite",
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-bronzite",
+      "collection_name": "Classic",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-NAWAL-TANZANITE",
@@ -33141,10 +33149,14 @@
         "Lazuli",
         "Al Wataniah Lazuli"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/lazuli",
+      "source_evidence_url": "https://www.alwataniah.com/products/lazuli",
+      "collection_name": "Eternal",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-HOUSE-OF-OUD",
@@ -33175,10 +33187,14 @@
         "Fayyad",
         "Al Wataniah Fayyad"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/fayyad",
+      "source_evidence_url": "https://www.alwataniah.com/products/fayyad",
+      "collection_name": "Eternal",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-SAHARI",
@@ -33192,10 +33208,14 @@
         "Sahari",
         "Al Wataniah Sahari"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/sahari",
+      "source_evidence_url": "https://www.alwataniah.com/products/sahari",
+      "collection_name": "Eternal",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-AMNIA",
@@ -33243,10 +33263,14 @@
         "Layali",
         "Al Wataniah Layali"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/layali",
+      "source_evidence_url": "https://www.alwataniah.com/products/layali",
+      "collection_name": "Eternal",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-ANWAN",
@@ -37810,6 +37834,72 @@
         "Al Wataniah Sultan Al Lail 100 ml"
       ],
       "source_url": "https://www.alwataniah.com/products/sultan-al-lail"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LAZULI",
+      "variant_id": "SHV-SH-AL-WATANIAH-LAZULI-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Lazuli 100 ml",
+        "Al Wataniah Lazuli 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/lazuli"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SAHARI",
+      "variant_id": "SHV-SH-AL-WATANIAH-SAHARI-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sahari 100 ml",
+        "Al Wataniah Sahari 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/sahari"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LAYALI",
+      "variant_id": "SHV-SH-AL-WATANIAH-LAYALI-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Layali 100 ml",
+        "Al Wataniah Layali 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/layali"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-ALEXANDRITE",
+      "variant_id": "SHV-SH-AL-WATANIAH-NAWAL-ALEXANDRITE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nawal Alexandrite 100 ml",
+        "Al Wataniah Nawal Alexandrite 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/nawal-alexandrite"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-FAYYAD",
+      "variant_id": "SHV-SH-AL-WATANIAH-FAYYAD-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Fayyad 100 ml",
+        "Al Wataniah Fayyad 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/fayyad"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-BRONZITE",
+      "variant_id": "SHV-SH-AL-WATANIAH-NAWAL-BRONZITE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nawal Bronzite 100 ml",
+        "Al Wataniah Nawal Bronzite 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/nawal-bronzite"
     }
   ]
 }

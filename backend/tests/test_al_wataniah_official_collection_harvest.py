@@ -376,6 +376,7 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                     "Cloud", "Crème", "Sabah Al Ward", "Sabah Al Ward Sugar", "Special Oud",
                     "Attar Al Wesal", "Rose Mystery Intense", "Nawal Tanzanite", "Durrat Al Aroos",
                     "Ameeri", "Sabah Al Ward Garden of Eden", "Al Layl", "Ameerati", "Sultan Al Lail",
+                    "Lazuli", "Sahari", "Layali", "Nawal Alexandrite", "Fayyad", "Nawal Bronzite",
                 }
                 if name in detail_verified:
                     self.assertEqual(product.get("identity_status"), "source_verified_name")
@@ -398,10 +399,10 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             if p.get("brand") == "Al Wataniah"
         }
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in alwataniah_ids]
-        self.assertEqual(len(variants), 27)
+        self.assertEqual(len(variants), 33)
         self.assertEqual(
             {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
-            {"Lemon Souffle", "Choco Truffle", "Kayaan Classic", "Kayaan Terra", "Kayaan Gold", "Kayaan Midnight", "Al Daiem", "Al Daiem Elixir", "Arya Peony Rose", "Royal Oak I", "Royal Oak II", "Milele", "Turquois", "Cloud", "Crème", "Sabah Al Ward", "Sabah Al Ward Sugar", "Special Oud", "Attar Al Wesal", "Rose Mystery Intense", "Nawal Tanzanite", "Durrat Al Aroos", "Ameeri", "Sabah Al Ward Garden of Eden", "Al Layl", "Ameerati", "Sultan Al Lail"},
+            {"Lemon Souffle", "Choco Truffle", "Kayaan Classic", "Kayaan Terra", "Kayaan Gold", "Kayaan Midnight", "Al Daiem", "Al Daiem Elixir", "Arya Peony Rose", "Royal Oak I", "Royal Oak II", "Milele", "Turquois", "Cloud", "Crème", "Sabah Al Ward", "Sabah Al Ward Sugar", "Special Oud", "Attar Al Wesal", "Rose Mystery Intense", "Nawal Tanzanite", "Durrat Al Aroos", "Ameeri", "Sabah Al Ward Garden of Eden", "Al Layl", "Ameerati", "Sultan Al Lail", "Lazuli", "Sahari", "Layali", "Nawal Alexandrite", "Fayyad", "Nawal Bronzite"},
         )
 
 
