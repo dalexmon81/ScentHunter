@@ -1,4 +1,4 @@
-"""Regression tests for official Lattafa identity additions."""
+"""Regression tests for official Lattafa identity additions and family assignment."""
 import json
 import unittest
 from pathlib import Path
@@ -24,14 +24,28 @@ class LattafaCatalogTests(unittest.TestCase):
                 self.assertEqual(products[name]["identity_status"], "source_verified_name")
 
     def test_lattta_family_registry_contains_both_names(self):
-        family = next(f for f in REGISTRY["families"] if f["brand"] == "Lattafa")
-        names = {p["canonical_name"] for p in family["products"]}
+        names = {
+            p["canonical_name"]
+            for family in REGISTRY["families"]
+            if family.get("brand") == "Lattafa"
+            for p in family["products"]
+        }
         self.assertTrue({"Queen of Arabia", "Musamam Black Intense"}.issubset(names))
+
+    def test_asad_line_contains_only_asad_products(self):
+        family = next(f for f in REGISTRY["families"] if f["family_id"] == "lattafa_asad")
+        names = {p["canonical_name"] for p in family["products"]}
+        self.assertEqual(names, {"Asad", "Asad Zanzibar", "Asad Bourbon", "Asad Elixir"})
+
+    def test_non_asad_lattta_products_are_in_the_general_family(self):
+        family = next(f for f in REGISTRY["families"] if f["family_id"] == "lattafa_catalog")
+        names = {p["canonical_name"] for p in family["products"]}
+        self.assertTrue({"Queen of Arabia", "Musamam White Intense", "Musamam Black Intense"}.issubset(names))
 
     def test_no_duplicate_ids_or_brand_name_pairs(self):
         products = CATALOG["products"]
         ids = [p["product_id"] for p in products]
-        pairs = [(p.get("brand") or p.get("brand_name"), p.get("canonical_name") or p.get("name")) for p in products]
+        pairs = [(p.get("brand") or p.get("brand_name"), p["canonical_name"]) for p in products]
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(pairs), len(set(pairs)))
 
