@@ -68,6 +68,7 @@ A separate `fly-pilot.yml` workflow reports a failed status on this branch, but 
 
 ## Deferred source-level checks
 The following older regression modules are not part of this CI gate because their assertions currently expect product rows or product-level evidence that is not present in the canonical seed. They remain visible in the repository for follow-up; no missing product sizes or sources were invented to make them pass:
+- Khadlaj La Fede: 33 of the 36 registry discovery names remain registry-only; only three have been promoted after individual official product-detail verification.
 - `test_maison_asrar_lock_and_key.py`: Plot Twist, Love Key and Unsolved Mystery do not yet have the asserted canonical product and 100 ml variant records.
 - `test_arabiyat_prestige_extrait.py`, `test_arabiyat_prestige_marwa_extrait.py`, `test_arabiyat_prestige_official_store.py`: asserted detail-page provenance and explicit 60 ml variants are not yet established for the current seed.
 
@@ -80,8 +81,8 @@ The following older regression modules are not part of this CI gate because thei
 ## Khadlaj La Fede detail verification
 - Added three canonical La Fede identities that were already present in the family registry but missing from the product seed: Intoxicate Mystique, Celebrity Crush and Celebrity Fame.
 - Verified each against its individual official Khadlaj product detail. Recorded 100 ml Extrait de Parfum for Intoxicate Mystique and 100 ml Eau de Parfum for Celebrity Crush and Celebrity Fame.
-- Synchronized the three family-registry `formats_ml` entries; the La Fede family now has 36 canonical product rows with exact registry parity.
-- Added `backend.tests.test_khadlaj_la_fede` to the CI workflow.
+- Synchronized the three corresponding family-registry `formats_ml` entries. The registry still contains 36 La Fede discovery names; **3 are now canonical and individually verified, while 33 remain registry-only candidates** pending product-level review. They have not been bulk-imported.
+- Added `backend.tests.test_khadlaj_la_fede` to the CI workflow. The test now explicitly protects this evidence boundary rather than requiring all 36 registry candidates to be canonical.
 
 ## Arabiyat Prestige Extrait follow-up
 - Promoted the existing `Mahd Al Dhahab Extrait` canonical identity from collection/index-listed to `source_verified_name` using the individual MyPerfumes Europe official Arabiyat Prestige product detail: https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait
