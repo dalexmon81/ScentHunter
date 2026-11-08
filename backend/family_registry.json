@@ -3017,6 +3017,34 @@
             "Icon",
             "Khadlaj Icon"
           ]
+        },
+        {
+          "canonical_name": "Strawberry Shake",
+          "aliases": [
+            "Strawberry Shake",
+            "Khadlaj Strawberry Shake"
+          ]
+        },
+        {
+          "canonical_name": "Nafais Magrib",
+          "aliases": [
+            "Nafais Magrib",
+            "Khadlaj Nafais Magrib"
+          ]
+        },
+        {
+          "canonical_name": "Mansion",
+          "aliases": [
+            "Mansion",
+            "Khadlaj Mansion"
+          ]
+        },
+        {
+          "canonical_name": "Peach Velvet",
+          "aliases": [
+            "Peach Velvet",
+            "Khadlaj Peach Velvet"
+          ]
         }
       ]
     },
@@ -6759,6 +6787,83 @@
           "aliases": [
             "Vulcan Feu",
             "French Avenue Vulcan Feu"
+          ]
+        },
+        {
+          "canonical_name": "Spectre Wraith",
+          "aliases": [
+            "Spectre Wraith",
+            "French Avenue Spectre Wraith"
+          ]
+        },
+        {
+          "canonical_name": "Cocoa Morado",
+          "aliases": [
+            "Cocoa Morado",
+            "French Avenue Cocoa Morado"
+          ]
+        },
+        {
+          "canonical_name": "Amber Empire",
+          "aliases": [
+            "Amber Empire",
+            "French Avenue Amber Empire"
+          ]
+        },
+        {
+          "canonical_name": "Dusk Till Dawn",
+          "aliases": [
+            "Dusk Till Dawn",
+            "French Avenue Dusk Till Dawn"
+          ]
+        },
+        {
+          "canonical_name": "Royal Blend Sequoia",
+          "aliases": [
+            "Royal Blend Sequoia",
+            "French Avenue Royal Blend Sequoia"
+          ]
+        },
+        {
+          "canonical_name": "Noble Cedar",
+          "aliases": [
+            "Noble Cedar",
+            "French Avenue Noble Cedar"
+          ]
+        },
+        {
+          "canonical_name": "Jasmere",
+          "aliases": [
+            "Jasmere",
+            "French Avenue Jasmere"
+          ]
+        },
+        {
+          "canonical_name": "Atlantis Extrait",
+          "aliases": [
+            "Atlantis Extrait",
+            "French Avenue Atlantis Extrait"
+          ]
+        },
+        {
+          "canonical_name": "Ambroise Pour Femme",
+          "aliases": [
+            "Ambroise Pour Femme",
+            "French Avenue Ambroise Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "Aether",
+          "aliases": [
+            "Aether",
+            "French Avenue Aether"
+          ]
+        },
+        {
+          "canonical_name": "Imperial Ocean",
+          "aliases": [
+            "Imperial Ocean",
+            "French Avenue Imperial Ocean"
           ]
         }
       ]
