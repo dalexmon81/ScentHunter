@@ -16,7 +16,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 99,
     "Maison Asrar": 120,
-    "Khadlaj": 116,
+    "Khadlaj": 210,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
