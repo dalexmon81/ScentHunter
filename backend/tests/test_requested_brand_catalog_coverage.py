@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
-    "Bujairami": 151,
+    "Bujairami": 161,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -499,6 +499,41 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     ]
                     self.assertEqual(len(matching), 1)
                     self.assertNotIn("concentration", matching[0])
+
+
+    def test_bujairami_second_official_harvest_batch_has_verified_100ml_variants(self):
+        expected = {
+            "Dominus": ("Eau de Parfum", "https://bujairami.com.au/products/dominus-inspired-by-anelo-pernoire"),
+            "Lucid Dream": ("Extrait de Parfum", "https://bujairami.com.au/products/lucid-dream-inspired-by-lucius-fragrance-du-bois-extrait"),
+            "Drip": ("Extrait de Parfum", "https://bujairami.com.au/product/drip-inspired-by-afternoon-swim-louis-vuitton-extrait/?add-to-cart=243936"),
+            "Sandy Shores": ("Eau de Parfum", "https://bujairami.com.au/products/sea-of-emotions-inspired-louis-vuitton-by-on-the-beach"),
+            "Shinko": ("Eau de Parfum", "https://bujairami.com.au/products/137683"),
+            "Kokoma Paradise": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/"),
+            "Eleganto": ("Extrait de Parfum", "https://bujairamiperfumes.eu/perfumes/eleganto/"),
+            "Safari Squeeze": ("Eau de Parfum", "https://bujairami.com.au/products/safari-squeeze-inspired-by-tales-from-zanzibar-memoirs-of-a-perfume-collector"),
+            "Stellar": ("Eau de Parfum", "https://bujairami.com.au/products/stellar-inspired-by-city-of-stars-by-louis-vuitton"),
+            "Downtown": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/downtown/"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (concentration, source_url) in expected.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name" if "bujairami.com.au" in source_url else "source_listed_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
