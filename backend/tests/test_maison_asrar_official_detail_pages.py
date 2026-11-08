@@ -5,6 +5,9 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+FAMILY_REGISTRY = json.loads(
+    (BACKEND / "family_registry.json").read_text(encoding="utf-8")
+)
 
 EXPECTED = {
     "Bloom Bloom": (
@@ -60,6 +63,18 @@ class MaisonAsrarOfficialFragranceTests(unittest.TestCase):
                 self.assertEqual(product.get("identity_status"), "source_verified_name")
                 self.assertEqual(product.get("source_url"), url)
                 self.assertEqual(product.get("source_evidence_url"), url)
+
+    def test_verified_sizes_are_synced_to_family_registry(self):
+        family = next(
+            row for row in FAMILY_REGISTRY.get("families", [])
+            if row.get("brand") == "Maison Asrar"
+        )
+        registry_products = {
+            row.get("canonical_name"): row for row in family.get("products", [])
+        }
+        for name, (_url, size) in EXPECTED.items():
+            with self.subTest(product=name):
+                self.assertEqual(registry_products[name].get("formats_ml"), [size])
 
     def test_explicit_edp_size_variants_are_present_once_with_detail_evidence(self):
         products = {
