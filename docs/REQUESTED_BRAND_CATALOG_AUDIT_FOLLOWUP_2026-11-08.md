@@ -87,3 +87,7 @@ For each outstanding candidate:
 - It does not mark absent or older identities as discontinued.
 - It does not promote secondary-source-only leads.
 - It does not modify `main`, PR #424, PR #437 or PR #439.
+
+## Snapshot discrepancy to reconcile
+
+The PR #439 description currently reports **273 explicit variants**, while parsing the `product_catalog.json` blob at its recorded head commit `50baaefcf8d2b1b5764cbaa40f691c8685ba5c56` yields **291 variant rows**. The audit count above is the direct JSON row count. This discrepancy should be reconciled in a dedicated follow-up before anyone relies on the PR description's variant total. The requested-brand coverage test currently checks per-brand minimum identity counts and selected variant cases; it does not assert the catalog-wide variant total.
