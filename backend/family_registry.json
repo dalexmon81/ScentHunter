@@ -1062,7 +1062,8 @@
           "canonical_name": "California",
           "aliases": [
             "California",
-            "Mykonos California"
+            "Mykonos California",
+            "California Signature"
           ],
           "formats_ml": [
             50,
@@ -1236,7 +1237,8 @@
           "canonical_name": "Xoxo Rosy",
           "aliases": [
             "Xoxo Rosy",
-            "Mykonos Xoxo Rosy"
+            "Mykonos Xoxo Rosy",
+            "XoXo, Rosy"
           ],
           "formats_ml": [
             50
@@ -1248,7 +1250,9 @@
             "Empire x RRQ",
             "Mykonos Empire x RRQ",
             "Empire (Mykonos x RRQ)",
-            "Mykonos Empire (Mykonos x RRQ)"
+            "Mykonos Empire (Mykonos x RRQ)",
+            "Empire",
+            "Mykonos Empire"
           ],
           "formats_ml": [
             50,
@@ -1395,7 +1399,8 @@
           "canonical_name": "Nautilus",
           "aliases": [
             "Nautilus",
-            "Mykonos Nautilus"
+            "Mykonos Nautilus",
+            "Nautilius"
           ],
           "formats_ml": [
             100
@@ -1444,7 +1449,8 @@
           "canonical_name": "Affair",
           "aliases": [
             "Affair",
-            "Mykonos Affair"
+            "Mykonos Affair",
+            "Intimate Affair"
           ]
         },
         {
@@ -1458,7 +1464,8 @@
           "canonical_name": "Shades Perfume",
           "aliases": [
             "Shades Perfume",
-            "Mykonos Shades Perfume"
+            "Mykonos Shades Perfume",
+            "Shades Parfum"
           ]
         },
         {
@@ -1472,7 +1479,8 @@
           "canonical_name": "Jynx",
           "aliases": [
             "Jynx",
-            "Mykonos Jynx"
+            "Mykonos Jynx",
+            "Jinx"
           ]
         },
         {
@@ -1847,6 +1855,62 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Adelina",
+          "aliases": [
+            "Adelina",
+            "Mykonos Adelina"
+          ]
+        },
+        {
+          "canonical_name": "Bloody Mary",
+          "aliases": [
+            "Bloody Mary",
+            "Mykonos Bloody Mary"
+          ]
+        },
+        {
+          "canonical_name": "Crystals",
+          "aliases": [
+            "Crystals",
+            "Mykonos Crystals"
+          ]
+        },
+        {
+          "canonical_name": "Eclipse",
+          "aliases": [
+            "Eclipse",
+            "Mykonos Eclipse"
+          ]
+        },
+        {
+          "canonical_name": "Nashi Pear Garden",
+          "aliases": [
+            "Nashi Pear Garden",
+            "Mykonos Nashi Pear Garden"
+          ]
+        },
+        {
+          "canonical_name": "Roulette",
+          "aliases": [
+            "Roulette",
+            "Mykonos Roulette"
+          ]
+        },
+        {
+          "canonical_name": "Zeus",
+          "aliases": [
+            "Zeus",
+            "Mykonos Zeus"
+          ]
+        },
+        {
+          "canonical_name": "It's Not Ella",
+          "aliases": [
+            "It's Not Ella",
+            "Mykonos It's Not Ella"
           ]
         }
       ]
