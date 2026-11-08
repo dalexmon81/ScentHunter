@@ -10414,6 +10414,34 @@
             "Cloud 9",
             "Gulf Orchid Cloud 9"
           ]
+        },
+        {
+          "canonical_name": "Candy Bite",
+          "aliases": [
+            "Candy Bite",
+            "Gulf Orchid Candy Bite"
+          ]
+        },
+        {
+          "canonical_name": "Matcha Latte",
+          "aliases": [
+            "Matcha Latte",
+            "Gulf Orchid Matcha Latte"
+          ]
+        },
+        {
+          "canonical_name": "Maestro",
+          "aliases": [
+            "Maestro",
+            "Gulf Orchid Maestro"
+          ]
+        },
+        {
+          "canonical_name": "Rice Milk",
+          "aliases": [
+            "Rice Milk",
+            "Gulf Orchid Rice Milk"
+          ]
         }
       ]
     },
