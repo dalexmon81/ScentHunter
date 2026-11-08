@@ -33822,6 +33822,26 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Tiramisu Speculoos",
+      "name": "Tiramisu Speculoos",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Tiramisu Speculoos",
+      "aliases": [
+        "Tiramisu Speculoos",
+        "Tiramisu Speculoos 100ML",
+        "Paris Corner Tiramisu Speculoos"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37032,6 +37052,15 @@
       "aliases": [
         "Perseviron Fig Hug 100 ml",
         "Paris Corner Perseviron Fig Hug 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS",
+      "variant_id": "SHV-SH-PARIS-CORNER-TIRAMISU-SPECULOOS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Tiramisu Speculoos 100 ml",
+        "Paris Corner Tiramisu Speculoos 100 ml"
       ]
     }
   ]
