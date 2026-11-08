@@ -8,14 +8,14 @@
 
 ## Canonical seed snapshot
 - Canonical product identities: **1720**
-- Explicit variant rows: **184**
+- Explicit variant rows: **185**
 - Family registry groups: **34**
 - Product IDs duplicated: **0**
 - Variant IDs duplicated: **0**
 - Products missing source_url: **0**
 - Orphan variants: **0**
 - Duplicate brand + accent-normalized canonical-name pairs: **0**
-- Product identity evidence: **98 source_verified_name**, **1622 source_listed_name**.
+- Product identity evidence: **99 source_verified_name**, **1621 source_listed_name**.
 - Canonical products without an exact family-registry name match after accent/punctuation normalization: **0**.
 
 The evidence statuses are intentionally different. A collection/listing-backed name is a discovery candidate; it is not proof of an individual SKU, concentration, size, GTIN or current commercial availability.
@@ -58,7 +58,7 @@ These are counts in this branch snapshot, not a claim that every historical, reg
 
 ## CI status
 - GitHub Actions run: [Catalog seed validation #66](https://github.com/dalexmon81/ScentHunter/actions/runs/42454400996)
-- Tested code/test commit: `36f140d51c7a4ce38166cf0318e6a51b62f6a4bb`
+- Tested code/test commit: `e5d1b738be3cf1be0fb22160b561be40e545a3c6`
 - Result: **success — 73 tests passed**.
 - The current PR head `2be1bb18557fe0b11245c549c2f1e381eadf55a3` is a documentation-only commit after that successful run. The catalog JSON, family registry, workflow and test files are unchanged from the tested commit.
 
@@ -76,3 +76,10 @@ The following older regression modules are not part of this CI gate because thei
 1. Review registry-only legacy identities separately; do not auto-promote without product-level evidence and explicit family mapping.
 2. Complete product-level source verification for the 1,622 identities still marked `source_listed_name`.
 3. Keep PR #426 draft and unmerged; keep PR #424 separate. No production, retailer authorization, deployment, live-offer or pricing changes are included.
+
+
+## Arabiyat Prestige Extrait follow-up
+- Promoted the existing `Mahd Al Dhahab Extrait` canonical identity from collection/index-listed to `source_verified_name` using the individual MyPerfumes Europe official Arabiyat Prestige product detail: https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait
+- Added the explicitly stated **60 ml Extrait de Parfum** variant; the family registry already contained this identity and `formats_ml: [60]`, so no registry duplication was needed.
+- Added `backend.tests.test_arabiyat_prestige_extrait` to the CI workflow. Other Arabiyat and legacy brand modules remain deferred until their missing product-level evidence and catalog rows are reconciled.
+- Totals after this change: **1,720 identities**, **185 variants**, **99 source-verified names**, **1,621 source-listed names**.
