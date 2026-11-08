@@ -500,3 +500,21 @@ No product should be added solely to make ScentHunter match the 84-entry seconda
 Mykonos is not yet complete. The 73 existing variant rows are internally consistent with the size fields already declared, but this is not proof that every official size option has been captured. The next pass must inspect individual product pages for all 72 identities, record every explicitly offered size and concentration combination, and leave fields blank where official detail pages do not state them. For the 19 identities with no size/variant evidence, do not create a variant until a source confirms it.
 
 No catalog product or variant was added or removed during this audit.
+
+
+### Additional Mykonos discovery leads from the authorized EU storefront
+
+The authorized EU retailer's catalogue and product pages expose several names that are not present as canonical Mykonos identities in the current 72-row seed. These remain **discovery leads**, not approved additions, pending exact product-page/source and variant reconciliation:
+- Avra Kehdabra (Paola Serena collaboration)
+- Dolce Cherry (Sapeyeeee collaboration)
+- Violette (Violenzia collaboration)
+- Café Lyon, Celestial, Undercover, Elysian, Wallflower, Kingsman, Shape Shift, Monaco Royale Black, and Inception Reimagined.
+
+The same retailer also lists fragrance mists (for example Star Kiss and Sweet Pea); these must be kept out of the perfume identity/variant catalogue unless the data model explicitly supports a separate product type. The retailer's catalogue states that Mykonos offers EDP and Extrait in 15 ml, 50 ml and 100 ml, but explicitly notes that not every perfume exists in every size. Therefore no global size defaults may be applied.
+
+Source references:
+- Authorized EU catalogue: https://officialmykonos.de/collections/all-perfumes
+- Authorized EU product exploration: https://mykonosperfumes.eu/pages/explore
+- Authorized EU unisex catalogue: https://officialmykonos.de/collections/unisex
+
+The three candidate names Avra Kehdabra, Dolce Cherry and Violette have explicit fragrance/concentration classification in the authorized retailer's listing, but their individual product pages and exact sizes must be inspected before catalog insertion. No new canonical identity or variant is added by this note.
