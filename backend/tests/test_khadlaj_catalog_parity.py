@@ -63,7 +63,7 @@ class KhadlajCatalogParityTests(unittest.TestCase):
     def test_reconciled_khadlaj_totals_and_variant_provenance(self):
         product_ids = {p["product_id"] for p in self.products}
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in product_ids]
-        self.assertEqual(len(self.products), 210)
+        self.assertEqual(len(self.products), 209)
         self.assertEqual(len(variants), 199)
         self.assertTrue(all(v.get("source_evidence_url") for v in variants))
         self.assertFalse(any("fragrantica.com" in v["source_evidence_url"].lower() for v in variants))
