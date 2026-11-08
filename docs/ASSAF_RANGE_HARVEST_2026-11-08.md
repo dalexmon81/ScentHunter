@@ -15,3 +15,7 @@ Official brand store for follow-up checks: https://assaf.ae/collections/all-perf
 
 ## Validation
 A regression test checks that all 140 names are represented, Assaf canonical names are unique, and newly harvested records retain listing-backed status without inferred product attributes.
+
+## Consolidated catalog note
+- The consolidated branch keeps Assaf's 119 additions as listing-backed identities pending official detail-page checks.
+- Arabiyat Prestige's Bóis Blanc canonical spelling follows the product title shown in the MyPerfumes Europe listing.
