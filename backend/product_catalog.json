@@ -22059,9 +22059,9 @@
         "SUPREMACY INCENSE",
         "Afnan SUPREMACY INCENSE"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/supremacy-incense",
+      "source_evidence_url": "https://afnan.com/products/supremacy-incense"
     },
     {
       "product_id": "SH-AFNAN-SUPREMACY-NOIR",
@@ -27450,9 +27450,9 @@
         "Incense 01",
         "Swiss Arabian Incense 01"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
-      "source_evidence_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.swissarabian.com/products/incense-01",
+      "source_evidence_url": "https://fr.swissarabian.com/products/incense-01"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
@@ -36654,6 +36654,26 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-INCENSE",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Incense 100 ml",
+        "Afnan Supremacy Incense 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-SUPREMACY-INCENSE-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-INCENSE-01",
+      "size_ml": 50,
+      "aliases": [
+        "Incense 01 50 ml",
+        "Swiss Arabian Incense 01 50ml"
+      ],
+      "variant_id": "SHV-SH-SWISS-ARABIAN-INCENSE-01-50-000",
+      "concentration": "Extrait de Parfum"
     }
   ]
 }
