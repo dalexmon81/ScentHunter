@@ -464,5 +464,36 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+    def test_maison_asrar_complete_official_116_range_and_fragrantica_additions(self):
+        official_range = ["Belgravia","Legacy","Vanguard","Regent","Ameer","Majesty","Veyra","Vanilla Aura","Faris Al Arab","Vanilla Voyage","III Thriller","Last Swim","Pomme Rouge","Haven","Muharib","Silent Surge","Treasure","Hunter","Imperial","Monarch","1963","Adorable","Alonoud","Aseel","Basma","Black","Bloom Bloom","Bonita","Casablanca","Cascade","Coffee Blend","Daham","Date Night","Dear Jasmine","Desire","Dubai London","Dubai Miami","Dubai Milano","DXB","DXB Jumeirah","Emerald","Emessa","Fairy Tale","Fairyland","Fakhama","Flair","Fresh Iris","Gentle Oud","Gold Noir","Hamsat Gharam","Hamsat Ghazal","Hamsat Hob","Hamsat Ishq","Harmony","Heritage","Hikaya","Hilm","Icon","Infina","Italian Leather","Jawhara Black","Jawhara Rouge","Joy","Khateer","Khayal","Khayyal","Kiss My Lips","Larimar","Leo","Librae","Lily","Lolita","Lumiere","Luna","Magic Night","Masterpiece","Milky Way","Mohra","Nada","Never Forget Me","Night in Paris","Oh Honey!","Omniya","Oscar","Patchouli with Love","Petra","Pink Crush","Qamar","Red Velvet","Rey","Rose","Rose Honey","Rose Musk","Rose Oud","Rose Vanilla","Rosé Absolute","Rosé Bouquet","Rubellite","Silver Elixer","Soirée","Soudfa","Sunset in Capri","Throne","Throne Eclipse","Timeless","Tornado","Trophy","Turath","Turath Malaki","Vanilla Rouge","Vanilla Seduction","Vision","Wadi","Whisper","Wood Intense","Zenobia"]
+        additional_fragrantica_names = {"Plot Twist", "Love Key", "Unsolved Mystery"}
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        self.assertEqual(len(official_range), 116)
+        self.assertTrue(set(official_range).issubset(products.keys()))
+        self.assertTrue(additional_fragrantica_names.issubset(products.keys()))
+        self.assertEqual(len(products), 119)
+
+    def test_maison_asrar_black_grapefruit_display_name_is_not_a_duplicate_identity(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        self.assertIn("Black", products)
+        self.assertNotIn("Black Grapefruit", products)
+        self.assertIn("Black Grapefruit", products["Black"].get("aliases", []))
+        self.assertEqual(products["Black"].get("source_url"), "https://maisonasrar.com/products/black-eau-de-perfum-100ml")
+        self.assertTrue(
+            any(
+                variant.get("product_id") == products["Black"]["product_id"]
+                and variant.get("size_ml") == 100
+                for variant in CATALOG.get("variants", [])
+            )
+        )
+
 if __name__ == "__main__":
     unittest.main()
