@@ -491,7 +491,12 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(matching), 1)
                 self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
-                self.assertNotIn("concentration", matching[0])
+                if name in {"Sansa", "Affair", "Tea Poetry"}:
+                    self.assertNotIn("concentration", matching[0])
+                else:
+                    self.assertEqual(matching[0].get("concentration"), row.get("concentration"))
+                    self.assertEqual(matching[0].get("concentration"), "Extrait de Parfum")
+                    self.assertEqual(matching[0].get("source_url"), row.get("source_url"))
 
     def test_mykonos_travel_variants_inherit_official_parent_concentration(self):
         products = {
