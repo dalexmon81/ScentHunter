@@ -16048,17 +16048,6 @@
           ]
         },
         {
-          "canonical_name": "Code Viola Nectar",
-          "aliases": [
-            "Code Viola Nectar",
-            "Khadlaj Code Viola Nectar",
-            "Code Viola Necter"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
           "canonical_name": "Cream Velvet",
           "aliases": [
             "Cream Velvet",
@@ -17713,7 +17702,8 @@
           "canonical_name": "Code Viola Nectar",
           "aliases": [
             "Code Viola Nectar",
-            "Khadlaj Code Viola Nectar"
+            "Khadlaj Code Viola Nectar",
+            "Code Viola Necter"
           ],
           "formats_ml": [
             100
