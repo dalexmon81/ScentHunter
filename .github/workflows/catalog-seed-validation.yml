@@ -11,10 +11,19 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/french-avenue-identity-reconciliation-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
       - "backend/tests/**"
+      - "backend/app/models/**"
+      - "backend/alembic/**"
+      - "backend/scenthunter_next_engine/**"
+      - "backend/scripts/seed_catalog.py"
+      - "tests/test_product_form_guard.py"
+      - "tests/test_canonical_matcher.py"
+      - "tests/test_phase2_schema_contract.py"
+      - "tests/test_phase2_seed_catalog.py"
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
@@ -39,6 +48,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install Phase 2 and product-form test dependencies
+        run: python -m pip install -r backend/requirements.txt pytest
+      - name: Validate product-form matching and Phase 2 persistence
+        run: >-
+          python -m pytest -q
+          tests/test_product_form_guard.py
+          tests/test_canonical_matcher.py
+          tests/test_phase2_schema_contract.py
+          tests/test_phase2_seed_catalog.py
       - name: Validate recovered catalog seed
         run: >-
           python -m unittest
