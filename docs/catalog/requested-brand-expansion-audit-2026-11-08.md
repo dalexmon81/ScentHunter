@@ -381,3 +381,8 @@ Aggiunte **29 identità** mancanti dalle pagine 6 e 7 della collezione ufficiale
 - **Pagina 7:** Rua Radiant Roses, Soothing Zephyr, Toxic Heart, Tranquil Night Musk Collection, Trois III Expressions North Stag, Twilight Shadow Musk Collection, Ultra Citrus Emir Factory Edition, Un I Expressions North Stag, Valar Series A Chaos in the Ocean, Valar Series A Walk on Dirt, Valar Series Smoky Leather, Vanilla and Roses Emir.
 
 Fonti: https://www.pariscornerperfumes.com/collections/all?page=6 e https://www.pariscornerperfumes.com/collections/all?page=7 . I nomi già presenti non sono stati duplicati; set multiprodotto e prodotti già assegnati a un'altra identità non sono stati reinseriti. Le identità delle linee North Stag ed Emir restano attribuite alla casa Paris Corner in base alle collezioni ufficiali del produttore. Nessuna concentrazione, volume o dato commerciale è stato inferito.
+
+
+## Paris Corner — pagina ufficiale 8 (2026-11-08)
+
+Aggiunte **9 identità** mancanti dalla pagina 8: Wild and Tobacco Emir, You're Drugged Emir, Zahi, Zahri Amara, Zaman Al Ula, Zodiac, Zodiac Lunaris, Zodiac Solmaris, Zodiac Stratos. Fonte ufficiale: https://www.pariscornerperfumes.com/collections/all?page=8 . Gli altri nomi di profumo visibili in questa pagina erano già presenti nel catalogo e non sono stati duplicati. Il conteggio riportato dal sito per la collezione è dinamico (249 prodotti nella pagina consultata) e non equivale al numero di identità canoniche di profumo.
