@@ -8,7 +8,7 @@
 
 ## Result
 
-<badge>CI gate blocked — expected</badge>
+**CI gate: blocked — expected while overlaps remain unresolved.**
 
 The cross-PR audit completed its scan and reported **102 findings**. The job stopped at the audit step, so the existing catalog unit-test step was skipped in this run. This is not a green CI run and must not be described as one.
 
