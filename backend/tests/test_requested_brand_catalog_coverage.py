@@ -14,7 +14,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
     "Maison Asrar": 120,
-    "Khadlaj": 168,
+    "Khadlaj": 177,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
@@ -605,6 +605,59 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             if row.get("canonical_name") not in family_names
         ]
         self.assertEqual(missing, [])
+
+
+    def test_khadlaj_additional_official_products_and_variants(self):
+        expected = {
+            "Barwaaz Saddle Brown": ("https://kw.khadlaj-perfumes.com/products/barwaaz-saddle-brown-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Nuha": ("https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae/products/nuha-85-ml-edp-spray-perfume-for-women-dubai-uae", 85, "Eau de Parfum"),
+            "Ghadeer Gold": ("https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae", 100, "Eau de Parfum"),
+            "Musk Wa Oud": ("https://kw.khadlaj-perfumes.com/products/musk-wa-oud-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Private Blend Tobac Extra": ("https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men", 100, "Extrait de Parfum"),
+            "Rasayel Shagaf": ("https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men", 100, "Eau de Parfum"),
+            "Rasayel Vid": ("https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy", 100, "Eau de Parfum"),
+            "La Fede Aura Vanilla Milk": ("https://khadlaj-perfumes.com/products/la-fede-aura-vanilla-milk-100-ml-edp-spray-for-women", 100, "Eau de Parfum"),
+            "Desert Rose": ("https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae", 100, "Extrait de Parfum"),
+            "Ghadeer Silver": ("https://khadlaj-perfumes.com/collections/perfumes-spray/products/ghadeer-silver-100-ml-edp-spray-for-men-women-best-edp-perfume-dubai-uae", 100, "Eau de Parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == size_ml
+                    and v.get("concentration") == concentration
+                ]
+                self.assertEqual(len(matching), 1)
+
+    def test_khadlaj_official_name_aliases_resolve_without_duplicate_identities(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        expected = {
+            "Shiyaaka Snow": ["Special Edition Shiyaaka Snow"],
+            "Ghadeer Silver": ["Ghadeer Silver Women"],
+            "La Fede Aura Vanilla Milk": ["Aura Vanilla Milk"],
+        }
+        for canonical, aliases in expected.items():
+            with self.subTest(canonical=canonical):
+                self.assertIn(canonical, products)
+                for alias in aliases:
+                    self.assertIn(alias, products[canonical].get("aliases", []))
 
 if __name__ == "__main__":
     unittest.main()
