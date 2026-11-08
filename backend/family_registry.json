@@ -4103,6 +4103,103 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Aqua Surge",
+          "aliases": [
+            "Aqua Surge",
+            "Bujairami Aqua Surge"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aquafina",
+          "aliases": [
+            "Aquafina",
+            "Bujairami Aquafina"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aquaman",
+          "aliases": [
+            "Aquaman",
+            "Bujairami Aquaman"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arabian Brew",
+          "aliases": [
+            "Arabian Brew",
+            "Bujairami Arabian Brew"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arabian Gold",
+          "aliases": [
+            "Arabian Gold",
+            "Bujairami Arabian Gold"
+          ]
+        },
+        {
+          "canonical_name": "Arabian Love",
+          "aliases": [
+            "Arabian Love",
+            "Bujairami Arabian Love"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arizona",
+          "aliases": [
+            "Arizona",
+            "Bujairami Arizona"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Artistic Lady",
+          "aliases": [
+            "Artistic Lady",
+            "Bujairami Artistic Lady"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ascension",
+          "aliases": [
+            "Ascension",
+            "Bujairami Ascension"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asfahan Oud",
+          "aliases": [
+            "Asfahan Oud",
+            "Bujairami Asfahan Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
