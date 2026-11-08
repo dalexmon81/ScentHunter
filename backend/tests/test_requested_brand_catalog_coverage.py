@@ -14,7 +14,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 98,
+    "Mykonos": 99,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -925,6 +925,25 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(len(variants), 1)
         self.assertEqual(variants[0].get("size_ml"), 100)
         self.assertEqual(variants[0].get("concentration"), "Extrait de Parfum")
+
+
+    def test_mykonos_imperium_is_a_distinct_official_fragrance(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Imperium", products)
+        self.assertIn("Empire x RRQ", products)
+        self.assertNotEqual(
+            products["Imperium"].get("product_id"),
+            products["Empire x RRQ"].get("product_id"),
+        )
+        self.assertEqual(
+            products["Imperium"].get("source_url"),
+            "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+        )
+        self.assertEqual(products["Imperium"].get("formats_ml"), [100])
 
 if __name__ == "__main__":
     unittest.main()
