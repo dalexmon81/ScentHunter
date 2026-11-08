@@ -1021,6 +1021,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Maya": (20, "Perfume Oil"),
             "Mocha Latte": (100, "Extrait de Parfum"),
             "Nuha": (85, "Eau de Parfum"),
+            "Opulence Bleu": (100, "Eau de Parfum"),
             "Pink Musk": (20, "Perfume Oil"),
             "Purple Musk": (20, "Perfume Oil"),
             "Rasayel Shagaf": (100, "Eau de Parfum"),
