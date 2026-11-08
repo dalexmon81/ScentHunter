@@ -1,11 +1,18 @@
 """Regression tests for Paris Corner canonical catalog and family registry coverage."""
 import json
 import unittest
+import unicodedata
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+
+
+def normalized(value):
+    value = unicodedata.normalize("NFD", str(value or ""))
+    value = "".join(ch for ch in value if unicodedata.category(ch) != "Mn")
+    return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in value).split())
 
 
 class ParisCornerCatalogParityTests(unittest.TestCase):
@@ -14,10 +21,10 @@ class ParisCornerCatalogParityTests(unittest.TestCase):
         self.family = next(f for f in REGISTRY["families"] if f["family_id"] == "paris_corner_catalog")
 
     def test_all_canonical_products_have_registry_entries(self):
-        catalog_names = {p["canonical_name"].casefold() for p in self.products}
-        registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
-        # The registry may retain legacy/discovery identities not yet promoted
-        # into the canonical seed. Every canonical product must be covered.
+        catalog_names = {normalized(p["canonical_name"]) for p in self.products}
+        registry_names = {normalized(p["canonical_name"]) for p in self.family["products"]}
+        # Registry aliases can retain spelling/diacritic variants and discovery
+        # identities that have not yet been promoted to the canonical seed.
         self.assertTrue(catalog_names.issubset(registry_names))
         self.assertEqual(len(self.products), 243)
 
