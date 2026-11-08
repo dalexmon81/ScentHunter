@@ -361,3 +361,8 @@ Aggiunta **Black Grapefruit** come identità canonica Maison Asrar. Il nome è p
 ## Paris Corner — importazione pagina ufficiale successiva (2026-11-08)
 
 Aggiunte **5 identità** mancanti dalla seconda pagina della collezione ufficiale: Deux II Expressions North Stag, Fire Your Desire Emir, Forbidden Sugar Emir, Frenetic Delicieuse e Frenetic Homme Intense. Fonte: https://www.pariscornerperfumes.com/collections/all?page=2 . Le identità sono registrate sotto il marchio ombrello Paris Corner perché sono elencate nella sua collezione ufficiale; i nomi delle linee North Stag ed Emir sono mantenuti nel nome prodotto. Non sono state inferite concentrazione, volume, GTIN, prezzi o stock.
+
+
+## Paris Corner — pagine ufficiali 3 e 4 (2026-11-08)
+
+Aggiunte 6 identità non ancora presenti nel catalogo: **La Nuit Pendora**, **La Serpiente Emir**, **Le Charme**, **Midnight Sin by Daniel René**, **Miel Obscura**, **Miel Vanille**. Fonti ufficiali: https://www.pariscornerperfumes.com/collections/all?page=3 e https://www.pariscornerperfumes.com/collections/all?page=4 . I prodotti esplicitamente presentati sotto i marchi-sottomarca Ministry of Oud non sono stati assegnati a Paris Corner senza una verifica separata del brand proprietario. Nessuna variante o dato commerciale è stato dedotto.
