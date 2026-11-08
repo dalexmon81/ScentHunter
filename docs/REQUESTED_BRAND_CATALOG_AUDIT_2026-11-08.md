@@ -119,3 +119,6 @@ First-party collection pages:
 - Page 7: https://khadlaj-perfumes.com/collections/perfumes-spray?page=7
 - Page 8: https://khadlaj-perfumes.com/collections/perfumes-spray?page=8
 - Page 9 (reported count only; no product cards returned): https://khadlaj-perfumes.com/collections/perfumes-spray?page=9
+
+
+CI note: the catalog validation workflow now explicitly includes the stacked target branch `catalog/maison-asrar-verified-variants-2026-11-08`; this PR head was advanced after the base-branch trigger update so the pull-request validation can run without changing `main`.
