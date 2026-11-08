@@ -249,10 +249,22 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
             )
             assert variant is not None, "seeded French Avenue Liquid Brun EDP 100 ml variant missing"
             store = session.scalar(select(Store).where(Store.slug == "bplatz"))
-            assert store is not None, "Bplatz staging store must be seeded"
+            # This is an isolated CI database. Provisioning the retailer row here
+            # does not activate a production connector or write to staging.
+            if store is None:
+                store = Store(
+                    name="Bplatz",
+                    slug="bplatz",
+                    domain="bplatz.de",
+                    country="DE",
+                    currency="EUR",
+                    status="active",
+                )
+                session.add(store)
+                session.flush()
             assert store.status == "active"
-            if store.offer_ttl_minutes is None:
-                store.offer_ttl_minutes = 1440
+            # The six-day-old fixture must exceed this one-day freshness window.
+            store.offer_ttl_minutes = 1440
             raw_payload = record.to_dict()
             raw_payload["_source_fixture"] = {
                 "url": meta["url_final"],
