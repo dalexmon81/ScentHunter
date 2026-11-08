@@ -12,7 +12,7 @@ The catalog separates the main Khadlaj spray range, concentrated perfume oils, S
 |---|---:|---:|---:|
 | Perfume Sprays | 101 | 96 | 5 not exposed in the current page extraction |
 | Concentrated Perfume Oils | 43 | 36 | 7 not exposed / not yet reconciled |
-| La Fede Eau de Parfum | 42 | 36 | 6 not exposed / not yet reconciled |
+| La Fede Eau de Parfum | 42 | 42 | 0 |
 
 The collection counts are a snapshot of the official store, not a statement about stock. Hidden or unexposed collection entries are not guessed into the catalog.
 
@@ -22,7 +22,7 @@ The collection counts are a snapshot of the official store, not a statement abou
 - The official spray audit adds the separately named **Private Blend Tobac Extra** product and 77 additional variant keys with collection-card evidence.
 - The official variants branch contributes nine further supported variants not present in the spray audit. The generic `Private Blend` row is not given the Tobac Extra variant.
 - Nine missing, visible oil identities were added: Johayna Purple, Kayaan Silver, Malika Green, Mukhalath Ma'a Ward Taiba, Rimaal Green, Haneen Rose Gold, Roohi Wa Roohak Silver, Zainab and Mibraak.
-- Thirty-four additional La Fede products and their visible bottle variants were added from the official La Fede collection pages. The existing Intoxicate Mystique and Code Viola Nectar records were reused rather than duplicated.
+- The complete 42-product La Fede EDP collection is now represented. Additional official product pages also verified Uno Durable, Uno Lusso, the three Lavish variants and Aura Vanilla Milk. Existing Intoxicate Mystique and Code Viola Nectar records were reused rather than duplicated; the La Fede family contains 45 identities including three additional line products.
 - Code Viola Nectar is now assigned to the La Fede family. Celebrity Crush and Celebrity Fame remain separate La Fede products already present in the catalog.
 
 ## Variant evidence and conservative decisions
@@ -30,19 +30,19 @@ The collection counts are a snapshot of the official store, not a statement abou
 - All 199 variants now carry a variant-level evidence URL. Evidence may be an official product page or an official collection page where the exact product card identifies the size and concentration.
 - **Hareem Al Sultan Gold** is represented as a 35 ml Perfume Oil, not as a spray.
 - **Alf Wardaat** is retained as 30 ml: the official product page title identifies 30 ml even though the URL slug contains “25ml”.
-- **Rasayel Vid** remains 100 ml Eau de Parfum, matching the official page's product title.
+- **Rasayel Vid** remains 100 ml with concentration unspecified: the official page title and URL say Extrait, while the product heading and image alt say Eau de Parfum.
 - **Saqr Al Badiya** remains 100 ml with concentration unspecified. The official product page title and description conflict on Extrait vs Eau de Parfum, so the concentration is deliberately not inferred.
 - **Private Blend Tobac Extra** is a separate 100 ml Extrait product. Its product page is not attached to the generic Private Blend identity.
 - **Musk Pure Musk Blend Creation of Iqbal** is retained as an alias of Musk Pure Musk Blend, not a second canonical fragrance.
+- **Pure Musk** has two supported variants: 20 ml Perfume Oil and 100 ml Eau de Parfum.
+- **Hareem Al Sultan Blue** is a 35 ml Perfume Oil; **Alf Wardaat** is a 30 ml Perfume Oil, with “Alf Wardat” retained as a spelling alias.
 - Opulence Bleu uses a retailer product page for its 100 ml EDP evidence; Rose & Romance uses the official product page. Neither relies on Fragrantica for variant data.
 
 ## Remaining work — do not call Khadlaj globally complete yet
 
 1. Reconcile the five spray collection entries not exposed by the current extraction.
 2. Reconcile the seven remaining perfume-oil collection entries.
-3. Reconcile the six remaining La Fede collection entries.
-4. The family registry still carries three legacy La Fede names (Lavish Blush, Lavish Luna and Lavish Rouge) without a verified product-page record. Keep them as family-level leads until direct evidence is found.
-5. Recheck the current official store collections before finalizing the brand snapshot.
+3. Recheck the current official store collections before finalizing the brand snapshot.
 
 ## Sources
 
