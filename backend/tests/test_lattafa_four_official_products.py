@@ -16,7 +16,14 @@ PRODUCTS = {
     "Queen of Roses": "https://lattafa.com/product/queen-of-roses/",
     "King of Arabia": "https://lattafa.com/product/king-of-arabia/",
     "Lattafa Pride – Stop Wait Go": "https://lattafa.com/product/lattafa-pride-stop-wait-go/",
+    "Majd Al Sultan Black Intense": "https://lattafa.com/product/majd-al-sultan-black-intense/",
+    "Ramaad Al Oud": "https://lattafa.com/product/ramaad-al-oud/",
+    "Farfasha": "https://lattafa.com/product/farfasha/",
+    "Dream Of Haze": "https://lattafa.com/product/dream-of-haze/",
+    "Atlas Canyon": "https://lattafa.com/product/atlas-canyon/",
+    "Atlas Glacial Valley": "https://lattafa.com/product/atlas-glacial-valley/",
 }
+PRODUCT_SIZES = {"Atlas Canyon": 55, "Atlas Glacial Valley": 55}
 
 
 class LattafaFourOfficialProductsTests(unittest.TestCase):
@@ -56,7 +63,9 @@ class LattafaFourOfficialProductsTests(unittest.TestCase):
                     if v.get("product_id") == product["product_id"]
                 ]
                 self.assertEqual(len(variants), 1)
-                self.assertEqual(variants[0].get("size_ml"), 100)
+                expected_size = PRODUCT_SIZES.get(name, 100)
+                self.assertEqual(variants[0].get("size_ml"), expected_size)
+                self.assertEqual(product.get("formats_ml"), [expected_size])
                 if name == "Queen of Roses":
                     self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
                 else:
