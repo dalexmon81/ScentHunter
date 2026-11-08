@@ -619,5 +619,45 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         }
         self.assertTrue(excluded.isdisjoint(names))
 
+    def test_mykonos_complete_eu_perfume_index_is_present_and_body_mists_are_excluded(self):
+        # 90 perfume identities in the authorized EU retailer's A-Z index.
+        # The 12 separately named Fragrance Mist products are intentionally
+        # excluded from the perfume catalog.
+        expected_perfumes = {
+            "Affair", "Aphrodite", "Baby Love", "Berry Caramel Pancake",
+            "Black Opera", "Blaze", "Blossom", "Bonfire Vanilla", "Cafe Drops",
+            "Café Lyon", "California Blue", "California Club", "California",
+            "Caramel Fudge Cookie", "Celestial", "Coconut Dreams", "Conquer",
+            "Constantine", "Crimson", "Dark Secret", "Daydream", "Down to Earth",
+            "Dreamscape", "Déjà Vu", "Elysian", "Empire x RRQ", "Enchanted",
+            "Forever Musc", "Hawaiian Crush", "Inception", "Inception Reimagined",
+            "Inferno", "Inspire Perfume", "Ivory", "Kingsman", "Luminos",
+            "Marbella", "Matcha Latte", "Mayfair", "Memoir of Meri", "Milk Drops",
+            "Monaco Royale Black", "Monaco Royale", "Moroccan Vanilla", "Musk Aura",
+            "Nautilus", "On The Rocks", "Only You", "Pandan Sticky Rice",
+            "Paradise", "Penthouse", "Pink Beach", "Pink Drops",
+            "Pistachio Cream Cake", "President", "Reflection Elixir", "Reflection",
+            "Royal Ispahan", "Sansa", "Satin Blanc", "Senja", "Seven Roses",
+            "Shades Perfume", "Shape Shift", "Silent Whisper", "Slow Living",
+            "Soft Hour x NCT Haechan", "Sorrento", "Sparkling Rosé", "Stilettos",
+            "Tea Poetry", "Undercover", "Untamed", "Utopia", "Vanilla Clouds",
+            "Verve", "Wallflower", "When in Paris", "MyEgo", "Once Upon Don",
+            "Avra Kehdabra", "Jynx", "Chai Crema Latte", "Dolce Cherry", "Rouge",
+            "Glitch", "Invade", "Violette", "Xoxo Rosy", "Zora",
+        }
+        body_mists = {
+            "Bacca Rouge", "Beauty", "Blue Love", "Blue Peony", "British Pear",
+            "Juicy Me", "Magnifique", "Malika", "Purple Beauty",
+            "Purple Beauty Halal", "Star Kiss", "Sweet Pea",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertEqual(len(expected_perfumes), 90)
+        self.assertTrue(expected_perfumes.issubset(products.keys()))
+        self.assertTrue(body_mists.isdisjoint(products.keys()))
+
 if __name__ == "__main__":
     unittest.main()
