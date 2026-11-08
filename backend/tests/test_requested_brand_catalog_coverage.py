@@ -613,5 +613,29 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         )
 
 
+
+
+    def test_mykonos_source_name_variants_are_aliases_not_duplicate_products(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        expected_aliases = {
+            "California": "California Signature",
+            "Jynx": "Jinx",
+            "Nautilus": "Nautilius",
+            "Shades Perfume": "Shades Parfum",
+            "Affair": "Intimate Affair",
+            "Xoxo Rosy": "XoXo, Rosy",
+        }
+        for canonical, alias in expected_aliases.items():
+            with self.subTest(canonical=canonical, alias=alias):
+                self.assertIn(canonical, products)
+                self.assertIn(alias, products[canonical].get("aliases", []))
+        canonical_names = [str(row.get("canonical_name", "")).casefold() for row in products.values()]
+        self.assertEqual(len(canonical_names), len(set(canonical_names)))
+
+
 if __name__ == "__main__":
     unittest.main()
