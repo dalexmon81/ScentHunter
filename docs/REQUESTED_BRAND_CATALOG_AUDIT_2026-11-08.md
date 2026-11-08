@@ -22,7 +22,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Assaf | 140 | 0 | 140 |
 | Al Wataniah | 86 | 2 | 84 |
 | Armaf | 190 | 6 | 184 |
-| French Avenue | 117 | 0 | 117 |
+| French Avenue | 119 | 2 | 117 |
 | Arabiyat Prestige | 118 | 22 | 96 |
 | Gulf Orchid | 23 | 0 | 23 |
 | Swiss Arabian | 32 | 4 | 28 |
@@ -33,9 +33,9 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Maison Alhambra | 203 | 0 | 203 |
 | Zimaya | 72 | 10 | 62 |
 | Al Haramain | 101 | 0 | 101 |
-| **Total requested brands** | **2,047** | **225** | **1,822** |
+| **Total requested brands** | **2,049** | **227** | **1,822** |
 
-The full seed contains 2,050 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
+The full seed contains 2,052 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
 ## Recorded source hosts
 
@@ -50,7 +50,7 @@ The full seed contains 2,050 identities. The remaining three belong to other bra
 | Assaf | assafperfumes.eu (119); assaf.ae (21) |
 | Al Wataniah | www.alwataniah.com (86) |
 | Armaf | armaf.com (190) |
-| French Avenue | frenchavenue.com (74); www.fragrantica.com (43) |
+| French Avenue | frenchavenue.com (76); www.fragrantica.com (43) |
 | Arabiyat Prestige | www.fragrantica.com (93); eu.myperfumes.ae (22); arabiyatprestigeus.com (2); arabiyatprestige.com (1) |
 | Gulf Orchid | shop-gulforchid.com (23) |
 | Swiss Arabian | swissarabian.ma (27); us.swissarabian.com (3); de.swissarabian.com (1); www.essenciaarabe.com (1) |
@@ -116,7 +116,7 @@ Independent discovery reference (not official):
 
 The official French Avenue storefront's `/collections/all` currently reports 142 products (141 in stock and one out of stock at the time inspected). Its separate "all fragrances for sale" collection reports 141 products. The first page visibly includes Liquid Brun, Liquid Brun Limited Edition, Spectre Ghost, Vulcan Feu, Azzure Aoud, Amber Empire, Dusk Till Dawn, Royal Blend Sequoia, Noble Cedar, Jasmere, Atlantis Extrait, Ambroise Pour Femme, Aether, Royal Blend, Imperial Ocean and Cocoa Morado.
 
-The catalog contains 117 French Avenue identities. This is not sufficient evidence to add 24 or 25 rows automatically: the storefront count can include product bundles/duplicate merchandising, and the full paginated collection needs reconciliation by individual product title and product page. Keep the 117 existing identities, and harvest only confirmed missing fragrance identities after checking the actual product pages.
+The catalog previously contained 117 French Avenue identities. A full 2026 collection comparison showed that the storefront count includes product bundles/duplicate merchandising, so it cannot be used as a direct canonical identity count. Two additional standalone perfumes have since been confirmed on individual official product pages and added, bringing the brand total to 119.
 
 Official storefront:
 - https://frenchavenue.com/collections
@@ -142,3 +142,26 @@ Fragrantica's designer index reports 157 perfumes, including editions through 20
 - The Assaf storefront also lists collection bundles such as "Enable Collection" and "Wild Pegasus and Alexandra Collection". These must not be counted as new perfume identities.
 
 This spot-check confirms that the official storefront contains many of the existing catalog names and that naive harvesting of every store listing would introduce bundles/packages as false fragrance identities. The official collection is paginated and this is not yet an exhaustive crawl of all pages.
+
+
+### Newly verified French Avenue additions (official product detail pages)
+
+A comparison against the official New Arrivals collection found two standalone perfumes missing from the prior 117-identity seed. Both have individual official product pages, explicit 100 ml sizes and explicit concentrations:
+
+| Canonical identity | Official detail page | Concentration | Size |
+|---|---|---|---:|
+| Eclipse | https://frenchavenue.com/products/eclipse | Extrait de Parfum | 100 ml |
+| Eclipse Nova | https://frenchavenue.com/products/eclipse-nova-extrait | Extrait de Parfum | 100 ml |
+
+Both were added as distinct canonical products with `source_verified_name`, exact product-page `source_url`, and explicit 100 ml variants. The French Avenue identity count is now 119; the full seed is now 2,052 products and 214 variants. Across the 20 requested brands the subtotal is now 2,049 identities (227 `source_verified_name`, 1,822 `source_listed_name`).
+
+The official New Arrivals collection also displays **Aromatix Summer Vibes Blue** and **Aromatix Summer Vibes Yellow**. Their product detail pages describe each as a 5 × 30 ml set containing five existing Aromatix scents, not a new single fragrance. They were deliberately excluded from the canonical perfume identities; they may belong in a future kit/bundle model.
+
+Official sources:
+- https://frenchavenue.com/collections/new-arrivals
+- https://frenchavenue.com/products/eclipse
+- https://frenchavenue.com/products/eclipse-nova-extrait
+- https://frenchavenue.com/products/aromatix-summer-vibes-blue
+- https://frenchavenue.com/products/aromatix-summer-vibes-yellow
+
+The latest 2026 discovery list on Fragrantica is retained as a secondary lead list only. It includes additional candidates (for example Crystal Oud, Ethos Aoud Oud, Papa Yeah!, Le Falcon, Le Falcon Dubai and Les Extraits Absolus Shadow/Unknown) that still require exact official product-page confirmation before catalog insertion.
