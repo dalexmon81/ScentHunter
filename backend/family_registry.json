@@ -17790,6 +17790,18 @@
       ],
       "products": [
         {
+          "canonical_name": "Code Viola Nectar",
+          "aliases": [
+            "Code Viola Nectar",
+            "La Fede Code Viola Nectar",
+            "Khadlaj La Fede Code Viola Nectar"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
           "canonical_name": "La Fede Aura Crisp Flower",
           "aliases": [
             "La Fede Aura Crisp Flower",
@@ -17954,18 +17966,6 @@
           "canonical_name": "La Fede Code Verde Sublime",
           "aliases": [
             "La Fede Code Verde Sublime"
-          ],
-          "formats_ml": [
-            100
-          ],
-          "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "La Fede Code Viola Nectar",
-          "aliases": [
-            "La Fede Code Viola Nectar",
-            "Code Viola Nectar",
-            "Khadlaj Code Viola Nectar"
           ],
           "formats_ml": [
             100
