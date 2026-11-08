@@ -13,6 +13,8 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/lattafa-mishlah-official-page-2026-11-08
       - catalog/lattafa-four-official-products-2026-11-08
+      - catalog/maison-alhambra-eu-official-2026-11-08
+      - catalog/armaf-eu-official-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -77,6 +79,7 @@ jobs:
             backend.tests.test_al_wataniah_official_collection_harvest \
             backend.tests.test_requested_brand_catalog_coverage \
             backend.tests.test_maison_alhambra_official_eu_harvest \
+            backend.tests.test_armaf_official_eu_harvest \
             -v
           if [ -f backend/tests/test_lattafa_mishlah_official_page.py ]; then
             python -m unittest backend.tests.test_lattafa_mishlah_official_page -v
