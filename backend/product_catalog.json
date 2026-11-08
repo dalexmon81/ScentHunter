@@ -2955,7 +2955,8 @@
       "family_name": "Confidential",
       "aliases": [
         "Confidential",
-        "Paris Corner Confidential"
+        "Paris Corner Confidential",
+        "Confidential 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all"
@@ -17293,7 +17294,8 @@
       "family_name": "Khayal",
       "aliases": [
         "Khayal",
-        "Paris Corner Khayal"
+        "Paris Corner Khayal",
+        "Khayal 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
@@ -17389,7 +17391,8 @@
       "family_name": "Minya",
       "aliases": [
         "Minya",
-        "Paris Corner Minya"
+        "Paris Corner Minya",
+        "Minya 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
@@ -23462,7 +23465,8 @@
       "family_name": "Ophidian Black Cherry",
       "aliases": [
         "Ophidian Black Cherry",
-        "Paris Corner Ophidian Black Cherry"
+        "Paris Corner Ophidian Black Cherry",
+        "Ophidian Black Cherry 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
@@ -23686,7 +23690,8 @@
       "family_name": "Qawafi",
       "aliases": [
         "Qawafi",
-        "Paris Corner Qawafi"
+        "Paris Corner Qawafi",
+        "Qawafi 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
@@ -31918,6 +31923,36 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-THESHOWMAGNIFIQUE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "The Show Magnifique",
+      "name": "The Show Magnifique",
+      "family_id": "paris_corner_catalog",
+      "family_name": "The Show Magnifique",
+      "aliases": [
+        "The Show Magnifique",
+        "Paris Corner The Show Magnifique"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ZARIYA",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zariya",
+      "name": "Zariya",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zariya",
+      "aliases": [
+        "Zariya",
+        "Paris Corner Zariya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
     }
   ],
   "variants": [
