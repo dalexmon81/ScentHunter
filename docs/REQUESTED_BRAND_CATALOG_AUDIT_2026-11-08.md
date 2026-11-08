@@ -68,3 +68,16 @@ The GitHub Actions connector returned no run for the immediately preceding commi
 
 
 **Provenance placement:** the travel-size page URL is stored on each 15 ml variant row as `source_evidence_url`; it is not substituted for the canonical identity's `source_url` or product-level provenance.
+
+
+## Current reconciled seed snapshot — 8 November 2026
+
+The branch `catalog/requested-brand-harvest-2026-11-08` was re-read after the historical brand-audit notes above were written. The current JSON is authoritative for the present branch snapshot:
+
+- Canonical identities: **2,061**
+- Explicit variants: **291**
+- Fragrance families: **34**
+- Identities belonging to the 20 requested brands: **2,058**
+- Structural checks: **0** duplicate product IDs, **0** duplicate variant IDs, **0** duplicate brand/name pairs, **0** orphan variants, and **0** variants with missing or invalid sizes.
+
+These totals supersede earlier intermediate totals (including 266 and 273 variants) wherever those numbers were presented as the current catalog total. Historical passages above are retained as a dated audit trail and should not be read as the latest snapshot. The catalog remains a source-backed identity seed; these structural checks do not prove exhaustive coverage of every brand's current or historical fragrance range.
