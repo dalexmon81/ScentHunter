@@ -96,11 +96,15 @@ collapsed into a generic Aromatix manufacturer assumption:
   documentation so future harvests do not add duplicate products under
   French Avenue.
 - The 12 Aromatix catalog product rows currently have **no variant rows**.
-  Retailer pages show 100 ml EDP for the ten signature collection scents, and
-  European retailer listings also show 100 ml EDP for Ora and Roza. However,
-  those are retailer-level sources, not manufacturer product-detail pages.
-  Do not create 100 ml variants as officially verified until a suitable
-  primary product source or an approved evidence policy supports them.
+  Retailer pages show 100 ml for the ten signature scents, but concentration
+  labels are not consistent: Shop Aromatix presents the ten as EDP, while
+  Notino's current listings label some as Extrait and others as EDP. European
+  retailer listings also show 100 ml EDP for Ora and Roza. These are
+  retailer-level sources, not manufacturer product-detail pages, and the
+  concentration conflict means the size/concentration tuple should not be
+  guessed. Do not create 100 ml variants as officially verified until a
+  suitable primary product source or an approved evidence policy supports
+  each exact concentration.
 
 **Action:** keep the 12 identities as one collaboration set; distinguish the
 ten original signature scents from the two 2026 launches Ora and Roza; retain
@@ -110,6 +114,9 @@ standard is met.
 
 Evidence checked on 2026-11-08:
 - https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html
+- https://www.notino.be/french-avenue/aromatix/
+- https://www.notino.be/french-avenue/aromatix-magnetiq-extrait-de-parfum-mixte/
+- https://www.notino.be/french-avenue/aromatix-frostbite-eau-de-parfum-mixte/
 - https://shoparomatix.com/pages/aromatic-collection
 - https://shoparomatix.com/collections/aromatix-x-french-avenue
 - https://olvio.co.uk/collections/aromatix-x-french-avenue-collection?sort_by=created-descending
