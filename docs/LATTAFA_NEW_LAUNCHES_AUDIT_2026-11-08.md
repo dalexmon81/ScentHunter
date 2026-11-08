@@ -18,3 +18,12 @@ The ten distinct fragrance names below are present on the official new-launches 
 Each new row is marked `source_listed_name` with the official collection URL. No size, concentration, price, stock, offer, or GTIN is inferred. No variant is added. These identities require individual official detail-page checks before any variant or stronger evidence status can be assigned.
 
 The source list is not proof that all new launches are represented. Additional pagination and historical releases still require auditing.
+
+
+## Individual detail-page verification — Atlas Canyon
+
+- Official Lattafa detail page: https://lattafa.com/product/atlas-canyon/
+- The individual page explicitly states size 55 ml and fragrance type Unisex.
+- Updated the existing canonical identity from collection-level to individual-page evidence and added exactly one 55 ml variant.
+- The individual page does not state concentration; concentration remains blank.
+- No price, stock or offer data copied.
