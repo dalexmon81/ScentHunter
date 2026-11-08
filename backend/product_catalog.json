@@ -28160,6 +28160,66 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-PLOT-TWIST-X002",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Plot Twist",
+      "name": "Plot Twist",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Maison Asrar",
+      "aliases": [
+        "Plot Twist",
+        "Maison Asrar Plot Twist"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/plot-twist",
+      "source_evidence_url": "https://shop-gulforchid.com/products/plot-twist",
+      "source_product_url": "https://shop-gulforchid.com/products/plot-twist",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-LOVE-KEY-X003",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Love Key",
+      "name": "Love Key",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Maison Asrar",
+      "aliases": [
+        "Love Key",
+        "Maison Asrar Love Key"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/love-key",
+      "source_evidence_url": "https://shop-gulforchid.com/products/love-key",
+      "source_product_url": "https://shop-gulforchid.com/products/love-key",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-UNSOLVED-MYSTERY-X001",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Unsolved Mystery",
+      "name": "Unsolved Mystery",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Maison Asrar",
+      "aliases": [
+        "Unsolved Mystery",
+        "Maison Asrar Unsolved Mystery"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/unsolved-mystery",
+      "source_evidence_url": "https://shop-gulforchid.com/products/unsolved-mystery",
+      "source_product_url": "https://shop-gulforchid.com/products/unsolved-mystery",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -30084,6 +30144,36 @@
         "Khadlaj La Fede Celebrity Fame 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-PLOT-TWIST-X002",
+      "size_ml": 100,
+      "aliases": [
+        "Plot Twist 100 ml",
+        "Maison Asrar Plot Twist 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-PLOT-TWIST-X002-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-LOVE-KEY-X003",
+      "size_ml": 100,
+      "aliases": [
+        "Love Key 100 ml",
+        "Maison Asrar Love Key 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-LOVE-KEY-X003-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-UNSOLVED-MYSTERY-X001",
+      "size_ml": 100,
+      "aliases": [
+        "Unsolved Mystery 100 ml",
+        "Maison Asrar Unsolved Mystery 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-UNSOLVED-MYSTERY-X001-100-EDP",
       "concentration": "Eau de Parfum"
     }
   ]
