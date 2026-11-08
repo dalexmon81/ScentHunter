@@ -33875,6 +33875,206 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOMINUS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Dominus",
+      "name": "Dominus",
+      "family_id": "bujairami_catalog",
+      "family_name": "Dominus",
+      "aliases": [
+        "Dominus",
+        "Bujairami Dominus"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/dominus-inspired-by-anelo-pernoire",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/dominus/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-LUCID-DREAM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Lucid Dream",
+      "name": "Lucid Dream",
+      "family_id": "bujairami_catalog",
+      "family_name": "Lucid Dream",
+      "aliases": [
+        "Lucid Dream",
+        "Bujairami Lucid Dream"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/lucid-dream-inspired-by-lucius-fragrance-du-bois-extrait",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/lucid-dream/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DRIP",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Drip",
+      "name": "Drip",
+      "family_id": "bujairami_catalog",
+      "family_name": "Drip",
+      "aliases": [
+        "Drip",
+        "Bujairami Drip"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/product/drip-inspired-by-afternoon-swim-louis-vuitton-extrait/?add-to-cart=243936",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/drip/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SANDY-SHORES",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Sandy Shores",
+      "name": "Sandy Shores",
+      "family_id": "bujairami_catalog",
+      "family_name": "Sandy Shores",
+      "aliases": [
+        "Sandy Shores",
+        "Bujairami Sandy Shores"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/sea-of-emotions-inspired-louis-vuitton-by-on-the-beach",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/sandy-shores/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SHINKO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Shinko",
+      "name": "Shinko",
+      "family_id": "bujairami_catalog",
+      "family_name": "Shinko",
+      "aliases": [
+        "Shinko",
+        "Bujairami Shinko"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/137683",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/shinko/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-KOKOMA-PARADISE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Kokoma Paradise",
+      "name": "Kokoma Paradise",
+      "family_id": "bujairami_catalog",
+      "family_name": "Kokoma Paradise",
+      "aliases": [
+        "Kokoma Paradise",
+        "Bujairami Kokoma Paradise"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-ELEGANTO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Eleganto",
+      "name": "Eleganto",
+      "family_id": "bujairami_catalog",
+      "family_name": "Eleganto",
+      "aliases": [
+        "Eleganto",
+        "Bujairami Eleganto"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/eleganto/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/eleganto/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SAFARI-SQUEEZE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Safari Squeeze",
+      "name": "Safari Squeeze",
+      "family_id": "bujairami_catalog",
+      "family_name": "Safari Squeeze",
+      "aliases": [
+        "Safari Squeeze",
+        "Bujairami Safari Squeeze"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/safari-squeeze-inspired-by-tales-from-zanzibar-memoirs-of-a-perfume-collector",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/safari-squeeze/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-STELLAR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Stellar",
+      "name": "Stellar",
+      "family_id": "bujairami_catalog",
+      "family_name": "Stellar",
+      "aliases": [
+        "Stellar",
+        "Bujairami Stellar"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/stellar-inspired-by-city-of-stars-by-louis-vuitton",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/stellar/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOWNTOWN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Downtown",
+      "name": "Downtown",
+      "family_id": "bujairami_catalog",
+      "family_name": "Downtown",
+      "aliases": [
+        "Downtown",
+        "Bujairami Downtown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/downtown/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/downtown/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36654,6 +36854,106 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOMINUS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-DOMINUS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Dominus 100 ml",
+        "Bujairami Dominus 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/dominus-inspired-by-anelo-pernoire"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-LUCID-DREAM",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-LUCID-DREAM-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Lucid Dream 100 ml",
+        "Bujairami Lucid Dream 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/lucid-dream-inspired-by-lucius-fragrance-du-bois-extrait"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DRIP",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-DRIP-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Drip 100 ml",
+        "Bujairami Drip 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/product/drip-inspired-by-afternoon-swim-louis-vuitton-extrait/?add-to-cart=243936"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SANDY-SHORES",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-SANDY-SHORES-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Sandy Shores 100 ml",
+        "Bujairami Sandy Shores 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/sea-of-emotions-inspired-louis-vuitton-by-on-the-beach"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SHINKO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-SHINKO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Shinko 100 ml",
+        "Bujairami Shinko 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/137683"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-KOKOMA-PARADISE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-KOKOMA-PARADISE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Kokoma Paradise 100 ml",
+        "Bujairami Kokoma Paradise 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-ELEGANTO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-ELEGANTO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Eleganto 100 ml",
+        "Bujairami Eleganto 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/eleganto/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SAFARI-SQUEEZE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-SAFARI-SQUEEZE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Safari Squeeze 100 ml",
+        "Bujairami Safari Squeeze 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/safari-squeeze-inspired-by-tales-from-zanzibar-memoirs-of-a-perfume-collector"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-STELLAR",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-STELLAR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Stellar 100 ml",
+        "Bujairami Stellar 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/stellar-inspired-by-city-of-stars-by-louis-vuitton"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOWNTOWN",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-DOWNTOWN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Downtown 100 ml",
+        "Bujairami Downtown 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/downtown/"
     }
   ]
 }
