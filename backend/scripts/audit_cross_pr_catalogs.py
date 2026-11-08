@@ -104,7 +104,7 @@ def audit() -> int:
     product_id_to_identity: dict[str, dict[tuple[str, str], set[str]]] = defaultdict(
         lambda: defaultdict(set)
     )
-    variant_id_to_tuple: dict[str, dict[tuple[str, Any, str], set[str]]] = defaultdict(
+    variant_id_to_tuple: dict[str, dict[tuple[str, Any], set[str]]] = defaultdict(
         lambda: defaultdict(set)
     )
 
@@ -118,7 +118,7 @@ def audit() -> int:
     for variant_id, key in base_variant_pairs:
         if variant_id and key[0] and key[1] is not None:
             variants_by_tuple[key][variant_id].add("BASELINE")
-            variant_id_to_tuple[variant_id][key].add("BASELINE")
+            variant_id_to_tuple[variant_id][(key[0], key[1])].add("BASELINE")
 
     loaded = 0
     for ref in CANDIDATE_REFS:
@@ -142,7 +142,7 @@ def audit() -> int:
             if (variant_id, key) in base_variant_pairs:
                 continue
             variants_by_tuple[key][variant_id].add(ref)
-            variant_id_to_tuple[variant_id][key].add(ref)
+            variant_id_to_tuple[variant_id][(key[0], key[1])].add(ref)
 
     findings: list[str] = []
     for identity, ids_to_refs in sorted(products_by_identity.items()):
@@ -172,7 +172,7 @@ def audit() -> int:
         if len(tuples_to_refs) > 1:
             refs = sorted({ref for refs in tuples_to_refs.values() for ref in refs})
             findings.append(
-                f"VARIANT ID REUSED {variant_id}: tuples={list(tuples_to_refs)}; branches={refs}"
+                f"VARIANT ID REUSED FOR DIFFERENT PRODUCT/SIZE {variant_id}: keys={list(tuples_to_refs)}; branches={refs}"
             )
 
     print(f"Cross-PR catalog audit: baseline={BASE_REF}; candidate_branches={loaded}")
