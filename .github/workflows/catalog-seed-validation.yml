@@ -87,4 +87,5 @@ jobs:
           backend.tests.test_paris_corner_europe_official_variants
           backend.tests.test_paris_corner_ministry_of_oud_variants
           backend.tests.test_paris_corner_harrier_absoulte
+          backend.tests.test_paris_corner_spelling_reconciliation
           -v
