@@ -743,7 +743,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             row for row in CATALOG.get("variants", [])
             if row.get("product_id") == products["California"]["product_id"]
         ]
-        self.assertEqual({v.get("size_ml") for v in variants}, {50, 100})
+        self.assertEqual({v.get("size_ml") for v in variants}, {15, 50, 100})
         self.assertTrue(all(
             any(alias.startswith("California Signature ") for alias in v.get("aliases", []))
             for v in variants
