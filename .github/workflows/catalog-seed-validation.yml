@@ -30,6 +30,7 @@ on:
       - catalog/maison-asrar-detail-source-refresh-2026-11-08
       - catalog/al-wataniah-detail-evidence-2026-11-08
       - catalog/khadlaj-detail-evidence-2026-11-08
+      - catalog/khadlaj-more-detail-evidence-2026-11-08
 
 permissions:
   contents: read
@@ -65,6 +66,7 @@ jobs:
           backend.tests.test_games_of_spades_catalog
           backend.tests.test_khadlaj_catalog_parity
           backend.tests.test_khadlaj_detail_evidence
+          backend.tests.test_khadlaj_additional_detail_evidence
           backend.tests.test_khadlaj_la_fede
           backend.tests.test_lattafa_catalog
           backend.tests.test_paris_corner_catalog_parity
