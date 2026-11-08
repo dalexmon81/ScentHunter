@@ -48,6 +48,19 @@ EXPECTED = {
     ),
 }
 
+ADDITIONAL_IDENTITY_URLS = {
+    "Jawhara Rouge": "https://maisonasrar.com/products/jawhara-rouge-eau-de-perfum-100ml",
+    "Jawhara Black": "https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml",
+    "Petra": "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml",
+    "Casablanca": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml",
+    "Trophy": "https://maisonasrar.com/products/trophy-eau-de-perfum-100ml",
+    "Oscar": "https://maisonasrar.com/products/oscar-eau-de-perfum-100ml",
+    "Fairy Tale": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml",
+    "Magic Night": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+    "Icon": "https://maisonasrar.com/products/icon-eau-de-perfum-100ml",
+    "Desire": "https://maisonasrar.com/products/desire-eau-de-perfum-100ml",
+}
+
 LOCK_KEY = {
     "Plot Twist": "https://shop-gulforchid.com/products/plot-twist",
     "Love Key": "https://shop-gulforchid.com/products/love-key",
@@ -70,6 +83,26 @@ class MaisonAsrarOfficialFragranceTests(unittest.TestCase):
                 self.assertEqual(product.get("source_url"), url)
                 self.assertEqual(product.get("source_evidence_url"), url)
 
+
+
+    def test_additional_existing_identities_have_official_detail_page_evidence_only(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, url in ADDITIONAL_IDENTITY_URLS.items():
+            product = products[name]
+            with self.subTest(product=name):
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), url)
+                self.assertEqual(product.get("source_evidence_url"), url)
+                self.assertNotIn("formats_ml", product)
+                self.assertEqual(
+                    [row for row in variants if row.get("product_id") == product.get("product_id")],
+                    [],
+                )
 
     def test_lock_and_key_products_keep_gulf_orchid_brand_and_variant_evidence(self):
         products = {
