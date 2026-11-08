@@ -4447,7 +4447,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://de.afnan.com/en/products/9pm-night-out",
       "source_evidence_url": "https://afnan.com/collections/all",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-ab1ea63f",
@@ -6531,21 +6534,6 @@
       "aliases": [
         "Tiramisu Coco",
         "Zimaya Tiramisu Coco"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
-    },
-    {
-      "product_id": "SH-ZIMAYA-3291f910",
-      "brand": "Zimaya",
-      "brand_name": "Zimaya",
-      "canonical_name": "Tiramisu S'mores",
-      "name": "Tiramisu S'mores",
-      "family_id": "zimaya_catalog",
-      "family_name": "Tiramisu S'mores",
-      "aliases": [
-        "Tiramisu S'mores",
-        "Zimaya Tiramisu S'mores"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://zimayaperfumes.com/"
@@ -9661,7 +9649,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-leonie-intense-eau-de-parfum-for-women",
       "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-b55d3316",
@@ -20733,7 +20724,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://frenchavenue.com/products/prune-hypnos",
       "source_evidence_url": "https://frenchavenue.com/collections/all?page=3",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-SPIRITO-MYSTIC",
@@ -23278,7 +23272,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/midnight-sin-by-daniel-rene",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=4"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-a8f342a3",
@@ -25028,7 +25025,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://frenchavenue.com/products/le-falcon",
       "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-b600d17c",
@@ -25045,7 +25045,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://frenchavenue.com/products/le-falcon-dubai",
       "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-d21d0a98",
@@ -25302,7 +25305,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://frenchavenue.com/products/spirito-ignite",
       "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-44492640",
@@ -33350,7 +33356,10 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://frenchavenue.com/products/eclipse"
+      "source_url": "https://frenchavenue.com/products/eclipse",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-ECLIPSE-NOVA",
@@ -33367,7 +33376,10 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://frenchavenue.com/products/eclipse-nova-extrait"
+      "source_url": "https://frenchavenue.com/products/eclipse-nova-extrait",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-KIBRIA-SUPREMO",
@@ -33383,7 +33395,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://ro.zimayaperfumes.com/products/kibria-supremo",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-OSCAR-PLATINUM",
@@ -33399,7 +33414,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://fr.zimayaperfumes.com/products/oscar-platinum",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-ZUKHRUF-PEACH-PLEASE",
@@ -33416,7 +33434,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://de.zimayaperfumes.com/en/products/zukhruf-peach",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-MAZAAJ-RHYTHM",
@@ -33432,7 +33453,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://zimayaperfumes.com/products/mazaaj-rhythm",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-TIRAMISU-SMORES",
@@ -33445,11 +33469,15 @@
       "aliases": [
         "Tiramisu S’mores",
         "Tiramisu S'mores",
-        "Zimaya Tiramisu S’mores"
+        "Zimaya Tiramisu S’mores",
+        "Zimaya Tiramisu S'mores"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://zimayaperfumes.com/products/tiramisu-s-mores",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-MINERALE-GOLD",
@@ -33465,7 +33493,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-minerale-gold-eau-de-parfum-for-everyone",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-VICTORIOSO-FEARLESS",
@@ -33481,7 +33512,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-fearless-eau-de-parfum-for-everyone",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-THE-MEMORY-OF-OUD",
@@ -33497,7 +33531,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-the-memory-of-oud-eau-de-parfum-for-everyone",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-SCEPTRE-OCEANA",
@@ -33513,7 +33550,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-oceana-eau-de-parfum-for-everyone",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
