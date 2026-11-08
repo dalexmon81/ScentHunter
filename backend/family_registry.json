@@ -4045,6 +4045,27 @@
             "Vulcan Feu",
             "French Avenue Vulcan Feu"
           ]
+        },
+        {
+          "canonical_name": "Jasmere",
+          "aliases": [
+            "Jasmere",
+            "French Avenue Jasmere"
+          ]
+        },
+        {
+          "canonical_name": "Amber Empire",
+          "aliases": [
+            "Amber Empire",
+            "French Avenue Amber Empire"
+          ]
+        },
+        {
+          "canonical_name": "Safari Breeze",
+          "aliases": [
+            "Safari Breeze",
+            "French Avenue Safari Breeze"
+          ]
         }
       ]
     },
