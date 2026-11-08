@@ -33966,8 +33966,11 @@
         "Atlas Canyon",
         "Lattafa Atlas Canyon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/new-launches/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-canyon/",
+      "formats_ml": [
+        55
+      ]
     },
     {
       "product_id": "SH-LATTAFA-NEW-LAUNCH-ATLAS-GLACIAL-VALLEY",
@@ -37065,6 +37068,15 @@
         "Gulf Orchid Maestro 100ml"
       ],
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-ATLAS-CANYON",
+      "variant_id": "SHV-SH-LATTAFA-NEW-LAUNCH-ATLAS-CANYON-55-000",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Canyon 55 ml",
+        "Lattafa Atlas Canyon 55ml"
+      ]
     }
   ]
 }
