@@ -22,6 +22,7 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
+from scenthunter_next_engine.product_form import PRODUCT_FORM_VALUES
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -141,6 +142,9 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
             blocked.append(f"{source_id}: duplicate variant_id")
             continue
         variant_ids.add(source_id)
+        product_form = row.get("product_form")
+        if product_form not in (None, "") and (not isinstance(product_form, str) or product_form not in PRODUCT_FORM_VALUES):
+            blocked.append(f"{source_id}: unsupported product_form {product_form!r}")
         size = row.get("size_ml")
         if size not in (None, ""):
             try:
@@ -255,6 +259,7 @@ def main() -> int:
                 for variant in by_product.get(pid, []):
                     source_id = str(variant["variant_id"]).strip()
                     concentration = variant.get("concentration") or product.get("concentration")
+                    product_form = variant.get("product_form")
                     size = variant.get("size_ml")
                     key = "|".join((
                         normalize_brand(str(product["brand_name"])),
@@ -264,6 +269,7 @@ def main() -> int:
                         str(bool(variant.get("is_tester", False))),
                         str(bool(variant.get("is_refill", False))),
                         str(bool(variant.get("is_gift_set", False))),
+                        str(product_form or ""),
                         source_id,
                     ))
                     variant_id = stable_id("variant", source_id)
@@ -273,6 +279,7 @@ def main() -> int:
                             id=variant_id,
                             fragrance_id=fragrance.id,
                             concentration=concentration,
+                            product_form=product_form,
                             size_ml=int(size) if size not in (None, "") else None,
                             is_tester=variant.get("is_tester"),
                             is_refill=variant.get("is_refill"),
@@ -284,6 +291,16 @@ def main() -> int:
                         session.flush()
                     elif variant_row.fragrance_id != fragrance.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
+                    elif product_form and variant_row.product_form and variant_row.product_form != product_form:
+                        raise RuntimeError(
+                            f"Legacy variant ID {source_id} has conflicting product forms: "
+                            f"{variant_row.product_form!r} vs {product_form!r}"
+                        )
+                    elif product_form and not variant_row.product_form:
+                        # Enrich only from an explicit non-null catalog value.
+                        # Never erase an already-reviewed form when the seed is blank.
+                        variant_row.product_form = product_form
+                        variant_row.canonical_key = str(variant.get("canonical_key") or key[:320])
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:

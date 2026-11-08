@@ -31,5 +31,14 @@ jobs:
           cache: pip
       - name: Install SQLite migration tooling
         run: python -m pip install "SQLAlchemy==2.0.44" "alembic==1.17.1" pytest
-      - name: Run schema and seed integration tests
-        run: pytest -q tests/test_phase2_schema_contract.py tests/test_phase2_seed_catalog.py
+      - name: Run schema and product-form seed integration tests
+        run: >-
+          pytest -q
+          tests/test_phase2_schema_contract.py
+          tests/test_product_form_guard.py
+          tests/test_phase2_seed_catalog.py::test_seed_apply_imports_identity_without_creating_variant_or_offer
+          tests/test_phase2_seed_catalog.py::test_seed_blocks_unknown_product_form_without_writing_database
+          tests/test_phase2_seed_catalog.py::test_seed_enriches_null_product_form_without_erasing_or_conflicting_existing_value
+          tests/test_phase2_seed_catalog.py::test_real_source_catalog_dry_run_reports_unmatched_variant_count
+          tests/test_phase2_seed_catalog.py::test_real_catalog_requested_brands_are_present_and_variants_are_traceable
+          tests/test_phase2_seed_catalog.py::test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent

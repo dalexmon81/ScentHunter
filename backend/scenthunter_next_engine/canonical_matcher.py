@@ -15,6 +15,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from .catalog_repository import CatalogRepository
+from .product_form import detect_product_form
 from .models import (
     CanonicalProduct,
     CanonicalVariant,
@@ -26,6 +27,14 @@ from .models import (
 
 _SPACE_RE = re.compile(r"\s+")
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
+
+_PRODUCT_FORM_TITLE_SUFFIXES = (
+    "perfumed deodorant spray", "deodorant spray", "deodorant stick", "deo stick", "deodorant", "antiperspirant",
+    "discovery set", "discovery kit", "gift set", "coffret", "hair mist", "body mist",
+    "body spray", "body splash", "perfume oil", "fragrance oil", "attar",
+    "room spray", "reed diffuser", "home fragrance", "diffuser",
+    "shower gel", "body wash", "body lotion", "body cream", "body butter", "hand cream", "scented candle",
+)
 
 _GENERIC_TITLE_SUFFIXES = (
     "eau de parfum",
@@ -79,11 +88,28 @@ def _retailer_title_core(value: str) -> str:
             core = sized
             changed = True
             continue
+        for suffix in _PRODUCT_FORM_TITLE_SUFFIXES:
+            if core.endswith(" " + suffix):
+                core = core[: -(len(suffix) + 1)].strip()
+                changed = True
+                break
+        if changed:
+            continue
         for suffix in _GENERIC_TITLE_SUFFIXES:
             if core.endswith(" " + suffix):
                 core = core[: -(len(suffix) + 1)].strip()
                 changed = True
                 break
+    return core
+
+
+def _strip_product_form_suffix(value: str) -> str:
+    """Remove only explicit trailing form descriptors, preserving concentration words."""
+    core = normalize_identity_text(value)
+    core = _SIZE_SUFFIX_RE.sub("", core).strip()
+    for suffix in _PRODUCT_FORM_TITLE_SUFFIXES:
+        if core.endswith(" " + suffix):
+            return core[: -(len(suffix) + 1)].strip()
     return core
 
 
@@ -278,6 +304,24 @@ def _offer_gtin(raw_payload: Mapping[str, object]) -> str | None:
     return None
 
 
+def _product_form_guard_reason(offer: RetailerOffer, variant: CanonicalVariant) -> str | None:
+    """Fail closed when explicit product-form evidence conflicts or is incomplete.
+
+    Legacy fine-fragrance records may remain unclassified without blocking the
+    existing matcher. Explicit non-fragrance forms, however, must never be
+    attached to an untyped variant or a different typed variant.
+    """
+    offer_form = offer.product_form or detect_product_form(offer.raw_name)
+    canonical_form = variant.product_form
+    if offer_form and canonical_form:
+        return None if offer_form == canonical_form else "product_form_conflict"
+    if offer_form and offer_form != "fine_fragrance" and not canonical_form:
+        return "canonical_variant_product_form_unverified"
+    if canonical_form and canonical_form != "fine_fragrance" and not offer_form:
+        return "offer_product_form_unverified"
+    return None
+
+
 class CanonicalMatcher:
     """Resolve offers using exact catalog identity, aliases, formats and verified GTINs."""
 
@@ -361,6 +405,14 @@ class CanonicalMatcher:
                 offer=offer,
                 status=MatchStatus.UNRESOLVED,
                 reason="verified_gtin_target_missing_from_catalog",
+            )
+        form_error = _product_form_guard_reason(offer, variant)
+        if form_error:
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.UNRESOLVED,
+                reason=form_error,
+                candidate_product_ids=(product.product_id,),
             )
         expected_size = evidence.get("size_ml")
         if (
@@ -556,7 +608,7 @@ class CanonicalMatcher:
         # Brand-stripped forms are useful for matching aliases, but must not
         # make "Code" equivalent in priority to the canonical title
         # "Armani Code". Otherwise short titles can create false collisions.
-        normalized_offer_title = normalize_identity_text(offer.raw_name)
+        normalized_offer_title = _strip_product_form_suffix(offer.raw_name)
 
         strict_canonical_ids = {
             product.product_id
@@ -699,6 +751,14 @@ class CanonicalMatcher:
                 )
 
             selected = matching_variants[0]
+            form_error = _product_form_guard_reason(offer, selected)
+            if form_error:
+                return OfferMatch(
+                    offer=offer,
+                    status=MatchStatus.UNRESOLVED,
+                    reason=form_error,
+                    candidate_product_ids=(product.product_id,),
+                )
 
             if (
                 matched_variant_aliases
@@ -728,6 +788,14 @@ class CanonicalMatcher:
 
         if len(matched_variant_aliases) == 1:
             selected = matched_variant_aliases[0]
+            form_error = _product_form_guard_reason(offer, selected)
+            if form_error:
+                return OfferMatch(
+                    offer=offer,
+                    status=MatchStatus.UNRESOLVED,
+                    reason=form_error,
+                    candidate_product_ids=(product.product_id,),
+                )
 
             return OfferMatch(
                 offer=offer,
@@ -748,6 +816,14 @@ class CanonicalMatcher:
 
         if len(variants) == 1:
             variant = variants[0]
+            form_error = _product_form_guard_reason(offer, variant)
+            if form_error:
+                return OfferMatch(
+                    offer=offer,
+                    status=MatchStatus.UNRESOLVED,
+                    reason=form_error,
+                    candidate_product_ids=(product.product_id,),
+                )
 
             return OfferMatch(
                 offer=offer,

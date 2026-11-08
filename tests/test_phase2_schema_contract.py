@@ -25,17 +25,34 @@ def test_canonical_identity_is_separate_from_retailer_offers():
     assert "external_product_id" not in ProductVariant.__table__.columns
 
 def test_variant_attributes_and_fixed_precision_prices():
-    for field in ("concentration", "size_ml", "is_tester", "is_refill", "is_gift_set", "gtin"):
+    for field in ("concentration", "product_form", "size_ml", "is_tester", "is_refill", "is_gift_set", "gtin"):
         assert field in ProductVariant.__table__.columns
     assert str(Offer.__table__.c.price.type) == "NUMERIC(12, 2)"
     assert str(PriceHistory.__table__.c.price.type) == "NUMERIC(12, 2)"
     assert any(isinstance(fk, ForeignKey) for fk in MatchAudit.__table__.c.offer_id.foreign_keys)
 
+
+def test_variant_product_form_is_nullable_and_uses_controlled_values():
+    assert ProductVariant.__table__.c.product_form.nullable is True
+    checks = [
+        str(getattr(constraint, "sqltext", ""))
+        for constraint in ProductVariant.__table__.constraints
+    ]
+    product_form_check = next(
+        (check for check in checks if "product_form IS NULL OR product_form IN" in check),
+        "",
+    )
+    assert product_form_check
+    assert "fine_fragrance" in product_form_check
+    assert "deodorant" in product_form_check
+    assert "home_fragrance" in product_form_check
+
+
 def test_required_offer_and_catalog_indexes_exist():
     indexes = {index.name for table in Base.metadata.tables.values() for index in table.indexes}
     assert {
         "ix_product_variants_gtin", "ix_product_variants_size_ml",
-        "ix_product_variants_concentration", "ix_offers_status",
+        "ix_product_variants_concentration", "ix_product_variants_product_form", "ix_offers_status",
         "ix_offers_captured_at", "ix_offers_price",
         "ix_offers_store_external_product", "ix_offers_store_id",
         "ix_offers_product_variant_id", "ix_fragrances_name",
@@ -54,6 +71,7 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.exec_driver_sql("PRAGMA integrity_check").scalar_one() == "ok"
         tables = set(inspect(engine).get_table_names())
+        assert "product_form" in {column["name"] for column in inspect(engine).get_columns("product_variants")}
         assert {
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",

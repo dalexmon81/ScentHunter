@@ -34,11 +34,13 @@ class ProductVariant(Base):
     __table_args__ = (
         CheckConstraint("size_ml IS NULL OR size_ml > 0", name="size_ml_positive"),
         CheckConstraint("NOT (is_tester AND is_gift_set)", name="tester_not_gift_set"),
-        Index("ix_product_variants_gtin", "gtin"), Index("ix_product_variants_size_ml", "size_ml"), Index("ix_product_variants_concentration", "concentration"),
+        CheckConstraint("product_form IS NULL OR product_form IN ('fine_fragrance','perfume_oil','deodorant','body_mist','hair_mist','body_care','home_fragrance','gift_set','discovery_set')", name="product_form_allowed"),
+        Index("ix_product_variants_gtin", "gtin"), Index("ix_product_variants_size_ml", "size_ml"), Index("ix_product_variants_concentration", "concentration"), Index("ix_product_variants_product_form", "product_form"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fragrance_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False, index=True)
     concentration: Mapped[str | None] = mapped_column(String(60))
+    product_form: Mapped[str | None] = mapped_column(String(40))
     size_ml: Mapped[int | None] = mapped_column(Integer)
     is_tester: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_refill: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
