@@ -25,7 +25,7 @@ MINIMUM_BRAND_COUNTS = {
     "Gulf Orchid": 23,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
-    "Lattafa": 121,
+    "Lattafa": 123,
     "Afnan": 87,
     "Aromatix": 12,
     "Maison Alhambra": 203,
@@ -557,6 +557,41 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Harlequin Cream – Give Me Gourmand": (
                 "https://lattafa.com/product/harlequin-cream-give-me-gourmand/", 75
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Lattafa"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("source_evidence_url"), source_url)
+                self.assertNotIn("concentration", row)
+                self.assertNotIn("concentration", matching[0])
+
+
+
+    def test_badee_amethyst_fusion_and_petra_viola_official_pages_and_variants(self):
+        expected = {
+            "Badee Al Oud Amethyst Fusion": (
+                "https://lattafa.com/product/badee-al-oud-amethyst-fusion/", 100
+            ),
+            "Petra Viola": (
+                "https://www.lattafa-usa.com/products/petra-viola", 100
             ),
         }
         products = {
