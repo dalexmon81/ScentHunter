@@ -23,8 +23,8 @@ The additional verified names include Al Qasr, Al Qasr Dahab, Mango Heaven, Heav
 - Sweet Heaven: 20 ml and 100 ml EDP variants.
 - Sweet Heaven Extreme: 20 ml and 100 ml EDP variants.
 - Sweet Heaven Ice: 20 ml and 100 ml EDP variants.
-- Sweet Heaven Cherry: 20 ml EDP variant.
-- Sweet Heaven Tobacco: 20 ml EDP variant.
+- Sweet Heaven Cherry: 20 ml and 100 ml EDP variants.
+- Sweet Heaven Tobacco: 20 ml and 100 ml EDP variants.
 - Other explicit size-specific products use the size printed on their individual detail page (including 60 ml, 100 ml and 110 ml formats).
 - Arabian Nights is retained as an EDP identity without a size variant because the official detail page did not expose a reliable size.
 - Cotton Candy Musk and Tahara Vanilla Musk remain without size variants for the same evidence-quality reason.
