@@ -11,6 +11,10 @@ DETAILS = {
     "Fursan White": "https://khadlaj-perfumes.com/collections/all/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae",
     "Cloud Candy": "https://khadlaj-perfumes.com/collections/all/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
     "Sawaar Vanille Blanc": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+    "Karus Gold Absolu": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray",
+    "Empire Victor": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+    "Private Blend Musk Ice": "https://khadlaj-perfumes.com/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance",
+    "Caffe Latte": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray",
 }
 CONCENTRATIONS = {
     "Island Dreams": "Extrait de Parfum",
@@ -18,6 +22,10 @@ CONCENTRATIONS = {
     "Cream Velvet": "Extrait de Parfum",
     "Fursan White": "Eau de Parfum",
     "Cloud Candy": "Extrait de Parfum",
+    "Karus Gold Absolu": "Eau de Parfum",
+    "Empire Victor": "Eau de Parfum",
+    "Private Blend Musk Ice": "Extrait de Parfum",
+    "Caffe Latte": "Extrait de Parfum",
 }
 
 
@@ -37,7 +45,7 @@ class KhadlajDetailEvidenceTests(unittest.TestCase):
         self.assertEqual(len(matches), 1, name)
         return matches[0]
 
-    def test_six_existing_identities_have_official_detail_evidence(self):
+    def test_ten_existing_identities_have_official_detail_evidence(self):
         for name, url in DETAILS.items():
             with self.subTest(product=name):
                 product = self.product(name)
