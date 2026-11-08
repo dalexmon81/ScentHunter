@@ -21,7 +21,19 @@
     "maison_asrar_royal_collection": 9,
     "aromatix_x_french_avenue": 10,
     "games_of_spades": 28,
-    "other_requested_brands": 18
+    "other_requested_brands": 18,
+    "other_requested_brand_candidates": 18,
+    "other_requested_brands_represented": 8,
+    "other_requested_brand_names": [
+      "Lattafa",
+      "French Avenue",
+      "Bujairami",
+      "Khadlaj",
+      "Arabiyat Prestige",
+      "Maison Alhambra",
+      "Armaf",
+      "Swiss Arabian"
+    ]
   },
   "sources": [
     {
