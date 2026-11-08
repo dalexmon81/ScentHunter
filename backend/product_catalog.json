@@ -1611,9 +1611,12 @@
         "Fresh Iris",
         "Maison Asrar Fresh Iris"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "source_evidence_url": "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-a5a7cc49",
@@ -1819,9 +1822,12 @@
         "Jawhara Black",
         "Maison Asrar Jawhara Black"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "source_evidence_url": "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-d20dc7ce",
@@ -1835,9 +1841,12 @@
         "Jawhara Rouge",
         "Maison Asrar Jawhara Rouge"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "source_evidence_url": "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-186e6d46",
@@ -36872,6 +36881,36 @@
         "Mykonos Once Upon Don 50 ml"
       ],
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-d20dc7ce",
+      "size_ml": 100,
+      "aliases": [
+        "Jawhara Rouge 100 ml",
+        "Maison Asrar Jawhara Rouge Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-d20dc7ce-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-fce356db",
+      "size_ml": 100,
+      "aliases": [
+        "Jawhara Black 100 ml",
+        "Maison Asrar Jawhara Black Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-fce356db-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-f778e873",
+      "size_ml": 100,
+      "aliases": [
+        "Fresh Iris 100 ml",
+        "Maison Asrar Fresh Iris Eau de Parfum 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-f778e873-100-EDP",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
