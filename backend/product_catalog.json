@@ -24346,6 +24346,214 @@
       "identity_status": "source_listed_name",
       "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
       "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-4a1695d9",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Royal Blend Nero",
+      "name": "Royal Blend Nero",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Royal Blend Nero",
+        "French Avenue Royal Blend Nero"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-5eb62801",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Vulcan Sable",
+      "name": "Vulcan Sable",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Vulcan Sable",
+        "French Avenue Vulcan Sable"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-2f8979e0",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Veneno",
+      "name": "Veneno",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Veneno",
+        "French Avenue Veneno"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-6b83ae48",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Veneno Bianco",
+      "name": "Veneno Bianco",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Veneno Bianco",
+        "French Avenue Veneno Bianco"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-43bae286",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Double Espresso",
+      "name": "Double Espresso",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Double Espresso",
+        "French Avenue Double Espresso"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-83086355",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Crème of Clouds",
+      "name": "Crème of Clouds",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Crème of Clouds",
+        "French Avenue Crème of Clouds"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-2909bdb5",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Nabatieh",
+      "name": "Nabatieh",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Nabatieh",
+        "French Avenue Nabatieh"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-6efe86da",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Obsidian",
+      "name": "Obsidian",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Obsidian",
+        "French Avenue Obsidian"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-62e9947b",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Brown Sugar",
+      "name": "Brown Sugar",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Brown Sugar",
+        "French Avenue Brown Sugar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-77912bec",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Hibiscus Magic",
+      "name": "Hibiscus Magic",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Hibiscus Magic",
+        "French Avenue Hibiscus Magic"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-13e9a647",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Feroce Pour Homme",
+      "name": "Feroce Pour Homme",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Feroce Pour Homme",
+        "French Avenue Feroce Pour Homme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-f129bb22",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Aquarius",
+      "name": "Aquarius",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Aquarius",
+        "French Avenue Aquarius"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-f788e663",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Aries",
+      "name": "Aries",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Aries",
+        "French Avenue Aries"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all",
+      "source_evidence_url": "https://frenchavenue.com/collections/all"
     }
   ],
   "variants": [
