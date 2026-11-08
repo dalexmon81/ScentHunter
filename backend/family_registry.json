@@ -1106,8 +1106,7 @@
           "canonical_name": "California",
           "aliases": [
             "California",
-            "Mykonos California",
-            "California Signature"
+            "Mykonos California"
           ],
           "formats_ml": [
             50,
@@ -1904,6 +1903,27 @@
           "aliases": [
             "Zora",
             "Mykonos Zora"
+          ]
+        },
+        {
+          "canonical_name": "Imperium",
+          "aliases": [
+            "Imperium",
+            "Mykonos Imperium"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "California Signature",
+          "aliases": [
+            "California Signature",
+            "Mykonos California Signature"
+          ],
+          "formats_ml": [
+            50,
+            100
           ]
         }
       ]
