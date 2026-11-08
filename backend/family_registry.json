@@ -4265,10 +4265,12 @@
           ]
         },
         {
-          "canonical_name": "Gelato Black Current Lolly",
+          "canonical_name": "Gelato Black Currant Lolly",
           "aliases": [
             "Gelato Black Current Lolly",
-            "Arabiyat Prestige Gelato Black Current Lolly"
+            "Arabiyat Prestige Gelato Black Current Lolly",
+            "Gelato Black Currant Lolly",
+            "Arabiyat Prestige Gelato Black Currant Lolly"
           ],
           "formats_ml": [
             100
@@ -4312,6 +4314,209 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Nyla Vani-elle",
+          "aliases": [
+            "Nyla Vani-elle",
+            "Arabiyat Prestige Nyla Vani-elle"
+          ]
+        },
+        {
+          "canonical_name": "Nyla Suede",
+          "aliases": [
+            "Nyla Suede",
+            "Arabiyat Prestige Nyla Suede"
+          ]
+        },
+        {
+          "canonical_name": "Nyla",
+          "aliases": [
+            "Nyla",
+            "Arabiyat Prestige Nyla"
+          ]
+        },
+        {
+          "canonical_name": "Aariz Intense",
+          "aliases": [
+            "Aariz Intense",
+            "Arabiyat Prestige Aariz Intense"
+          ]
+        },
+        {
+          "canonical_name": "Aariz",
+          "aliases": [
+            "Aariz",
+            "Arabiyat Prestige Aariz"
+          ]
+        },
+        {
+          "canonical_name": "Aariz L’Absolu",
+          "aliases": [
+            "Aariz L’Absolu",
+            "Arabiyat Prestige Aariz L’Absolu"
+          ]
+        },
+        {
+          "canonical_name": "Lychee Musk",
+          "aliases": [
+            "Lychee Musk",
+            "Arabiyat Prestige Lychee Musk"
+          ]
+        },
+        {
+          "canonical_name": "Blueberry Musk",
+          "aliases": [
+            "Blueberry Musk",
+            "Arabiyat Prestige Blueberry Musk"
+          ]
+        },
+        {
+          "canonical_name": "Hypnotic Vanilla",
+          "aliases": [
+            "Hypnotic Vanilla",
+            "Arabiyat Prestige Hypnotic Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Attar Al Youm Black",
+          "aliases": [
+            "Attar Al Youm Black",
+            "Arabiyat Prestige Attar Al Youm Black"
+          ]
+        },
+        {
+          "canonical_name": "Musk Al Youm",
+          "aliases": [
+            "Musk Al Youm",
+            "Arabiyat Prestige Musk Al Youm"
+          ]
+        },
+        {
+          "canonical_name": "Oud Al Youm",
+          "aliases": [
+            "Oud Al Youm",
+            "Arabiyat Prestige Oud Al Youm"
+          ]
+        },
+        {
+          "canonical_name": "Bedour Extrait",
+          "aliases": [
+            "Bedour Extrait",
+            "Arabiyat Prestige Bedour Extrait"
+          ]
+        },
+        {
+          "canonical_name": "Bedour",
+          "aliases": [
+            "Bedour",
+            "Arabiyat Prestige Bedour"
+          ]
+        },
+        {
+          "canonical_name": "Ishatar Roses Vanilla",
+          "aliases": [
+            "Ishatar Roses Vanilla",
+            "Arabiyat Prestige Ishatar Roses Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Red Oud",
+          "aliases": [
+            "Red Oud",
+            "Arabiyat Prestige Red Oud"
+          ]
+        },
+        {
+          "canonical_name": "Al Noor",
+          "aliases": [
+            "Al Noor",
+            "Arabiyat Prestige Al Noor"
+          ]
+        },
+        {
+          "canonical_name": "Al Shujae",
+          "aliases": [
+            "Al Shujae",
+            "Arabiyat Prestige Al Shujae"
+          ]
+        },
+        {
+          "canonical_name": "Asha'a Mauve",
+          "aliases": [
+            "Asha'a Mauve",
+            "Arabiyat Prestige Asha'a Mauve"
+          ]
+        },
+        {
+          "canonical_name": "Asháa Oud Noir",
+          "aliases": [
+            "Asháa Oud Noir",
+            "Arabiyat Prestige Asháa Oud Noir"
+          ]
+        },
+        {
+          "canonical_name": "Bahiya Garnet",
+          "aliases": [
+            "Bahiya Garnet",
+            "Arabiyat Prestige Bahiya Garnet"
+          ]
+        },
+        {
+          "canonical_name": "Bahiya Ruby",
+          "aliases": [
+            "Bahiya Ruby",
+            "Arabiyat Prestige Bahiya Ruby"
+          ]
+        },
+        {
+          "canonical_name": "Ishatar Amber Vanilla",
+          "aliases": [
+            "Ishatar Amber Vanilla",
+            "Arabiyat Prestige Ishatar Amber Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Hamdan The Hero",
+          "aliases": [
+            "Hamdan The Hero",
+            "Arabiyat Prestige Hamdan The Hero"
+          ]
+        },
+        {
+          "canonical_name": "Sugarcane Vanilla",
+          "aliases": [
+            "Sugarcane Vanilla",
+            "Arabiyat Prestige Sugarcane Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Noirè Absolu",
+          "aliases": [
+            "Noirè Absolu",
+            "Arabiyat Prestige Noirè Absolu"
+          ]
+        },
+        {
+          "canonical_name": "Noire",
+          "aliases": [
+            "Noire",
+            "Arabiyat Prestige Noire"
+          ]
+        },
+        {
+          "canonical_name": "Swar Venin",
+          "aliases": [
+            "Swar Venin",
+            "Arabiyat Prestige Swar Venin"
+          ]
+        },
+        {
+          "canonical_name": "Gelato Black Currant Lolly",
+          "aliases": [
+            "Gelato Black Currant Lolly",
+            "Arabiyat Prestige Gelato Black Currant Lolly"
           ]
         }
       ]
