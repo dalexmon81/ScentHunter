@@ -9,16 +9,17 @@ REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf
 
 
 class ParisCornerHarrierAbsoulteTests(unittest.TestCase):
-    def test_official_product_page_and_variant(self):
+    def test_official_spelling_maps_to_existing_canonical_identity(self):
         product = next(
             p for p in CATALOG["products"]
             if p.get("brand_name") == "Paris Corner"
-            and p.get("canonical_name") == "Harrier Absoulte"
+            and p.get("canonical_name") == "Harrier Absolute"
         )
         url = "https://www.pariscornerperfumes.com/products/harrier-absoulte"
         self.assertEqual(product["identity_status"], "source_verified_name")
         self.assertEqual(product["source_url"], url)
         self.assertEqual(product["source_evidence_url"], url)
+        self.assertIn("Harrier Absoulte", product["aliases"])
         self.assertEqual(product["formats_ml"], [100])
         self.assertEqual(product["concentration"], "Eau de Parfum")
         matches = [
@@ -29,16 +30,21 @@ class ParisCornerHarrierAbsoulteTests(unittest.TestCase):
         ]
         self.assertEqual(len(matches), 1)
 
-    def test_family_registry_format_is_aligned(self):
+    def test_family_registry_uses_canonical_spelling_and_alias(self):
         family = next(
             f for f in REGISTRY["families"]
             if f.get("family_id") == "paris_corner_catalog"
         )
         registry_product = next(
             p for p in family["products"]
-            if p["canonical_name"] == "Harrier Absoulte"
+            if p["canonical_name"] == "Harrier Absolute"
         )
+        self.assertIn("Harrier Absoulte", registry_product["aliases"])
         self.assertIn(100, registry_product.get("formats_ml", []))
+        self.assertFalse(any(
+            p["canonical_name"] == "Harrier Absoulte"
+            for p in family["products"]
+        ))
 
 
 if __name__ == "__main__":
