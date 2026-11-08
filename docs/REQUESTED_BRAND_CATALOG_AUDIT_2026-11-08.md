@@ -21,3 +21,44 @@ First-party references:
 - Main assortment page 4: https://officialmykonos.com/collections/all?page=4
 - 50 ml collection: https://officialmykonos.com/collections/50ml-colection
 - 100 ml collection: https://officialmykonos.com/collections/100ml-collection
+
+
+### Maison Asrar: first-party identity and variant audit (8 November 2026)
+
+#### Identity coverage
+
+- Current seed: **120 canonical identities**, with no duplicate `product_id` and no duplicate canonical name.
+- The brand-owned `/collections/perfume-sprays` collection reports **74 products** across its seven paginated pages. All 74 names were compared with the seed; all 74 are already present.
+- An independent European guide reports 116 Maison Asrar fragrances. Its complete 116-name list was compared with the seed: all 116 names are present. The four additional seed names are **Black Grapefruit**, **Plot Twist**, **Love Key** and **Unsolved Mystery**.
+- Black Grapefruit appears in the brand-owned perfume collection. Plot Twist, Love Key and Unsolved Mystery are presented as **Maison Asrar** products on Gulf Orchid's store and product pages, not as Gulf Orchid-branded fragrances. Their product pages explicitly state 100 ml EDP and the seed already contains their three matching variants.
+
+The independent guide explicitly states that it is not the official Maison Asrar site and is operated by FragranceGems, an independent retailer. Its 116-name list is a useful secondary coverage cross-check, not first-party proof. It says it uses the brand's notes where published and takes size/type from brand pages, store labels or store product data. Its size data includes multiple sizes (25, 80, 90, 100 and 110 ml), so it must not be flattened into a global 100 ml default.
+
+#### First-party variant evidence added in this PR
+
+Two brand-owned product URLs explicitly include both concentration and size in the product slug:
+
+| Product | Brand-owned product URL | Confirmed variant |
+|---|---|---|
+| Treasure | https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex | 100 ml Eau de Parfum |
+| Heritage | https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex | 100 ml Eau de Parfum |
+
+The seed now records `formats_ml: [100]` and one explicit variant row for each of these two identities. Existing first-party pages for Imperial and Monarch identify Eau de Parfum in their product URLs but do not state a size; no size was inferred for them. The inspected Belgravia, Legacy, Vanguard, Regent and Majesty pages do not expose an explicit size or concentration in their visible product details, so no variants were invented for those products.
+
+#### Remaining data-quality gaps
+
+- Current Maison Asrar variant rows after this change: **5** (Plot Twist, Love Key, Unsolved Mystery, Treasure, Heritage).
+- **115 of 120** identities still have no explicit variant row or `formats_ml` value.
+- Only four product records currently state concentration at product level: Treasure, Imperial, Monarch and Heritage. The three Gulf Orchid-sold Maison Asrar products express concentration on their variant rows.
+- 12 records have product-specific source URLs (9 on `maisonasrar.com`, 3 on the Gulf Orchid store); 108 still point to the generic Maison Asrar collection page. Individual first-party source URL coverage therefore remains a separate cleanup task.
+
+**Catalog decision:** add only the two 100 ml EDP variants supported by brand-owned product URLs. Do not fill the remaining 115 identities with 100 ml variants from the independent guide or apply a universal concentration/size assumption. Keep the three Gulf Orchid-sold fragrances assigned to Maison Asrar because their product pages explicitly identify Maison Asrar as the brand. Do not mark the other seed identities discontinued merely because they are absent from the 74-product `perfume-sprays` collection; the brand also exposes separate product collections and individual product pages.
+
+First-party references:
+- Brand fragrance collection: https://maisonasrar.com/collections/perfume-sprays
+- Treasure: https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex
+- Heritage: https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex
+- Imperial: https://maisonasrar.com/products/maison-asrar-imperial-eau-de-parfum
+- Monarch: https://maisonasrar.com/products/maison-asrar-monarch-eau-de-parfum
+- Gulf Orchid product pages: https://shop-gulforchid.com/products/plot-twist ; https://shop-gulforchid.com/products/love-key ; https://shop-gulforchid.com/products/unsolved-mystery
+- Independent cross-check (not official): https://maisonasrarperfumes.eu/fr/perfumes/
