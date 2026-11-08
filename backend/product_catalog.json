@@ -6685,8 +6685,13 @@
         "Amber Oud Ruby Edition",
         "Al Haramain Amber Oud Ruby Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/amber-oud-ruby-edition-120ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100,
+        120
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-06088667",
@@ -6700,8 +6705,12 @@
         "Amber Oud Gold Edition Extreme",
         "Al Haramain Amber Oud Gold Edition Extreme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-edition-extreme-100ml.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-a21d9ab5",
@@ -6730,8 +6739,12 @@
         "Azlan Oud Bleu Edition",
         "Al Haramain Azlan Oud Bleu Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/azlan-oud-bleu-edition-100ml-spray.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-1c89e86a",
@@ -6760,8 +6773,12 @@
         "Azlan Oud Saffron Edition",
         "Al Haramain Azlan Oud Saffron Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-azlan-oud-saffron-edition-100ml-spray.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-27b89224",
@@ -6850,8 +6867,12 @@
         "Amber Oud Aqua Dubai",
         "Al Haramain Amber Oud Aqua Dubai"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-aqua-dubai-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-5e8e5f16",
@@ -7015,8 +7036,12 @@
         "L'Aventure Iris",
         "Al Haramain L'Aventure Iris"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-iris-spray.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-1f4b8012",
@@ -7030,8 +7055,12 @@
         "L'Aventure Ciel",
         "Al Haramain L'Aventure Ciel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-ciel-spray.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-f7954db1",
@@ -7075,8 +7104,12 @@
         "L'Aventure Grapefruit",
         "Al Haramain L'Aventure Grapefruit"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-grapefruit-spray.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-4455529b",
@@ -35899,6 +35932,96 @@
         "Sceptre Oceana 100 ml",
         "Maison Alhambra Sceptre Oceana 100ml"
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-9ed401a1",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Ruby Edition 100 ml",
+        "Al Haramain Amber Oud Ruby Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-9ed401a1-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-9ed401a1",
+      "size_ml": 120,
+      "aliases": [
+        "Amber Oud Ruby Edition 120 ml",
+        "Al Haramain Amber Oud Ruby Edition 120ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-9ed401a1-120-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-06088667",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Gold Edition Extreme 100 ml",
+        "Al Haramain Amber Oud Gold Edition Extreme 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-06088667-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-304c1eca",
+      "size_ml": 100,
+      "aliases": [
+        "Azlan Oud Bleu Edition 100 ml",
+        "Al Haramain Azlan Oud Bleu Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-304c1eca-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-5d7e5051",
+      "size_ml": 100,
+      "aliases": [
+        "Azlan Oud Saffron Edition 100 ml",
+        "Al Haramain Azlan Oud Saffron Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-5d7e5051-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f996a468",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Grapefruit 100 ml",
+        "Al Haramain L'Aventure Grapefruit 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-f996a468-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-bab0d2ac",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Iris 100 ml",
+        "Al Haramain L'Aventure Iris 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-bab0d2ac-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1f4b8012",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Ciel 100 ml",
+        "Al Haramain L'Aventure Ciel 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1f4b8012-100-000",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6c00b776",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Aqua Dubai 100 ml",
+        "Al Haramain Amber Oud Aqua Dubai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-100-000",
+      "concentration": "Extrait de Parfum"
     }
   ]
 }
