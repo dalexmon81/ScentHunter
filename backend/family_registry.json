@@ -10262,17 +10262,120 @@
       ],
       "products": [
         {
-          "canonical_name": "Vanilla Addiction",
+          "canonical_name": "Al Qasr",
           "aliases": [
-            "Vanilla Addiction",
-            "Gulf Orchid Vanilla Addiction"
+            "Al Qasr",
+            "Gulf Orchid Al Qasr"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
-          "canonical_name": "Mango Ice",
+          "canonical_name": "Al Qasr Dahab",
           "aliases": [
-            "Mango Ice",
-            "Gulf Orchid Mango Ice"
+            "Al Qasr Dahab",
+            "Gulf Orchid Al Qasr Dahab"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Almalek",
+          "aliases": [
+            "Almalek",
+            "Gulf Orchid Almalek"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Angel Musk",
+          "aliases": [
+            "Angel Musk",
+            "Gulf Orchid Angel Musk"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Angham",
+          "aliases": [
+            "Angham",
+            "Gulf Orchid Angham"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Arabian Nights",
+          "aliases": [
+            "Arabian Nights",
+            "Gulf Orchid Arabian Nights"
+          ]
+        },
+        {
+          "canonical_name": "Baklava Bite",
+          "aliases": [
+            "Baklava Bite",
+            "Gulf Orchid Baklava Bite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Bali",
+          "aliases": [
+            "Bali",
+            "Gulf Orchid Bali"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Candy Bite",
+          "aliases": [
+            "Candy Bite",
+            "Gulf Orchid Candy Bite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Coco Blanco",
+          "aliases": [
+            "Coco Blanco",
+            "Gulf Orchid Coco Blanco"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Coffee Note",
+          "aliases": [
+            "Coffee Note",
+            "Gulf Orchid Coffee Note"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Cookie Bite",
+          "aliases": [
+            "Cookie Bite",
+            "Gulf Orchid Cookie Bite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10283,138 +10386,13 @@
           ]
         },
         {
-          "canonical_name": "Tahara Vanilla Musk",
-          "aliases": [
-            "Tahara Vanilla Musk",
-            "Gulf Orchid Tahara Vanilla Musk"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Heaven",
-          "aliases": [
-            "Sweet Heaven",
-            "Sweet Heaven 20ML",
-            "Gulf Orchid Sweet Heaven"
-          ]
-        },
-        {
-          "canonical_name": "Pink Marshmallow",
-          "aliases": [
-            "Pink Marshmallow",
-            "Gulf Orchid Pink Marshmallow"
-          ]
-        },
-        {
-          "canonical_name": "Coco Blanco",
-          "aliases": [
-            "Coco Blanco",
-            "Gulf Orchid Coco Blanco"
-          ]
-        },
-        {
-          "canonical_name": "Exotic Oud",
-          "aliases": [
-            "Exotic Oud",
-            "Gulf Orchid Exotic Oud"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Latte",
-          "aliases": [
-            "Vanilla Latte",
-            "Gulf Orchid Vanilla Latte"
-          ]
-        },
-        {
-          "canonical_name": "Cookie Bite",
-          "aliases": [
-            "Cookie Bite",
-            "Gulf Orchid Cookie Bite"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Like Candy",
-          "aliases": [
-            "Sweet Like Candy",
-            "Gulf Orchid Sweet Like Candy"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Heaven Extreme",
-          "aliases": [
-            "Sweet Heaven Extreme",
-            "Sweet Heaven Extreme 20ML",
-            "Gulf Orchid Sweet Heaven Extreme"
-          ]
-        },
-        {
-          "canonical_name": "Piña Colada Musk",
-          "aliases": [
-            "Piña Colada Musk",
-            "Gulf Orchid Piña Colada Musk"
-          ]
-        },
-        {
-          "canonical_name": "Angel Musk",
-          "aliases": [
-            "Angel Musk",
-            "Gulf Orchid Angel Musk"
-          ]
-        },
-        {
-          "canonical_name": "Naughty Vanilla",
-          "aliases": [
-            "Naughty Vanilla",
-            "Gulf Orchid Naughty Vanilla"
-          ]
-        },
-        {
-          "canonical_name": "Yacht Club",
-          "aliases": [
-            "Yacht Club",
-            "Gulf Orchid Yacht Club"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Heaven Cherry",
-          "aliases": [
-            "Sweet Heaven Cherry",
-            "Gulf Orchid Sweet Heaven Cherry"
-          ]
-        },
-        {
-          "canonical_name": "Candy Bite",
-          "aliases": [
-            "Candy Bite",
-            "Gulf Orchid Candy Bite"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Cherry Kiss",
-          "aliases": [
-            "Sweet Cherry Kiss",
-            "Gulf Orchid Sweet Cherry Kiss"
-          ]
-        },
-        {
           "canonical_name": "Creamy Pistachio",
           "aliases": [
             "Creamy Pistachio",
             "Gulf Orchid Creamy Pistachio"
-          ]
-        },
-        {
-          "canonical_name": "Marshmallow",
-          "aliases": [
-            "Marshmallow",
-            "Gulf Orchid Marshmallow"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Heaven Ice",
-          "aliases": [
-            "Sweet Heaven Ice",
-            "Gulf Orchid Sweet Heaven Ice"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10422,13 +10400,209 @@
           "aliases": [
             "Crème Caramel",
             "Gulf Orchid Crème Caramel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
-          "canonical_name": "Pomegranate Musk",
+          "canonical_name": "Dark Chocolate",
           "aliases": [
-            "Pomegranate Musk",
-            "Gulf Orchid Pomegranate Musk"
+            "Dark Chocolate",
+            "Gulf Orchid Dark Chocolate"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "El Capitan",
+          "aliases": [
+            "El Capitan",
+            "Gulf Orchid El Capitan"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "El Capitan Elixir",
+          "aliases": [
+            "El Capitan Elixir",
+            "Gulf Orchid El Capitan Elixir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "El Capitan Extreme",
+          "aliases": [
+            "El Capitan Extreme",
+            "Gulf Orchid El Capitan Extreme"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "El Capitan Legacy",
+          "aliases": [
+            "El Capitan Legacy",
+            "Gulf Orchid El Capitan Legacy"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Evening Dance",
+          "aliases": [
+            "Evening Dance",
+            "Gulf Orchid Evening Dance"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Exotic Oud",
+          "aliases": [
+            "Exotic Oud",
+            "Gulf Orchid Exotic Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Flame",
+          "aliases": [
+            "Flame",
+            "Gulf Orchid Flame"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Heavenly Lychee",
+          "aliases": [
+            "Heavenly Lychee",
+            "Gulf Orchid Heavenly Lychee"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Love & Beyond",
+          "aliases": [
+            "Love & Beyond",
+            "Gulf Orchid Love & Beyond"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Love Me Now",
+          "aliases": [
+            "Love Me Now",
+            "Gulf Orchid Love Me Now"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mango Heaven",
+          "aliases": [
+            "Mango Heaven",
+            "Gulf Orchid Mango Heaven"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mango Ice",
+          "aliases": [
+            "Mango Ice",
+            "Gulf Orchid Mango Ice"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mangotini",
+          "aliases": [
+            "Mangotini",
+            "Gulf Orchid Mangotini"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Marine",
+          "aliases": [
+            "Marine",
+            "Gulf Orchid Marine"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Marshmallow",
+          "aliases": [
+            "Marshmallow",
+            "Gulf Orchid Marshmallow"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mawj",
+          "aliases": [
+            "Mawj",
+            "Gulf Orchid Mawj"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Melody",
+          "aliases": [
+            "Melody",
+            "Gulf Orchid Melody"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mojito Obsession",
+          "aliases": [
+            "Mojito Obsession",
+            "Gulf Orchid Mojito Obsession"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mood for Oud",
+          "aliases": [
+            "Mood for Oud",
+            "Gulf Orchid Mood for Oud"
+          ],
+          "formats_ml": [
+            110
           ]
         },
         {
@@ -10436,6 +10610,293 @@
           "aliases": [
             "Mysterious Tahara Musk",
             "Gulf Orchid Mysterious Tahara Musk"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Naseem",
+          "aliases": [
+            "Naseem",
+            "Gulf Orchid Naseem"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Naughty Vanilla",
+          "aliases": [
+            "Naughty Vanilla",
+            "Gulf Orchid Naughty Vanilla"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Nobilty",
+          "aliases": [
+            "Nobilty",
+            "Gulf Orchid Nobilty"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Old Fashioned",
+          "aliases": [
+            "Old Fashioned",
+            "Gulf Orchid Old Fashioned"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Omsiah",
+          "aliases": [
+            "Omsiah",
+            "Gulf Orchid Omsiah"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Pacific",
+          "aliases": [
+            "Pacific",
+            "Gulf Orchid Pacific"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Piña Colada Musk",
+          "aliases": [
+            "Piña Colada Musk",
+            "Gulf Orchid Piña Colada Musk"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Pink Marshmallow",
+          "aliases": [
+            "Pink Marshmallow",
+            "Gulf Orchid Pink Marshmallow"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Pistachio Musk",
+          "aliases": [
+            "Pistachio Musk",
+            "Gulf Orchid Pistachio Musk"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Pomegranate Musk",
+          "aliases": [
+            "Pomegranate Musk",
+            "Gulf Orchid Pomegranate Musk"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Rare Rose",
+          "aliases": [
+            "Rare Rose",
+            "Gulf Orchid Rare Rose"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Riwaya",
+          "aliases": [
+            "Riwaya",
+            "Gulf Orchid Riwaya"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Riwaya Chapter I",
+          "aliases": [
+            "Riwaya Chapter I",
+            "Gulf Orchid Riwaya Chapter I"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Riwaya Chapter II",
+          "aliases": [
+            "Riwaya Chapter II",
+            "Gulf Orchid Riwaya Chapter II"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Romantic For Her",
+          "aliases": [
+            "Romantic For Her",
+            "Gulf Orchid Romantic For Her"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Romantic For Him",
+          "aliases": [
+            "Romantic For Him",
+            "Gulf Orchid Romantic For Him"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ruby Fizz",
+          "aliases": [
+            "Ruby Fizz",
+            "Gulf Orchid Ruby Fizz"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiekh Aloud Navy",
+          "aliases": [
+            "Shiekh Aloud Navy",
+            "Gulf Orchid Shiekh Aloud Navy"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shisha",
+          "aliases": [
+            "Shisha",
+            "Gulf Orchid Shisha"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sweet Cherry Kiss",
+          "aliases": [
+            "Sweet Cherry Kiss",
+            "Gulf Orchid Sweet Cherry Kiss"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sweet Heaven",
+          "aliases": [
+            "Sweet Heaven",
+            "Sweet Heaven 20ML",
+            "Gulf Orchid Sweet Heaven",
+            "Gulf Orchid Sweet Heaven 20ML"
+          ],
+          "formats_ml": [
+            20,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sweet Heaven Cherry",
+          "aliases": [
+            "Sweet Heaven Cherry",
+            "Gulf Orchid Sweet Heaven Cherry"
+          ],
+          "formats_ml": [
+            20
+          ]
+        },
+        {
+          "canonical_name": "Sweet Heaven Extreme",
+          "aliases": [
+            "Sweet Heaven Extreme",
+            "Sweet Heaven Extreme 20ML",
+            "Gulf Orchid Sweet Heaven Extreme",
+            "Gulf Orchid Sweet Heaven Extreme 20ML"
+          ],
+          "formats_ml": [
+            20,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sweet Heaven Ice",
+          "aliases": [
+            "Sweet Heaven Ice",
+            "Gulf Orchid Sweet Heaven Ice"
+          ],
+          "formats_ml": [
+            20,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sweet Heaven Tobacco",
+          "aliases": [
+            "Sweet Heaven Tobacco",
+            "Gulf Orchid Sweet Heaven Tobacco"
+          ],
+          "formats_ml": [
+            20
+          ]
+        },
+        {
+          "canonical_name": "Sweet Like Candy",
+          "aliases": [
+            "Sweet Like Candy",
+            "Gulf Orchid Sweet Like Candy"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Tahara Vanilla Musk",
+          "aliases": [
+            "Tahara Vanilla Musk",
+            "Gulf Orchid Tahara Vanilla Musk"
+          ]
+        },
+        {
+          "canonical_name": "Tahiti Colada",
+          "aliases": [
+            "Tahiti Colada",
+            "Gulf Orchid Tahiti Colada"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10443,6 +10904,59 @@
           "aliases": [
             "Toffee Musk",
             "Gulf Orchid Toffee Musk"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Toxic Love",
+          "aliases": [
+            "Toxic Love",
+            "Gulf Orchid Toxic Love"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Addiction",
+          "aliases": [
+            "Vanilla Addiction",
+            "Gulf Orchid Vanilla Addiction"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Latte",
+          "aliases": [
+            "Vanilla Latte",
+            "Gulf Orchid Vanilla Latte"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanilla on the Beach",
+          "aliases": [
+            "Vanilla on the Beach",
+            "Gulf Orchid Vanilla on the Beach"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Yacht Club",
+          "aliases": [
+            "Yacht Club",
+            "Gulf Orchid Yacht Club"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
