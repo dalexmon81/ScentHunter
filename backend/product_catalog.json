@@ -3013,8 +3013,12 @@
         "Date Caramel",
         "Paris Corner Date Caramel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/date-caramel",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/date-caramel",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-a7bb1ce4",
@@ -16311,8 +16315,12 @@
         "Farah",
         "Paris Corner Farah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/farah",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/farah",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FASCINATION-EMIR",
@@ -16961,7 +16969,8 @@
       "source_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush"
     },
     {
       "product_id": "SH-PARIS-CORNER-MAWJ-APPLETINI",
@@ -17542,9 +17551,12 @@
         "Molten Caramel",
         "Paris Corner Molten Caramel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/molten-caramel",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/molten-caramel",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MYSTERIUM",
@@ -36475,7 +36487,8 @@
         "Marshmallow Blush 100 ml",
         "Paris Corner Marshmallow Blush 100ml"
       ],
-      "variant_id": "SHV-SH-PARIS-CORNER-MARSHMALLOW-BLUSH-100-000"
+      "variant_id": "SHV-SH-PARIS-CORNER-MARSHMALLOW-BLUSH-100-000",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush"
     },
     {
       "product_id": "SH-PARIS-CORNER-ORAVEA",
@@ -36986,6 +36999,36 @@
       ],
       "variant_id": "SHV-SH-LATTAFA-ASAD-POLAR-100-000",
       "source_evidence_url": "https://lattafa.com/product/asad-polar/"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MOLTEN-CARAMEL",
+      "size_ml": 100,
+      "aliases": [
+        "Molten Caramel 100 ml",
+        "Paris Corner Molten Caramel 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-MOLTEN-CARAMEL-100-000",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/molten-caramel"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-807b8de9",
+      "size_ml": 100,
+      "aliases": [
+        "Date Caramel 100 ml",
+        "Paris Corner Date Caramel 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-807b8de9-100-000",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/date-caramel"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FARAH",
+      "size_ml": 100,
+      "aliases": [
+        "Farah 100 ml",
+        "Paris Corner Farah 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FARAH-100-000",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/farah"
     }
   ]
 }
