@@ -106,3 +106,17 @@ A full cross-check found 203 canonical catalog identities that were not yet repr
 - 0 canonical products missing from the discovery registry
 
 This is an important integrity repair, not proof that the requested brand assortments are complete. The source-coverage audit remains open.
+
+
+## Gulf Orchid official-catalog increment — 2026-11-08
+
+Added 10 fragrance identities from the brand's official perfume collection and product pages:
+Vanilla Addiction, Mango Ice, Cotton Candy Musk, Tahara Vanilla Musk, Sweet Heaven 20ML, Pink Marshmallow, Coco Blanco, Exotic Oud, Vanilla Latte, Cookie Bite.
+
+Each entry records its official product URL as source evidence. Only the identity is recorded; concentration and bottle size are not generalized from names unless later verified as a specific variant. Gift sets, body mists, hair mists, room fragrances and other non-perfume categories were not imported as perfumes.
+
+Official source collection: https://shop-gulforchid.com/collections/gulf-orchid-perfume . Product pages are linked from the official collection. Gulf Orchid catalog count on this branch is now 20.
+
+Maison Asrar cross-check: official all-products page reports 130 products, but its visible first-page listing exposes only a subset and the page includes non-perfume categories in the navigation. Its Royal Collection contains 9 products; all 9 names are already present in the catalog. The separate Maison Asrar catalog remains subject to a full pagination/product-type audit; do not equate the total 130 with 130 perfume identities.
+
+Velixir cross-check: the official range is reported as 28 perfumes; the current catalog already contains 28 Velixir identities. The opened full-range listing is an independent reseller's reproduction of brand-site information, so it is used as a cross-check rather than direct official source proof. Source: https://velixirperfumes.eu/perfumes/ .
