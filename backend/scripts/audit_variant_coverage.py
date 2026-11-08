@@ -117,7 +117,11 @@ def build_report(rows: list[dict]) -> dict:
     ordered = sorted(by_brand.values(), key=lambda x: x["brand"].casefold())
     total_fragrances = len(rows)
     fragrances_with_variants = total_fragrances - len(no_variants)
-    fragrances_with_complete = total_fragrances - len(incomplete)
+    # A fragrance may have both complete and incomplete variants. Count it
+    # as having at least one complete variant independently of the research queue.
+    fragrances_with_complete = sum(
+        1 for row in rows if _count(row, "complete_variant_count") > 0
+    )
     return {
         "status": "read_only_variant_coverage_audit",
         "fragrances": total_fragrances,
