@@ -15,7 +15,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 98,
-    "Maison Asrar": 120,
+    "Maison Asrar": 125,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -951,6 +951,53 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 row = velixir[name]
                 self.assertEqual(row.get("concentration"), "Extrait de Parfum")
                 self.assertTrue(row.get("source_url", "").startswith("https://velixirparfums.com/products/"))
+
+
+    def test_maison_asrar_fragrantica_additions_and_silver_elixir_alias(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        expected = {
+            "Asala": (
+                "https://www.divaparfum.com/shop/eau-de-parfum-asala-100ml-maison-asrar-17964",
+                "source_listed_name",
+            ),
+            "Amal": (
+                "https://nufaar.com/gb/en/products/maison-asrar-amal",
+                "source_listed_name",
+            ),
+            "Red Carpet": (
+                "https://shop-gulforchid.com/products/red-carpet",
+                "source_verified_name",
+            ),
+            "Runway Girl": (
+                "https://shop-gulforchid.com/products/runway-girl",
+                "source_verified_name",
+            ),
+            "Smokey Eyes": (
+                "https://shop-gulforchid.com/products/smokey-eyes",
+                "source_verified_name",
+            ),
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, status) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("identity_status"), status)
+                self.assertEqual(row.get("formats_ml"), [100])
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), 100)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        self.assertIn("Silver Elixir", products["Silver Elixer"].get("aliases", []))
 
 if __name__ == "__main__":
     unittest.main()
