@@ -33323,7 +33323,6 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
       "collection_name": "Khadlaj Perfume Spray"
     },
@@ -33333,8 +33332,8 @@
       "brand_name": "Khadlaj",
       "canonical_name": "Code Viola Nectar",
       "name": "Code Viola Nectar",
-      "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Viola Nectar",
       "aliases": [
         "Code Viola Nectar",
         "Khadlaj Code Viola Nectar",
@@ -33348,7 +33347,6 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
       "collection_name": "La Fede Eau De Parfum"
     },
@@ -33401,12 +33399,11 @@
         "Khadlaj Gaith"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
       "collection_name": "Khadlaj Perfume Spray"
     },
@@ -33482,12 +33479,11 @@
         "Khadlaj Hareem Al Sultan Blue"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-blue-35ml",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-blue-35ml",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml",
       "formats_ml": [
         35
       ],
-      "concentration": "Perfume Oil",
       "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml",
       "collection_name": "Concentrated Perfume Oils"
     },
@@ -33645,7 +33641,6 @@
       "formats_ml": [
         20
       ],
-      "concentration": "Perfume Oil",
       "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
       "collection_name": "Concentrated Perfume Oils"
     },
@@ -33667,7 +33662,6 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
       "collection_name": "Caffe Khadlaj"
     },
@@ -34027,7 +34021,7 @@
       "brand_name": "Khadlaj",
       "canonical_name": "Uno Sensuale",
       "name": "Uno Sensuale",
-      "family_id": "khadlaj_la_fede",
+      "family_id": "khadlaj_catalog",
       "family_name": "Uno Sensuale",
       "aliases": [
         "Uno Sensuale",
@@ -34040,7 +34034,6 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
       "collection_name": "Uno Range"
     },
@@ -34073,12 +34066,11 @@
         "Khadlaj Wow Oud"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+      "source_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/wow-oud-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/wow-oud-100-ml-edp-spray",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/wow-oud-100-ml-edp-spray",
       "collection_name": "Khadlaj Perfume Spray"
     },
@@ -35069,7 +35061,7 @@
       "brand_name": "Khadlaj",
       "canonical_name": "Uno Durable",
       "name": "Uno Durable",
-      "family_id": "khadlaj_la_fede",
+      "family_id": "khadlaj_catalog",
       "family_name": "Uno Durable",
       "aliases": [
         "Uno Durable",
@@ -35082,7 +35074,6 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae",
       "collection_name": "Uno Range"
     },
@@ -35092,7 +35083,7 @@
       "brand_name": "Khadlaj",
       "canonical_name": "Uno Lusso",
       "name": "Uno Lusso",
-      "family_id": "khadlaj_la_fede",
+      "family_id": "khadlaj_catalog",
       "family_name": "Uno Lusso",
       "aliases": [
         "Uno Lusso",
@@ -35105,7 +35096,6 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum",
       "source_product_url": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae",
       "collection_name": "Uno Range"
     },
@@ -46073,37 +46063,6 @@
       "source_evidence_url": "https://bujairami.com.au/products/sunset-bay-inspired-by-cap-camarat-memo-paris"
     },
     {
-      "product_id": "SH-MAISON-ASRAR-996a03df",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
-      "canonical_name": "Black Grapefruit",
-      "name": "Black Grapefruit",
-      "family_id": "maison_asrar_catalog",
-      "family_name": "Black Grapefruit",
-      "aliases": [
-        "Black Grapefruit",
-        "Maison Asrar Black Grapefruit"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrar.com/collections/all"
-    },
-    {
-      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
-      "brand": "Khadlaj",
-      "brand_name": "Khadlaj",
-      "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
-      "name": "Musk Pure Musk Blend Creation of Iqbal",
-      "family_id": "khadlaj_official_perfume_sprays_2026_11",
-      "family_name": "Musk Pure Musk Blend Creation of Iqbal",
-      "aliases": [
-        "Musk Pure Musk Blend Creation of Iqbal",
-        "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
-    },
-    {
       "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS",
       "brand": "Paris Corner",
       "brand_name": "Paris Corner",
@@ -51039,7 +50998,6 @@
       "product_id": "SH-KHADLAJ-HAREEM-AL-SULTAN-BLUE",
       "variant_id": "VAR-SH-KHADLAJ-HAREEM-AL-SULTAN-BLUE-35-OIL",
       "size_ml": 35,
-      "concentration": "Perfume Oil",
       "aliases": [
         "Hareem Al Sultan Blue 35 ml",
         "Khadlaj Hareem Al Sultan Blue 35 ml",
@@ -51047,7 +51005,8 @@
         "Hareem Al Sultan Blue",
         "Khadlaj Hareem Al Sultan Blue"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml"
     },
     {
       "product_id": "SH-KHADLAJ-HAREEM-AL-SULTAN-SILVER",
@@ -51129,7 +51088,6 @@
       "product_id": "SH-KHADLAJ-MAYA",
       "variant_id": "VAR-SH-KHADLAJ-MAYA-20-OIL",
       "size_ml": 20,
-      "concentration": "Perfume Oil",
       "aliases": [
         "Maya 20 ml",
         "Khadlaj Maya 20 ml",
@@ -51137,7 +51095,8 @@
         "Maya",
         "Khadlaj Maya"
       ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-MOCHA-LATTE",
@@ -54650,7 +54609,8 @@
         "Khadlaj Code Marron Oud 100 ml"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-CODE-ROUGE-AMOUR",
@@ -54661,7 +54621,8 @@
         "Khadlaj Code Rouge Amour 100 ml"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-CODE-VERDE-SUBLIME",
@@ -54672,27 +54633,8 @@
         "Khadlaj Code Verde Sublime 100 ml"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-KHADLAJ-HAREEM-AL-SULTAN-BLUE",
-      "variant_id": "SHV-SH-KHADLAJ-HAREEM-AL-SULTAN-BLUE-35-000",
-      "size_ml": 35,
-      "aliases": [
-        "Hareem Al Sultan Blue 35 ml",
-        "Khadlaj Hareem Al Sultan Blue 35 ml"
-      ],
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml"
-    },
-    {
-      "product_id": "SH-KHADLAJ-MAYA",
-      "variant_id": "SHV-SH-KHADLAJ-MAYA-20-000",
-      "size_ml": 20,
-      "aliases": [
-        "Maya 20 ml",
-        "Khadlaj Maya 20 ml"
-      ],
-      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-ROSE-AND-ROMANCE",
@@ -54703,7 +54645,8 @@
         "Khadlaj Rose And Romance 100 ml"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/discover-more/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/discover-more/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-SHIYAAKA-MEN",
@@ -54714,7 +54657,8 @@
         "Khadlaj Shiyaaka Men 100 ml"
       ],
       "source_url": "https://khadlaj-perfumes.com/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-UNO-INTIMO",
@@ -54725,7 +54669,8 @@
         "Khadlaj Uno Intimo 100 ml"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae"
     }
   ]
 }
