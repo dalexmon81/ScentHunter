@@ -250,3 +250,22 @@ Source: https://shop.alharamainperfumes.com/eu/collection.html .
 - 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variant rows; 0 canonical products missing from discovery registry
 
 The requested-brand source audit remains incomplete; these are incremental additions only.
+
+
+## Incremento successivo — Lattafa e Afnan (2026-11-08)
+
+Aggiunte **28 nuove identità canoniche** dopo confronto con ulteriori pagine ufficiali:
+
+- **Lattafa: +11** — Berry On Top, Washwasha, Musk Salama, Eclaire Pistache, Eclaire Banoffi, Ana Abiyedh Scarlet, Dynasty, Ana Abiyedh Leather, Fire On Ice, Habik Women, Habik Men. Fonte ufficiale: https://lattafa.com/product-category/lattafa-perfumes/page/3/ .
+- **Afnan: +17** — Historic Sahara, Kiaana Angel, LA FLEUR BOUQUET, LILIA, Malak, MODEST DEUX, ORNAMENT POUR FEMME, ORNAMENT POUR HOMME, OUD RISING, PARIS OUD, PATCHOULI ON FIRE, PORTRAIT REVIVAL, RARE PASSION, Stardust, SUPREMACY IN OUD - LUXURY COLLECTION, SUPREMACY INCENSE, SUPREMACY NOIR. Fonte ufficiale: https://afnan.com/collections/all?page=2 .
+
+Sono stati esclusi deodoranti, discovery kit, set e confezioni multiple. Non sono stati dedotti formati, concentrazioni, GTIN, prezzi o disponibilità. Gli elementi già presenti non sono stati duplicati.
+
+### Integrity snapshot aggiornato
+- **1.343** identità canoniche nel catalogo.
+- **141** righe variante.
+- **31** famiglie nel family registry.
+- Lattafa: **30** identità; Afnan: **75**; Al Haramain: **61**.
+- **0** product ID duplicati; **0** variant ID duplicati; **0** varianti orfane; **0** prodotti canonici senza famiglia corrispondente nel registry.
+
+La copertura dei marchi resta parziale: le pagine e le categorie ufficiali non sono ancora state tutte estratte e classificate. Il conteggio non è una dichiarazione di completezza.
