@@ -27,6 +27,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-reconciled-on-current-base-2026-11-08
+      - catalog/khadlaj-reconciled-on-mykonos-2026-11-08
 
 permissions:
   contents: read
@@ -75,4 +76,5 @@ jobs:
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_mykonos_catalog_reconciliation
+          backend.tests.test_khadlaj_catalog_reconciliation
           -v
