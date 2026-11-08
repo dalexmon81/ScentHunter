@@ -23222,9 +23222,13 @@
         "Deux II Expressions North Stag",
         "Paris Corner Deux II Expressions North Stag"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml",
+      "collection_name": "North Stag",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-2e32400d",
@@ -23525,9 +23529,13 @@
         "North Stag Phenomenal Quatorze XIV",
         "Paris Corner North Stag Phenomenal Quatorze XIV"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv",
+      "collection_name": "North Stag",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-a050adcb",
@@ -23819,9 +23827,10 @@
         "Quatre IV Expressions North Stag",
         "Paris Corner Quatre IV Expressions North Stag"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/quatre-iv-expressions-north-stag",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/quatre-iv-expressions-north-stag",
+      "collection_name": "North Stag"
     },
     {
       "product_id": "SH-PARIS-CORNER-738e5876",
@@ -24018,9 +24027,10 @@
         "Trois III Expressions North Stag",
         "Paris Corner Trois III Expressions North Stag"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/trois-iii-expressions-north-stag",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/trois-iii-expressions-north-stag",
+      "collection_name": "North Stag"
     },
     {
       "product_id": "SH-PARIS-CORNER-67c986bd",
@@ -24066,9 +24076,10 @@
         "Un I Expressions North Stag",
         "Paris Corner Un I Expressions North Stag"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=7",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=7"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/un-i-expressions-north-stag",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/un-i-expressions-north-stag",
+      "collection_name": "North Stag"
     },
     {
       "product_id": "SH-PARIS-CORNER-6a6ae42d",
@@ -36375,6 +36386,26 @@
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-0686a294-100-000",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-7cf92290",
+      "size_ml": 100,
+      "aliases": [
+        "Deux II Expressions North Stag 100 ml",
+        "Paris Corner Deux II Expressions North Stag 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-7cf92290-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-70730e4a",
+      "size_ml": 100,
+      "aliases": [
+        "North Stag Phenomenal Quatorze XIV 100 ml",
+        "Paris Corner North Stag Phenomenal Quatorze XIV 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-70730e4a-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv"
     }
   ]
 }
