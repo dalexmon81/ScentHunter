@@ -30,5 +30,5 @@ This is why the catalog stores official product-page URLs and why the directory 
 - 12 canonical identities added to the catalog and family registry.
 - 12 exact size/concentration variants added.
 - Rose & Romance is retained as an alias of the official product name Rose And Romance.
-- Khadlaj total after this update: 148 canonical identities and 63 variants.
+- Khadlaj total after this update: 148 canonical identities and 62 variants.
 - No duplicate product IDs, duplicate variant IDs, or orphan variants.
