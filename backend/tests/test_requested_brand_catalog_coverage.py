@@ -539,11 +539,43 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 matching = [p for p in rows if p.get("canonical_name") == name]
                 self.assertEqual(len(matching), 1)
                 row = matching[0]
-                self.assertEqual(row.get("identity_status"), "source_listed_name")
-                self.assertEqual(row.get("source_url"), "https://lattafa.com/product-category/new-launches/")
-                self.assertNotIn("concentration", row)
-                self.assertNotIn("formats_ml", row)
-                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+                if name == "Atlas Canyon":
+                    # Atlas Canyon is promoted by the separate individual-detail-page check below.
+                    self.assertEqual(row.get("identity_status"), "source_verified_name")
+                    self.assertEqual(row.get("source_url"), "https://lattafa.com/product/atlas-canyon/")
+                    self.assertEqual(row.get("formats_ml"), [55])
+                    self.assertEqual(
+                        len([v for v in variants if v.get("product_id") == row["product_id"] and v.get("size_ml") == 55]),
+                        1,
+                    )
+                else:
+                    self.assertEqual(row.get("identity_status"), "source_listed_name")
+                    self.assertEqual(row.get("source_url"), "https://lattafa.com/product-category/new-launches/")
+                    self.assertNotIn("concentration", row)
+                    self.assertNotIn("formats_ml", row)
+                    self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+
+
+
+    def test_lattafa_atlas_canyon_official_detail_page_and_55ml_variant(self):
+        products = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Lattafa"
+            and p.get("canonical_name") == "Atlas Canyon"
+        ]
+        self.assertEqual(len(products), 1)
+        row = products[0]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://lattafa.com/product/atlas-canyon/")
+        self.assertEqual(row.get("formats_ml"), [55])
+        self.assertNotIn("concentration", row)
+        variants = [
+            v for v in CATALOG.get("variants", [])
+            if v.get("product_id") == row["product_id"]
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("size_ml"), 55)
+        self.assertNotIn("concentration", variants[0])
 
 
 
