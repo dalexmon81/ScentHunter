@@ -9638,8 +9638,8 @@
         "Leonie",
         "Maison Alhambra Leonie"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/womens-best-seller/products/maison-alhambra-leonie-eau-de-parfum-for-women",
       "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
       "formats_ml": [
         100
@@ -9658,9 +9658,10 @@
         "Leonie Intense",
         "Maison Alhambra Leonie Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-leonie-intense-eau-de-parfum-for-women",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-b55d3316",
@@ -23275,8 +23276,8 @@
         "Midnight Sin by Daniel René",
         "Paris Corner Midnight Sin by Daniel René"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/midnight-sin-by-daniel-rene",
       "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=4"
     },
     {
@@ -33449,6 +33450,70 @@
       "identity_status": "source_verified_name",
       "source_url": "https://zimayaperfumes.com/products/tiramisu-s-mores",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-MINERALE-GOLD",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Minerale Gold",
+      "name": "Minerale Gold",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Minerale Gold",
+        "Maison Alhambra Minerale Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-minerale-gold-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-VICTORIOSO-FEARLESS",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Victorioso Fearless",
+      "name": "Victorioso Fearless",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Victorioso Fearless",
+        "Maison Alhambra Victorioso Fearless"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-fearless-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-THE-MEMORY-OF-OUD",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "The Memory of Oud",
+      "name": "The Memory of Oud",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "The Memory of Oud",
+        "Maison Alhambra The Memory of Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-the-memory-of-oud-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SCEPTRE-OCEANA",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Sceptre Oceana",
+      "name": "Sceptre Oceana",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Sceptre Oceana",
+        "Maison Alhambra Sceptre Oceana"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-oceana-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -33829,7 +33894,8 @@
       "size_ml": 100,
       "aliases": [
         "Leonie 100 ml",
-        "Maison Alhambra Leonie 100 ml"
+        "Maison Alhambra Leonie 100 ml",
+        "Maison Alhambra Leonie 100ml"
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-356ae7a3-100-000",
       "concentration": "Eau de Parfum"
@@ -35733,6 +35799,65 @@
       "aliases": [
         "Tiramisu S’mores 100 ml",
         "Zimaya Tiramisu S’mores 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cff2c60f",
+      "variant_id": "SHV-SH-PARIS-CORNER-cff2c60f-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Midnight Sin by Daniel René 100 ml",
+        "Paris Corner Midnight Sin 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-74e9db31",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-74e9db31-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Leonie Intense 100 ml",
+        "Maison Alhambra Leonie Intense 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-MINERALE-GOLD",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-MINERALE-GOLD-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Minerale Gold 100 ml",
+        "Maison Alhambra Minerale Gold 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-VICTORIOSO-FEARLESS",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-VICTORIOSO-FEARLESS-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Victorioso Fearless 100 ml",
+        "Maison Alhambra Victorioso Fearless 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-THE-MEMORY-OF-OUD",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-THE-MEMORY-OF-OUD-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "The Memory of Oud 100 ml",
+        "Maison Alhambra The Memory of Oud 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SCEPTRE-OCEANA",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-SCEPTRE-OCEANA-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sceptre Oceana 100 ml",
+        "Maison Alhambra Sceptre Oceana 100ml"
       ]
     }
   ]
