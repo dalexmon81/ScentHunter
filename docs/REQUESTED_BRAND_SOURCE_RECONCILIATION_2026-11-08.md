@@ -70,3 +70,38 @@ Decision:
 ## Snapshot limitation
 
 This is a first-batch source audit, not a claim that all 20 requested brands are complete. It records concrete gaps and safe next steps. Catalog changes will be made in a separate PR after individual product evidence is collected; regression tests will be proposed separately and must pass on their own head commit.
+
+
+## Cross-PR integration audit — 8 November 2026
+
+The following open draft PRs were compared by their actual head/base refs and by parsing the catalog snapshots. All four PRs below are open, draft, unmerged and reported mergeable at the time of this audit. The source-specific CI checks were completed successfully for #517 (two runs), #539 (one run) and #527 (two runs). The documentation-only #545 has no CI check run. No review submissions were present on #517, #527, #539 or #545.
+
+### Velixir: #517 versus cumulative #527
+
+- PR #517 (catalog/velixir-official-product-variants-2026-11-08, based on #515) contains 28 individual product-page URLs and 48 explicit EDP variants (35 ml / 100 ml), with the four Extrait identities correctly left without unsupported sizes.
+- The Velixir product and variant records in #517 are identical on the compared catalog fields to the 28 identities / 48 variants already present in cumulative PR #527.
+- However, #527 does not contain backend/tests/test_velixir_official_product_variants.py; the file is absent from that branch. Its workflow therefore does not run this dedicated Velixir regression test.
+- Integration implication: do not duplicate the 48 catalog variants when integrating #517 into #527. Carry over the Velixir regression test, its workflow invocation, and its evidence document, then run validation on the integrated head.
+
+### Mykonos: #539 versus cumulative #527
+
+- PR #539 (catalog/mykonos-detail-evidence-2026-11-08, based on #439) promotes 15 existing identities to individual official detail-page evidence and updates 23 matching variant evidence URLs. It preserves 72 identities and 91 variants.
+- Cumulative PR #527 contains 99 Mykonos identities and 102 variants. All 91 product/size/concentration keys present in #539 are also present in #527; #527 has 11 additional variant keys and 27 additional identities.
+- Critical evidence regression: when the 15 detail-verified product rows from #539 are compared with the same canonical names in #527, only one of the 15 retains the same individual source_url. The other 14 are back at collection-level source_url values in #527. Thus, taking #527 as-is would lose most of the individual-page provenance established by #539.
+- #527 does not contain backend/tests/test_mykonos_official_detail_evidence.py; the file is absent from that branch. The 11 extra variants in #527 are not covered by #539's test because they are outside #539's 72-identity snapshot.
+- Integration implication: transplant the 15 product-level detail URLs and the 23 variant evidence URLs from #539 into the corresponding records in #527, without deleting the 27 extra identities or the 11 extra variant keys. Extend the Mykonos regression coverage to assert both the 15 official-page upgrades and the retained cumulative additions. Then run the full catalog validation on the integrated head.
+
+### Bujairami and cumulative snapshot
+
+- PR #527 is based on #502 and carries the cumulative snapshot of 2,743 identities / 717 variants, including 671 Bujairami identities / 8 variants, 99 Mykonos identities / 102 variants, and 28 Velixir identities / 48 variants.
+- Its own cumulative integrity checks passed in the reported CI runs. This does not substitute for the missing Velixir and Mykonos source-specific regression tests noted above.
+
+### Recommended integration sequence
+
+1. Keep #517, #539 and #527 open and unmerged while the cumulative branch is reconciled.
+2. Use #527 as the cumulative integration target for this batch because it already contains the larger Bujairami / Mykonos snapshot and the exact Velixir catalog rows.
+3. Transplant the missing Velixir test + workflow hook + documentation from #517, and the Mykonos individual-page evidence + test + documentation from #539.
+4. Preserve all 27 Mykonos identities and 11 Mykonos variant keys that exist only in #527; do not overwrite them with the smaller #539 snapshot.
+5. Run the catalog-seed workflow on the resulting integration head and inspect the complete product/variant/registry integrity results before proposing any merge.
+
+This is an integration audit and recommendation only. No catalog branch, existing PR, main, or production deployment was changed by this document update.
