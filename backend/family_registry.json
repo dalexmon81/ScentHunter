@@ -4200,6 +4200,106 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Assassin",
+          "aliases": [
+            "Assassin",
+            "Bujairami Assassin"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Astral",
+          "aliases": [
+            "Astral",
+            "Bujairami Astral"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Astro",
+          "aliases": [
+            "Astro",
+            "Bujairami Astro"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "At Last",
+          "aliases": [
+            "At Last",
+            "Bujairami At Last"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aurora",
+          "aliases": [
+            "Aurora",
+            "Bujairami Aurora"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Australian Tonka",
+          "aliases": [
+            "Australian Tonka",
+            "Bujairami Australian Tonka"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Baccarat Oud",
+          "aliases": [
+            "Baccarat Oud",
+            "Bujairami Baccarat Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Backstage",
+          "aliases": [
+            "Backstage",
+            "Bujairami Backstage"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Bad N Boujee",
+          "aliases": [
+            "Bad N Boujee",
+            "Bujairami Bad N Boujee"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Bad Obsession",
+          "aliases": [
+            "Bad Obsession",
+            "Bujairami Bad Obsession"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
