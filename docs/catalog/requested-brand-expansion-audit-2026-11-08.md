@@ -391,3 +391,8 @@ Aggiunte **9 identità** mancanti dalla pagina 8: Wild and Tobacco Emir, You're 
 ## French Avenue — collezione Genesis (2026-11-08)
 
 Aggiunte 11 identità della collezione ufficiale Genesis: Genesis Scorpio, Genesis Leo, Genesis Virgo, Genesis Cancer, Genesis Capricorn, Genesis Aries, Genesis Libra, Genesis Gemini, Genesis Taurus, Genesis Aquarius, Genesis Pisces. Fonte: https://frenchavenue.com/collections/genesis . La pagina ufficiale espone 12 prodotti in questa collezione; i nomi sono stati normalizzati come "Genesis [segno zodiacale]" per evitare collisioni con nomi generici di altri brand.
+
+
+## French Avenue — elenco ufficiale all fragrances for sale (2026-11-08)
+
+Aggiunte 8 identità elencate nella collezione ufficiale: 8TH Wonder, Affogato, Amber Saffron, An Equestrian Series Della, An Equestrian Series Haydan, An Equestrian Series Olena, An Equestrian Series Pierce, Arabian Incense. Fonte: https://frenchavenue.com/collections/all-fragrances-for-sale . La pagina indica 141 prodotti totali, ma il catalogo è ancora parziale: la pagina usa caricamento progressivo e include anche duo/combo, da escludere come identità autonome quando sono set di profumi già esistenti.
