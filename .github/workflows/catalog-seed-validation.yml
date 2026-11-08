@@ -15,6 +15,8 @@ on:
       - catalog/maison-asrar-125-identities-113-variants-clean-2026-11-08
       - catalog/khadlaj-220-identities-212-variants-clean-2026-11-08
       - catalog/bujairami-671-identities-8-variants-clean-2026-11-08
+      - catalog/cumulative-requested-brands-2026-11-08
+      - main
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -29,6 +31,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/cumulative-requested-brands-2026-11-08
 
 permissions:
   contents: read
@@ -76,4 +79,7 @@ jobs:
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
+          backend.tests.test_cumulative_catalog_reconciliation
+          backend.tests.test_khadlaj_main_range_official_reconciliation
+          backend.tests.test_games_of_spades_official_page_variants
           -v

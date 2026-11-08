@@ -44,14 +44,23 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
             with self.subTest(product=product["canonical_name"]):
                 expected_status = "source_verified_name" if product["canonical_name"] == "Ghadeer Silver" else "source_listed_name"
                 self.assertEqual(product["identity_status"], expected_status)
-                if product["canonical_name"] in {"Saqr Al Badiya", "Sensuous Night", "Ghadeer Silver"}:
+                if product["canonical_name"] in {"Saqr Al Badiya", "Ghadeer Silver"}:
                     self.assertIn("/products/", product["source_url"])
+                elif product["canonical_name"] == "Sensuous Night":
+                    self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
+                    self.assertIn("/products/", product.get("source_evidence_url", ""))
                 else:
                     self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
                 variants = [
                     v for v in self.catalog["variants"]
                     if v.get("product_id") == product["product_id"]
                 ]
+                if product["canonical_name"] == "Musk Pure Musk Blend Creation of Iqbal":
+                    self.assertEqual(product["identity_status"], "source_listed_name")
+                    self.assertNotIn("formats_ml", product)
+                    self.assertNotIn("concentration", product)
+                    self.assertFalse(variants)
+                    continue
                 self.assertTrue(variants)
                 for variant in variants:
                     self.assertTrue(variant.get("source_evidence_url"))
