@@ -786,6 +786,10 @@
           "aliases": [
             "Adonis",
             "Velixir Adonis"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -793,6 +797,10 @@
           "aliases": [
             "Aphrodite",
             "Velixir Aphrodite"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -800,6 +808,10 @@
           "aliases": [
             "Apollo",
             "Velixir Apollo"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -807,6 +819,10 @@
           "aliases": [
             "Ares",
             "Velixir Ares"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -814,6 +830,10 @@
           "aliases": [
             "Artemis",
             "Velixir Artemis"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -821,6 +841,10 @@
           "aliases": [
             "Asteria",
             "Velixir Asteria"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -828,6 +852,10 @@
           "aliases": [
             "Athena",
             "Velixir Athena"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -842,6 +870,10 @@
           "aliases": [
             "Concordia",
             "Velixir Concordia"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -849,6 +881,10 @@
           "aliases": [
             "Demeter",
             "Velixir Demeter"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -863,6 +899,10 @@
           "aliases": [
             "Galatea",
             "Velixir Galatea"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -870,6 +910,10 @@
           "aliases": [
             "Harmonia",
             "Velixir Harmonia"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -877,6 +921,10 @@
           "aliases": [
             "Helios",
             "Velixir Helios"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -884,6 +932,10 @@
           "aliases": [
             "Hera",
             "Velixir Hera"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -891,6 +943,10 @@
           "aliases": [
             "Himeros",
             "Velixir Himeros"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -898,6 +954,10 @@
           "aliases": [
             "Icarus",
             "Velixir Icarus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -905,6 +965,10 @@
           "aliases": [
             "Morpheus",
             "Velixir Morpheus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -912,6 +976,10 @@
           "aliases": [
             "Narcisus",
             "Velixir Narcisus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -919,6 +987,10 @@
           "aliases": [
             "Nyx",
             "Velixir Nyx"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -926,6 +998,10 @@
           "aliases": [
             "Orion",
             "Velixir Orion"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -940,6 +1016,10 @@
           "aliases": [
             "Paladin",
             "Velixir Paladin"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -954,6 +1034,10 @@
           "aliases": [
             "Persephone",
             "Velixir Persephone"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -961,6 +1045,10 @@
           "aliases": [
             "Poseidon",
             "Velixir Poseidon"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -968,6 +1056,10 @@
           "aliases": [
             "Selene",
             "Velixir Selene"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -975,6 +1067,10 @@
           "aliases": [
             "Uranus",
             "Velixir Uranus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         }
       ]
