@@ -53,9 +53,11 @@ class KhadlajCatalogParityTests(unittest.TestCase):
         self.assertGreater(len(sprays["products"]), 0)
 
     def test_perfume_oil_identity_is_not_recast_as_a_spray_variant(self):
-        maya = next(p for p in next(f for f in self.families if f["family_id"] == "khadlaj_catalog")["products"] if p["canonical_name"] == "Maya")
+        maya = next(p for p in self.products if p["canonical_name"] == "Maya")
+        family_maya = next(p for p in next(f for f in self.families if f["family_id"] == "khadlaj_catalog")["products"] if p["canonical_name"] == "Maya")
         self.assertEqual(maya.get("formats_ml"), [20])
         self.assertEqual(maya.get("concentration"), "Concentrated Perfume Oil")
+        self.assertEqual(family_maya.get("formats_ml"), [20])
         variants = [v for v in CATALOG["variants"] if v["product_id"] == maya["product_id"]]
         self.assertEqual(len(variants), 1)
         self.assertEqual(variants[0]["size_ml"], 20)
