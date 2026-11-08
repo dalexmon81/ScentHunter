@@ -50,7 +50,7 @@ EXPECTED_NAMES = {
     "La Fede Opera Rose L'Or", "La Fede Statesman",
     "La Fede Symbol of Love", "La Fede Symbol of Power",
     "La Fede White Forest Strawberry", "Uno Durable", "Uno Intimo",
-    "Uno Lusso", "Uno Sensuale",
+    "Uno Lusso", "Uno Sensuale", "Code Viola Nectar",
 }
 
 
