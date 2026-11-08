@@ -494,5 +494,45 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", matching[0])
 
 
+    def test_gulf_orchid_nine_new_arrivals_reconcile_without_cross_pr_duplicates(self):
+        expected = {
+            "Belle": "https://shop-gulforchid.com/products/belle",
+            "Amour": "https://shop-gulforchid.com/products/amour",
+            "Chic": "https://shop-gulforchid.com/products/chic",
+            "Cloud 9": "https://shop-gulforchid.com/products/cloud-9",
+            "Phantom": "https://shop-gulforchid.com/products/phantom",
+            "Flamma": "https://shop-gulforchid.com/products/flamma",
+            "Vortex": "https://shop-gulforchid.com/products/vortex",
+            "Rosalia": "https://shop-gulforchid.com/products/rosalia",
+            "Maestro": "https://shop-gulforchid.com/products/maestro",
+        }
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Gulf Orchid"
+            and row.get("canonical_name") in expected
+        ]
+        variants = CATALOG.get("variants", [])
+        self.assertEqual(len(products), 9)
+        self.assertEqual(len({row.get("canonical_name") for row in products}), 9)
+        self.assertEqual(len({row.get("product_id") for row in products}), 9)
+        for row in products:
+            name = row["canonical_name"]
+            with self.subTest(name=name):
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), expected[name])
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [100])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        # Cloud 9 and Maestro are inherited from #542; only seven rows are new.
+        self.assertEqual({row["canonical_name"] for row in products}, set(expected))
+
+
+
 if __name__ == "__main__":
     unittest.main()
