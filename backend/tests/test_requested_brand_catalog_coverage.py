@@ -493,6 +493,37 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
                 self.assertNotIn("concentration", matching[0])
 
+    def test_aromatix_official_product_concentrations_and_variants_are_verified(self):
+        expected = {
+            "Forbidden Fruit": ("Eau de Parfum", "https://frenchavenue.com/products/aromatix-forbidden-fruit"),
+            "Magnetiq": ("Eau de Parfum", "https://frenchavenue.com/products/aromatix-magnetiq"),
+            "Naughty Dates": ("Eau de Parfum", "https://frenchavenue.com/products/aromatix-naughty-dates"),
+            "Royal Taboo": ("Extrait de Parfum", "https://frenchavenue.com/products/royal-taboo"),
+            "Sun Kissed": ("Eau de Parfum", "https://frenchavenue.com/products/aromatix-sunkissed"),
+            "Teas Me": ("Eau de Parfum", "https://frenchavenue.com/products/aromatix-teas-me"),
+            "X Xandal": ("Extrait de Parfum", "https://frenchavenue.com/products/aromatix-x-xandal"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "French Avenue"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (concentration, source_url) in expected.items():
+            with self.subTest(name=name):
+                product = products[name]
+                self.assertEqual(product.get("concentration"), concentration)
+                self.assertEqual(product.get("source_url"), source_url)
+                self.assertEqual(product.get("source_evidence_url"), source_url)
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"] and row.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), concentration)
+                self.assertEqual(matching[0].get("source_url"), source_url)
+                self.assertEqual(matching[0].get("source_evidence_url"), source_url)
+
 
 if __name__ == "__main__":
     unittest.main()
