@@ -17639,6 +17639,22 @@
       "concentration": "Perfume Oil"
     },
     {
+      "product_id": "SH-KHADLAJ-ANA-WA-ANTA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ana Wa Anta",
+      "name": "Ana Wa Anta",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Ana Wa Anta",
+      "aliases": [
+        "Ana Wa Anta",
+        "Khadlaj Ana Wa Anta"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj.html"
+    },
+    {
       "product_id": "SH-KHADLAJ-ANABIA-BLUE",
       "brand": "Khadlaj",
       "brand_name": "Khadlaj",
@@ -18691,9 +18707,30 @@
       "source_url": "https://khadlaj-perfumes.com/products/pure-musk-edp-spray-shop-online-best-price-in-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/pure-musk-20-ml-best-concentrated-perfume-scent-for-him-and-her-in-dubai-usa-uk-europe-worldwide",
       "formats_ml": [
-        20,
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-PURE-MUSK-EDP",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Pure Musk EDP",
+      "name": "Pure Musk EDP",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Pure Musk EDP",
+      "aliases": [
+        "Pure Musk EDP",
+        "Khadlaj Pure Musk EDP",
+        "Pure Musk 100 ml EDP"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/pure-musk-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/pure-musk-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-PURPLE-MUSK",
@@ -38515,22 +38552,22 @@
     },
     {
       "product_id": "SH-KHADLAJ-PURE-MUSK",
-      "variant_id": "VAR-SH-KHADLAJ-PURE-MUSK-100-EDP",
-      "size_ml": 100,
-      "concentration": "Eau de Parfum",
-      "aliases": [
-        "Pure Musk 100 ml",
-        "Khadlaj Pure Musk 100 ml"
-      ]
-    },
-    {
-      "product_id": "SH-KHADLAJ-PURE-MUSK",
       "variant_id": "VAR-SH-KHADLAJ-PURE-MUSK-20-OIL",
       "size_ml": 20,
       "concentration": "Perfume Oil",
       "aliases": [
         "Pure Musk 20 ml",
         "Khadlaj Pure Musk 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-PURE-MUSK-EDP",
+      "variant_id": "VAR-SH-KHADLAJ-PURE-MUSK-EDP-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Pure Musk EDP 100 ml",
+        "Khadlaj Pure Musk EDP 100 ml"
       ]
     },
     {
