@@ -26,7 +26,7 @@ CANDIDATE_PRS = (
     (539, "catalog/mykonos-detail-evidence-2026-11-08", BASE_REF),
     (546, "catalog/cumulative-source-reconciled-2026-11-08", "catalog/cumulative-requested-brands-2026-11-08"),
     (542, "catalog/gulf-orchid-source-reconciliation-2026-11-08", BASE_REF),
-    (554, "catalog/gulf-orchid-official-new-arrivals-2026-11-08", BASE_REF),
+    (584, "catalog/gulf-orchid-reconciled-combined-2026-11-08", "catalog/gulf-orchid-source-reconciliation-2026-11-08"),
     (555, "catalog/lattafa-official-new-launches-2026-11-08", "catalog/gulf-orchid-official-new-arrivals-2026-11-08"),
     (558, "catalog/armaf-official-detail-audit-2026-11-08", "catalog/armaf-official-new-exclusive-2026-11-08"),
     (562, "catalog/lattafa-four-official-products-2026-11-08", "catalog/lattafa-mishlah-official-page-2026-11-08"),
