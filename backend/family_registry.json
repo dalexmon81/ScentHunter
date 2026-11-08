@@ -817,6 +817,72 @@
           "gtins": [
             "6298042001831"
           ]
+        },
+        {
+          "canonical_name": "Genesis Scorpio",
+          "aliases": [
+            "Scorpio"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Leo",
+          "aliases": [
+            "Leo"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Virgo",
+          "aliases": [
+            "Virgo"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Cancer",
+          "aliases": [
+            "Cancer"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Capricorn",
+          "aliases": [
+            "Capricorn"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Aries",
+          "aliases": [
+            "Aries"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Libra",
+          "aliases": [
+            "Libra"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Gemini",
+          "aliases": [
+            "Gemini"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Taurus",
+          "aliases": [
+            "Taurus"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Aquarius",
+          "aliases": [
+            "Aquarius"
+          ]
+        },
+        {
+          "canonical_name": "Genesis Pisces",
+          "aliases": [
+            "Pisces"
+          ]
         }
       ]
     },
