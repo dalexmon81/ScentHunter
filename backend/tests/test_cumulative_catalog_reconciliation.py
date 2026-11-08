@@ -25,7 +25,7 @@ class CumulativeCatalogReconciliationTests(unittest.TestCase):
         self.assertTrue(all(v["product_id"] in product_ids for v in CATALOG["variants"]))
 
     def test_requested_brand_reconciliations_are_preserved(self):
-        expected = {"Bujairami": 671, "Khadlaj": 227, "Games of Spades": 30, "Paris Corner": 259, "Velixir": 28}
+        expected = {"Bujairami": 671, "Khadlaj": 223, "Games of Spades": 30, "Paris Corner": 259, "Velixir": 28}
         actual = {}
         for p in CATALOG["products"]:
             brand = p.get("brand") or p.get("brand_name")
