@@ -494,5 +494,78 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", matching[0])
 
 
+    def test_maison_alhambra_six_official_product_pages_and_gtin_variants_are_verified(self):
+        expected = {
+            "Afro Leather": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-afro-leather-eau-de-parfum-for-everyone",
+                80,
+                "6291108736081",
+            ),
+            "Alpine Homme Sport": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-alpine-homme-sport-eau-de-parfum-for-men",
+                100,
+                "6291108735879",
+            ),
+            "Anarch": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-anarch-eau-de-parfum-for-everyone",
+                100,
+                "6291107459080",
+            ),
+            "Anchor Black": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-anchor-black-eau-de-parfum-for-men",
+                100,
+                "6291108730058",
+            ),
+            "Athena": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-athena-eau-de-parfum-for-women",
+                100,
+                "6290360599243",
+            ),
+            "Aura D'Eclat": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-aura-declat-eau-de-parfum-for-women",
+                100,
+                "6291107459103",
+            ),
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, gtin) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                product = products[name]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source_url)
+                self.assertEqual(product.get("source_product_url"), source_url)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [size_ml])
+                self.assertEqual(product.get("gtins"), [gtin])
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), size_ml)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("gtin"), gtin)
+
+        maison_alhambra_gtins = [
+            variant.get("gtin")
+            for variant in variants
+            if variant.get("product_id") in {
+                product["product_id"] for product in products.values()
+            }
+            and variant.get("gtin")
+        ]
+        self.assertEqual(
+            len(maison_alhambra_gtins),
+            len(set(maison_alhambra_gtins)),
+            "Maison Alhambra variant GTINs must not be duplicated across identities.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
