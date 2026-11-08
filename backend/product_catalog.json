@@ -7266,8 +7266,15 @@
         "King",
         "Games of Spades King"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-95335183",
@@ -7281,8 +7288,15 @@
         "Queen",
         "Games of Spades Queen"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-queen",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-queen",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-9448efa2",
@@ -7297,7 +7311,8 @@
         "Games of Spades Ace"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "source_url": "https://jomilanoparis.com/collections/all",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-discovery-set"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-99ff65c5",
@@ -7311,8 +7326,9 @@
         "Wildcard",
         "Games of Spades Wildcard"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-king"
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-wildcard",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-wildcard"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-14a18233",
@@ -27570,7 +27586,13 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-all-in",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BID",
@@ -27584,9 +27606,9 @@
         "Bid",
         "Games of Spades Bid"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=1",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bid",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-bid",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27602,11 +27624,16 @@
         "Black Sapphire",
         "Games of Spades Black Sapphire"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=1",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        90
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BLIND-BID",
@@ -27624,7 +27651,11 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-blind-bid",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-blind-bid",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BLUFF",
@@ -27638,9 +27669,9 @@
         "Bluff",
         "Games of Spades Bluff"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=1",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bluff-3-4-oz-parfum-spray-unisex",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-bluff-3-4-oz-parfum-spray-unisex",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27656,11 +27687,16 @@
         "Bonus",
         "Games of Spades Bonus"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=1",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bonus",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-bonus",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-BOSTON",
@@ -27674,9 +27710,9 @@
         "Boston",
         "Games of Spades Boston"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=1",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-boston",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-boston",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27692,11 +27728,17 @@
         "Diamond",
         "Games of Spades Diamond"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=1",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-diamond",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-diamond",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
@@ -27710,11 +27752,16 @@
         "Double Bonus",
         "Games of Spades Double Bonus"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=1",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=1",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-EMERALD",
@@ -27728,11 +27775,15 @@
         "Emerald",
         "Games of Spades Emerald"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-emerald",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        30,
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-FULL-HOUSE-REFRESH",
@@ -27746,9 +27797,9 @@
         "Full House Refresh",
         "Games of Spades Full House Refresh"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-full-house-refresh-3-4-oz-parfum-spray-unisex",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-full-house-refresh-3-4-oz-parfum-spray-unisex",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27768,7 +27819,13 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-gold",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-gold",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        90
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-HIGH-ROLLER",
@@ -27782,9 +27839,9 @@
         "High Roller",
         "Games of Spades High Roller"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-high-roller-3-4-oz-parfum-spray",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-high-roller-3-4-oz-parfum-spray",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27804,7 +27861,13 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-MOON",
@@ -27818,9 +27881,9 @@
         "Moon",
         "Games of Spades Moon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-moon",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-moon",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27836,11 +27899,14 @@
         "No Limit",
         "Games of Spades No Limit"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-no-limit",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-no-limit",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-OPAL",
@@ -27854,11 +27920,14 @@
         "Opal",
         "Games of Spades Opal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-opal",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-opal",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-PLATINUM",
@@ -27872,9 +27941,9 @@
         "Platinum",
         "Games of Spades Platinum"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-platinum",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-platinum",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27894,7 +27963,12 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        30,
+        100
+      ],
+      "concentration": "Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-ROYALE",
@@ -27912,7 +27986,12 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-royale",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-royale",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        30,
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-RUBY",
@@ -27926,9 +28005,9 @@
         "Ruby",
         "Games of Spades Ruby"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-ruby",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-ruby",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27944,9 +28023,9 @@
         "Topaz",
         "Games of Spades Topaz"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-no-limit-copy",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-no-limit-copy",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27962,9 +28041,9 @@
         "Trick",
         "Games of Spades Trick"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-trick-3-4-oz-parfum-spray-unisex",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-trick-3-4-oz-parfum-spray-unisex",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27980,9 +28059,9 @@
         "Win",
         "Games of Spades Win"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-win",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-win",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -27998,9 +28077,9 @@
         "Yellow Sapphire",
         "Games of Spades Yellow Sapphire"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://jomilanoparis.com/collections/all?page=2",
-      "source_evidence_url": "https://jomilanoparis.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-sapphire",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-sapphire",
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris"
     },
@@ -33842,6 +33921,79 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLUE-SAPPHIRE",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Blue Sapphire",
+      "name": "Blue Sapphire",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Blue Sapphire",
+      "aliases": [
+        "Blue Sapphire",
+        "Games of Spades Blue Sapphire",
+        "Game of Spades Blue Sapphire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD-EXTRAIT",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Emerald Extrait",
+      "name": "Emerald Extrait",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Emerald Extrait",
+      "aliases": [
+        "Emerald Extrait",
+        "Games of Spades Emerald Extrait",
+        "Game of Spades Emerald Extrait"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        50,
+        90
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE-EXTRAIT",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Rouge Extrait",
+      "name": "Rouge Extrait",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Rouge Extrait",
+      "aliases": [
+        "Rouge Extrait",
+        "Games of Spades Rouge Extrait",
+        "Game of Spades Rouge Extrait"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait",
+      "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait",
+      "collection": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        30,
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     }
   ],
   "variants": [
@@ -37062,6 +37214,481 @@
         "Tiramisu Speculoos 100 ml",
         "Paris Corner Tiramisu Speculoos 100 ml"
       ]
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-10",
+      "size_ml": 10,
+      "aliases": [
+        "All In 10 ml",
+        "Game of Spades All In 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-30",
+      "size_ml": 30,
+      "aliases": [
+        "All In 30 ml",
+        "Game of Spades All In 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-50",
+      "size_ml": 50,
+      "aliases": [
+        "All In 50 ml",
+        "Game of Spades All In 50 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ALL-IN",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ALL-IN-100",
+      "size_ml": 100,
+      "aliases": [
+        "All In 100 ml",
+        "Game of Spades All In 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLACK-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLACK-SAPPHIRE-10",
+      "size_ml": 10,
+      "aliases": [
+        "Black Sapphire 10 ml",
+        "Game of Spades Black Sapphire 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLACK-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLACK-SAPPHIRE-30",
+      "size_ml": 30,
+      "aliases": [
+        "Black Sapphire 30 ml",
+        "Game of Spades Black Sapphire 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLACK-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLACK-SAPPHIRE-90",
+      "size_ml": 90,
+      "aliases": [
+        "Black Sapphire 90 ml",
+        "Game of Spades Black Sapphire 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-black-sapphire"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLIND-BID",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLIND-BID-100-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "Blind Bid 100 ml",
+        "Game of Spades Blind Bid 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blind-bid",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BONUS-10",
+      "size_ml": 10,
+      "aliases": [
+        "Bonus 10 ml",
+        "Game of Spades Bonus 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BONUS-30",
+      "size_ml": 30,
+      "aliases": [
+        "Bonus 30 ml",
+        "Game of Spades Bonus 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BONUS-100",
+      "size_ml": 100,
+      "aliases": [
+        "Bonus 100 ml",
+        "Game of Spades Bonus 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DIAMOND",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DIAMOND-10-PARFUM",
+      "size_ml": 10,
+      "aliases": [
+        "Diamond 10 ml",
+        "Game of Spades Diamond 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-diamond",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DIAMOND",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DIAMOND-30-PARFUM",
+      "size_ml": 30,
+      "aliases": [
+        "Diamond 30 ml",
+        "Game of Spades Diamond 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-diamond",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DIAMOND",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DIAMOND-100-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "Diamond 100 ml",
+        "Game of Spades Diamond 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-diamond",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DOUBLE-BONUS-10",
+      "size_ml": 10,
+      "aliases": [
+        "Double Bonus 10 ml",
+        "Game of Spades Double Bonus 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DOUBLE-BONUS-30",
+      "size_ml": 30,
+      "aliases": [
+        "Double Bonus 30 ml",
+        "Game of Spades Double Bonus 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-DOUBLE-BONUS",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-DOUBLE-BONUS-100",
+      "size_ml": 100,
+      "aliases": [
+        "Double Bonus 100 ml",
+        "Game of Spades Double Bonus 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-double-bonus"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-30",
+      "size_ml": 30,
+      "aliases": [
+        "Emerald 30 ml",
+        "Game of Spades Emerald 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-100",
+      "size_ml": 100,
+      "aliases": [
+        "Emerald 100 ml",
+        "Game of Spades Emerald 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-GOLD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-GOLD-10-PARFUM",
+      "size_ml": 10,
+      "aliases": [
+        "Gold 10 ml",
+        "Game of Spades Gold 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-gold",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-GOLD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-GOLD-30-PARFUM",
+      "size_ml": 30,
+      "aliases": [
+        "Gold 30 ml",
+        "Game of Spades Gold 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-gold",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-GOLD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-GOLD-90-PARFUM",
+      "size_ml": 90,
+      "aliases": [
+        "Gold 90 ml",
+        "Game of Spades Gold 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-gold",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-JACKPOT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-JACKPOT-10-PARFUM",
+      "size_ml": 10,
+      "aliases": [
+        "Jackpot 10 ml",
+        "Game of Spades Jackpot 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-JACKPOT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-JACKPOT-30-PARFUM",
+      "size_ml": 30,
+      "aliases": [
+        "Jackpot 30 ml",
+        "Game of Spades Jackpot 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-JACKPOT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-JACKPOT-100-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "Jackpot 100 ml",
+        "Game of Spades Jackpot 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-1b8843a4",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-1b8843a4-10-PARFUM",
+      "size_ml": 10,
+      "aliases": [
+        "King 10 ml",
+        "Game of Spades King 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-1b8843a4",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-1b8843a4-30-PARFUM",
+      "size_ml": 30,
+      "aliases": [
+        "King 30 ml",
+        "Game of Spades King 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-1b8843a4",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-1b8843a4-100-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "King 100 ml",
+        "Game of Spades King 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-NO-LIMIT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-NO-LIMIT-100",
+      "size_ml": 100,
+      "aliases": [
+        "No Limit 100 ml",
+        "Game of Spades No Limit 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-no-limit"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-OPAL",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-OPAL-100",
+      "size_ml": 100,
+      "aliases": [
+        "Opal 100 ml",
+        "Game of Spades Opal 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-opal"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-95335183",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-95335183-10-PARFUM",
+      "size_ml": 10,
+      "aliases": [
+        "Queen 10 ml",
+        "Game of Spades Queen 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-queen",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-95335183",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-95335183-30-PARFUM",
+      "size_ml": 30,
+      "aliases": [
+        "Queen 30 ml",
+        "Game of Spades Queen 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-queen",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-95335183",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-95335183-100-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "Queen 100 ml",
+        "Game of Spades Queen 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-queen",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-30-PARFUM",
+      "size_ml": 30,
+      "aliases": [
+        "Rouge 30 ml",
+        "Game of Spades Rouge 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-100-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "Rouge 100 ml",
+        "Game of Spades Rouge 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROYALE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROYALE-30",
+      "size_ml": 30,
+      "aliases": [
+        "Royale 30 ml",
+        "Game of Spades Royale 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-royale"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROYALE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROYALE-50",
+      "size_ml": 50,
+      "aliases": [
+        "Royale 50 ml",
+        "Game of Spades Royale 50 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-royale"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROYALE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROYALE-100",
+      "size_ml": 100,
+      "aliases": [
+        "Royale 100 ml",
+        "Game of Spades Royale 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-royale"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-BLUE-SAPPHIRE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-BLUE-SAPPHIRE-90-PARFUM",
+      "size_ml": 90,
+      "aliases": [
+        "Blue Sapphire 90 ml",
+        "Game of Spades Blue Sapphire 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml",
+      "concentration": "Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD-EXTRAIT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-EXTRAIT-10-EXTRAIT-DE-PARFUM",
+      "size_ml": 10,
+      "aliases": [
+        "Emerald Extrait 10 ml",
+        "Game of Spades Emerald Extrait 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD-EXTRAIT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-EXTRAIT-50-EXTRAIT-DE-PARFUM",
+      "size_ml": 50,
+      "aliases": [
+        "Emerald Extrait 50 ml",
+        "Game of Spades Emerald Extrait 50 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD-EXTRAIT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-EXTRAIT-90-EXTRAIT-DE-PARFUM",
+      "size_ml": 90,
+      "aliases": [
+        "Emerald Extrait 90 ml",
+        "Game of Spades Emerald Extrait 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE-EXTRAIT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-EXTRAIT-10-EXTRAIT-DE-PARFUM",
+      "size_ml": 10,
+      "aliases": [
+        "Rouge Extrait 10 ml",
+        "Game of Spades Rouge Extrait 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE-EXTRAIT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-EXTRAIT-30-EXTRAIT-DE-PARFUM",
+      "size_ml": 30,
+      "aliases": [
+        "Rouge Extrait 30 ml",
+        "Game of Spades Rouge Extrait 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE-EXTRAIT",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-EXTRAIT-100-EXTRAIT-DE-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "Rouge Extrait 100 ml",
+        "Game of Spades Rouge Extrait 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait",
+      "concentration": "Extrait de Parfum"
     }
   ]
 }

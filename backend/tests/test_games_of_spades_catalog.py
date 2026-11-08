@@ -36,7 +36,10 @@ EXPECTED_GAMES_OF_SPADES = [
     "Topaz",
     "Trick",
     "Win",
-    "Yellow Sapphire"
+    "Yellow Sapphire",
+    "Blue Sapphire",
+    "Emerald Extrait",
+    "Rouge Extrait"
 ]
 
 
@@ -101,7 +104,9 @@ class GamesOfSpadesCatalogTests(unittest.TestCase):
         for variant in self.variants:
             if variant.get("product_id") in games:
                 self.assertTrue(variant.get("size_ml"))
-                self.assertTrue(variant.get("concentration"))
+                self.assertTrue(variant.get("source_url", "").startswith("https://jomilanoparis.com/products/"))
+                # Concentration is optional when the official detail page only
+                # establishes size; do not infer Parfum/EDP/Extrait.
 
 
 if __name__ == "__main__":

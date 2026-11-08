@@ -30,7 +30,8 @@ class CatalogSeedRecoveryTests(unittest.TestCase):
             "Blind Bid", "Bluff", "Bonus", "Boston", "Diamond", "Double Bonus",
             "Emerald", "Full House Refresh", "Gold", "High Roller", "Jackpot", "Moon",
             "No Limit", "Opal", "Platinum", "Rouge", "Royale", "Ruby", "Topaz",
-            "Trick", "Win", "Yellow Sapphire",
+            "Trick", "Win", "Yellow Sapphire", "Blue Sapphire", "Emerald Extrait",
+            "Rouge Extrait",
         }
         products = [p for p in CATALOG["products"] if p.get("brand") == "Games of Spades"]
         self.assertEqual({p["canonical_name"] for p in products}, expected)
