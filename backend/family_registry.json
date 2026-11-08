@@ -10432,38 +10432,27 @@
       ],
       "products": [
         {
-          "canonical_name": "Amber and Apricot",
+          "canonical_name": "Shaghaf Oud",
           "aliases": [
-            "Amber and Apricot",
-            "Swiss Arabian Amber and Apricot"
+            "Shaghaf Oud",
+            "Swiss Arabian Shaghaf Oud"
+          ],
+          "formats_ml": [
+            75
           ]
         },
         {
-          "canonical_name": "Areej Al Sheila",
+          "canonical_name": "Shaghaf Oud Aswad",
           "aliases": [
-            "Areej Al Sheila",
-            "Swiss Arabian Areej Al Sheila"
+            "Shaghaf Oud Aswad",
+            "Swiss Arabian Shaghaf Oud Aswad"
           ]
         },
         {
-          "canonical_name": "Bergamot and Cedarwood",
+          "canonical_name": "Shaghaf Oud Tonka",
           "aliases": [
-            "Bergamot and Cedarwood",
-            "Swiss Arabian Bergamot and Cedarwood"
-          ]
-        },
-        {
-          "canonical_name": "Bergamot and Patchouli",
-          "aliases": [
-            "Bergamot and Patchouli",
-            "Swiss Arabian Bergamot and Patchouli"
-          ]
-        },
-        {
-          "canonical_name": "Cardamom and Apple",
-          "aliases": [
-            "Cardamom and Apple",
-            "Swiss Arabian Cardamom and Apple"
+            "Shaghaf Oud Tonka",
+            "Swiss Arabian Shaghaf Oud Tonka"
           ]
         },
         {
@@ -10477,13 +10466,48 @@
           ]
         },
         {
-          "canonical_name": "Echoes of St. Moritz",
+          "canonical_name": "Layali",
           "aliases": [
-            "Echoes of St. Moritz",
-            "Swiss Arabian Echoes of St. Moritz"
+            "Layali",
+            "Swiss Arabian Layali"
+          ]
+        },
+        {
+          "canonical_name": "Primal Code",
+          "aliases": [
+            "Primal Code",
+            "Swiss Arabian Primal Code"
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Valencia",
+          "aliases": [
+            "Valencia",
+            "Swiss Arabian Valencia"
+          ]
+        },
+        {
+          "canonical_name": "Areej Al Sheila",
+          "aliases": [
+            "Areej Al Sheila",
+            "Swiss Arabian Areej Al Sheila"
+          ]
+        },
+        {
+          "canonical_name": "Sehr Al Sheila",
+          "aliases": [
+            "Sehr Al Sheila",
+            "Swiss Arabian Sehr Al Sheila"
+          ]
+        },
+        {
+          "canonical_name": "Shumoukh Al Ghutra",
+          "aliases": [
+            "Shumoukh Al Ghutra",
+            "Swiss Arabian Shumoukh Al Ghutra"
           ]
         },
         {
@@ -10501,24 +10525,10 @@
           ]
         },
         {
-          "canonical_name": "Incense 01",
+          "canonical_name": "Wajd",
           "aliases": [
-            "Incense 01",
-            "Swiss Arabian Incense 01"
-          ]
-        },
-        {
-          "canonical_name": "Intense Pride",
-          "aliases": [
-            "Intense Pride",
-            "Swiss Arabian Intense Pride"
-          ]
-        },
-        {
-          "canonical_name": "Iris and Berry",
-          "aliases": [
-            "Iris and Berry",
-            "Swiss Arabian Iris and Berry"
+            "Wajd",
+            "Swiss Arabian Wajd"
           ]
         },
         {
@@ -10529,44 +10539,17 @@
           ]
         },
         {
-          "canonical_name": "Jasmine and Honey",
+          "canonical_name": "Walaa",
           "aliases": [
-            "Jasmine and Honey",
-            "Swiss Arabian Jasmine and Honey"
+            "Walaa",
+            "Swiss Arabian Walaa"
           ]
         },
         {
-          "canonical_name": "Jasmine and Vanilla",
+          "canonical_name": "Intense Pride",
           "aliases": [
-            "Jasmine and Vanilla",
-            "Swiss Arabian Jasmine and Vanilla"
-          ]
-        },
-        {
-          "canonical_name": "Layali",
-          "aliases": [
-            "Layali",
-            "Swiss Arabian Layali"
-          ]
-        },
-        {
-          "canonical_name": "Patchouli 01",
-          "aliases": [
-            "Patchouli 01",
-            "Swiss Arabian Patchouli 01"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Primal Code",
-          "aliases": [
-            "Primal Code",
-            "Swiss Arabian Primal Code"
-          ],
-          "formats_ml": [
-            100
+            "Intense Pride",
+            "Swiss Arabian Intense Pride"
           ]
         },
         {
@@ -10584,10 +10567,101 @@
           ]
         },
         {
-          "canonical_name": "Sehr Al Sheila",
+          "canonical_name": "Wild Spirit",
           "aliases": [
-            "Sehr Al Sheila",
-            "Swiss Arabian Sehr Al Sheila"
+            "Wild Spirit",
+            "Swiss Arabian Wild Spirit"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Vanilla Toffee",
+          "aliases": [
+            "Shaghaf Oud Vanilla Toffee",
+            "Swiss Arabian Shaghaf Oud Vanilla Toffee"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Royale",
+          "aliases": [
+            "Shaghaf Oud Royale",
+            "Swiss Arabian Shaghaf Oud Royale"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Azraq",
+          "aliases": [
+            "Shaghaf Oud Azraq",
+            "Swiss Arabian Shaghaf Oud Azraq"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Ahmar",
+          "aliases": [
+            "Shaghaf Oud Ahmar",
+            "Swiss Arabian Shaghaf Oud Ahmar"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Abyad",
+          "aliases": [
+            "Shaghaf Oud Abyad",
+            "Swiss Arabian Shaghaf Oud Abyad"
+          ]
+        },
+        {
+          "canonical_name": "Amber and Apricot",
+          "aliases": [
+            "Amber and Apricot",
+            "Swiss Arabian Amber and Apricot"
+          ]
+        },
+        {
+          "canonical_name": "Bergamot and Patchouli",
+          "aliases": [
+            "Bergamot and Patchouli",
+            "Swiss Arabian Bergamot and Patchouli"
+          ]
+        },
+        {
+          "canonical_name": "Bergamot and Cedarwood",
+          "aliases": [
+            "Bergamot and Cedarwood",
+            "Swiss Arabian Bergamot and Cedarwood"
+          ]
+        },
+        {
+          "canonical_name": "Cardamom and Apple",
+          "aliases": [
+            "Cardamom and Apple",
+            "Swiss Arabian Cardamom and Apple"
+          ]
+        },
+        {
+          "canonical_name": "Iris and Berry",
+          "aliases": [
+            "Iris and Berry",
+            "Swiss Arabian Iris and Berry"
+          ]
+        },
+        {
+          "canonical_name": "Jasmine and Honey",
+          "aliases": [
+            "Jasmine and Honey",
+            "Swiss Arabian Jasmine and Honey"
+          ]
+        },
+        {
+          "canonical_name": "Jasmine and Vanilla",
+          "aliases": [
+            "Jasmine and Vanilla",
+            "Swiss Arabian Jasmine and Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Incense 01",
+          "aliases": [
+            "Incense 01",
+            "Swiss Arabian Incense 01"
           ]
         },
         {
@@ -10601,41 +10675,13 @@
           ]
         },
         {
-          "canonical_name": "Shaghaf Oud",
+          "canonical_name": "Patchouli 01",
           "aliases": [
-            "Shaghaf Oud",
-            "Swiss Arabian Shaghaf Oud"
+            "Patchouli 01",
+            "Swiss Arabian Patchouli 01"
           ],
           "formats_ml": [
-            75
-          ]
-        },
-        {
-          "canonical_name": "Shaghaf Oud Abyad",
-          "aliases": [
-            "Shaghaf Oud Abyad",
-            "Swiss Arabian Shaghaf Oud Abyad"
-          ]
-        },
-        {
-          "canonical_name": "Shaghaf Oud Ahmar",
-          "aliases": [
-            "Shaghaf Oud Ahmar",
-            "Swiss Arabian Shaghaf Oud Ahmar"
-          ]
-        },
-        {
-          "canonical_name": "Shaghaf Oud Aswad",
-          "aliases": [
-            "Shaghaf Oud Aswad",
-            "Swiss Arabian Shaghaf Oud Aswad"
-          ]
-        },
-        {
-          "canonical_name": "Shaghaf Oud Azraq",
-          "aliases": [
-            "Shaghaf Oud Azraq",
-            "Swiss Arabian Shaghaf Oud Azraq"
+            50
           ]
         },
         {
@@ -10649,59 +10695,13 @@
           ]
         },
         {
-          "canonical_name": "Shaghaf Oud Royale",
+          "canonical_name": "Echoes of St. Moritz",
           "aliases": [
-            "Shaghaf Oud Royale",
-            "Swiss Arabian Shaghaf Oud Royale"
-          ]
-        },
-        {
-          "canonical_name": "Shaghaf Oud Tonka",
-          "aliases": [
-            "Shaghaf Oud Tonka",
-            "Swiss Arabian Shaghaf Oud Tonka"
-          ]
-        },
-        {
-          "canonical_name": "Shaghaf Oud Vanilla Toffee",
-          "aliases": [
-            "Shaghaf Oud Vanilla Toffee",
-            "Swiss Arabian Shaghaf Oud Vanilla Toffee"
-          ]
-        },
-        {
-          "canonical_name": "Shumoukh Al Ghutra",
-          "aliases": [
-            "Shumoukh Al Ghutra",
-            "Swiss Arabian Shumoukh Al Ghutra"
-          ]
-        },
-        {
-          "canonical_name": "Valencia",
-          "aliases": [
-            "Valencia",
-            "Swiss Arabian Valencia"
-          ]
-        },
-        {
-          "canonical_name": "Wajd",
-          "aliases": [
-            "Wajd",
-            "Swiss Arabian Wajd"
-          ]
-        },
-        {
-          "canonical_name": "Walaa",
-          "aliases": [
-            "Walaa",
-            "Swiss Arabian Walaa"
-          ]
-        },
-        {
-          "canonical_name": "Wild Spirit",
-          "aliases": [
-            "Wild Spirit",
-            "Swiss Arabian Wild Spirit"
+            "Echoes of St. Moritz",
+            "Swiss Arabian Echoes of St. Moritz"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
@@ -14278,15 +14278,6 @@
           ]
         },
         {
-          "canonical_name": "Elixir White",
-          "aliases": [
-            "Elixir White",
-            "Zimaya Elixir White",
-            "Elixir - White",
-            "Zimaya Elixir - White"
-          ]
-        },
-        {
           "canonical_name": "Exquisite",
           "aliases": [
             "Exquisite",
@@ -14371,6 +14362,15 @@
           ]
         },
         {
+          "canonical_name": "Elixir White",
+          "aliases": [
+            "Elixir White",
+            "Zimaya Elixir White",
+            "Elixir - White",
+            "Zimaya Elixir - White"
+          ]
+        },
+        {
           "canonical_name": "Ilham Al Oud",
           "aliases": [
             "Ilham Al Oud",
@@ -14392,10 +14392,10 @@
           ]
         },
         {
-          "canonical_name": "Infrad Luxe",
+          "canonical_name": "Kibria Glory",
           "aliases": [
-            "Infrad Luxe",
-            "Zimaya Infrad Luxe"
+            "Kibria Glory",
+            "Zimaya Kibria Glory"
           ]
         },
         {
@@ -14406,40 +14406,10 @@
           ]
         },
         {
-          "canonical_name": "Itqan Noir",
+          "canonical_name": "Infrad Luxe",
           "aliases": [
-            "Itqan Noir",
-            "Zimaya Itqan Noir"
-          ]
-        },
-        {
-          "canonical_name": "Kibria Glory",
-          "aliases": [
-            "Kibria Glory",
-            "Zimaya Kibria Glory"
-          ]
-        },
-        {
-          "canonical_name": "Kibria Supremo",
-          "aliases": [
-            "Kibria Supremo"
-          ]
-        },
-        {
-          "canonical_name": "Luxor",
-          "aliases": [
-            "Luxor",
-            "Zimaya Luxor"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Mazaaj",
-          "aliases": [
-            "Mazaaj",
-            "Zimaya Mazaaj"
+            "Infrad Luxe",
+            "Zimaya Infrad Luxe"
           ]
         },
         {
@@ -14450,40 +14420,10 @@
           ]
         },
         {
-          "canonical_name": "Mazaaj Rhythm",
-          "aliases": [
-            "Mazaaj Rhythm"
-          ]
-        },
-        {
           "canonical_name": "Modhesh Noble",
           "aliases": [
             "Modhesh Noble",
             "Zimaya Modhesh Noble"
-          ]
-        },
-        {
-          "canonical_name": "Nojoum",
-          "aliases": [
-            "Nojoum",
-            "Zimaya Nojoum"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Noor Al Sabah",
-          "aliases": [
-            "Noor Al Sabah",
-            "Zimaya Noor Al Sabah"
-          ]
-        },
-        {
-          "canonical_name": "Ode to Rose Bella",
-          "aliases": [
-            "Ode to Rose Bella",
-            "Zimaya Ode to Rose Bella"
           ]
         },
         {
@@ -14494,9 +14434,10 @@
           ]
         },
         {
-          "canonical_name": "Oscar Platinum",
+          "canonical_name": "Ode to Rose Bella",
           "aliases": [
-            "Oscar Platinum"
+            "Ode to Rose Bella",
+            "Zimaya Ode to Rose Bella"
           ]
         },
         {
@@ -14521,6 +14462,13 @@
           ]
         },
         {
+          "canonical_name": "Sharaf Divine",
+          "aliases": [
+            "Sharaf Divine",
+            "Zimaya Sharaf Divine"
+          ]
+        },
+        {
           "canonical_name": "Sharaf Blend",
           "aliases": [
             "Sharaf Blend",
@@ -14531,58 +14479,10 @@
           ]
         },
         {
-          "canonical_name": "Sharaf Divine",
-          "aliases": [
-            "Sharaf Divine",
-            "Zimaya Sharaf Divine"
-          ]
-        },
-        {
-          "canonical_name": "Sharaf Noble",
-          "aliases": [
-            "Sharaf Noble",
-            "Zimaya Sharaf Noble"
-          ]
-        },
-        {
           "canonical_name": "Sharaf The Club",
           "aliases": [
             "Sharaf The Club",
             "Zimaya Sharaf The Club"
-          ]
-        },
-        {
-          "canonical_name": "Siada Nova",
-          "aliases": [
-            "Siada Nova",
-            "Zimaya Siada Nova"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Siada Regal",
-          "aliases": [
-            "Siada Regal",
-            "Zimaya Siada Regal"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Stallion",
-          "aliases": [
-            "Stallion",
-            "Zimaya Stallion"
-          ]
-        },
-        {
-          "canonical_name": "Taraf Black",
-          "aliases": [
-            "Taraf Black",
-            "Zimaya Taraf Black"
           ]
         },
         {
@@ -14607,20 +14507,17 @@
           ]
         },
         {
-          "canonical_name": "Wujood",
+          "canonical_name": "Itqan Noir",
           "aliases": [
-            "Wujood",
-            "Zimaya Wujood"
-          ],
-          "formats_ml": [
-            100
+            "Itqan Noir",
+            "Zimaya Itqan Noir"
           ]
         },
         {
-          "canonical_name": "Zaa'hir",
+          "canonical_name": "Taraf Black",
           "aliases": [
-            "Zaa'hir",
-            "Zimaya Zaa'hir"
+            "Taraf Black",
+            "Zimaya Taraf Black"
           ]
         },
         {
@@ -14631,9 +14528,112 @@
           ]
         },
         {
+          "canonical_name": "Zaa'hir",
+          "aliases": [
+            "Zaa'hir",
+            "Zimaya Zaa'hir"
+          ]
+        },
+        {
+          "canonical_name": "Noor Al Sabah",
+          "aliases": [
+            "Noor Al Sabah",
+            "Zimaya Noor Al Sabah"
+          ]
+        },
+        {
+          "canonical_name": "Stallion",
+          "aliases": [
+            "Stallion",
+            "Zimaya Stallion"
+          ]
+        },
+        {
+          "canonical_name": "Sharaf Noble",
+          "aliases": [
+            "Sharaf Noble",
+            "Zimaya Sharaf Noble"
+          ]
+        },
+        {
+          "canonical_name": "Mazaaj",
+          "aliases": [
+            "Mazaaj",
+            "Zimaya Mazaaj"
+          ]
+        },
+        {
+          "canonical_name": "Wujood",
+          "aliases": [
+            "Wujood",
+            "Zimaya Wujood"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Luxor",
+          "aliases": [
+            "Luxor",
+            "Zimaya Luxor"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Kibria Supremo",
+          "aliases": [
+            "Kibria Supremo"
+          ]
+        },
+        {
+          "canonical_name": "Oscar Platinum",
+          "aliases": [
+            "Oscar Platinum"
+          ]
+        },
+        {
           "canonical_name": "Zukhruf Peach Please",
           "aliases": [
             "Zukhruf Peach Please"
+          ]
+        },
+        {
+          "canonical_name": "Mazaaj Rhythm",
+          "aliases": [
+            "Mazaaj Rhythm"
+          ]
+        },
+        {
+          "canonical_name": "Siada Regal",
+          "aliases": [
+            "Siada Regal",
+            "Zimaya Siada Regal"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Siada Nova",
+          "aliases": [
+            "Siada Nova",
+            "Zimaya Siada Nova"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Nojoum",
+          "aliases": [
+            "Nojoum",
+            "Zimaya Nojoum"
+          ],
+          "formats_ml": [
+            20
           ]
         }
       ]
