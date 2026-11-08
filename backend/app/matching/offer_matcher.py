@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import IngestionRaw, ProductVariant
+from app.models import Brand, Fragrance, IngestionRaw, ProductVariant
 from app.services.ingestion_persistence import record_match
 from app.services.product_normalization import normalize_gtin, normalize_product
 from app.services.canonical_identity_review_queue import enqueue_identity_review
@@ -20,6 +20,56 @@ class MatchDecision:
     product_variant_id: object | None
     reason: str
 
+
+
+def _exact_legacy_attribute_candidates(session: Session, identity):
+    """Resolve legacy rows whose stored key predates the canonical-key format.
+
+    This is a strict attribute comparison, not fuzzy matching. The candidate
+    must normalize back to the exact same canonical identity, including
+    concentration, volume and packaging. Multiple matches remain unresolved.
+    """
+    fragrance_slug = identity.fragrance_name.replace(" ", "-")
+    statement = (
+        select(ProductVariant, Fragrance, Brand)
+        .join(Fragrance, ProductVariant.fragrance_id == Fragrance.id)
+        .join(Brand, Fragrance.brand_id == Brand.id)
+        .where(
+            Brand.normalized_name == identity.brand,
+            Fragrance.slug == fragrance_slug,
+        )
+    )
+    if identity.size_ml is None:
+        statement = statement.where(ProductVariant.size_ml.is_(None))
+    else:
+        statement = statement.where(ProductVariant.size_ml == identity.size_ml)
+
+    matches = []
+    for variant, fragrance, brand in session.execute(statement).all():
+        packaging_flags = [
+            name for name, enabled in (
+                ("tester", variant.is_tester),
+                ("refill", variant.is_refill),
+                ("gift_set", variant.is_gift_set),
+                ("mini", variant.is_mini),
+            ) if enabled is True
+        ]
+        if len(packaging_flags) > 1:
+            continue
+        packaging = packaging_flags[0] if packaging_flags else "standard"
+        try:
+            candidate = normalize_product(
+                brand.name,
+                fragrance.name,
+                concentration=variant.concentration,
+                size_ml=float(variant.size_ml) if variant.size_ml is not None else None,
+                packaging=packaging,
+            )
+        except (TypeError, ValueError):
+            continue
+        if candidate.canonical_key == identity.canonical_key:
+            matches.append(variant)
+    return matches
 
 def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
     """Use verified GTIN first, then exact canonical key; never fuzzy-auto-match."""
@@ -71,6 +121,18 @@ def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
     if len(candidates) > 1:
         return MatchDecision("unmatched", "canonical_key_ambiguous", None, None,
                              "multiple_variants_share_canonical_key")
+
+    # Older catalog imports sometimes retained a legacy key containing the
+    # source variant ID. Recover only when the full normalized attributes map
+    # to exactly one row; never fall back to name similarity or partial tokens.
+    legacy_candidates = _exact_legacy_attribute_candidates(session, identity)
+    if len(legacy_candidates) == 1:
+        return MatchDecision("matched", "normalized_attributes_exact",
+                             Decimal("0.985"), legacy_candidates[0].id,
+                             "exact_normalized_attributes_on_legacy_key")
+    if len(legacy_candidates) > 1:
+        return MatchDecision("unmatched", "normalized_attributes_ambiguous", None, None,
+                             "multiple_legacy_variants_share_normalized_identity")
     return MatchDecision("unmatched", "no_exact_match", None, None,
                          "no_exact_canonical_variant")
 
