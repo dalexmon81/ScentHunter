@@ -162,7 +162,7 @@ jobs:
           backend/tests/test_manage_store_authorization_cli.py
           backend/tests/test_shipping_quotes.py
 
-      - name: Validate canonical identity and normalization
+      - name: Validate read-only variant coverage audit
         run: pytest -q backend/tests/test_audit_variant_coverage.py
 
       - name: Validate canonical identity and normalization
