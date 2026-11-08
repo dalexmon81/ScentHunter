@@ -29395,7 +29395,8 @@
         "Love Spell 100 ml",
         "Bujairami Love Spell 100ml"
       ],
-      "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-100-000"
+      "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-100-000",
+      "source_url": "https://bujairami.com.au/products/love-spell-original-creation"
     },
     {
       "product_id": "SH-BUJAIRAMI-LOVE-SPELL",
@@ -29404,7 +29405,8 @@
         "Love Spell 50 ml",
         "Bujairami Love Spell 50ml"
       ],
-      "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-50-000"
+      "variant_id": "SHV-SH-BUJAIRAMI-LOVE-SPELL-50-000",
+      "source_url": "https://bujairami.com.au/products/love-spell-original-creation-50ml"
     }
   ]
 }
