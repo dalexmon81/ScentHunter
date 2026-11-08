@@ -3524,7 +3524,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-6494ea68",
@@ -18554,7 +18557,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SARAYA",
@@ -33737,7 +33743,10 @@
         "Lattafa Asad Polar"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://lattafa.com/product/asad-polar/"
+      "source_url": "https://lattafa.com/product/asad-polar/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-FULL-EFFECT-001",
