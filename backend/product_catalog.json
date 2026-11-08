@@ -2867,8 +2867,12 @@
         "Atoof",
         "Paris Corner Atoof"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/atoof",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/atoof",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-5c9adfe6",
@@ -36406,6 +36410,16 @@
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-70730e4a-100-000",
       "source_url": "https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-8e21991b",
+      "size_ml": 100,
+      "aliases": [
+        "Atoof 100 ml",
+        "Paris Corner Atoof 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-8e21991b-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/atoof"
     }
   ]
 }
