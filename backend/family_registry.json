@@ -6718,7 +6718,11 @@
           "aliases": [
             "Al Layl",
             "Al Wataniah Al Layl"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Alya",
@@ -6732,14 +6736,22 @@
           "aliases": [
             "Ameerati",
             "Al Wataniah Ameerati"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ameeri",
           "aliases": [
             "Ameeri",
             "Al Wataniah Ameeri"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Amnia",
@@ -6850,7 +6862,11 @@
           "aliases": [
             "Durrat Al Aroos",
             "Al Wataniah Durrat Al Aroos"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Eqaab",
@@ -7018,7 +7034,11 @@
           "aliases": [
             "Nawal Tanzanite",
             "Al Wataniah Nawal Tanzanite"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Oud Mystery Intense",
@@ -7081,7 +7101,11 @@
           "aliases": [
             "Rose Mystery Intense",
             "Al Wataniah Rose Mystery Intense"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Royal Oak I",
@@ -7121,7 +7145,11 @@
           "aliases": [
             "Sabah Al Ward Garden of Eden",
             "Al Wataniah Sabah Al Ward Garden of Eden"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Sabah Al Ward Sugar",
@@ -7185,7 +7213,11 @@
           "aliases": [
             "Sultan Al Lail",
             "Al Wataniah Sultan Al Lail"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Thahaani",
