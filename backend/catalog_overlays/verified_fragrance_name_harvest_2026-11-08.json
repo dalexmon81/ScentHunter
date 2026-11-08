@@ -20,7 +20,8 @@
     "pending_candidates": "Bujairami Hectic and Arabiyat Prestige Mahd Al Dhahab Extrait remain discovery candidates only. Their retailer evidence is recorded, but neither was imported into the canonical seed because official brand-level identity evidence and/or concentration modeling is unresolved.",
     "bujairami_hectic": "Hectic is now admitted as a source-verified canonical name from the official Bujairami product page. Concentration, volume and GTIN are not imported because the official detail page omits them and retailer sources conflict.",
     "mahd_al_dhahab_extrait": "Confirmed as a distinct canonical fragrance identity from the EDP. MyPerfumes Europe official Arabiyat perfumes store product detail identifies Extrait de Parfum 60 ml. Do not merge into EDP identity.",
-    "arabiyat_prestige_official_store": "The MyPerfumes Europe Arabiyat Prestige collection and individual product pages are used as the primary brand-store source. Product identity rows are separate from explicit size/concentration variants; no price or retailer stock is imported."
+    "arabiyat_prestige_official_store": "The MyPerfumes Europe Arabiyat Prestige collection and individual product pages are used as the primary brand-store source. Product identity rows are separate from explicit size/concentration variants; no price or retailer stock is imported.",
+    "arabiyat_prestige_spelling_reconciliation": "Gelato Black Current Lolly is the official-store display spelling. The existing canonical identity Gelato Black Currant Lolly is retained and the official display spelling is an alias; do not create two identities."
   },
   "summary": {
     "product_name_candidates": 193,
@@ -1864,12 +1865,16 @@
     },
     {
       "brand": "Arabiyat Prestige",
-      "fragrance_name": "Gelato Black Current Lolly",
+      "fragrance_name": "Gelato Black Currant Lolly",
       "collection": "Arabiyat Prestige",
       "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
       "evidence_level": "official_brand_store_product_detail",
-      "variant_details": "Official store listing identifies Eau de Parfum 100 ml; explicit variant recorded."
+      "variant_details": "Official store spells the product 'Gelato Black Current Lolly'; canonical spelling follows the pre-existing brand identity 'Gelato Black Currant Lolly'. Both spellings are aliases for the same product. Official store identifies EDP 100 ml.",
+      "aliases": [
+        "Gelato Black Current Lolly",
+        "Arabiyat Prestige Gelato Black Current Lolly"
+      ]
     },
     {
       "brand": "Arabiyat Prestige",
