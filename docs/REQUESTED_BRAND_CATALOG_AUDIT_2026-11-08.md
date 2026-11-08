@@ -430,3 +430,13 @@ The North Stag collection lists 10 sellable items including the three-piece set,
 After this pass Paris Corner has 246 identities: 31 individually detail-verified and 215 listing-level. The full seed has 2,061 canonical identities and 268 explicit variants. Across the 20 requested brands the subtotal is 2,058 identities: 181 individually verified and 1,877 listing-level.
 
 Official collection: https://www.pariscornerperfumes.com/collections/north-stag-1
+
+
+### Paris Corner: Atoof official detail page (8 November 2026)
+
+The New Arrivals Offer collection also links to the individual Atoof page. The official page explicitly states 100 ml. The existing Atoof identity was upgraded to source_verified_name and one 100 ml variant was added. Concentration was not populated because the inspected page did not state it.
+
+- Official product page: https://www.pariscornerperfumes.com/products/atoof
+- Explicit size: 100 ml
+- Paris Corner now has 246 identities: 32 individually detail-verified and 214 listing-level.
+- The full seed now has 2,061 canonical identities and 269 explicit variants. Across the 20 requested brands: 2,058 identities, 182 individually verified and 1,876 listing-level.
