@@ -33367,6 +33367,88 @@
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
       "source_url": "https://frenchavenue.com/products/eclipse-nova-extrait"
+    },
+    {
+      "product_id": "SH-ZIMAYA-KIBRIA-SUPREMO",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Kibria Supremo",
+      "name": "Kibria Supremo",
+      "family_id": "zimaya_catalog",
+      "family_name": "Zimaya",
+      "aliases": [
+        "Kibria Supremo",
+        "Zimaya Kibria Supremo"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ro.zimayaperfumes.com/products/kibria-supremo",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-OSCAR-PLATINUM",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Oscar Platinum",
+      "name": "Oscar Platinum",
+      "family_id": "zimaya_catalog",
+      "family_name": "Zimaya",
+      "aliases": [
+        "Oscar Platinum",
+        "Zimaya Oscar Platinum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.zimayaperfumes.com/products/oscar-platinum",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-ZUKHRUF-PEACH-PLEASE",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Zukhruf Peach Please",
+      "name": "Zukhruf Peach Please",
+      "family_id": "zimaya_catalog",
+      "family_name": "Zimaya",
+      "aliases": [
+        "Zukhruf Peach Please",
+        "Zukhruf Peach",
+        "Zimaya Zukhruf Peach Please"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.zimayaperfumes.com/en/products/zukhruf-peach",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-MAZAAJ-RHYTHM",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Mazaaj Rhythm",
+      "name": "Mazaaj Rhythm",
+      "family_id": "zimaya_catalog",
+      "family_name": "Zimaya",
+      "aliases": [
+        "Mazaaj Rhythm",
+        "Zimaya Mazaaj Rhythm"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/mazaaj-rhythm",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-TIRAMISU-SMORES",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Tiramisu S’mores",
+      "name": "Tiramisu S’mores",
+      "family_id": "zimaya_catalog",
+      "family_name": "Zimaya",
+      "aliases": [
+        "Tiramisu S’mores",
+        "Tiramisu S'mores",
+        "Zimaya Tiramisu S’mores"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/tiramisu-s-mores",
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -35601,6 +35683,56 @@
       "aliases": [
         "9 PM Night Out 100 ml",
         "Afnan 9 PM Night Out 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-ZIMAYA-KIBRIA-SUPREMO",
+      "variant_id": "SHV-SH-ZIMAYA-KIBRIA-SUPREMO-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Kibria Supremo 100 ml",
+        "Zimaya Kibria Supremo 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-ZIMAYA-OSCAR-PLATINUM",
+      "variant_id": "SHV-SH-ZIMAYA-OSCAR-PLATINUM-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oscar Platinum 100 ml",
+        "Zimaya Oscar Platinum 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-ZIMAYA-ZUKHRUF-PEACH-PLEASE",
+      "variant_id": "SHV-SH-ZIMAYA-ZUKHRUF-PEACH-PLEASE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Zukhruf Peach Please 100 ml",
+        "Zimaya Zukhruf Peach Please 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-ZIMAYA-MAZAAJ-RHYTHM",
+      "variant_id": "SHV-SH-ZIMAYA-MAZAAJ-RHYTHM-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mazaaj Rhythm 100 ml",
+        "Zimaya Mazaaj Rhythm 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-ZIMAYA-TIRAMISU-SMORES",
+      "variant_id": "SHV-SH-ZIMAYA-TIRAMISU-SMORES-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Tiramisu S’mores 100 ml",
+        "Zimaya Tiramisu S’mores 100ml"
       ]
     }
   ]
