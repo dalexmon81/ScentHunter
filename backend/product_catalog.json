@@ -22975,6 +22975,22 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.afnaneurope.com/collections/all-products?page=2",
       "source_evidence_url": "https://www.afnaneurope.com/collections/all-products?page=2"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-996a03df",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Black Grapefruit",
+      "name": "Black Grapefruit",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Black Grapefruit",
+      "aliases": [
+        "Black Grapefruit",
+        "Maison Asrar Black Grapefruit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://maisonasrar.com/collections/all",
+      "source_evidence_url": "https://maisonasrar.com/collections/all"
     }
   ],
   "variants": [
