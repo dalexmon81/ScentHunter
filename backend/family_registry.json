@@ -15454,6 +15454,9 @@
           "aliases": [
             "Hareem Al Sultan Blue",
             "Khadlaj Hareem Al Sultan Blue"
+          ],
+          "formats_ml": [
+            35
           ]
         },
         {
@@ -15538,6 +15541,9 @@
           "aliases": [
             "Mocha Latte",
             "Khadlaj Mocha Latte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15673,6 +15679,9 @@
           "aliases": [
             "Rose And Romance",
             "Khadlaj Rose And Romance"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15687,6 +15696,9 @@
           "aliases": [
             "Shiyaaka Men",
             "Khadlaj Shiyaaka Men"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -16397,13 +16409,6 @@
           "aliases": [
             "Karus Secret Musk",
             "Khadlaj Karus Secret Musk"
-          ]
-        },
-        {
-          "canonical_name": "Sensuous Night",
-          "aliases": [
-            "Sensuous Night",
-            "Khadlaj Sensuous Night"
           ]
         }
       ]
