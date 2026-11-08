@@ -17,7 +17,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 98,
     "Maison Asrar": 125,
     "Khadlaj": 166,
-    "Bujairami": 593,
+    "Bujairami": 665,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -1833,6 +1833,108 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         }
         missing = [name for name in expected if normalize(name) not in searchable]
         self.assertEqual(len(expected), 122)
+        self.assertEqual(missing, [])
+
+
+    def test_bujairami_range_names_j_to_l_are_all_catalogued(self):
+        def normalize(value):
+            value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
+            return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+        expected = [
+          "Jalad",
+          "Jamal Musk",
+          "Jamila",
+          "Jammin",
+          "Jasmine",
+          "Jeddah",
+          "Juicy",
+          "Juicy Fig",
+          "Juicy Gossip",
+          "Juicy Kiss",
+          "Kept Secrets",
+          "Killer Oud",
+          "King",
+          "Kingmaker",
+          "Kingpin",
+          "Kings Code",
+          "Kingsman",
+          "Kiss & Tell",
+          "Kiwi Me Softly",
+          "Knefeh",
+          "Kokoma Paradise",
+          "Kuwaiti Love",
+          "La Flame",
+          "La Vie En Rose",
+          "Lady Fortune",
+          "Lady Like",
+          "Last Call",
+          "Last Flame",
+          "Last Kingdom",
+          "Last Move",
+          "Last Reign",
+          "Last Ride",
+          "Late Night",
+          "Latte Obsession",
+          "Lavish",
+          "Lavish Life",
+          "Leader",
+          "Leatherbound",
+          "Legacy",
+          "Legend",
+          "Lemon Crush",
+          "Lets Run",
+          "Liana",
+          "Life in Dubai",
+          "Light in Blue",
+          "Lilypop",
+          "Lime Surge",
+          "Limonana",
+          "Little Miss",
+          "Loaded",
+          "Loco",
+          "Lolita",
+          "Lolliepop",
+          "London Vice",
+          "Long Way Home",
+          "Loose Ends",
+          "Lost in Love",
+          "Love Bomb",
+          "Love in Bloom",
+          "Love Life",
+          "Love Note",
+          "Love Obsession",
+          "Love Spell",
+          "Lovelace",
+          "Lovely",
+          "Lucid Dream",
+          "Lucky",
+          "Lullaby",
+          "Luminous",
+          "Luna Paradiso",
+          "Lunar Gleam",
+          "Lupo",
+          "Lush Cane",
+          "Lush Fig",
+          "Lush Petals",
+          "Lust",
+          "Lust In Paris",
+          "Luster",
+          "Luxe Noir",
+          "Lychee"
+]
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        ]
+        searchable = {
+            normalize(name)
+            for row in products
+            for name in [row.get("canonical_name"), *(row.get("aliases") or [])]
+            if name
+        }
+        missing = [name for name in expected if normalize(name) not in searchable]
+        self.assertEqual(len(expected), 80)
         self.assertEqual(missing, [])
 
 if __name__ == "__main__":
