@@ -3126,10 +3126,11 @@
         "Khadlaj Hareem Al Sultan Gold"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "source_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-gold-35ml",
       "formats_ml": [
         35
-      ]
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-gold-35ml"
     },
     {
       "product_id": "SH-KHADLAJ-f26d9535",
@@ -33742,7 +33743,9 @@
         "Hareem Al Sultan Gold 35 ml",
         "Khadlaj Hareem Al Sultan Gold 35ml"
       ],
-      "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000"
+      "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000",
+      "source_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-gold-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-gold-35ml"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
