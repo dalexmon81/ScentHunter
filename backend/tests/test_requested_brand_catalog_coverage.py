@@ -579,5 +579,33 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
+    def test_armaf_uniq_new_exclusive_official_pages_and_60ml_edp_variants(self):
+        expected = {
+            "Uniq Oud Forever": "https://armaf.com/products/uniq-oud-forever-2-0-oz",
+            "Uniq Effects of Uniq": "https://armaf.com/products/uniq-effects-of-uniq-2-0-oz",
+        }
+        products = {
+            p.get("canonical_name"): p
+            for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [60])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"] and v.get("size_ml") == 60
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+
+
+
 if __name__ == "__main__":
     unittest.main()
