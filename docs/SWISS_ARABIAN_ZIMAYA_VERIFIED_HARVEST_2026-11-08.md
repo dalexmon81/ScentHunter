@@ -2,10 +2,10 @@
 
 ## Result
 
-The catalog was compared against the first-party discovery candidates in the preceding audit and the current canonical seed. Seven previously absent fragrance identities were confirmed from individual official product pages and added with explicit variants. One existing Zimaya identity was corrected with an official spelling alias and its verified product page/variant.
+The catalog was compared against the first-party discovery candidates in the preceding audit and the current canonical seed. Seven previously absent fragrance identities were confirmed from individual official product pages and added with explicit variants. Ten additional existing Zimaya identities (including Ghali Elegante) were upgraded from discovery-only to product-page-verified provenance with explicit variants.
 
 - Swiss Arabian: 4 new identities.
-- Zimaya: 3 new identities (including one concentrated perfume oil, kept distinct from EDP spray products).
+- Zimaya: 3 new identities (including one concentrated perfume oil, kept distinct from EDP spray products); 9 existing Zimaya identities upgraded with verified official detail pages and 100 ml EDP variants.
 - Zimaya Ghali Elegante: retained as one canonical identity; official storefront spelling "Ghali Elegant" added as an alias.
 - No Afnan or Bujairami additions were made in this pass because the reviewed candidates already matched existing canonical identities or aliases.
 - No gift sets, deodorants, body sprays, room sprays, or retailer offers were added.
@@ -35,9 +35,28 @@ Nojoum is explicitly a concentrated perfume oil (CPO), not an EDP spray. It is r
 
 The official Zimaya product page uses "Ghali Elegant" and confirms 100 ml EDP for women. The catalog already had the identity "Ghali Elegante". To avoid creating a duplicate, the canonical identity remains unchanged and "Ghali Elegant" is added as an official alias. The existing identity is upgraded to product-page-verified provenance and receives its explicit 100 ml EDP variant.
 
+## Additional Zimaya product-page verification
+
+Nine more entries already present as discovery-only names were upgraded using their individual official US product pages. Each page identifies a 100 ml Eau de Parfum:
+
+| Canonical identity | Official product page |
+|---|---|
+| Kibria Glory | https://us.zimayaperfumes.com/products/kibria-glory |
+| Ode to Rose Royale | https://us.zimayaperfumes.com/products/ode-to-rose-royale |
+| Ode to Rose Bella | https://us.zimayaperfumes.com/products/ode-to-rose-bella |
+| Ghali Imperial | https://us.zimayaperfumes.com/products/ghali-imperial |
+| Modhesh Noble | https://us.zimayaperfumes.com/products/modhesh-noble-perfume |
+| Al Embratur Absolu | https://us.zimayaperfumes.com/products/al-embratur-absolu-perfume |
+| Daiman Eclipse | https://us.zimayaperfumes.com/products/daiman-eclipse-perfume |
+| Daiman Eden | https://us.zimayaperfumes.com/products/daiman-eden-perfume |
+| Sharaf Divine | https://us.zimayaperfumes.com/products/sharaf-divine-perfume |
+
+These are not nine additional canonical identities; they are nine existing identities whose provenance and exact 100 ml EDP variant are now verified. The product IDs remain unchanged.
+
 ## Reconciliation and safety
 
-- All seven candidate identities were checked against existing canonical names and aliases before insertion.
+- All seven new candidate identities were checked against existing canonical names and aliases before insertion.
+- Nine pre-existing Zimaya identities were matched to the official US product pages and given 100 ml EDP variants without changing their canonical product IDs.
 - Product IDs and variant IDs are unique in the seed.
 - Each new variant references its canonical product and its size is reflected in the parent `formats_ml`.
 - No price, availability, stock, shipping, GTIN, or retailer offer was added.
