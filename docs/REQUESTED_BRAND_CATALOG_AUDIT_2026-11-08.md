@@ -12,7 +12,7 @@ The official brand-owned size collections report 37 items in the 50 ml collectio
 
 The 19 no-variant/no-size identities identified in the seed audit (Sansa, Tea Poetry, Affair, Only You, Shades Perfume, Chai Crema Latte, Jynx, Rouge, Seven Roses, Ivory, Blossom, Zora, Down to Earth, When in Paris, Pandan Sticky Rice, Pistachio Cream Cake, Blaze, Memoir of Meri and Once Upon Don) do not appear in the four current main collection pages. The authorized EU retailer does publish individual product pages for them, with EU retail sizes/concentrations recorded in the previous table, but those EU pages do not override the brand-owned current assortment or prove that the same variants are offered in Indonesia.
 
-**Final Mykonos seed decision for this pass:** retain the existing 72 canonical identities and 73 explicit variants. The current 73 variants remain internally consistent; the 19 legacy/regionally listed identities remain without guessed variants. Do not delete identities merely because they are absent from the current Indonesian assortment; they may be legacy, regional, collaboration or archived products. Do not mark them discontinued without first-party evidence.
+**Checkpoint before the 15 ml travel-size reconciliation:** the seed contained 72 canonical identities and 73 explicit variants. This count is superseded by the following 15 ml section, which adds 18 distinct size variants and brings Mykonos to 91 explicit variants. The 19 legacy/regionally listed identities remain without guessed variants. Do not delete identities merely because they are absent from the current Indonesian assortment; they may be legacy, regional, collaboration or archived products. Do not mark them discontinued without first-party evidence.
 
 First-party references:
 - Main assortment page 1: https://officialmykonos.com/collections/all
@@ -48,7 +48,7 @@ The official Mykonos product page **Mykonos - Travel Size 15ML** exposes a selec
 
 - Evidence page: https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml
 - Each new variant records the same evidence URL and the 15 ml size.
-- Concentration is carried onto the 15 ml variant only where the canonical identity already has an explicitly sourced concentration. Sansa, Affair and Tea Poetry remain without a concentration; none was inferred from the generic travel-size page.
+- Concentration is intentionally left blank on all 18 new 15 ml variant rows. The travel-size page confirms the scent options and size, but does not establish concentration at the variant level. A concentration recorded on a parent identity for another size is not transferred to the 15 ml variant.
 - No new canonical identities were created and no existing variant was duplicated.
 - Mykonos now has 72 canonical identities and **91 explicit variants** (18 new 15 ml variants).
 - The count of Mykonos identities without any explicit variant is now 16 (down from 19). This is not a claim that the Mykonos catalog is complete: all remaining no-variant identities and the full size/concentration matrix still require individual product-page verification.
