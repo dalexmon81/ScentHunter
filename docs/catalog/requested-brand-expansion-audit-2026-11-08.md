@@ -74,3 +74,21 @@ Next extraction must:
 - PR #424 remains untouched.
 - Do not seed or mutate staging/production databases, deploy, activate stores or publish offers.
 - Liquid Brun remains the planned real-source ingestion acceptance test after catalog and architecture gates are satisfied.
+
+
+## Incremental source extraction — 2026-11-08 (Paris Corner + Lattafa)
+
+The official Paris Corner all-products collection reports **255 products**. The rendered public page exposes only a subset per pagination view; pages 1–4 were inspected and the visible perfume identities were added to the canonical catalog with source provenance. The displayed list also includes house sub-labels such as Emir / North Stag; these remain attributed to the Paris Corner house where shown by its own official collection. Product-level concentration, size and variants were not inferred. The visible pages are **not** a complete 255-item extraction, and the audit remains open.
+
+Official source: https://www.pariscornerperfumes.com/collections/all (pagination pages 1–4 inspected).
+
+Lattafa official perfume category exposes current names including Fahad, Khamrah Waha, Sheikh Al Shuyukh Supreme, Jouri, Ana Abiyedh Passion, Ameerat Al Arab Sugar Crown, Mishlah, Angham Second Song, Maahir Honor, Dalal, Yara Elixir, Asad Elixir and Musamam Black Intense. Most were already present; **Musamam Black Intense** was added where missing. Source: https://lattafa.com/product-category/perfumes/ .
+
+### Current incremental totals
+- Canonical identities: 1,031
+- Explicit variant rows: 141 (unchanged; no unsupported variants inferred)
+- Paris Corner identities: 99
+- Lattafa identities: 16
+- Family registry: synchronized with the canonical identities for these two brands.
+
+Important: the official Lattafa page's pagination is not fully verified, and the Paris Corner 255-item collection was not fully extracted. Do not mark either brand complete based on this increment. Continue page-by-page, capture all results and filter non-perfume products before claiming completion.
