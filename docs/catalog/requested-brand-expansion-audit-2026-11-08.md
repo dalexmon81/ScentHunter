@@ -206,3 +206,23 @@ Sources:
 - Khadlaj: 48 identities
 - French Avenue: 30 identities
 - 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variants; 0 canonical products missing from discovery registry
+
+
+## Further pagination — French Avenue and Khadlaj — 2026-11-08
+
+### French Avenue
+Inspected page 3 of the official French Avenue all-products collection and added 12 missing fragrance identities: Prune Hypnos, Spirito Mystic, Ravine Ginger, Nuit, Irida, Sagittarius, Soir, Sweet Paradise, Zenith Tobacco, Tropical Kiss, Signature White and Miraj Absolu. Current French Avenue catalog count: **42**. The official collection reports 142 total products and has a load-more/pagination path; this remains a partial import.
+
+The same page lists **Aromatix Plantine Blanc**. The catalog already contained Aromatix **Platine Blanc**; I added the source spelling as an alias on that existing Aromatix identity rather than creating a duplicate perfume. Source: https://frenchavenue.com/collections/all?page=3 .
+
+### Khadlaj
+Inspected page 3 of Khadlaj's official 89-item new-launch collection and added four missing perfumes: Zayaan Gold, Biscotti Caramel Pop, Oud Pour Leather and Private Blend (the product detail confirms the fuller descriptor “Private Blend Tobac Extra”). Current Khadlaj catalog count: **52**. La Fede-branded items shown in the same collection were not re-attributed to Khadlaj; the parent/sub-brand boundary must remain clear. Source: https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3 and https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men .
+
+### Latest integrity snapshot
+- 1,276 canonical identities
+- 141 explicit variant rows
+- 31 discovery families
+- Bujairami: 121 identities
+- Khadlaj: 52 identities
+- French Avenue: 42 identities
+- 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variants; 0 canonical products missing from discovery registry
