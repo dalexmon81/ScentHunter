@@ -363,13 +363,18 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
         }
         self.assertEqual(len(products), 86)
         self.assertEqual(set(products), set(EXPECTED))
+        individually_verified = {
+            "Lemon Souffle", "Choco Truffle", "Kayaan Classic",
+            "Sabah Al Ward", "Sabah Al Ward Sugar", "Ain Emarat",
+            "Ain Emarat Extrait", "Royal Oak I",
+        }
         for name, (collection, listing_url) in EXPECTED.items():
             with self.subTest(product=name):
                 product = products[name]
                 self.assertEqual(product.get("collection_name"), collection)
                 self.assertEqual(product.get("brand_name"), "Al Wataniah")
                 self.assertIn(product.get("identity_status"), {"source_listed_name", "source_verified_name"})
-                if name not in {"Lemon Souffle", "Choco Truffle"}:
+                if name not in individually_verified:
                     self.assertEqual(product.get("identity_status"), "source_listed_name")
                     self.assertEqual(product.get("source_url"), listing_url)
 
@@ -387,10 +392,10 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             if p.get("brand") == "Al Wataniah"
         }
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in alwataniah_ids]
-        self.assertEqual(len(variants), 2)
+        self.assertEqual(len(variants), 4)
         self.assertEqual(
             {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
-            {"Lemon Souffle", "Choco Truffle"},
+            {"Lemon Souffle", "Choco Truffle", "Sabah Al Ward", "Sabah Al Ward Sugar"},
         )
 
 
