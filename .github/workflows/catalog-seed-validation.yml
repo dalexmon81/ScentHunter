@@ -27,4 +27,4 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate recovered catalog seed
-        run: python -m unittest backend/tests/test_catalog_seed_recovery.py backend/tests/test_catalog_source_confidence.py backend/tests/test_bujairami_originals.py backend/tests/test_armaf_detail_evidence.py -v
+        run: python -m unittest backend/tests/test_catalog_seed_recovery.py backend/tests/test_catalog_source_confidence.py backend/tests/test_bujairami_originals.py backend/tests/test_armaf_detail_evidence.py backend/tests/test_paris_corner_detail_evidence.py -v
