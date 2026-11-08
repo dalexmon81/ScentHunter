@@ -25,6 +25,7 @@ from scrapers.bplatz.scraper import parse_product_html
 from app.models import (
     IngestionRaw,
     LegacyProductIdMap,
+    LegacyVariantIdMap,
     MatchAudit,
     Offer,
     PriceHistory,
@@ -242,12 +243,16 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     try:
         with factory() as session:
-            variant = session.scalar(
-                select(ProductVariant).where(
-                    ProductVariant.canonical_key == identity.canonical_key
-                )
+            legacy_map = session.get(
+                LegacyVariantIdMap, "VAR-f87146c82d167f4c"
             )
-            assert variant is not None, "seeded French Avenue Liquid Brun EDP 100 ml variant missing"
+            assert legacy_map is not None, (
+                "seeded legacy map for French Avenue Liquid Brun 100 ml missing"
+            )
+            variant = session.get(ProductVariant, legacy_map.product_variant_id)
+            assert variant is not None, "mapped Liquid Brun variant row missing"
+            assert variant.size_ml == Decimal("100")
+            assert variant.concentration == "Eau de Parfum"
             store = session.scalar(select(Store).where(Store.slug == "bplatz"))
             # This is an isolated CI database. Provisioning the retailer row here
             # does not activate a production connector or write to staging.
