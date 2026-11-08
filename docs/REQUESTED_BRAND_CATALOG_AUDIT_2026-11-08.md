@@ -440,3 +440,21 @@ The New Arrivals Offer collection also links to the individual Atoof page. The o
 - Explicit size: 100 ml
 - Paris Corner now has 246 identities: 32 individually detail-verified and 214 listing-level.
 - The full seed now has 2,061 canonical identities and 269 explicit variants. Across the 20 requested brands: 2,058 identities, 182 individually verified and 1,876 listing-level.
+
+
+### Paris Corner: four further individual detail pages (8 November 2026)
+
+Four existing Paris Corner identities were checked against their individual official product pages and promoted from collection-level evidence to individual-page evidence:
+
+| Identity | Official product page | Explicit size | Concentration |
+|---|---|---:|---|
+| Aira | https://www.pariscornerperfumes.com/products/aira | 100 ml | Not stated |
+| Ciao Citrus | https://www.pariscornerperfumes.com/products/ciao-citrus | 100 ml | Not stated |
+| Fatal Embrace | https://www.pariscornerperfumes.com/products/fatal-embrace | 100 ml | Not stated |
+| Wayfarer Infusion | https://www.pariscornerperfumes.com/products/wayfarer-infusion | 100 ml | Not stated |
+
+One 100 ml variant was added for each existing canonical identity. The official detail pages state the 100 ml size but do not explicitly state concentration in the inspected product-page content, so concentration remains blank. No new canonical identities were created.
+
+Paris Corner now has 246 canonical identities: 36 individually detail-verified and 210 listing-level. The full seed has 2,061 canonical identities and 273 explicit variants. Across the 20 requested brands: 2,058 identities, 186 individually verified and 1,872 listing-level.
+
+Official collection context: https://www.pariscornerperfumes.com/collections/paris-corner
