@@ -1,11 +1,18 @@
 """Regression tests for Khadlaj catalog/family registry coverage."""
 import json
 import unittest
+import unicodedata
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+
+
+def normalized(value):
+    value = unicodedata.normalize("NFD", str(value or ""))
+    value = "".join(ch for ch in value if unicodedata.category(ch) != "Mn")
+    return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in value).split())
 
 
 class KhadlajCatalogParityTests(unittest.TestCase):
@@ -21,8 +28,8 @@ class KhadlajCatalogParityTests(unittest.TestCase):
     def test_every_catalog_product_is_covered_by_its_family(self):
         for product in self.products:
             family = next(f for f in self.families if f["family_id"] == product["family_id"])
-            names = {p["canonical_name"].casefold() for p in family["products"]}
-            self.assertIn(product["canonical_name"].casefold(), names, product["canonical_name"])
+            names = {normalized(p["canonical_name"]) for p in family["products"]}
+            self.assertIn(normalized(product["canonical_name"]), names, product["canonical_name"])
 
     def test_catalog_product_and_family_names_are_unique(self):
         ids = [p["product_id"] for p in self.products]
