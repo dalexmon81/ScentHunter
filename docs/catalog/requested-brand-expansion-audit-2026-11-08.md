@@ -137,3 +137,27 @@ Sources: https://shoparomatix.com/pages/aromatic-collection and https://shoparom
 - Paris Corner: 99 identities
 - Lattafa: 16 identities
 - 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variants; 0 canonical products missing from the registry.
+
+
+## Paris Corner official collection pagination increment — 2026-11-08
+
+Inspected the official all-products collection pagination (pages 1–8; the collection header reports 255 products). Added **79 additional product identities** that were visible in the inspected pages and missing from our catalog, with the page URL recorded as source evidence. The entries include product names under the Paris Corner house's official sub-labels (for example Emir, North Stag, Khair, Taskeen, Qissa and Ministry of Oud). Product identities are kept at the brand/house level as listed in the official Paris Corner umbrella collection. Do not infer EDP/extrait, sizes, variants, GTIN, stock or price from a name alone.
+
+Official pages inspected:
+- https://www.pariscornerperfumes.com/collections/all
+- https://www.pariscornerperfumes.com/collections/all?page=2
+- https://www.pariscornerperfumes.com/collections/all?page=3
+- https://www.pariscornerperfumes.com/collections/all?page=4
+- https://www.pariscornerperfumes.com/collections/all?page=5
+- https://www.pariscornerperfumes.com/collections/all?page=6
+- https://www.pariscornerperfumes.com/collections/all?page=7
+- https://www.pariscornerperfumes.com/collections/all?page=8
+
+The current catalog contains **178 Paris Corner house-level identities**. This is still not a verified exhaustive import of the 255-product collection: the collection includes sub-labels and possible non-perfume/set items, and page-by-page classification of all 255 entries plus product-type verification is still required. The 178 figure is a current catalog count, not a completion claim.
+
+### Latest integrity snapshot
+- 1,120 canonical identities
+- 141 explicit variant rows
+- 31 discovery families
+- Paris Corner: 178 identities in catalog and registry
+- 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variant rows; 0 canonical products missing from discovery registry
