@@ -8,14 +8,14 @@
 
 ## Canonical seed snapshot
 - Canonical product identities: **1726**
-- Explicit variant rows: **191**
+- Explicit variant rows: **192**
 - Family registry groups: **34**
 - Product IDs duplicated: **0**
 - Variant IDs duplicated: **0**
 - Products missing source_url: **0**
 - Orphan variants: **0**
 - Duplicate brand + accent-normalized canonical-name pairs: **0**
-- Product identity evidence: **105 source_verified_name**, **1621 source_listed_name**.
+- Product identity evidence: **106 source_verified_name**, **1620 source_listed_name**.
 - Canonical products without an exact family-registry name match after accent/punctuation normalization: **0**.
 
 The evidence statuses are intentionally different. A collection/listing-backed name is a discovery candidate; it is not proof of an individual SKU, concentration, size, GTIN or current commercial availability.
@@ -89,7 +89,9 @@ The following older regression modules are not part of this CI gate because thei
 - Added `backend.tests.test_khadlaj_la_fede` to the CI workflow. The test now explicitly protects this evidence boundary rather than requiring all 36 registry candidates to be canonical.
 
 ## Arabiyat Prestige Extrait follow-up
+- Also verified the existing `Marwa Extrait` identity against its individual MyPerfumes Europe product page, distinct from the Marwa EDP. Added the explicit 60 ml Extrait de Parfum variant and aligned the canonical product ID with the already-verified GTIN record `6295156402103`.
+- Added `backend.tests.test_arabiyat_prestige_marwa_extrait` to the CI workflow; it checks the product/variant relationship against the verified GTIN map.
 - Promoted the existing `Mahd Al Dhahab Extrait` canonical identity from collection/index-listed to `source_verified_name` using the individual MyPerfumes Europe official Arabiyat Prestige product detail: https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait
 - Added the explicitly stated **60 ml Extrait de Parfum** variant; the family registry already contained this identity and `formats_ml: [60]`, so no registry duplication was needed.
 - Added `backend.tests.test_arabiyat_prestige_extrait` to the CI workflow. Other Arabiyat and legacy brand modules remain deferred until their missing product-level evidence and catalog rows are reconciled.
-- Totals after this change: **1,726 identities**, **191 variants**, **105 source-verified names**, **1,621 source-listed names**.
+- Totals after this change: **1,726 identities**, **192 variants**, **106 source-verified names**, **1,620 source-listed names**.
