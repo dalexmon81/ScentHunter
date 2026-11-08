@@ -547,5 +547,27 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
+    def test_lattafa_atlas_canyon_official_detail_page_and_55ml_variant(self):
+        products = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Lattafa"
+            and p.get("canonical_name") == "Atlas Canyon"
+        ]
+        self.assertEqual(len(products), 1)
+        row = products[0]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://lattafa.com/product/atlas-canyon/")
+        self.assertEqual(row.get("formats_ml"), [55])
+        self.assertNotIn("concentration", row)
+        variants = [
+            v for v in CATALOG.get("variants", [])
+            if v.get("product_id") == row["product_id"]
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("size_ml"), 55)
+        self.assertNotIn("concentration", variants[0])
+
+
+
 if __name__ == "__main__":
     unittest.main()
