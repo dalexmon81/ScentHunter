@@ -25,7 +25,7 @@ MINIMUM_BRAND_COUNTS = {
     "Gulf Orchid": 23,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
-    "Lattafa": 123,
+    "Lattafa": 124,
     "Afnan": 87,
     "Aromatix": 12,
     "Maison Alhambra": 203,
@@ -617,6 +617,27 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("source_evidence_url"), source_url)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+
+    def test_lattafa_asad_polar_official_product_page_and_variant_are_verified(self):
+        row = next(
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Lattafa"
+            and p.get("canonical_name") == "Asad Polar"
+        )
+        official_url = "https://lattafa.com/product/asad-polar/"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), official_url)
+        self.assertIn(100, row.get("formats_ml", []))
+        matching = [
+            v for v in CATALOG.get("variants", [])
+            if v.get("product_id") == row["product_id"] and v.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].get("source_evidence_url"), official_url)
+        self.assertNotIn("concentration", row)
+        self.assertNotIn("concentration", matching[0])
 
 
 
