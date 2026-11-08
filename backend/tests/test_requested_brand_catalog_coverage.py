@@ -12,7 +12,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 100,
+    "Mykonos": 98,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -709,26 +709,32 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         )
         self.assertNotIn("Imperium", products["Empire x RRQ"].get("aliases", []))
 
-    def test_mykonos_california_and_california_signature_are_separate(self):
+    def test_mykonos_california_signature_is_an_alias_of_california(self):
         products = {
             row.get("canonical_name"): row
             for row in CATALOG.get("products", [])
             if row.get("brand_name") == "Mykonos"
         }
         self.assertIn("California", products)
-        self.assertIn("California Signature", products)
-        self.assertNotEqual(
-            products["California"].get("product_id"),
-            products["California Signature"].get("product_id"),
-        )
-        self.assertNotIn(
+        self.assertNotIn("California Signature", products)
+        self.assertIn(
             "California Signature",
             products["California"].get("aliases", []),
         )
         self.assertEqual(
             products["California"].get("source_url"),
-            "https://mykonosperfumes.eu/products/mykonos-california",
+            "https://officialmykonos.com/products/mykonos-california-signature-50ml",
         )
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == products["California"]["product_id"]
+        ]
+        self.assertEqual({v.get("size_ml") for v in variants}, {50, 100})
+        self.assertTrue(all(
+            any(alias.startswith("California Signature ") for alias in v.get("aliases", []))
+            for v in variants
+        ))
+
 
 
     def test_mykonos_fragrantica_fine_fragrance_listing_is_covered(self):
