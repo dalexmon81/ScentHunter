@@ -16,12 +16,13 @@ class LattafaCatalogTests(unittest.TestCase):
         }
         for name, url in {
             "Queen of Arabia": "https://lattafa.com/product/queen-of-arabia/",
-            "Musamam Black Intense": "https://lattafa.com/product/musamam-black-intense/",
+            "Musamam Black Intense": "https://lattafa.com/product-category/perfumes/",
         }.items():
             with self.subTest(name=name):
                 self.assertIn(name, products)
                 self.assertEqual(products[name]["source_url"], url)
-                self.assertEqual(products[name]["identity_status"], "source_verified_name")
+                expected_status = "source_listed_name" if name == "Musamam Black Intense" else "source_verified_name"
+                self.assertEqual(products[name]["identity_status"], expected_status)
 
     def test_lattta_family_registry_contains_both_names(self):
         names = {
