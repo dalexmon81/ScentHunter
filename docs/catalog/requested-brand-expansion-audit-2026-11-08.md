@@ -356,3 +356,8 @@ Le differenze tra conteggi di retailer sono ampie; quindi nessuna marca può ess
 ## Maison Asrar — ulteriore identità verificata (2026-11-08)
 
 Aggiunta **Black Grapefruit** come identità canonica Maison Asrar. Il nome è presente nel catalogo ufficiale Maison Asrar, nella collezione prodotti: https://maisonasrar.com/collections/all (pagina consultata il 2026-11-08). Nessuna concentrazione, volume, GTIN, prezzo o disponibilità è stata dedotta. Catalogo e family registry sono stati aggiornati insieme; la copertura complessiva Maison Asrar resta da completare e il totale esposto dalla collezione include categorie miste.
+
+
+## Paris Corner — importazione pagina ufficiale successiva (2026-11-08)
+
+Aggiunte **5 identità** mancanti dalla seconda pagina della collezione ufficiale: Deux II Expressions North Stag, Fire Your Desire Emir, Forbidden Sugar Emir, Frenetic Delicieuse e Frenetic Homme Intense. Fonte: https://www.pariscornerperfumes.com/collections/all?page=2 . Le identità sono registrate sotto il marchio ombrello Paris Corner perché sono elencate nella sua collezione ufficiale; i nomi delle linee North Stag ed Emir sono mantenuti nel nome prodotto. Non sono state inferite concentrazione, volume, GTIN, prezzi o stock.
