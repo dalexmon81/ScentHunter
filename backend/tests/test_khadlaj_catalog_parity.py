@@ -80,6 +80,7 @@ class KhadlajCatalogParityTests(unittest.TestCase):
             "Mibraak", "Raniya", "Shamookh Silver", "Aaliya",
         )
         names = {normalized(p["canonical_name"]) for p in self.products}
+        names.update(normalized(alias) for p in self.products for alias in p.get("aliases", []))
         for name in expected:
             with self.subTest(name=name):
                 self.assertIn(normalized(name), names)
