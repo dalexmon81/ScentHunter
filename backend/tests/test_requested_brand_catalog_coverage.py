@@ -123,6 +123,29 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     )
                 )
 
+    def test_prune_hypnos_official_product_page_and_variant_are_verified(self):
+        row = next(
+            (
+                product
+                for product in CATALOG.get("products", [])
+                if str(product.get("brand_name") or product.get("brand") or "").strip() == "French Avenue"
+                and str(product.get("canonical_name") or product.get("name") or "").strip() == "Prune Hypnos"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://frenchavenue.com/products/prune-hypnos")
+        self.assertEqual(row.get("concentration"), "Eau de Parfum")
+        self.assertTrue(
+            any(
+                variant.get("product_id") == row["product_id"]
+                and variant.get("size_ml") == 100
+                and variant.get("concentration") == "Eau de Parfum"
+                for variant in CATALOG.get("variants", [])
+            )
+        )
+
     def test_french_avenue_official_product_pages_and_variants_are_verified(self):
         products = {
             str(row.get("canonical_name") or row.get("name") or "").strip(): row
