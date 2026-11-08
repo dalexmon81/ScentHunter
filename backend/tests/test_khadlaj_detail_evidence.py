@@ -37,7 +37,7 @@ class KhadlajDetailEvidenceTests(unittest.TestCase):
         self.assertEqual(len(matches), 1, name)
         return matches[0]
 
-    def test_five_existing_identities_have_official_detail_evidence(self):
+    def test_six_existing_identities_have_official_detail_evidence(self):
         for name, url in DETAILS.items():
             with self.subTest(product=name):
                 product = self.product(name)
