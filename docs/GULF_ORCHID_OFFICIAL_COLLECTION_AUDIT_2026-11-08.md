@@ -1,48 +1,62 @@
-# Gulf Orchid official collection audit — 2026-11-08
+# Gulf Orchid official collection audit — 2026-11-09
 
-## Scope
+## Scope and official sources
 
-Reconcile the Gulf Orchid entries in the catalog against the official Gulf Orchid shop collection and keep canonical product identities separate from collection names and other product categories.
+The audit covers both paginated result sets of the official Gulf Orchid perfume collection:
 
-Official sources consulted:
+- Page 1: https://shop-gulforchid.com/collections/gulf-orchid-perfume
+- Page 2: https://shop-gulforchid.com/collections/gulf-orchid-perfume?page=2
+- Official shop navigation and category taxonomy: https://shop-gulforchid.com/products
+- Corporate portfolio taxonomy: https://gulforchid.com/portfolio/gulf-orchid/
 
-- Gulf Orchid perfume collection: https://shop-gulforchid.com/collections/gulf-orchid-perfume
-- Official shop product/category navigation: https://shop-gulforchid.com/products
-- Official corporate portfolio: https://gulforchid.com/portfolio/gulf-orchid/
+The storefront separates Perfumes from Body Mist, Hair Mist, Deodorant, Room Spray, Reed Diffuser, Mukhammaria, Body Lotion and gift/bundle categories. Product names from the generic collection index are not enough to establish an individual perfume identity.
 
-The official shop navigation distinguishes Perfume from Body Mist, Hair Mist, Deodorant, Room Spray, Reed Diffuser, Mukhammaria, Body Lotion and gifting/bundle categories. A collection title alone is not sufficient evidence for a canonical perfume identity.
+## Reconciliation result
 
-## Catalog corrections
+The two paginated perfume collection pages contain 30 listings. Two are gift bundles (Sweet Edition and Flirt Edition), leaving 28 individual perfume listings. Two of those listings are smaller sizes of fragrances also listed in 100 ml, so the catalog represents them as two canonical identities with multiple variants.
 
-The previous catalog contained 23 Gulf Orchid records. The audit retains 13 individually named perfume listings and removes 10 records that were not valid Gulf Orchid perfume identities:
-
-- Eight names were present only as collection labels in the general collections index: Al Qasr, Asala, Hamsat, Hikma, Jawhara, Jewel, Riwaya and Turath. They are not promoted as individual perfumes without product-level evidence.
-- Vanilla Aura and Vanilla Voyage were attributed to Gulf Orchid even though the official Gulf Orchid perfume collection labels those listings as Maison Asrar. Both already exist under Maison Asrar in the catalog, so the duplicate Gulf Orchid rows were removed rather than creating new identities.
-
-The 13 retained Gulf Orchid names are:
+The catalog now contains **26 canonical Gulf Orchid perfume identities**:
 
 - Vanilla Addiction
 - Mango Ice
 - Cotton Candy Musk
 - Tahara Vanilla Musk
-- Sweet Heaven 20ML
+- Sweet Heaven
 - Pink Marshmallow
 - Coco Blanco
 - Exotic Oud
 - Vanilla Latte
 - Cookie Bite
 - Sweet Like Candy
-- Sweet Heaven Extreme 20ML
+- Sweet Heaven Extreme
 - Piña Colada Musk
+- Angel Musk
+- Naughty Vanilla
+- Yacht Club
+- Sweet Heaven Cherry
+- Candy Bite
+- Sweet Cherry Kiss
+- Creamy Pistachio
+- Marshmallow
+- Sweet Heaven Ice
+- Crème Caramel
+- Pomegranate Musk
+- Mysterious Tahara Musk
+- Toffee Musk
 
-## Data quality decisions
+The following are not treated as Gulf Orchid canonical perfumes:
+- Collection labels without an individually evidenced perfume page: Al Qasr, Asala, Hamsat, Hikma, Jawhara, Jewel, Riwaya and Turath.
+- Gift bundles: Sweet Edition and Flirt Edition.
+- Vanilla Aura and Vanilla Voyage, which are listed as Maison Asrar rather than Gulf Orchid and remain attributed to Maison Asrar.
 
-- The catalog contains 13 Gulf Orchid canonical identities after reconciliation.
-- Exact official product URLs are retained where available. Three names are currently evidenced through the official filtered collection page.
-- No concentration or size variants were added by inference. In particular, the text "20ML" in a listing name is not used to fabricate a separate variant record.
-- No prices, stock states, availability claims or retailer offers were imported.
-- No unrelated product categories (body mist, hair mist, deodorant, room spray, reed diffuser, body lotion, mukhammaria or gift bundles) were added as perfume identities.
+## Variants and evidence
+
+Only sizes explicitly shown on official individual product pages are recorded. Sweet Heaven and Sweet Heaven Extreme each have 20 ml and 100 ml EDP variants. Sweet Heaven Cherry has a 20 ml EDP variant. Angel Musk, Pomegranate Musk, Mysterious Tahara Musk, Toffee Musk and Piña Colada Musk have 60 ml EDP variants. The other size-verified products have 100 ml EDP variants.
+
+Cotton Candy Musk and Tahara Vanilla Musk remain without size variants because the parsed official detail pages did not expose a reliable size label during this audit. Every recorded variant carries its official product-page evidence URL.
+
+No prices, stock states, availability claims or retailer offers were imported. No size or concentration was inferred from a collection selector, URL slug alone, or product-name suffix.
 
 ## Validation
 
-The dedicated regression test checks the exact retained name set, source URLs, identity status, absence of invented concentration/format data, removal of collection-only labels, correction of Maison Asrar attribution and duplicate-name prevention.
+The dedicated regression suite verifies the 26-name canonical set, official product-page provenance, explicit size variants, absence of invented variants, exclusion of collection-only labels and bundles, correct Maison Asrar attribution, and consistency with the family registry.
