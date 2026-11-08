@@ -1,3 +1,5 @@
+# Expanded Maison Asrar manufacturer-page variant coverage is part of this suite.
+# This workflow validates the catalog seed and its source-evidence regression tests.
 name: Catalog seed validation
 
 on:
@@ -13,6 +15,7 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-verified-variants-2026-11-08
       - catalog/maison-asrar-official-page-reconciliation-2026-11-08
+      - catalog/maison-asrar-official-variants-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -29,6 +32,7 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-verified-variants-2026-11-08
       - catalog/maison-asrar-official-page-reconciliation-2026-11-08
+      - catalog/maison-asrar-official-variants-2026-11-08
 
 permissions:
   contents: read
@@ -78,4 +82,5 @@ jobs:
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_mykonos_authorized_retailer_variants
           backend.tests.test_maison_asrar_official_product_pages
+          backend.tests.test_maison_asrar_official_variants
           -v
