@@ -13,7 +13,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 99,
-    "Maison Asrar": 120,
+    "Maison Asrar": 125,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -635,6 +635,190 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertIn(alias, products[canonical].get("aliases", []))
         canonical_names = [str(row.get("canonical_name", "")).casefold() for row in products.values()]
         self.assertEqual(len(canonical_names), len(set(canonical_names)))
+
+
+    def test_maison_asrar_cross_source_variants_and_identity_cleanup(self):
+        expected_sizes = {
+            "Belgravia": 100,
+            "Legacy": 100,
+            "Vanguard": 100,
+            "Regent": 100,
+            "Ameer": 100,
+            "Majesty": 100,
+            "Veyra": 100,
+            "Vanilla Aura": 100,
+            "Faris Al Arab": 100,
+            "Vanilla Voyage": 25,
+            "III Thriller": 100,
+            "Last Swim": 100,
+            "Pomme Rouge": 100,
+            "Haven": 100,
+            "Muharib": 100,
+            "Silent Surge": 100,
+            "Treasure": 100,
+            "Hunter": 100,
+            "Imperial": 100,
+            "Monarch": 100,
+            "1963": 100,
+            "Adorable": 100,
+            "Alonoud": 100,
+            "Basma": 100,
+            "Black": 100,
+            "Bloom Bloom": 100,
+            "Bonita": 100,
+            "Casablanca": 100,
+            "Cascade": 100,
+            "Coffee Blend": 100,
+            "Daham": 100,
+            "Date Night": 100,
+            "Dear Jasmine": 100,
+            "Desire": 100,
+            "Dubai London": 100,
+            "Dubai Miami": 100,
+            "Dubai Milano": 100,
+            "DXB": 100,
+            "DXB Jumeirah": 100,
+            "Emerald": 110,
+            "Fairy Tale": 100,
+            "Fakhama": 100,
+            "Flair": 100,
+            "Fresh Iris": 100,
+            "Gentle Oud": 80,
+            "Gold Noir": 110,
+            "Hamsat Gharam": 100,
+            "Hamsat Ghazal": 100,
+            "Hamsat Hob": 100,
+            "Hamsat Ishq": 100,
+            "Heritage": 100,
+            "Hikaya": 100,
+            "Hilm": 100,
+            "Icon": 100,
+            "Infina": 100,
+            "Italian Leather": 80,
+            "Jawhara Black": 100,
+            "Jawhara Rouge": 100,
+            "Joy": 100,
+            "Khateer": 100,
+            "Khayal": 100,
+            "Kiss My Lips": 90,
+            "Leo": 100,
+            "Librae": 100,
+            "Lily": 100,
+            "Lolita": 100,
+            "Lumiere": 110,
+            "Luna": 100,
+            "Magic Night": 100,
+            "Masterpiece": 100,
+            "Milky Way": 100,
+            "Nada": 100,
+            "Never Forget Me": 90,
+            "Night in Paris": 90,
+            "Oh Honey!": 100,
+            "Oscar": 100,
+            "Patchouli with Love": 100,
+            "Petra": 100,
+            "Pink Crush": 100,
+            "Red Velvet": 100,
+            "Rey": 100,
+            "Rose": 110,
+            "Rose Honey": 100,
+            "Rose Musk": 100,
+            "Rose Oud": 100,
+            "Rose Vanilla": 100,
+            "Rosé Absolute": 100,
+            "Rosé Bouquet": 100,
+            "Silver Elixer": 110,
+            "Soirée": 100,
+            "Soudfa": 100,
+            "Sunset in Capri": 90,
+            "Throne": 100,
+            "Throne Eclipse": 100,
+            "Timeless": 100,
+            "Tornado": 100,
+            "Trophy": 100,
+            "Turath": 100,
+            "Turath Malaki": 100,
+            "Vanilla Rouge": 100,
+            "Vanilla Seduction": 100,
+            "Vision": 100,
+            "Wadi": 100,
+            "Wood Intense": 80,
+            "Zenobia": 100,
+        }
+        edp_names = {"Belgravia", "Legacy", "Vanguard", "Regent", "Ameer", "Majesty", "Veyra", "Vanilla Aura", "Faris Al Arab", "Vanilla Voyage", "III Thriller", "Last Swim", "Pomme Rouge", "Haven", "Muharib", "Silent Surge", "Treasure", "Hunter", "Imperial", "Monarch", "Bonita", "Cascade", "Coffee Blend", "Daham", "Date Night", "Dubai London", "Dubai Miami", "Dubai Milano", "DXB", "DXB Jumeirah", "Fakhama", "Flair", "Gentle Oud", "Gold Noir", "Hamsat Ishq", "Heritage", "Hikaya", "Hilm", "Infina", "Italian Leather", "Joy", "Khateer", "Khayal", "Kiss My Lips", "Leo", "Librae", "Lily", "Lolita", "Lumiere", "Luna", "Masterpiece", "Milky Way", "Nada", "Never Forget Me", "Night in Paris", "Oh Honey!", "Patchouli with Love", "Pink Crush", "Red Velvet", "Rose", "Silver Elixer", "Soirée", "Throne", "Throne Eclipse", "Timeless", "Tornado", "Vanilla Seduction", "Vision", "Wadi", "Wood Intense"}
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Maison Asrar"}
+        variants = CATALOG.get("variants", [])
+        self.assertEqual(len(products), 125)
+        self.assertNotIn("Black Grapefruit", products)
+        self.assertEqual(len([v for v in variants if v.get("product_id") in {p["product_id"] for p in products.values()}]), 113)
+        guide_variants = [v for v in variants if v.get("source_evidence_url") == "https://maisonasrarperfumes.eu/perfumes/"]
+        self.assertEqual(len(guide_variants), 105)
+        self.assertEqual(sum(v.get("concentration") == "Eau de Parfum" for v in guide_variants), 70)
+        self.assertEqual(sum("concentration" not in v for v in guide_variants), 35)
+
+        self.assertIn("Rosé", products["Rose"].get("aliases", []))
+        self.assertIn("Silver Elixir", products["Silver Elixer"].get("aliases", []))
+        for name, size in expected_sizes.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertIn(size, row.get("formats_ml", []))
+                matching = [v for v in variants if v.get("product_id") == row["product_id"] and v.get("size_ml") == size]
+                self.assertEqual(len(matching), 1)
+                if name in edp_names:
+                    self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                    self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        for name in ["Shaheen Black"]:
+            with self.subTest(legacy_name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+
+
+    def test_maison_asrar_retailer_confirmed_variants_have_exact_evidence(self):
+        expected = {
+            "Amal": ("https://thealternativebeauty.co.uk/product/maison-asrar-amal-eau-de-parfum-100ml/", "VAR-SH-MAISON-ASRAR-AMAL-100"),
+            "Asala": ("https://youshahperfumes.co.uk/product/asala-eau-de-parfum-100ml/", "VAR-SH-MAISON-ASRAR-ASALA-100"),
+            "Red Carpet": ("https://shop-gulforchid.com/products/red-carpet", "VAR-SH-MAISON-ASRAR-RED-CARPET-100"),
+            "Runway Girl": ("https://shop-gulforchid.com/products/runway-girl", "VAR-SH-MAISON-ASRAR-RUNWAY-GIRL-100"),
+            "Smokey Eyes": ("https://shop-gulforchid.com/products/smokey-eyes", "VAR-SH-MAISON-ASRAR-SMOKEY-EYES-100"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, variant_id) in expected.items():
+            with self.subTest(name=name):
+                product = products[name]
+                self.assertEqual(product.get("formats_ml"), [100])
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                matching = [v for v in variants if v.get("product_id") == product["product_id"]]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("variant_id"), variant_id)
+                self.assertEqual(matching[0].get("size_ml"), 100)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source_url)
+
+    def test_maison_asrar_every_variant_has_source_evidence(self):
+        product_ids = {
+            row["product_id"] for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = [v for v in CATALOG.get("variants", []) if v.get("product_id") in product_ids]
+        self.assertEqual(len(variants), 113)
+        self.assertTrue(all(v.get("source_evidence_url") for v in variants))
+
+    def test_maison_asrar_shaheen_black_remains_name_only(self):
+        row = next(
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Maison Asrar" and p.get("canonical_name") == "Shaheen Black"
+        )
+        self.assertEqual(row.get("identity_status"), "source_listed_name")
+        self.assertEqual(row.get("source_url"), "https://www.fragrantica.com/designers/MAISON-ASRAR.html")
+        self.assertNotIn("formats_ml", row)
+        self.assertNotIn("concentration", row)
+        self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
 
 
 if __name__ == "__main__":
