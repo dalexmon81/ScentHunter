@@ -39,7 +39,9 @@
     "https://maisonasrar.com/collections/all",
     "https://khadlaj-perfumes.sa/",
     "https://maisondisfragrances.com/fr/collections/maison-asrar",
-    "https://maisondisfragrances.com/fr/collections/bujairami"
+    "https://maisondisfragrances.com/fr/collections/bujairami",
+    "https://www.alvanetti.com/brands/french-avenue?collection=all",
+    "https://arabiyatprestige.com/"
   ],
   "checked_at": "2026-11-07",
   "data_kind": "candidate_fragrance_identities_only_no_variants_no_offers",
@@ -1019,7 +1021,12 @@
         "The One and Only",
         "Veneno",
         "Vulcan Sable",
-        "Vulcan Terra"
+        "Vulcan Terra",
+        "Azzure Aoud",
+        "Spectre Wraith",
+        "Royal Blend Sequoia",
+        "Vulcan Baie",
+        "Liquid Brun Limited Edition"
       ]
     },
     {
@@ -1131,7 +1138,8 @@
         "Swar Serpentine",
         "Swar Venin",
         "Uhud",
-        "Yumun"
+        "Yumun",
+        "Attar Al Youm Black"
       ]
     },
     {
