@@ -50,3 +50,52 @@ was changed by this note.
    and merge spelling variants as aliases.
 4. Extend regression tests to cover each verified identity and variant.
 5. Run CI against the exact updated PR head and record a real Actions result.
+
+
+## Reconciliation against the current family registry
+
+A direct read of `backend/family_registry.json` on this branch confirms that
+six of the seven names in the earlier candidate list are already represented
+in `arabiyat_prestige_catalog`:
+
+- Bahiya Garnet
+- Nyla Vani-elle
+- Swar Venin
+- Marwa
+- Noirè Absolu
+- Noire
+
+The storefront spells the last two with an acute accent (`Noiré` and
+`Noiré Absolu`), while the registry uses `Noire` and `Noirè Absolu`.
+Treat this as a spelling/alias reconciliation, not as evidence for two new
+identities. The family registry is discovery knowledge only; this check does
+not prove that the matching canonical product and variant rows exist in
+`product_catalog.json`.
+
+## Marwa Extrait — detail page now verified
+
+The official product detail page is:
+https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marwa-extrait
+
+It explicitly identifies `Marwa Extrait De Parfum | 60ML | Unisex`, describes
+it as the Marwa signature elevated into an extrait, and displays UPC
+`6295156402103`. This is stronger evidence than the collection card alone.
+The existing Marwa EDP 100 ml listing and the Marwa Extrait 60 ml listing
+must not be collapsed into the same variant: the official page explicitly
+distinguishes the extrait presentation and concentration.
+
+The product catalog seed is too large for the current GitHub file-read
+response (the connector returned an empty content body for that file). For
+that reason, no canonical record or variant has been inserted and no claim is
+made that it is absent from the seed. The next write must first obtain a
+reliable exact catalog diff or run a repository-side script against the
+branch file, then add the Marwa Extrait canonical identity/60 ml Extrait
+variant only if missing, with UPC as source evidence. Preserve the existing
+Marwa EDP identity and ID.
+
+## Status correction
+
+The previous seven-name list was overbroad: six names are already present in
+the family registry. Only Marwa Extrait is a newly verified registry/catalog
+reconciliation candidate from this pass. No canonical seed, family registry,
+offers, prices, stock, or GTIN fields were changed in this update.
