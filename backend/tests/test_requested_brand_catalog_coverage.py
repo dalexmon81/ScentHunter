@@ -493,6 +493,27 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
                 self.assertNotIn("concentration", matching[0])
 
+    def test_assaf_gris_erik_100ml_variant_has_official_edp_evidence(self):
+        product = next(
+            row for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Assaf"
+            and row.get("canonical_name") == "Gris Erik"
+        )
+        matching = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == product["product_id"] and row.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(
+            matching[0].get("source_url"),
+            "https://assaf.ae/products/edp-gris-erik-100ml",
+        )
+        self.assertEqual(
+            matching[0].get("source_evidence_url"),
+            "https://assaf.ae/products/edp-gris-erik-100ml",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
