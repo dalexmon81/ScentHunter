@@ -56,3 +56,19 @@ A research note has been committed on this branch. PR #424 remains open, draft, 
 5. Run structural checks: duplicate canonical identities, orphan variants, duplicate IDs, invalid product references, unverified metadata.
 6. Add CI validation and review the exact before/after counts before proposing a PR.
 7. Do not merge or deploy without review.
+
+## Execution update — 2026-11-08
+
+A first real catalogue import has been committed on `catalog/expanded-fragrance-brands`:
+
+- Added Zimaya brand record.
+- Added 10 Zimaya product identities, each supported by its official product page.
+- Added 10 matching 100 ml bottle variants.
+- Product and variant IDs follow the repository's stable ID conventions.
+- GTIN/MPN values remain empty because the official pages did not expose verified codes.
+- Canonical image URLs remain null because a direct product-specific image URL was not independently confirmed.
+- Structural audit after import: 1,399 products, 521 variants, 62 brands; 0 duplicate product IDs, 0 duplicate variant IDs, 0 orphan variants; all 10 Zimaya records have source URLs and a 100 ml variant.
+
+Imported Zimaya identities: Cult, Exquisite, Sharaf Blend, Grandeur, Wujood, Luxor, Crysta Oud, Farah, Amber Is Great, Bahjah.
+
+This is a **partial** Zimaya batch, not a complete brand import. The official global all-products page currently reports 104 items; the remaining identities require product-page verification and product-type filtering. No offers, prices, stock states or GTINs were invented. Production branch `main` was not changed.
