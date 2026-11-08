@@ -23071,6 +23071,102 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
       "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cf76693b",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "La Nuit Pendora",
+      "name": "La Nuit Pendora",
+      "family_id": "paris_corner_catalog",
+      "family_name": "La Nuit Pendora",
+      "aliases": [
+        "La Nuit Pendora",
+        "Paris Corner La Nuit Pendora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-2bb52c4a",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "La Serpiente Emir",
+      "name": "La Serpiente Emir",
+      "family_id": "paris_corner_catalog",
+      "family_name": "La Serpiente Emir",
+      "aliases": [
+        "La Serpiente Emir",
+        "Paris Corner La Serpiente Emir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-b158e84a",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Le Charme",
+      "name": "Le Charme",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Le Charme",
+      "aliases": [
+        "Le Charme",
+        "Paris Corner Le Charme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cff2c60f",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Midnight Sin by Daniel René",
+      "name": "Midnight Sin by Daniel René",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Midnight Sin by Daniel René",
+      "aliases": [
+        "Midnight Sin by Daniel René",
+        "Paris Corner Midnight Sin by Daniel René"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-a8f342a3",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Miel Obscura",
+      "name": "Miel Obscura",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Miel Obscura",
+      "aliases": [
+        "Miel Obscura",
+        "Paris Corner Miel Obscura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-4036ddf3",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Miel Vanille",
+      "name": "Miel Vanille",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Miel Vanille",
+      "aliases": [
+        "Miel Vanille",
+        "Paris Corner Miel Vanille"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=4",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=4"
     }
   ],
   "variants": [
