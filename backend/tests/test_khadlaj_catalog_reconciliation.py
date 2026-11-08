@@ -18,8 +18,8 @@ class KhadlajCatalogReconciliationTests(unittest.TestCase):
         self.assertEqual(len(self.products), 166)
         self.assertEqual(len(self.by_name), 166)
 
-    def test_157_variants_have_unique_ids_and_parent_sizes(self):
-        self.assertEqual(len(self.variants), 157)
+    def test_161_variants_have_unique_ids_and_parent_sizes(self):
+        self.assertEqual(len(self.variants), 161)
         ids = [v["variant_id"] for v in self.variants]
         self.assertEqual(len(ids), len(set(ids)))
         for variant in self.variants:
@@ -59,6 +59,25 @@ class KhadlajCatalogReconciliationTests(unittest.TestCase):
         self.assertEqual(variant.get("size_ml"), 100)
         self.assertEqual(variant.get("concentration"), "Eau de Parfum")
         self.assertEqual(variant.get("source_evidence_url"), product.get("source_url"))
+
+
+    def test_four_retailer_sourced_oil_variants_have_explicit_sizes(self):
+        expected = {
+            "Ana Wa Anta": (20, "https://www.notino.be/khadlaj/ana-wa-anta-huile-parfumee-mixte/"),
+            "D'Love": (15, "https://www.notino.fr/khadlaj/dlove-huile-parfumee-mixte/p-16254662/"),
+            "Rasha": (12, "https://fr.primor.eu/fr_fr/khadlaj-huile-de-parfum-concentree-rasha-129313.html"),
+            "Safari Gold": (20, "https://www.notino.it/khadlaj/safari-gold-olio-profumato-unisex/"),
+        }
+        for name, (size, source) in expected.items():
+            with self.subTest(product=name):
+                product = self.by_name[name]
+                self.assertEqual(product.get("concentration"), "Perfume Oil")
+                self.assertEqual(product.get("identity_status"), "source_listed_name")
+                self.assertEqual(product.get("source_evidence_url"), source)
+                variant = next(v for v in self.variants if v["product_id"] == product["product_id"])
+                self.assertEqual(variant.get("size_ml"), size)
+                self.assertEqual(variant.get("concentration"), "Perfume Oil")
+                self.assertEqual(variant.get("source_evidence_url"), source)
 
     def test_maya_is_a_perfume_oil_not_a_spray_variant(self):
         product = self.by_name["Maya"]
