@@ -5763,7 +5763,10 @@
         "Zimaya Amber Is Great"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/amber-is-great-100ml"
+      "source_url": "https://zimayaperfumes.com/products/amber-is-great-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-f0c3841b",
@@ -5838,7 +5841,10 @@
         "Zimaya Bahjah"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/bahja"
+      "source_url": "https://zimayaperfumes.com/products/bahja",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-06a5e5b6",
@@ -5913,7 +5919,10 @@
         "Zimaya Crysta Oud"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/crysta-oud-100ml"
+      "source_url": "https://zimayaperfumes.com/products/crysta-oud-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-df1d1a4c",
@@ -5928,7 +5937,10 @@
         "Zimaya Cult"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/cult"
+      "source_url": "https://zimayaperfumes.com/products/cult",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-fdec30af",
@@ -6018,7 +6030,10 @@
         "Zimaya Exquisite"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/exquisite"
+      "source_url": "https://zimayaperfumes.com/products/exquisite",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-926533d0",
@@ -6033,7 +6048,10 @@
         "Zimaya Farah"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/farah"
+      "source_url": "https://zimayaperfumes.com/products/farah",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-d8ad5e64",
@@ -6123,7 +6141,10 @@
         "Zimaya Grandeur"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/grandeur-100ml"
+      "source_url": "https://zimayaperfumes.com/products/grandeur-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-8d10253c",
@@ -6393,7 +6414,10 @@
         "Zimaya Sharaf Blend"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://zimayaperfumes.com/products/sharaf-blend-100ml"
+      "source_url": "https://zimayaperfumes.com/products/sharaf-blend-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-a0de1e54",
