@@ -42,7 +42,29 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
 
     def test_harvest_rows_have_no_invented_variants(self):
         for product in self.products:
-            if product["product_id"].startswith(("SH-AL-HARAMAIN-STORE-", "SH-GULF-ORCHID-STORE-")):
+            product_id = product["product_id"]
+            if product_id == "SH-GULF-ORCHID-STORE-003":
+                # PR #542 replaces the collection-only listing with an
+                # individual official 60 ml Eau de Parfum product page.
+                self.assertEqual(product["canonical_name"], "Piña Colada Musk")
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(
+                    product["source_url"],
+                    "https://shop-gulforchid.com/products/gulf-orchid-musk-eau-de-parfum-60-ml",
+                )
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [60])
+                matching = [
+                    row for row in self.catalog["variants"]
+                    if row.get("product_id") == product_id and row.get("size_ml") == 60
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(
+                    matching[0].get("source_evidence_url"),
+                    product["source_url"],
+                )
+            elif product_id.startswith(("SH-AL-HARAMAIN-STORE-", "SH-GULF-ORCHID-STORE-")):
                 self.assertEqual(product["identity_status"], "source_listed_name")
                 self.assertNotIn("concentration", product)
                 self.assertNotIn("formats_ml", product)
