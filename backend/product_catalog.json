@@ -2318,14 +2318,14 @@
         "Shaghaf Oud",
         "Swiss Arabian Shaghaf Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums",
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.swissarabian.com/products/shaghaf-oud-3",
       "formats_ml": [
         75
       ],
       "concentration": "Eau de Parfum",
-      "source_product_url": "https://de.swissarabian.com/products/shaghaf-oud-3",
-      "source_evidence_url": "https://de.swissarabian.com/products/shaghaf-oud-3"
+      "source_product_url": "https://us.swissarabian.com/products/shaghaf-oud-3",
+      "source_evidence_url": "https://us.swissarabian.com/products/shaghaf-oud-3"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-3fec7eab",
@@ -2369,8 +2369,14 @@
         "Casablanca",
         "Swiss Arabian Casablanca"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.swissarabian.com/products/casablanca",
+      "source_product_url": "https://us.swissarabian.com/products/casablanca",
+      "source_evidence_url": "https://us.swissarabian.com/products/casablanca",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-SWISS-ARABIAN-36809115",
@@ -2399,8 +2405,14 @@
         "Primal Code",
         "Swiss Arabian Primal Code"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.swissarabian.com/products/primal-code",
+      "source_product_url": "https://us.swissarabian.com/products/primal-code",
+      "source_evidence_url": "https://us.swissarabian.com/products/primal-code",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-SWISS-ARABIAN-d8b44fd0",
@@ -2414,8 +2426,11 @@
         "Valencia",
         "Swiss Arabian Valencia"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://swissarabian.ma/collections/eaux-de-parfums"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.swissarabian.com/en/collections/perfumes/products/valencia",
+      "source_product_url": "https://de.swissarabian.com/en/collections/perfumes/products/valencia",
+      "source_evidence_url": "https://de.swissarabian.com/en/collections/perfumes/products/valencia",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-cf7d7639",
@@ -29858,6 +29873,26 @@
         "Zimaya Luxor 100ml"
       ],
       "variant_id": "SHV-SH-ZIMAYA-LUXOR-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-1ccb8d0e",
+      "size_ml": 100,
+      "aliases": [
+        "Casablanca 100 ml",
+        "Swiss Arabian Casablanca 100ml"
+      ],
+      "variant_id": "SHV-SH-SWISS-ARABIAN-1ccb8d0e-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-5a798367",
+      "size_ml": 100,
+      "aliases": [
+        "Primal Code 100 ml",
+        "Swiss Arabian Primal Code 100ml"
+      ],
+      "variant_id": "SHV-SH-SWISS-ARABIAN-5a798367-100-000",
       "concentration": "Eau de Parfum"
     }
   ]
