@@ -2919,8 +2919,12 @@
         "Caramel Bash",
         "Paris Corner Caramel Bash"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-e8b7fc40",
@@ -16198,8 +16202,12 @@
         "Dusky Vanilla",
         "Paris Corner Dusky Vanilla"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ECSTATIC-BLANC-FLEUR",
@@ -17359,9 +17367,12 @@
         "Fig Fete",
         "Paris Corner Fig Fete"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FATAL-EMBRACE",
@@ -17523,9 +17534,12 @@
         "Khair Peach Delulu",
         "Paris Corner Khair Peach Delulu"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-PISTACHIO",
@@ -37062,6 +37076,46 @@
         "Tiramisu Speculoos 100 ml",
         "Paris Corner Tiramisu Speculoos 100 ml"
       ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-804ac919",
+      "variant_id": "SHV-SH-PARIS-CORNER-804ac919-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Caramel Bash 100 ml",
+        "Paris Corner Caramel Bash 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-DUSKY-VANILLA",
+      "variant_id": "SHV-SH-PARIS-CORNER-DUSKY-VANILLA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Dusky Vanilla 100 ml",
+        "Paris Corner Dusky Vanilla 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FIG-FETE",
+      "variant_id": "SHV-SH-PARIS-CORNER-FIG-FETE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Fig Fete 100 ml",
+        "Paris Corner Fig Fete 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/fig-fete"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-PEACH-DELULU",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-PEACH-DELULU-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Khair Peach Delulu 100 ml",
+        "Paris Corner Khair Peach Delulu 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu"
     }
   ]
 }
