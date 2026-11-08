@@ -1,5 +1,7 @@
 """Regression guard for the user-requested fragrance brand coverage."""
 import json
+import re
+import unicodedata
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -12,7 +14,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 72,
+    "Mykonos": 99,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -463,6 +465,498 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_mykonos_fragrantica_omissions_have_detail_pages_and_explicit_variants(self):
+        expected = {
+            "Berry Caramel Pancake": (
+                "https://officialmykonos.de/products/mykonos-berry-caramel-pancake",
+                50,
+                "Eau de Parfum",
+            ),
+            "Avra Kehdabra": (
+                "https://officialmykonos.de/products/mykonos-x-paola-serena-avra-kehdabra",
+                100,
+                "Eau de Parfum",
+            ),
+            "Dolce Cherry": (
+                "https://officialmykonos.de/products/mykonos-x-sapeyeeee-dolce-cherry",
+                50,
+                "Extrait de Parfum",
+            ),
+            "Violette": (
+                "https://officialmykonos.de/products/mykonos-x-violenzia-violette",
+                100,
+                "Eau de Parfum",
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), concentration)
+
+
+    def test_mykonos_current_eu_catalog_additions_and_confirmed_variants(self):
+        expected = {
+            "Daydream": ("https://mykonosperfumes.eu/products/mykonos-daydream", 100, "Extrait de Parfum"),
+            "Inception Reimagined": ("https://mykonosperfumes.eu/products/mykonos-inception-reimagined", 100, "Extrait de Parfum"),
+            "Monaco Royale Black": ("https://mykonosperfumes.eu/products/mykonos-monaco-royale-black", 50, "Extrait de Parfum"),
+            "Shape Shift": ("https://mykonosperfumes.eu/products/mykonos-shape-shift", 100, "Extrait de Parfum"),
+            "Forever Musc": ("https://mykonosperfumes.eu/products/mykonos-forever-musc", 100, "Eau de Parfum"),
+            "Soft Hour x NCT Haechan": ("https://mykonosperfumes.eu/products/mykonos-x-nct-haechan-soft-hour", 100, "Extrait de Parfum"),
+        }
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Mykonos"}
+        variants = CATALOG.get("variants", [])
+        for name, (url, size, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("source_url"), url)
+                self.assertIn(size, row.get("formats_ml", []))
+                matched = [v for v in variants if v.get("product_id") == row["product_id"] and v.get("size_ml") == size and v.get("concentration") == concentration]
+                self.assertEqual(len(matched), 1)
+        black = products["Monaco Royale Black"]
+        self.assertEqual(sorted(v.get("size_ml") for v in variants if v.get("product_id") == black["product_id"]), [50, 100])
+
+
+    def test_mykonos_imperium_is_distinct_from_empire_x_rrq(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Imperium", products)
+        self.assertIn("Empire x RRQ", products)
+        self.assertNotIn("Imperium", products["Empire x RRQ"].get("aliases", []))
+        self.assertNotIn("Mykonos Imperium", products["Empire x RRQ"].get("aliases", []))
+        imperium = products["Imperium"]
+        self.assertEqual(
+            imperium.get("source_url"),
+            "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+        )
+        self.assertEqual(imperium.get("formats_ml"), [100])
+        self.assertEqual(imperium.get("concentration"), "Extrait de Parfum")
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == imperium["product_id"] and row.get("size_ml") == 100
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("concentration"), "Extrait de Parfum")
+
+    def test_mykonos_inspire_parfum_fragrantica_name_is_an_alias(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Inspire Parfum", products["Inspire Perfume"].get("aliases", []))
+
+    def test_mykonos_announced_names_are_catalogued_without_guessing_variants(self):
+        expected = {
+            "Kingsman": "https://mykonosperfumes.eu/products/mykonos-kingsman",
+            "Wallflower": "https://mykonosperfumes.eu/products/mykonos-wallflower",
+            "Elysian": "https://mykonosperfumes.eu/products/mykonos-elysian",
+            "Undercover": "https://mykonosperfumes.eu/products/mykonos-undercover",
+            "Celestial": "https://mykonosperfumes.eu/products/mykonos-celestial",
+            "Café Lyon": "https://mykonosperfumes.eu/products/mykonos-cafe-lyon",
+            "President": "https://mykonosperfumes.eu/products/mykonos-president",
+            "Déjà Vu": "https://mykonosperfumes.eu/products/mykonos-deja-vu",
+            "Inspire Perfume": "https://mykonosperfumes.eu/products/mykonos-inspire",
+        }
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Mykonos"}
+        variants = CATALOG.get("variants", [])
+        for name, url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("source_url"), url)
+                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants), "Do not invent an unconfirmed size/concentration variant")
+
+
+    def test_mykonos_fragrantica_legacy_names_are_tracked_without_invented_variants(self):
+        expected = ["Adelina", "Bloody Mary", "Crystals", "Eclipse", "Nashi Pear Garden", "Roulette", "Zeus", "It's Not Ella"]
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Mykonos"}
+        variants = CATALOG.get("variants", [])
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                self.assertEqual(products[name].get("identity_status"), "source_listed_name")
+                self.assertEqual(products[name].get("source_url"), "https://www.fragrantica.com/designers/Mykonos.html")
+                self.assertFalse(any(v.get("product_id") == products[name]["product_id"] for v in variants))
+
+
+    def test_mykonos_fragrantica_spelling_aliases_resolve_to_existing_identities(self):
+        expected_aliases = {
+            "Jynx": ["Jinx"],
+            "Nautilus": ["Nautilius"],
+            "Empire x RRQ": ["Empire", "Mykonos Empire"],
+            "California": ["California Signature"],
+            "Xoxo Rosy": ["XoXo, Rosy"],
+            "Shades Perfume": ["Shades Parfum"],
+            "Affair": ["Intimate Affair"],
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        for canonical_name, aliases in expected_aliases.items():
+            with self.subTest(canonical_name=canonical_name):
+                self.assertIn(canonical_name, products)
+                for alias in aliases:
+                    self.assertIn(alias, products[canonical_name].get("aliases", []))
+
+    def test_mykonos_fragrantica_only_legacy_names_are_not_given_guessed_variants(self):
+        names = {
+            "Adelina", "Bloody Mary", "Crystals", "Eclipse",
+            "Nashi Pear Garden", "Roulette", "Zeus", "It's Not Ella",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name in names:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("source_url"), "https://www.fragrantica.com/designers/Mykonos.html")
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertFalse(
+                    any(v.get("product_id") == row["product_id"] for v in variants),
+                    "Do not infer size or concentration from a designer index entry",
+                )
+
+    def test_mykonos_fragrantica_body_mists_are_not_misclassified_as_perfumes(self):
+        excluded = {"Love, Rosy", "Lychee Breeze", "Matcha Sundays"}
+        names = {
+            row.get("canonical_name")
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertTrue(excluded.isdisjoint(names))
+
+    def test_mykonos_complete_eu_perfume_index_is_present_and_body_mists_are_excluded(self):
+        # 89 perfume identities in the authorized EU retailer's current A-Z index.
+        # The 12 separately named Fragrance Mist products are intentionally
+        # excluded from the perfume catalog. Soft Hour x NCT Haechan is tracked
+        # separately as an announced new-release listing.
+        expected_perfumes = {
+            "Affair", "Aphrodite", "Baby Love", "Berry Caramel Pancake",
+            "Black Opera", "Blaze", "Blossom", "Bonfire Vanilla", "Cafe Drops",
+            "Café Lyon", "California Blue", "California Club", "California",
+            "Caramel Fudge Cookie", "Celestial", "Coconut Dreams", "Conquer",
+            "Constantine", "Crimson", "Dark Secret", "Daydream", "Down to Earth",
+            "Dreamscape", "Déjà Vu", "Elysian", "Empire x RRQ", "Enchanted",
+            "Forever Musc", "Hawaiian Crush", "Inception", "Inception Reimagined",
+            "Inferno", "Inspire Perfume", "Ivory", "Kingsman", "Luminos",
+            "Marbella", "Matcha Latte", "Mayfair", "Memoir of Meri", "Milk Drops",
+            "Monaco Royale Black", "Monaco Royale", "Moroccan Vanilla", "Musk Aura",
+            "Nautilus", "On The Rocks", "Only You", "Pandan Sticky Rice",
+            "Paradise", "Penthouse", "Pink Beach", "Pink Drops",
+            "Pistachio Cream Cake", "President", "Reflection Elixir", "Reflection",
+            "Royal Ispahan", "Sansa", "Satin Blanc", "Senja", "Seven Roses",
+            "Shades Perfume", "Shape Shift", "Silent Whisper", "Slow Living",
+            "Sorrento", "Sparkling Rosé", "Stilettos",
+            "Tea Poetry", "Undercover", "Untamed", "Utopia", "Vanilla Clouds",
+            "Verve", "Wallflower", "When in Paris", "MyEgo", "Once Upon Don",
+            "Avra Kehdabra", "Jynx", "Chai Crema Latte", "Dolce Cherry", "Rouge",
+            "Glitch", "Invade", "Violette", "Xoxo Rosy", "Zora",
+        }
+        body_mists = {
+            "Bacca Rouge", "Beauty", "Blue Love", "Blue Peony", "British Pear",
+            "Juicy Me", "Magnifique", "Malika", "Purple Beauty",
+            "Purple Beauty Halal", "Star Kiss", "Sweet Pea",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertEqual(len(expected_perfumes), 89)
+        self.assertTrue(expected_perfumes.issubset(products.keys()))
+        self.assertTrue(body_mists.isdisjoint(products.keys()))
+        self.assertIn("Soft Hour x NCT Haechan", products)
+        soft_hour = products["Soft Hour x NCT Haechan"]
+        self.assertEqual(soft_hour.get("formats_ml"), [100])
+        self.assertEqual(soft_hour.get("concentration"), "Extrait de Parfum")
+
+
+    def test_mykonos_empire_x_rrq_keeps_its_own_identity_and_variants(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        empire = products["Empire x RRQ"]
+        self.assertEqual(
+            empire.get("source_url"),
+            "https://mykonosperfumes.eu/products/mykonos-x-rrq-empire",
+        )
+        self.assertEqual(empire.get("formats_ml"), [50, 100])
+        self.assertEqual(empire.get("concentration"), "Extrait de Parfum")
+        self.assertNotIn("Imperium", empire.get("aliases", []))
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == empire["product_id"]
+        ]
+        self.assertEqual(
+            {row.get("size_ml") for row in variants},
+            {50, 100},
+        )
+
+    def test_mykonos_california_signature_is_an_alias_of_california(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("California", products)
+        self.assertNotIn("California Signature", products)
+        self.assertIn(
+            "California Signature",
+            products["California"].get("aliases", []),
+        )
+        self.assertEqual(
+            products["California"].get("source_url"),
+            "https://officialmykonos.com/products/mykonos-california-signature-50ml",
+        )
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == products["California"]["product_id"]
+        ]
+        self.assertEqual({v.get("size_ml") for v in variants}, {50, 100})
+        self.assertTrue(all(
+            any(alias.startswith("California Signature ") for alias in v.get("aliases", []))
+            for v in variants
+        ))
+
+
+
+    def test_mykonos_fragrantica_fine_fragrance_listing_is_covered(self):
+        # Fragrantica's 84 count includes three Body Mists. The 81 fine
+        # fragrance names below are matched against canonical names and aliases.
+        expected = [
+          "Adelina",
+          "Affair",
+          "Avra Kehdabra",
+          "Baby Love",
+          "Berry Caramel Pancake",
+          "Black Opera",
+          "Blaze",
+          "Bloody Mary",
+          "Blossom",
+          "Bonfire Vanilla",
+          "Cafe Drops",
+          "Chai Crema Latte",
+          "Coconut Dreams",
+          "Conquer",
+          "Constantine",
+          "Crimson",
+          "Crystals",
+          "Dolce Cherry",
+          "Down to Earth",
+          "Eclipse",
+          "Empire",
+          "Enchanted",
+          "Glitch",
+          "Imperium",
+          "Inception",
+          "Inferno",
+          "Invade",
+          "Ivory",
+          "Jinx",
+          "Luminos",
+          "Marbella",
+          "Matcha Latte",
+          "Mayfair",
+          "Memoir of Meri",
+          "Milk Drops",
+          "Monaco Royale",
+          "Moroccan Vanilla",
+          "Nashi Pear Garden",
+          "Nautilius",
+          "On The Rocks",
+          "Once upon Don",
+          "Pandan Sticky Rice",
+          "Penthouse",
+          "Pink Beach",
+          "Pink Drops",
+          "Reflection",
+          "Reflection Elixir",
+          "Rouge",
+          "Roulette",
+          "Royal Ispahan",
+          "Seven Roses",
+          "Slow Living",
+          "Sorrento",
+          "Stilettos",
+          "Untamed",
+          "Utopia",
+          "Verve",
+          "Violette",
+          "When in Paris",
+          "Zeus",
+          "Dreamscape",
+          "Silent Whisper",
+          "Hawaiian Crush",
+          "Tea Poetry",
+          "California",
+          "California Blue",
+          "California Club",
+          "California Signature",
+          "Vanilla Clouds",
+          "It's Not Ella",
+          "Musk Aura",
+          "Paradise",
+          "Caramel Fudge Cookie",
+          "XoXo, Rosy",
+          "Aphrodite",
+          "Sansa",
+          "Senja",
+          "Zora",
+          "Dark Secret",
+          "Satin Blanc",
+          "Sparkling Rosé"
+]
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        ]
+        def normalize(value):
+            import unicodedata
+            value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+            return "".join(ch.lower() for ch in value if ch.isalnum())
+        known = {
+            normalize(name)
+            for row in products
+            for name in [row.get("canonical_name", "")] + row.get("aliases", [])
+        }
+        missing = [name for name in expected if normalize(name) not in known]
+        self.assertEqual(missing, [])
+
+    def test_mykonos_jinx_and_nautilius_are_aliases_not_duplicate_products(self):
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        ]
+        jynx = next(row for row in products if row.get("canonical_name") == "Jynx")
+        nautilus = next(row for row in products if row.get("canonical_name") == "Nautilus")
+        self.assertIn("Jinx", jynx.get("aliases", []))
+        self.assertIn("Nautilius", nautilus.get("aliases", []))
+
+
+    def test_mykonos_fragrantica_84_listing_has_all_81_fragrance_names(self):
+        def normalize(value):
+            value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
+            return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+        mykonos = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        ]
+        searchable = {
+            normalize(name)
+            for row in mykonos
+            for name in [row.get("canonical_name"), *(row.get("aliases") or [])]
+            if name
+        }
+        fragrantica_fragrance_names = (
+            "Adelina", "Affair", "Avra Kehdabra", "Baby Love", "Berry Caramel Pancake",
+            "Black Opera", "Blaze", "Bloody Mary", "Blossom", "Bonfire Vanilla",
+            "Cafe Drops", "Chai Crema Latte", "Coconut Dreams", "Conquer", "Constantine",
+            "Crimson", "Crystals", "Dolce Cherry", "Down to Earth", "Eclipse", "Empire",
+            "Enchanted", "Glitch", "Imperium", "Inception", "Inferno", "Invade", "Ivory",
+            "Jinx", "Luminos", "Marbella", "Matcha Latte", "Mayfair", "Memoir of Meri",
+            "Milk Drops", "Monaco Royale", "Moroccan Vanilla", "Nashi Pear Garden",
+            "Nautilius", "On The Rocks", "Once upon Don", "Pandan Sticky Rice",
+            "Penthouse", "Pink Beach", "Pink Drops", "Reflection", "Reflection Elixir",
+            "Rouge", "Roulette", "Royal Ispahan", "Seven Roses", "Slow Living", "Sorrento",
+            "Stilettos", "Untamed", "Utopia", "Verve", "Violette", "When in Paris", "Zeus",
+            "Dreamscape", "Silent Whisper", "Hawaiian Crush", "Tea Poetry", "California",
+            "California Blue", "California Club", "California Signature", "Vanilla Clouds",
+            "It's Not Ella", "Musk Aura", "Paradise", "Caramel Fudge Cookie", "XoXo, Rosy",
+            "Aphrodite", "Sansa", "Senja", "Zora", "Dark Secret", "Satin Blanc", "Sparkling Rosé",
+        )
+        missing = [
+            name for name in fragrantica_fragrance_names
+            if normalize(name) not in searchable
+        ]
+        self.assertEqual(missing, [])
+
+    def test_mykonos_empire_and_imperium_are_distinct_fragrances(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Empire x RRQ", products)
+        self.assertIn("Imperium", products)
+        self.assertNotIn("Imperium", products["Empire x RRQ"].get("aliases", []))
+        imperium = products["Imperium"]
+        self.assertEqual(
+            imperium.get("source_url"),
+            "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+        )
+        self.assertEqual(imperium.get("formats_ml"), [100])
+        self.assertEqual(imperium.get("concentration"), "Extrait de Parfum")
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == imperium.get("product_id")
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("size_ml"), 100)
+        self.assertEqual(variants[0].get("concentration"), "Extrait de Parfum")
+
+
+    def test_mykonos_imperium_is_a_distinct_official_fragrance(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Imperium", products)
+        self.assertIn("Empire x RRQ", products)
+        self.assertNotEqual(
+            products["Imperium"].get("product_id"),
+            products["Empire x RRQ"].get("product_id"),
+        )
+        self.assertEqual(
+            products["Imperium"].get("source_url"),
+            "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+        )
+        self.assertEqual(products["Imperium"].get("formats_ml"), [100])
+
+    def test_mykonos_reconciled_identity_and_variant_totals(self):
+        products = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Mykonos"
+        ]
+        product_ids = {p["product_id"] for p in products}
+        variants = [
+            v for v in CATALOG.get("variants", [])
+            if v.get("product_id") in product_ids
+        ]
+        self.assertEqual(len(products), 99)
+        self.assertEqual(len(variants), 102)
 
 
     def test_mykonos_official_travel_size_page_has_18_explicit_15ml_variants(self):
