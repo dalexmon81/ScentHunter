@@ -139,6 +139,37 @@ PR #568 adds automated regression guards for unique normalized product identitie
 
 
 
+
+## Variant concentration completeness — base snapshot audit
+
+A read-only scan of the base catalog blob
+`a0e787b370902eb69860250b233feebe466054e2` found **88 of 291 variants
+(30.2%)** with no non-empty `concentration` field. This is a data-completeness
+gap; it does not prove the product's concentration is unknown in the source,
+and no value should be guessed from a retailer title or neighboring variant.
+
+Missing concentration by brand:
+
+| Brand | Variants missing concentration |
+|---|---:|
+| Paris Corner | 25 |
+| Armaf | 21 |
+| Mykonos | 18 |
+| French Avenue | 12 |
+| Assaf | 8 |
+| Bujairami | 2 |
+| Khadlaj | 1 |
+| Lattafa | 1 |
+| **Total** | **88** |
+
+Examples include 12 French Avenue/Aromatix variants at 100 ml, multiple Armaf
+Club de Nuit sizes, Mykonos and Paris Corner variants, plus isolated rows for
+other brands. The correct next step is an evidence-backed completion queue:
+resolve each variant against its official product/detail page, record the
+source URL, and retain an explicit unknown/unconfirmed state where the source
+does not establish concentration. Do not bulk-fill these values or treat the
+88 rows as 88 missing products.
+
 ## Family-registry normalization debt found in the base snapshot
 
 A separate read-only scan of the exact base-branch registry blob
