@@ -16,7 +16,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-8b429b66",
@@ -32,7 +36,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-6b018fb1",
@@ -48,7 +56,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-599e6e9d",
@@ -64,7 +76,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-058bec99",
@@ -80,7 +96,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-9b764bf3",
@@ -96,7 +116,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-7a65a419",
@@ -112,7 +136,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-50b87cfb",
@@ -128,7 +156,10 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-6f7b377c",
@@ -144,7 +175,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-c0952852",
@@ -160,7 +195,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-36e7a5ca",
@@ -176,7 +215,10 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-76046795",
@@ -192,7 +234,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-e49794d3",
@@ -204,11 +250,16 @@
       "family_name": "Harmonia",
       "aliases": [
         "Harmonia",
-        "Velixir Harmonia"
+        "Velixir Harmonia",
+        "Harmony"
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-1089d534",
@@ -224,7 +275,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-06211958",
@@ -240,7 +295,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-71f3ac99",
@@ -256,7 +315,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-3a619af9",
@@ -272,7 +335,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-21cface3",
@@ -288,7 +355,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-23a9f320",
@@ -300,11 +371,16 @@
       "family_name": "Narcisus",
       "aliases": [
         "Narcisus",
-        "Velixir Narcisus"
+        "Velixir Narcisus",
+        "Narcissus"
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-153bbbed",
@@ -320,7 +396,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-cfe48ddb",
@@ -336,7 +416,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-7e147c46",
@@ -352,7 +436,10 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-8c915ae1",
@@ -368,7 +455,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-1738e7af",
@@ -384,7 +475,10 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-12baca03",
@@ -400,7 +494,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-c43f9b63",
@@ -416,7 +514,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-bc687534",
@@ -432,7 +534,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-029d80ce",
@@ -448,7 +554,11 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/collections/all",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-a5cf9e83",
@@ -37066,6 +37176,526 @@
       "aliases": [
         "Forever Musc 100 ml",
         "Mykonos Forever Musc 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-ebb650c6",
+      "variant_id": "SHV-SH-VELIXIR-ebb650c6-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Adonis 35 ml",
+        "Velixir Adonis 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-ebb650c6",
+      "variant_id": "SHV-SH-VELIXIR-ebb650c6-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Adonis 100 ml",
+        "Velixir Adonis 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-8b429b66",
+      "variant_id": "SHV-SH-VELIXIR-8b429b66-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Aphrodite 35 ml",
+        "Velixir Aphrodite 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-8b429b66",
+      "variant_id": "SHV-SH-VELIXIR-8b429b66-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Aphrodite 100 ml",
+        "Velixir Aphrodite 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-6b018fb1",
+      "variant_id": "SHV-SH-VELIXIR-6b018fb1-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Apollo 35 ml",
+        "Velixir Apollo 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-6b018fb1",
+      "variant_id": "SHV-SH-VELIXIR-6b018fb1-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Apollo 100 ml",
+        "Velixir Apollo 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-599e6e9d",
+      "variant_id": "SHV-SH-VELIXIR-599e6e9d-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ares 35 ml",
+        "Velixir Ares 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-599e6e9d",
+      "variant_id": "SHV-SH-VELIXIR-599e6e9d-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ares 100 ml",
+        "Velixir Ares 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-058bec99",
+      "variant_id": "SHV-SH-VELIXIR-058bec99-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Artemis 35 ml",
+        "Velixir Artemis 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-058bec99",
+      "variant_id": "SHV-SH-VELIXIR-058bec99-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Artemis 100 ml",
+        "Velixir Artemis 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-9b764bf3",
+      "variant_id": "SHV-SH-VELIXIR-9b764bf3-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asteria 35 ml",
+        "Velixir Asteria 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-9b764bf3",
+      "variant_id": "SHV-SH-VELIXIR-9b764bf3-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asteria 100 ml",
+        "Velixir Asteria 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-7a65a419",
+      "variant_id": "SHV-SH-VELIXIR-7a65a419-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Athena 35 ml",
+        "Velixir Athena 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-7a65a419",
+      "variant_id": "SHV-SH-VELIXIR-7a65a419-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Athena 100 ml",
+        "Velixir Athena 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-50b87cfb",
+      "variant_id": "SHV-SH-VELIXIR-50b87cfb-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Comus 100 ml",
+        "Velixir Comus 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-6f7b377c",
+      "variant_id": "SHV-SH-VELIXIR-6f7b377c-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Concordia 35 ml",
+        "Velixir Concordia 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-6f7b377c",
+      "variant_id": "SHV-SH-VELIXIR-6f7b377c-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Concordia 100 ml",
+        "Velixir Concordia 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-c0952852",
+      "variant_id": "SHV-SH-VELIXIR-c0952852-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Demeter 35 ml",
+        "Velixir Demeter 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-c0952852",
+      "variant_id": "SHV-SH-VELIXIR-c0952852-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Demeter 100 ml",
+        "Velixir Demeter 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-36e7a5ca",
+      "variant_id": "SHV-SH-VELIXIR-36e7a5ca-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Ether 100 ml",
+        "Velixir Ether 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-76046795",
+      "variant_id": "SHV-SH-VELIXIR-76046795-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Galatea 35 ml",
+        "Velixir Galatea 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-76046795",
+      "variant_id": "SHV-SH-VELIXIR-76046795-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Galatea 100 ml",
+        "Velixir Galatea 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-e49794d3",
+      "variant_id": "SHV-SH-VELIXIR-e49794d3-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Harmonia 35 ml",
+        "Velixir Harmonia 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-e49794d3",
+      "variant_id": "SHV-SH-VELIXIR-e49794d3-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Harmonia 100 ml",
+        "Velixir Harmonia 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-1089d534",
+      "variant_id": "SHV-SH-VELIXIR-1089d534-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Helios 35 ml",
+        "Velixir Helios 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-1089d534",
+      "variant_id": "SHV-SH-VELIXIR-1089d534-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Helios 100 ml",
+        "Velixir Helios 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-06211958",
+      "variant_id": "SHV-SH-VELIXIR-06211958-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Hera 35 ml",
+        "Velixir Hera 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-06211958",
+      "variant_id": "SHV-SH-VELIXIR-06211958-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Hera 100 ml",
+        "Velixir Hera 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-71f3ac99",
+      "variant_id": "SHV-SH-VELIXIR-71f3ac99-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Himeros 35 ml",
+        "Velixir Himeros 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-71f3ac99",
+      "variant_id": "SHV-SH-VELIXIR-71f3ac99-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Himeros 100 ml",
+        "Velixir Himeros 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-3a619af9",
+      "variant_id": "SHV-SH-VELIXIR-3a619af9-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Icarus 35 ml",
+        "Velixir Icarus 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-3a619af9",
+      "variant_id": "SHV-SH-VELIXIR-3a619af9-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Icarus 100 ml",
+        "Velixir Icarus 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-21cface3",
+      "variant_id": "SHV-SH-VELIXIR-21cface3-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Morpheus 35 ml",
+        "Velixir Morpheus 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-21cface3",
+      "variant_id": "SHV-SH-VELIXIR-21cface3-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Morpheus 100 ml",
+        "Velixir Morpheus 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-23a9f320",
+      "variant_id": "SHV-SH-VELIXIR-23a9f320-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Narcisus 35 ml",
+        "Velixir Narcisus 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-23a9f320",
+      "variant_id": "SHV-SH-VELIXIR-23a9f320-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Narcisus 100 ml",
+        "Velixir Narcisus 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-153bbbed",
+      "variant_id": "SHV-SH-VELIXIR-153bbbed-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nyx 35 ml",
+        "Velixir Nyx 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-153bbbed",
+      "variant_id": "SHV-SH-VELIXIR-153bbbed-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nyx 100 ml",
+        "Velixir Nyx 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-cfe48ddb",
+      "variant_id": "SHV-SH-VELIXIR-cfe48ddb-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Orion 35 ml",
+        "Velixir Orion 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-cfe48ddb",
+      "variant_id": "SHV-SH-VELIXIR-cfe48ddb-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Orion 100 ml",
+        "Velixir Orion 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-7e147c46",
+      "variant_id": "SHV-SH-VELIXIR-7e147c46-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Orpheus 100 ml",
+        "Velixir Orpheus 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-8c915ae1",
+      "variant_id": "SHV-SH-VELIXIR-8c915ae1-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Paladin 35 ml",
+        "Velixir Paladin 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-8c915ae1",
+      "variant_id": "SHV-SH-VELIXIR-8c915ae1-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Paladin 100 ml",
+        "Velixir Paladin 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-1738e7af",
+      "variant_id": "SHV-SH-VELIXIR-1738e7af-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Panacea 100 ml",
+        "Velixir Panacea 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-12baca03",
+      "variant_id": "SHV-SH-VELIXIR-12baca03-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Persephone 35 ml",
+        "Velixir Persephone 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-12baca03",
+      "variant_id": "SHV-SH-VELIXIR-12baca03-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Persephone 100 ml",
+        "Velixir Persephone 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-c43f9b63",
+      "variant_id": "SHV-SH-VELIXIR-c43f9b63-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Poseidon 35 ml",
+        "Velixir Poseidon 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-c43f9b63",
+      "variant_id": "SHV-SH-VELIXIR-c43f9b63-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Poseidon 100 ml",
+        "Velixir Poseidon 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-bc687534",
+      "variant_id": "SHV-SH-VELIXIR-bc687534-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Selene 35 ml",
+        "Velixir Selene 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-bc687534",
+      "variant_id": "SHV-SH-VELIXIR-bc687534-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Selene 100 ml",
+        "Velixir Selene 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-029d80ce",
+      "variant_id": "SHV-SH-VELIXIR-029d80ce-35-000",
+      "size_ml": 35,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uranus 35 ml",
+        "Velixir Uranus 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-VELIXIR-029d80ce",
+      "variant_id": "SHV-SH-VELIXIR-029d80ce-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uranus 100 ml",
+        "Velixir Uranus 100 ml"
       ]
     }
   ]
