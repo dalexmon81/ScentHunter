@@ -28286,6 +28286,165 @@
       "concentration": "Extrait de Parfum"
     },
     {
+      "product_id": "SH-BUJAIRAMI-2ef0105b",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Glorious",
+      "name": "Glorious",
+      "family_id": "bujairami_catalog",
+      "family_name": "Glorious",
+      "aliases": [
+        "Glorious",
+        "Bujairami Glorious"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/glorious",
+      "source_evidence_url": "https://bujairami.com.au/products/glorious"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-98d6b788",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Ripper",
+      "name": "Ripper",
+      "family_id": "bujairami_catalog",
+      "family_name": "Ripper",
+      "aliases": [
+        "Ripper",
+        "Bujairami Ripper",
+        "Ripper Inspired by Creed Aventus"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/ripper-inspired-by-creed-avendus",
+      "source_evidence_url": "https://bujairami.com.au/products/ripper-inspired-by-creed-avendus",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-8434d403",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Madness Extreme",
+      "name": "Madness Extreme",
+      "family_id": "bujairami_catalog",
+      "family_name": "Madness Extreme",
+      "aliases": [
+        "Madness Extreme",
+        "Bujairami Madness Extreme"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/madness-extreme-inspired-by-ombre-nomade-louis-vuitton",
+      "source_evidence_url": "https://bujairami.com.au/products/madness-extreme-inspired-by-ombre-nomade-louis-vuitton"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-94286f44",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Woody Oud",
+      "name": "Woody Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Woody Oud",
+      "aliases": [
+        "Woody Oud",
+        "Bujairami Woody Oud",
+        "Woody oud Inspired by Tom Ford Oud Wood",
+        "Fair Dinkum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/fair-dinkum-inspired-by-tom-ford-oud-wood",
+      "source_evidence_url": "https://bujairami.com.au/products/fair-dinkum-inspired-by-tom-ford-oud-wood",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ea034b02",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Shortcake",
+      "name": "Shortcake",
+      "family_id": "bujairami_catalog",
+      "family_name": "Shortcake",
+      "aliases": [
+        "Shortcake",
+        "Bujairami Shortcake",
+        "Shortcake Inspired by Vanilla 28 Kayali"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/rise-up-inspired-vanilla-28-kayali",
+      "source_evidence_url": "https://bujairami.com.au/products/rise-up-inspired-vanilla-28-kayali"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-a717aa48",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Lavish",
+      "name": "Lavish",
+      "family_id": "bujairami_catalog",
+      "family_name": "Lavish",
+      "aliases": [
+        "Lavish",
+        "Bujairami Lavish"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/lavish-inspired-by-mfk-baccarat-rouge-540",
+      "source_evidence_url": "https://bujairami.com.au/products/lavish-inspired-by-mfk-baccarat-rouge-540",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-14aa4923",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "The Hype",
+      "name": "The Hype",
+      "family_id": "bujairami_catalog",
+      "family_name": "The Hype",
+      "aliases": [
+        "The Hype",
+        "Bujairami The Hype"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/the-hype-inspired-by-side-effect-initio-parfums-prives",
+      "source_evidence_url": "https://bujairami.com.au/products/the-hype-inspired-by-side-effect-initio-parfums-prives"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ef6cfd6c",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Lavish Life",
+      "name": "Lavish Life",
+      "family_id": "bujairami_catalog",
+      "family_name": "Lavish Life",
+      "aliases": [
+        "Lavish Life",
+        "Bujairami Lavish Life",
+        "Lavish life Inspired by Baccarat Rouge 540 Extrait"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/lavish-life-inspired-by-baccarat-rouge-540-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/lavish-life-inspired-by-baccarat-rouge-540-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-968e7cb7",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Vanacco",
+      "name": "Vanacco",
+      "family_id": "bujairami_catalog",
+      "family_name": "Vanacco",
+      "aliases": [
+        "Vanacco",
+        "Bujairami Vanacco"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/vanacco-inspired-by-tobacco-vanille-tom-ford",
+      "source_evidence_url": "https://bujairami.com.au/products/vanacco-inspired-by-tobacco-vanille-tom-ford"
+    },
+    {
       "product_id": "SH-ZIMAYA-WUJOOD",
       "brand": "Zimaya",
       "brand_name": "Zimaya",
@@ -33716,6 +33875,1575 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOMINUS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Dominus",
+      "name": "Dominus",
+      "family_id": "bujairami_catalog",
+      "family_name": "Dominus",
+      "aliases": [
+        "Dominus",
+        "Bujairami Dominus"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/dominus-inspired-by-anelo-pernoire",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/dominus/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-LUCID-DREAM",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Lucid Dream",
+      "name": "Lucid Dream",
+      "family_id": "bujairami_catalog",
+      "family_name": "Lucid Dream",
+      "aliases": [
+        "Lucid Dream",
+        "Bujairami Lucid Dream"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/lucid-dream-inspired-by-lucius-fragrance-du-bois-extrait",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/lucid-dream/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DRIP",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Drip",
+      "name": "Drip",
+      "family_id": "bujairami_catalog",
+      "family_name": "Drip",
+      "aliases": [
+        "Drip",
+        "Bujairami Drip"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/product/drip-inspired-by-afternoon-swim-louis-vuitton-extrait/?add-to-cart=243936",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/drip/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SANDY-SHORES",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Sandy Shores",
+      "name": "Sandy Shores",
+      "family_id": "bujairami_catalog",
+      "family_name": "Sandy Shores",
+      "aliases": [
+        "Sandy Shores",
+        "Bujairami Sandy Shores"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/sea-of-emotions-inspired-louis-vuitton-by-on-the-beach",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/sandy-shores/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SHINKO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Shinko",
+      "name": "Shinko",
+      "family_id": "bujairami_catalog",
+      "family_name": "Shinko",
+      "aliases": [
+        "Shinko",
+        "Bujairami Shinko"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/137683",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/shinko/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-KOKOMA-PARADISE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Kokoma Paradise",
+      "name": "Kokoma Paradise",
+      "family_id": "bujairami_catalog",
+      "family_name": "Kokoma Paradise",
+      "aliases": [
+        "Kokoma Paradise",
+        "Bujairami Kokoma Paradise"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-ELEGANTO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Eleganto",
+      "name": "Eleganto",
+      "family_id": "bujairami_catalog",
+      "family_name": "Eleganto",
+      "aliases": [
+        "Eleganto",
+        "Bujairami Eleganto"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/eleganto/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/eleganto/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SAFARI-SQUEEZE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Safari Squeeze",
+      "name": "Safari Squeeze",
+      "family_id": "bujairami_catalog",
+      "family_name": "Safari Squeeze",
+      "aliases": [
+        "Safari Squeeze",
+        "Bujairami Safari Squeeze"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/safari-squeeze-inspired-by-tales-from-zanzibar-memoirs-of-a-perfume-collector",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/safari-squeeze/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-STELLAR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Stellar",
+      "name": "Stellar",
+      "family_id": "bujairami_catalog",
+      "family_name": "Stellar",
+      "aliases": [
+        "Stellar",
+        "Bujairami Stellar"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/stellar-inspired-by-city-of-stars-by-louis-vuitton",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/stellar/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOWNTOWN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Downtown",
+      "name": "Downtown",
+      "family_id": "bujairami_catalog",
+      "family_name": "Downtown",
+      "aliases": [
+        "Downtown",
+        "Bujairami Downtown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/downtown/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/downtown/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-10-10",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "10/10",
+      "name": "10/10",
+      "family_id": "bujairami_catalog",
+      "family_name": "10/10",
+      "aliases": [
+        "10/10",
+        "Bujairami 10/10"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/10-10/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/10-10/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-22",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "22",
+      "name": "22",
+      "family_id": "bujairami_catalog",
+      "family_name": "22",
+      "aliases": [
+        "22",
+        "Bujairami 22"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/22/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/22/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-25",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "25",
+      "name": "25",
+      "family_id": "bujairami_catalog",
+      "family_name": "25",
+      "aliases": [
+        "25",
+        "Bujairami 25"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/25/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/25/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-26",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "26",
+      "name": "26",
+      "family_id": "bujairami_catalog",
+      "family_name": "26",
+      "aliases": [
+        "26",
+        "Bujairami 26"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/26/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/26/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-29",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "29",
+      "name": "29",
+      "family_id": "bujairami_catalog",
+      "family_name": "29",
+      "aliases": [
+        "29",
+        "Bujairami 29"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/29/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/29/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-33",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "33",
+      "name": "33",
+      "family_id": "bujairami_catalog",
+      "family_name": "33",
+      "aliases": [
+        "33",
+        "Bujairami 33"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/33/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/33/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-50-SHADES",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "50 Shades",
+      "name": "50 Shades",
+      "family_id": "bujairami_catalog",
+      "family_name": "50 Shades",
+      "aliases": [
+        "50 Shades",
+        "Bujairami 50 Shades"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/50-shades/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/50-shades/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-A-LA-CARTE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "A La Carte",
+      "name": "A La Carte",
+      "family_id": "bujairami_catalog",
+      "family_name": "A La Carte",
+      "aliases": [
+        "A La Carte",
+        "Bujairami A La Carte"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/a-la-carte/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/a-la-carte/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABOVE-THE-CLOUDS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Above The Clouds",
+      "name": "Above The Clouds",
+      "family_id": "bujairami_catalog",
+      "family_name": "Above The Clouds",
+      "aliases": [
+        "Above The Clouds",
+        "Bujairami Above The Clouds"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/above-the-clouds/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/above-the-clouds/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABYSS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Abyss",
+      "name": "Abyss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Abyss",
+      "aliases": [
+        "Abyss",
+        "Bujairami Abyss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/abyss/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/abyss/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADDICTION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Addiction",
+      "name": "Addiction",
+      "family_id": "bujairami_catalog",
+      "family_name": "Addiction",
+      "aliases": [
+        "Addiction",
+        "Bujairami Addiction"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/addiction/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/addiction/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADORE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Adore",
+      "name": "Adore",
+      "family_id": "bujairami_catalog",
+      "family_name": "Adore",
+      "aliases": [
+        "Adore",
+        "Bujairami Adore"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adore/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/adore/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADVERSARY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Adversary",
+      "name": "Adversary",
+      "family_id": "bujairami_catalog",
+      "family_name": "Adversary",
+      "aliases": [
+        "Adversary",
+        "Bujairami Adversary"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adversary/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/adversary/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AETHERA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aethera",
+      "name": "Aethera",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aethera",
+      "aliases": [
+        "Aethera",
+        "Bujairami Aethera"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aethera/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aethera/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFECTIONATE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Affectionate",
+      "name": "Affectionate",
+      "family_id": "bujairami_catalog",
+      "family_name": "Affectionate",
+      "aliases": [
+        "Affectionate",
+        "Bujairami Affectionate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affectionate/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/affectionate/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFINITY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Affinity",
+      "name": "Affinity",
+      "family_id": "bujairami_catalog",
+      "family_name": "Affinity",
+      "aliases": [
+        "Affinity",
+        "Bujairami Affinity"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affinity/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/affinity/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTER-DARK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "After Dark",
+      "name": "After Dark",
+      "family_id": "bujairami_catalog",
+      "family_name": "After Dark",
+      "aliases": [
+        "After Dark",
+        "Bujairami After Dark"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/after-dark/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/after-dark/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERGLOW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Afterglow",
+      "name": "Afterglow",
+      "family_id": "bujairami_catalog",
+      "family_name": "Afterglow",
+      "aliases": [
+        "Afterglow",
+        "Bujairami Afterglow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afterglow/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/afterglow/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERNOON-BLISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Afternoon Bliss",
+      "name": "Afternoon Bliss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Afternoon Bliss",
+      "aliases": [
+        "Afternoon Bliss",
+        "Bujairami Afternoon Bliss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afternoon-bliss/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/afternoon-bliss/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERSHOCK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aftershock",
+      "name": "Aftershock",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aftershock",
+      "aliases": [
+        "Aftershock",
+        "Bujairami Aftershock"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aftershock/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aftershock/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIR-AFFAIR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Air Affair",
+      "name": "Air Affair",
+      "family_id": "bujairami_catalog",
+      "family_name": "Air Affair",
+      "aliases": [
+        "Air Affair",
+        "Bujairami Air Affair"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/air-affair/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/air-affair/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRBORNE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Airborne",
+      "name": "Airborne",
+      "family_id": "bujairami_catalog",
+      "family_name": "Airborne",
+      "aliases": [
+        "Airborne",
+        "Bujairami Airborne"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airborne/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/airborne/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRY-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Airy Oud",
+      "name": "Airy Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Airy Oud",
+      "aliases": [
+        "Airy Oud",
+        "Bujairami Airy Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airy-oud/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/airy-oud/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AL-WAAD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Al Waad",
+      "name": "Al Waad",
+      "family_id": "bujairami_catalog",
+      "family_name": "Al Waad",
+      "aliases": [
+        "Al Waad",
+        "Bujairami Al Waad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/al-waad/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/al-waad/",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALPHA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Alpha",
+      "name": "Alpha",
+      "family_id": "bujairami_catalog",
+      "family_name": "Alpha",
+      "aliases": [
+        "Alpha",
+        "Bujairami Alpha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/alpha/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/alpha/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALTITUDE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Altitude",
+      "name": "Altitude",
+      "family_id": "bujairami_catalog",
+      "family_name": "Altitude",
+      "aliases": [
+        "Altitude",
+        "Bujairami Altitude"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/altitude/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/altitude/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMARETTO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amaretto",
+      "name": "Amaretto",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amaretto",
+      "aliases": [
+        "Amaretto",
+        "Bujairami Amaretto"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amaretto/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amaretto/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amazing",
+      "name": "Amazing",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amazing",
+      "aliases": [
+        "Amazing",
+        "Bujairami Amazing"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amazing/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING-NIGHT",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amazing Night",
+      "name": "Amazing Night",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amazing Night",
+      "aliases": [
+        "Amazing Night",
+        "Bujairami Amazing Night"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing-night/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amazing-night/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMBER-FLOWERET",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Floweret",
+      "name": "Amber Floweret",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Floweret",
+      "aliases": [
+        "Amber Floweret",
+        "Bujairami Amber Floweret"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-floweret/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amber-floweret/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMBER-GROVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Grove",
+      "name": "Amber Grove",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Grove",
+      "aliases": [
+        "Amber Grove",
+        "Bujairami Amber Grove"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-grove/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amber-grove/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMIRA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amira",
+      "name": "Amira",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amira",
+      "aliases": [
+        "Amira",
+        "Bujairami Amira"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amira/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amira/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        50,
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMOURA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amoura",
+      "name": "Amoura",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amoura",
+      "aliases": [
+        "Amoura",
+        "Bujairami Amoura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amoura/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amoura/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMPLIFY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amplify",
+      "name": "Amplify",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amplify",
+      "aliases": [
+        "Amplify",
+        "Bujairami Amplify"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amplify/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amplify/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AOUD-MINERAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aoud Mineral",
+      "name": "Aoud Mineral",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aoud Mineral",
+      "aliases": [
+        "Aoud Mineral",
+        "Bujairami Aoud Mineral"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aoud-mineral/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aoud-mineral/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-INFINITE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Infinite",
+      "name": "Aqua Infinite",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Infinite",
+      "aliases": [
+        "Aqua Infinite",
+        "Bujairami Aqua Infinite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-infinite/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-infinite/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-PREVAIL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Prevail",
+      "name": "Aqua Prevail",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Prevail",
+      "aliases": [
+        "Aqua Prevail",
+        "Bujairami Aqua Prevail"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-prevail/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-prevail/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-PURE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Pure",
+      "name": "Aqua Pure",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Pure",
+      "aliases": [
+        "Aqua Pure",
+        "Bujairami Aqua Pure"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-pure/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-pure/",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-RUSH",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Rush",
+      "name": "Aqua Rush",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Rush",
+      "aliases": [
+        "Aqua Rush",
+        "Bujairami Aqua Rush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-rush/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-rush/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-AQUA-SURGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Surge",
+      "name": "Aqua Surge",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Surge",
+      "aliases": [
+        "Aqua Surge",
+        "Bujairami Aqua Surge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-surge/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-surge/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-AQUAFINA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aquafina",
+      "name": "Aquafina",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aquafina",
+      "aliases": [
+        "Aquafina",
+        "Bujairami Aquafina"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aquafina/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aquafina/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-AQUAMAN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aquaman",
+      "name": "Aquaman",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aquaman",
+      "aliases": [
+        "Aquaman",
+        "Bujairami Aquaman"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aquaman/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aquaman/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARABIAN-BREW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arabian Brew",
+      "name": "Arabian Brew",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arabian Brew",
+      "aliases": [
+        "Arabian Brew",
+        "Bujairami Arabian Brew"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/arabian-brew/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/arabian-brew/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARABIAN-GOLD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arabian Gold",
+      "name": "Arabian Gold",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arabian Gold",
+      "aliases": [
+        "Arabian Gold",
+        "Bujairami Arabian Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/arabian-gold/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/arabian-gold/",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARABIAN-LOVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arabian Love",
+      "name": "Arabian Love",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arabian Love",
+      "aliases": [
+        "Arabian Love",
+        "Bujairami Arabian Love"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/arabian-love/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/arabian-love/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARIZONA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Arizona",
+      "name": "Arizona",
+      "family_id": "bujairami_catalog",
+      "family_name": "Arizona",
+      "aliases": [
+        "Arizona",
+        "Bujairami Arizona"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/arizona/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/arizona/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARTISTIC-LADY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Artistic Lady",
+      "name": "Artistic Lady",
+      "family_id": "bujairami_catalog",
+      "family_name": "Artistic Lady",
+      "aliases": [
+        "Artistic Lady",
+        "Bujairami Artistic Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/artistic-lady/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/artistic-lady/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ASCENSION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Ascension",
+      "name": "Ascension",
+      "family_id": "bujairami_catalog",
+      "family_name": "Ascension",
+      "aliases": [
+        "Ascension",
+        "Bujairami Ascension"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/ascension/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/ascension/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ASFAHAN-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Asfahan Oud",
+      "name": "Asfahan Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Asfahan Oud",
+      "aliases": [
+        "Asfahan Oud",
+        "Bujairami Asfahan Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/asfahan-oud/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/asfahan-oud/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASSASSIN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Assassin",
+      "name": "Assassin",
+      "family_id": "bujairami_catalog",
+      "family_name": "Assassin",
+      "aliases": [
+        "Assassin",
+        "Bujairami Assassin"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/assassin/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/assassin/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Astral",
+      "name": "Astral",
+      "family_id": "bujairami_catalog",
+      "family_name": "Astral",
+      "aliases": [
+        "Astral",
+        "Bujairami Astral"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astral/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/astral/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Astro",
+      "name": "Astro",
+      "family_id": "bujairami_catalog",
+      "family_name": "Astro",
+      "aliases": [
+        "Astro",
+        "Bujairami Astro"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astro/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/astro/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AT-LAST",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "At Last",
+      "name": "At Last",
+      "family_id": "bujairami_catalog",
+      "family_name": "At Last",
+      "aliases": [
+        "At Last",
+        "Bujairami At Last"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/at-last/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/at-last/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AURORA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aurora",
+      "name": "Aurora",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aurora",
+      "aliases": [
+        "Aurora",
+        "Bujairami Aurora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aurora/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aurora/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AUSTRALIAN-TONKA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Australian Tonka",
+      "name": "Australian Tonka",
+      "family_id": "bujairami_catalog",
+      "family_name": "Australian Tonka",
+      "aliases": [
+        "Australian Tonka",
+        "Bujairami Australian Tonka"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/australian-tonka/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/australian-tonka/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACCARAT-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Baccarat Oud",
+      "name": "Baccarat Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Baccarat Oud",
+      "aliases": [
+        "Baccarat Oud",
+        "Bujairami Baccarat Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baccarat-oud/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/baccarat-oud/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACKSTAGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Backstage",
+      "name": "Backstage",
+      "family_id": "bujairami_catalog",
+      "family_name": "Backstage",
+      "aliases": [
+        "Backstage",
+        "Bujairami Backstage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/backstage/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/backstage/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-N-BOUJEE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad N Boujee",
+      "name": "Bad N Boujee",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad N Boujee",
+      "aliases": [
+        "Bad N Boujee",
+        "Bujairami Bad N Boujee"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-n-boujee/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/bad-n-boujee/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-OBSESSION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad Obsession",
+      "name": "Bad Obsession",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad Obsession",
+      "aliases": [
+        "Bad Obsession",
+        "Bujairami Bad Obsession"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-obsession/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/bad-obsession/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BAD-ROMANCE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad Romance",
+      "name": "Bad Romance",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad Romance",
+      "aliases": [
+        "Bad Romance",
+        "Bujairami Bad Romance"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-romance/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/bad-romance/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BADDIE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Baddie",
+      "name": "Baddie",
+      "family_id": "bujairami_catalog",
+      "family_name": "Baddie",
+      "aliases": [
+        "Baddie",
+        "Bujairami Baddie"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baddie/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/baddie/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BAHEBAK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bahebak",
+      "name": "Bahebak",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bahebak",
+      "aliases": [
+        "Bahebak",
+        "Bujairami Bahebak"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bahebak/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/bahebak/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BAKED-BLISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Baked Bliss",
+      "name": "Baked Bliss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Baked Bliss",
+      "aliases": [
+        "Baked Bliss",
+        "Bujairami Baked Bliss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baked-bliss/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/baked-bliss/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BALLERINA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Ballerina",
+      "name": "Ballerina",
+      "family_id": "bujairami_catalog",
+      "family_name": "Ballerina",
+      "aliases": [
+        "Ballerina",
+        "Bujairami Ballerina"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/ballerina/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/ballerina/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BANANA-BOOZ",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Banana Booz",
+      "name": "Banana Booz",
+      "family_id": "bujairami_catalog",
+      "family_name": "Banana Booz",
+      "aliases": [
+        "Banana Booz",
+        "Bujairami Banana Booz"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/banana-booz/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/banana-booz/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BANGER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Banger",
+      "name": "Banger",
+      "family_id": "bujairami_catalog",
+      "family_name": "Banger",
+      "aliases": [
+        "Banger",
+        "Bujairami Banger"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/banger/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/banger/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BARE-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bare Oud",
+      "name": "Bare Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bare Oud",
+      "aliases": [
+        "Bare Oud",
+        "Bujairami Bare Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bare-oud/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/bare-oud/",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BARREL-BREEZE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Barrel Breeze",
+      "name": "Barrel Breeze",
+      "family_id": "bujairami_catalog",
+      "family_name": "Barrel Breeze",
+      "aliases": [
+        "Barrel Breeze",
+        "Bujairami Barrel Breeze"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/barrel-breeze/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/barrel-breeze/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BE-HAPPY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Be Happy",
+      "name": "Be Happy",
+      "family_id": "bujairami_catalog",
+      "family_name": "Be Happy",
+      "aliases": [
+        "Be Happy",
+        "Bujairami Be Happy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/be-happy/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/be-happy/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -35194,6 +36922,33 @@
       "source_url": "https://bujairami.com.au/products/love-spell-original-creation-50ml"
     },
     {
+      "product_id": "SH-BUJAIRAMI-98d6b788",
+      "variant_id": "SHV-SH-BUJAIRAMI-98d6b788-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ripper 100 ml",
+        "Bujairami Ripper 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-94286f44",
+      "variant_id": "SHV-SH-BUJAIRAMI-94286f44-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Woody Oud 100 ml",
+        "Bujairami Woody Oud 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-a717aa48",
+      "variant_id": "SHV-SH-BUJAIRAMI-a717aa48-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Lavish 100 ml",
+        "Bujairami Lavish 100ml"
+      ]
+    },
+    {
       "product_id": "SH-ARMAF-88c7f40b",
       "size_ml": 200,
       "aliases": [
@@ -36468,6 +38223,766 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOMINUS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-DOMINUS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Dominus 100 ml",
+        "Bujairami Dominus 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/dominus-inspired-by-anelo-pernoire"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-LUCID-DREAM",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-LUCID-DREAM-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Lucid Dream 100 ml",
+        "Bujairami Lucid Dream 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/lucid-dream-inspired-by-lucius-fragrance-du-bois-extrait"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DRIP",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-DRIP-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Drip 100 ml",
+        "Bujairami Drip 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/product/drip-inspired-by-afternoon-swim-louis-vuitton-extrait/?add-to-cart=243936"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SANDY-SHORES",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-SANDY-SHORES-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Sandy Shores 100 ml",
+        "Bujairami Sandy Shores 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/sea-of-emotions-inspired-louis-vuitton-by-on-the-beach"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SHINKO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-SHINKO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Shinko 100 ml",
+        "Bujairami Shinko 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/137683"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-KOKOMA-PARADISE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-KOKOMA-PARADISE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Kokoma Paradise 100 ml",
+        "Bujairami Kokoma Paradise 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-ELEGANTO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-ELEGANTO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Eleganto 100 ml",
+        "Bujairami Eleganto 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/eleganto/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-SAFARI-SQUEEZE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-SAFARI-SQUEEZE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Safari Squeeze 100 ml",
+        "Bujairami Safari Squeeze 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/safari-squeeze-inspired-by-tales-from-zanzibar-memoirs-of-a-perfume-collector"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-STELLAR",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-STELLAR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Stellar 100 ml",
+        "Bujairami Stellar 100ml"
+      ],
+      "source_url": "https://bujairami.com.au/products/stellar-inspired-by-city-of-stars-by-louis-vuitton"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH2-DOWNTOWN",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH2-DOWNTOWN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Downtown 100 ml",
+        "Bujairami Downtown 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/downtown/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-10-10",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-10-10-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "10/10 100 ml",
+        "Bujairami 10/10 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/10-10/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-22",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-22-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "22 100 ml",
+        "Bujairami 22 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/22/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-25",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-25-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "25 100 ml",
+        "Bujairami 25 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/25/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-26",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-26-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "26 100 ml",
+        "Bujairami 26 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/26/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-29",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-29-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "29 100 ml",
+        "Bujairami 29 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/29/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-33",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-33-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "33 100 ml",
+        "Bujairami 33 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/33/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-50-SHADES",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-50-SHADES-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "50 Shades 100 ml",
+        "Bujairami 50 Shades 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/50-shades/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-A-LA-CARTE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-A-LA-CARTE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "A La Carte 100 ml",
+        "Bujairami A La Carte 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/a-la-carte/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABOVE-THE-CLOUDS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-ABOVE-THE-CLOUDS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Above The Clouds 100 ml",
+        "Bujairami Above The Clouds 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/above-the-clouds/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABYSS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-ABYSS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Abyss 100 ml",
+        "Bujairami Abyss 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/abyss/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADDICTION",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-ADDICTION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Addiction 100 ml",
+        "Bujairami Addiction 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/addiction/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADORE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-ADORE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Adore 100 ml",
+        "Bujairami Adore 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adore/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADVERSARY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-ADVERSARY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Adversary 100 ml",
+        "Bujairami Adversary 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adversary/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AETHERA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AETHERA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aethera 100 ml",
+        "Bujairami Aethera 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aethera/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFECTIONATE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFFECTIONATE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Affectionate 100 ml",
+        "Bujairami Affectionate 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affectionate/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFINITY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFFINITY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Affinity 100 ml",
+        "Bujairami Affinity 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affinity/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTER-DARK",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTER-DARK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "After Dark 100 ml",
+        "Bujairami After Dark 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/after-dark/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERGLOW",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTERGLOW-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Afterglow 100 ml",
+        "Bujairami Afterglow 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afterglow/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERNOON-BLISS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTERNOON-BLISS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Afternoon Bliss 100 ml",
+        "Bujairami Afternoon Bliss 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afternoon-bliss/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERSHOCK",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTERSHOCK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aftershock 100 ml",
+        "Bujairami Aftershock 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aftershock/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIR-AFFAIR",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AIR-AFFAIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Air Affair 100 ml",
+        "Bujairami Air Affair 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/air-affair/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRBORNE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AIRBORNE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Airborne 100 ml",
+        "Bujairami Airborne 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airborne/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRY-OUD",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AIRY-OUD-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Airy Oud 100 ml",
+        "Bujairami Airy Oud 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airy-oud/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALPHA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-ALPHA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Alpha 100 ml",
+        "Bujairami Alpha 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/alpha/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALTITUDE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-ALTITUDE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Altitude 100 ml",
+        "Bujairami Altitude 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/altitude/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMARETTO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMARETTO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amaretto 100 ml",
+        "Bujairami Amaretto 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amaretto/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMAZING-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amazing 100 ml",
+        "Bujairami Amazing 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING-NIGHT",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMAZING-NIGHT-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amazing Night 100 ml",
+        "Bujairami Amazing Night 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing-night/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMBER-FLOWERET",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMBER-FLOWERET-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Floweret 100 ml",
+        "Bujairami Amber Floweret 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-floweret/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMBER-GROVE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMBER-GROVE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Grove 100 ml",
+        "Bujairami Amber Grove 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-grove/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMIRA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMIRA-50-000",
+      "size_ml": 50,
+      "aliases": [
+        "Amira 50 ml",
+        "Bujairami Amira 50ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amira/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMIRA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMIRA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amira 100 ml",
+        "Bujairami Amira 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amira/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMOURA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMOURA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amoura 100 ml",
+        "Bujairami Amoura 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amoura/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMPLIFY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMPLIFY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amplify 100 ml",
+        "Bujairami Amplify 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amplify/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AOUD-MINERAL",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AOUD-MINERAL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aoud Mineral 100 ml",
+        "Bujairami Aoud Mineral 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aoud-mineral/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-INFINITE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AQUA-INFINITE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aqua Infinite 100 ml",
+        "Bujairami Aqua Infinite 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-infinite/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-PREVAIL",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AQUA-PREVAIL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aqua Prevail 100 ml",
+        "Bujairami Aqua Prevail 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-prevail/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-RUSH",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AQUA-RUSH-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aqua Rush 100 ml",
+        "Bujairami Aqua Rush 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-rush/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-AQUA-SURGE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-AQUA-SURGE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aqua Surge 100 ml",
+        "Bujairami Aqua Surge 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-surge/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-AQUAFINA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-AQUAFINA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aquafina 100 ml",
+        "Bujairami Aquafina 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aquafina/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-AQUAMAN",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-AQUAMAN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aquaman 100 ml",
+        "Bujairami Aquaman 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aquaman/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARABIAN-BREW",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-ARABIAN-BREW-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Arabian Brew 100 ml",
+        "Bujairami Arabian Brew 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/arabian-brew/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARABIAN-LOVE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-ARABIAN-LOVE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Arabian Love 100 ml",
+        "Bujairami Arabian Love 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/arabian-love/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARIZONA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-ARIZONA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Arizona 100 ml",
+        "Bujairami Arizona 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/arizona/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ARTISTIC-LADY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-ARTISTIC-LADY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Artistic Lady 100 ml",
+        "Bujairami Artistic Lady 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/artistic-lady/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ASCENSION",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-ASCENSION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ascension 100 ml",
+        "Bujairami Ascension 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/ascension/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH7-ASFAHAN-OUD",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH7-ASFAHAN-OUD-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Asfahan Oud 100 ml",
+        "Bujairami Asfahan Oud 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/asfahan-oud/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASSASSIN",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-ASSASSIN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Assassin 100 ml",
+        "Bujairami Assassin 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/assassin/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRAL",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-ASTRAL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Astral 100 ml",
+        "Bujairami Astral 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astral/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-ASTRO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Astro 100 ml",
+        "Bujairami Astro 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astro/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AT-LAST",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-AT-LAST-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "At Last 100 ml",
+        "Bujairami At Last 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/at-last/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AURORA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-AURORA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aurora 100 ml",
+        "Bujairami Aurora 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aurora/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AUSTRALIAN-TONKA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-AUSTRALIAN-TONKA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Australian Tonka 100 ml",
+        "Bujairami Australian Tonka 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/australian-tonka/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACCARAT-OUD",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BACCARAT-OUD-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Baccarat Oud 100 ml",
+        "Bujairami Baccarat Oud 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baccarat-oud/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACKSTAGE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BACKSTAGE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Backstage 100 ml",
+        "Bujairami Backstage 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/backstage/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-N-BOUJEE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BAD-N-BOUJEE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Bad N Boujee 100 ml",
+        "Bujairami Bad N Boujee 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-n-boujee/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-OBSESSION",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BAD-OBSESSION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Bad Obsession 100 ml",
+        "Bujairami Bad Obsession 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-obsession/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BAD-ROMANCE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BAD-ROMANCE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Bad Romance 100 ml",
+        "Bujairami Bad Romance 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-romance/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BADDIE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BADDIE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Baddie 100 ml",
+        "Bujairami Baddie 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baddie/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BAHEBAK",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BAHEBAK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Bahebak 100 ml",
+        "Bujairami Bahebak 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bahebak/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BAKED-BLISS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BAKED-BLISS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Baked Bliss 100 ml",
+        "Bujairami Baked Bliss 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baked-bliss/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BALLERINA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BALLERINA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ballerina 100 ml",
+        "Bujairami Ballerina 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/ballerina/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BANANA-BOOZ",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BANANA-BOOZ-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Banana Booz 100 ml",
+        "Bujairami Banana Booz 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/banana-booz/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BANGER",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BANGER-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Banger 100 ml",
+        "Bujairami Banger 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/banger/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BARREL-BREEZE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BARREL-BREEZE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Barrel Breeze 100 ml",
+        "Bujairami Barrel Breeze 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/barrel-breeze/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH9-BE-HAPPY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH9-BE-HAPPY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Be Happy 100 ml",
+        "Bujairami Be Happy 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/be-happy/"
     }
   ]
 }

@@ -2545,41 +2545,6 @@
       ],
       "products": [
         {
-          "canonical_name": "Gold Coast Shiraz",
-          "aliases": [
-            "Gold Coast Shiraz",
-            "Bujairami Gold Coast Shiraz"
-          ]
-        },
-        {
-          "canonical_name": "G’Day",
-          "aliases": [
-            "G’Day",
-            "Bujairami G’Day"
-          ]
-        },
-        {
-          "canonical_name": "Midnight in Melbourne",
-          "aliases": [
-            "Midnight in Melbourne",
-            "Bujairami Midnight in Melbourne"
-          ]
-        },
-        {
-          "canonical_name": "Sunrise in Sydney",
-          "aliases": [
-            "Sunrise in Sydney",
-            "Bujairami Sunrise in Sydney"
-          ]
-        },
-        {
-          "canonical_name": "Hectic",
-          "aliases": [
-            "Hectic",
-            "Bujairami Hectic"
-          ]
-        },
-        {
           "canonical_name": "2000",
           "aliases": [
             "2000",
@@ -2622,10 +2587,31 @@
           ]
         },
         {
+          "canonical_name": "Apple Crumble",
+          "aliases": [
+            "Apple Crumble",
+            "Bujairami Apple Crumble"
+          ]
+        },
+        {
           "canonical_name": "Arabian Valley",
           "aliases": [
             "Arabian Valley",
             "Bujairami Arabian Valley"
+          ]
+        },
+        {
+          "canonical_name": "Aussie Glow",
+          "aliases": [
+            "Aussie Glow",
+            "Bujairami Aussie Glow"
+          ]
+        },
+        {
+          "canonical_name": "Australian Watermelon",
+          "aliases": [
+            "Australian Watermelon",
+            "Bujairami Australian Watermelon"
           ]
         },
         {
@@ -2685,6 +2671,13 @@
           ]
         },
         {
+          "canonical_name": "Cherry Cherry Lady",
+          "aliases": [
+            "Cherry Cherry Lady",
+            "Bujairami Cherry Cherry Lady"
+          ]
+        },
+        {
           "canonical_name": "Chic Wood",
           "aliases": [
             "Chic Wood",
@@ -2703,6 +2696,13 @@
           "aliases": [
             "City Life",
             "Bujairami City Life"
+          ]
+        },
+        {
+          "canonical_name": "Coco Dream",
+          "aliases": [
+            "Coco Dream",
+            "Bujairami Coco Dream"
           ]
         },
         {
@@ -2752,6 +2752,13 @@
           "aliases": [
             "Dom",
             "Bujairami Dom"
+          ]
+        },
+        {
+          "canonical_name": "Down Under",
+          "aliases": [
+            "Down Under",
+            "Bujairami Down Under"
           ]
         },
         {
@@ -2818,6 +2825,13 @@
           ]
         },
         {
+          "canonical_name": "G’Day",
+          "aliases": [
+            "G’Day",
+            "Bujairami G’Day"
+          ]
+        },
+        {
           "canonical_name": "Gem",
           "aliases": [
             "Gem",
@@ -2829,6 +2843,27 @@
           "aliases": [
             "Gladiator",
             "Bujairami Gladiator"
+          ]
+        },
+        {
+          "canonical_name": "Glorious",
+          "aliases": [
+            "Glorious",
+            "Bujairami Glorious"
+          ]
+        },
+        {
+          "canonical_name": "Gold Coast",
+          "aliases": [
+            "Gold Coast",
+            "Bujairami Gold Coast"
+          ]
+        },
+        {
+          "canonical_name": "Gold Coast Shiraz",
+          "aliases": [
+            "Gold Coast Shiraz",
+            "Bujairami Gold Coast Shiraz"
           ]
         },
         {
@@ -2853,6 +2888,20 @@
           ]
         },
         {
+          "canonical_name": "Harbour Tea",
+          "aliases": [
+            "Harbour Tea",
+            "Bujairami Harbour Tea"
+          ]
+        },
+        {
+          "canonical_name": "Hectic",
+          "aliases": [
+            "Hectic",
+            "Bujairami Hectic"
+          ]
+        },
+        {
           "canonical_name": "Helou",
           "aliases": [
             "Helou",
@@ -2871,6 +2920,13 @@
           "aliases": [
             "High Roller",
             "Bujairami High Roller"
+          ]
+        },
+        {
+          "canonical_name": "HIM",
+          "aliases": [
+            "HIM",
+            "Bujairami HIM"
           ]
         },
         {
@@ -2902,6 +2958,13 @@
           ]
         },
         {
+          "canonical_name": "King Street",
+          "aliases": [
+            "King Street",
+            "Bujairami King Street"
+          ]
+        },
+        {
           "canonical_name": "KingsMan",
           "aliases": [
             "KingsMan",
@@ -2909,10 +2972,35 @@
           ]
         },
         {
+          "canonical_name": "Knefeh",
+          "aliases": [
+            "Knefeh",
+            "Bujairami Knefeh"
+          ]
+        },
+        {
           "canonical_name": "Last Kingdom",
           "aliases": [
             "Last Kingdom",
             "Bujairami Last Kingdom"
+          ]
+        },
+        {
+          "canonical_name": "Lavish",
+          "aliases": [
+            "Lavish",
+            "Bujairami Lavish"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Lavish Life",
+          "aliases": [
+            "Lavish Life",
+            "Bujairami Lavish Life",
+            "Lavish life Inspired by Baccarat Rouge 540 Extrait"
           ]
         },
         {
@@ -2927,6 +3015,24 @@
           "aliases": [
             "Limonana",
             "Bujairami Limonana"
+          ]
+        },
+        {
+          "canonical_name": "Love Spell",
+          "aliases": [
+            "Love Spell",
+            "Bujairami Love Spell"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Luxe Noir",
+          "aliases": [
+            "Luxe Noir",
+            "Bujairami Luxe Noir"
           ]
         },
         {
@@ -2951,10 +3057,24 @@
           ]
         },
         {
+          "canonical_name": "Madeira Cake",
+          "aliases": [
+            "Madeira Cake",
+            "Bujairami Madeira Cake"
+          ]
+        },
+        {
           "canonical_name": "Madness",
           "aliases": [
             "Madness",
             "Bujairami Madness"
+          ]
+        },
+        {
+          "canonical_name": "Madness Extreme",
+          "aliases": [
+            "Madness Extreme",
+            "Bujairami Madness Extreme"
           ]
         },
         {
@@ -2969,6 +3089,13 @@
           "aliases": [
             "Mi Amor",
             "Bujairami Mi Amor"
+          ]
+        },
+        {
+          "canonical_name": "Midnight in Melbourne",
+          "aliases": [
+            "Midnight in Melbourne",
+            "Bujairami Midnight in Melbourne"
           ]
         },
         {
@@ -3098,6 +3225,13 @@
           ]
         },
         {
+          "canonical_name": "Pistachio Cake",
+          "aliases": [
+            "Pistachio Cake",
+            "Bujairami Pistachio Cake"
+          ]
+        },
+        {
           "canonical_name": "Power",
           "aliases": [
             "Power",
@@ -3130,6 +3264,13 @@
           "aliases": [
             "Pulse Intense",
             "Bujairami Pulse Intense"
+          ]
+        },
+        {
+          "canonical_name": "Queens Avenue",
+          "aliases": [
+            "Queens Avenue",
+            "Bujairami Queens Avenue"
           ]
         },
         {
@@ -3168,6 +3309,24 @@
           ]
         },
         {
+          "canonical_name": "Ripper",
+          "aliases": [
+            "Ripper",
+            "Bujairami Ripper",
+            "Ripper Inspired by Creed Aventus"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Riverina",
+          "aliases": [
+            "Riverina",
+            "Bujairami Riverina"
+          ]
+        },
+        {
           "canonical_name": "Rizz",
           "aliases": [
             "Rizz",
@@ -3203,6 +3362,14 @@
           ]
         },
         {
+          "canonical_name": "Shortcake",
+          "aliases": [
+            "Shortcake",
+            "Bujairami Shortcake",
+            "Shortcake Inspired by Vanilla 28 Kayali"
+          ]
+        },
+        {
           "canonical_name": "Silent Halo",
           "aliases": [
             "Silent Halo",
@@ -3214,6 +3381,13 @@
           "aliases": [
             "Smokilla",
             "Bujairami Smokilla"
+          ]
+        },
+        {
+          "canonical_name": "Snow White",
+          "aliases": [
+            "Snow White",
+            "Bujairami Snow White"
           ]
         },
         {
@@ -3235,6 +3409,13 @@
           "aliases": [
             "Sugar Rush",
             "Bujairami Sugar Rush"
+          ]
+        },
+        {
+          "canonical_name": "Sunrise in Sydney",
+          "aliases": [
+            "Sunrise in Sydney",
+            "Bujairami Sunrise in Sydney"
           ]
         },
         {
@@ -3294,6 +3475,20 @@
           ]
         },
         {
+          "canonical_name": "The F*ck Up",
+          "aliases": [
+            "The F*ck Up",
+            "Bujairami The F*ck Up"
+          ]
+        },
+        {
+          "canonical_name": "The Hype",
+          "aliases": [
+            "The Hype",
+            "Bujairami The Hype"
+          ]
+        },
+        {
           "canonical_name": "The Rock Intensely",
           "aliases": [
             "The Rock Intensely",
@@ -3322,6 +3517,13 @@
           ]
         },
         {
+          "canonical_name": "Top Life",
+          "aliases": [
+            "Top Life",
+            "Bujairami Top Life"
+          ]
+        },
+        {
           "canonical_name": "Top Tier",
           "aliases": [
             "Top Tier",
@@ -3340,6 +3542,13 @@
           "aliases": [
             "V-Luxe",
             "Bujairami V-Luxe"
+          ]
+        },
+        {
+          "canonical_name": "Vanacco",
+          "aliases": [
+            "Vanacco",
+            "Bujairami Vanacco"
           ]
         },
         {
@@ -3385,147 +3594,15 @@
           ]
         },
         {
-          "canonical_name": "Ya Habibi",
+          "canonical_name": "Woody Oud",
           "aliases": [
-            "Ya Habibi",
-            "Bujairami Ya Habibi"
-          ]
-        },
-        {
-          "canonical_name": "Australian Watermelon",
-          "aliases": [
-            "Australian Watermelon",
-            "Bujairami Australian Watermelon"
-          ]
-        },
-        {
-          "canonical_name": "Top Life",
-          "aliases": [
-            "Top Life",
-            "Bujairami Top Life"
-          ]
-        },
-        {
-          "canonical_name": "Luxe Noir",
-          "aliases": [
-            "Luxe Noir",
-            "Bujairami Luxe Noir"
-          ]
-        },
-        {
-          "canonical_name": "Snow White",
-          "aliases": [
-            "Snow White",
-            "Bujairami Snow White"
-          ]
-        },
-        {
-          "canonical_name": "Down Under",
-          "aliases": [
-            "Down Under",
-            "Bujairami Down Under"
-          ]
-        },
-        {
-          "canonical_name": "HIM",
-          "aliases": [
-            "HIM",
-            "Bujairami HIM"
-          ]
-        },
-        {
-          "canonical_name": "Gold Coast",
-          "aliases": [
-            "Gold Coast",
-            "Bujairami Gold Coast"
-          ]
-        },
-        {
-          "canonical_name": "Coco Dream",
-          "aliases": [
-            "Coco Dream",
-            "Bujairami Coco Dream"
-          ]
-        },
-        {
-          "canonical_name": "Riverina",
-          "aliases": [
-            "Riverina",
-            "Bujairami Riverina"
-          ]
-        },
-        {
-          "canonical_name": "Aussie Glow",
-          "aliases": [
-            "Aussie Glow",
-            "Bujairami Aussie Glow"
-          ]
-        },
-        {
-          "canonical_name": "Madeira Cake",
-          "aliases": [
-            "Madeira Cake",
-            "Bujairami Madeira Cake"
-          ]
-        },
-        {
-          "canonical_name": "Apple Crumble",
-          "aliases": [
-            "Apple Crumble",
-            "Bujairami Apple Crumble"
-          ]
-        },
-        {
-          "canonical_name": "Knefeh",
-          "aliases": [
-            "Knefeh",
-            "Bujairami Knefeh"
-          ]
-        },
-        {
-          "canonical_name": "Love Spell",
-          "aliases": [
-            "Love Spell",
-            "Bujairami Love Spell"
+            "Woody Oud",
+            "Bujairami Woody Oud",
+            "Woody oud Inspired by Tom Ford Oud Wood",
+            "Fair Dinkum"
           ],
           "formats_ml": [
-            50,
             100
-          ]
-        },
-        {
-          "canonical_name": "King Street",
-          "aliases": [
-            "King Street",
-            "Bujairami King Street"
-          ]
-        },
-        {
-          "canonical_name": "The F*ck Up",
-          "aliases": [
-            "The F*ck Up",
-            "Bujairami The F*ck Up"
-          ]
-        },
-        {
-          "canonical_name": "Harbour Tea",
-          "aliases": [
-            "Harbour Tea",
-            "Bujairami Harbour Tea"
-          ]
-        },
-        {
-          "canonical_name": "Queens Avenue",
-          "aliases": [
-            "Queens Avenue",
-            "Bujairami Queens Avenue"
-          ]
-        },
-        {
-          "canonical_name": "Pistachio Cake",
-          "aliases": [
-            "Pistachio Cake",
-            "Bujairami Pistachio Cake"
           ]
         },
         {
@@ -3536,10 +3613,692 @@
           ]
         },
         {
-          "canonical_name": "Cherry Cherry Lady",
+          "canonical_name": "Ya Habibi",
           "aliases": [
-            "Cherry Cherry Lady",
-            "Bujairami Cherry Cherry Lady"
+            "Ya Habibi",
+            "Bujairami Ya Habibi"
+          ]
+        },
+        {
+          "canonical_name": "Dominus",
+          "aliases": [
+            "Dominus",
+            "Bujairami Dominus"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Lucid Dream",
+          "aliases": [
+            "Lucid Dream",
+            "Bujairami Lucid Dream"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Drip",
+          "aliases": [
+            "Drip",
+            "Bujairami Drip"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sandy Shores",
+          "aliases": [
+            "Sandy Shores",
+            "Bujairami Sandy Shores"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shinko",
+          "aliases": [
+            "Shinko",
+            "Bujairami Shinko"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Kokoma Paradise",
+          "aliases": [
+            "Kokoma Paradise",
+            "Bujairami Kokoma Paradise"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Eleganto",
+          "aliases": [
+            "Eleganto",
+            "Bujairami Eleganto"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Safari Squeeze",
+          "aliases": [
+            "Safari Squeeze",
+            "Bujairami Safari Squeeze"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Stellar",
+          "aliases": [
+            "Stellar",
+            "Bujairami Stellar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Downtown",
+          "aliases": [
+            "Downtown",
+            "Bujairami Downtown"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "10/10",
+          "aliases": [
+            "10/10",
+            "Bujairami 10/10"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "22",
+          "aliases": [
+            "22",
+            "Bujairami 22"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "25",
+          "aliases": [
+            "25",
+            "Bujairami 25"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "26",
+          "aliases": [
+            "26",
+            "Bujairami 26"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "29",
+          "aliases": [
+            "29",
+            "Bujairami 29"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "33",
+          "aliases": [
+            "33",
+            "Bujairami 33"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "50 Shades",
+          "aliases": [
+            "50 Shades",
+            "Bujairami 50 Shades"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "A La Carte",
+          "aliases": [
+            "A La Carte",
+            "Bujairami A La Carte"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Above The Clouds",
+          "aliases": [
+            "Above The Clouds",
+            "Bujairami Above The Clouds"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Abyss",
+          "aliases": [
+            "Abyss",
+            "Bujairami Abyss"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Addiction",
+          "aliases": [
+            "Addiction",
+            "Bujairami Addiction"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Adore",
+          "aliases": [
+            "Adore",
+            "Bujairami Adore"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Adversary",
+          "aliases": [
+            "Adversary",
+            "Bujairami Adversary"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aethera",
+          "aliases": [
+            "Aethera",
+            "Bujairami Aethera"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Affectionate",
+          "aliases": [
+            "Affectionate",
+            "Bujairami Affectionate"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Affinity",
+          "aliases": [
+            "Affinity",
+            "Bujairami Affinity"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "After Dark",
+          "aliases": [
+            "After Dark",
+            "Bujairami After Dark"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Afterglow",
+          "aliases": [
+            "Afterglow",
+            "Bujairami Afterglow"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Afternoon Bliss",
+          "aliases": [
+            "Afternoon Bliss",
+            "Bujairami Afternoon Bliss"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aftershock",
+          "aliases": [
+            "Aftershock",
+            "Bujairami Aftershock"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Air Affair",
+          "aliases": [
+            "Air Affair",
+            "Bujairami Air Affair"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Airborne",
+          "aliases": [
+            "Airborne",
+            "Bujairami Airborne"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Airy Oud",
+          "aliases": [
+            "Airy Oud",
+            "Bujairami Airy Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Al Waad",
+          "aliases": [
+            "Al Waad",
+            "Bujairami Al Waad"
+          ]
+        },
+        {
+          "canonical_name": "Alpha",
+          "aliases": [
+            "Alpha",
+            "Bujairami Alpha"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Altitude",
+          "aliases": [
+            "Altitude",
+            "Bujairami Altitude"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amaretto",
+          "aliases": [
+            "Amaretto",
+            "Bujairami Amaretto"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amazing",
+          "aliases": [
+            "Amazing",
+            "Bujairami Amazing"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amazing Night",
+          "aliases": [
+            "Amazing Night",
+            "Bujairami Amazing Night"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amber Floweret",
+          "aliases": [
+            "Amber Floweret",
+            "Bujairami Amber Floweret"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amber Grove",
+          "aliases": [
+            "Amber Grove",
+            "Bujairami Amber Grove"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amira",
+          "aliases": [
+            "Amira",
+            "Bujairami Amira"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amoura",
+          "aliases": [
+            "Amoura",
+            "Bujairami Amoura"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amplify",
+          "aliases": [
+            "Amplify",
+            "Bujairami Amplify"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aoud Mineral",
+          "aliases": [
+            "Aoud Mineral",
+            "Bujairami Aoud Mineral"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aqua Infinite",
+          "aliases": [
+            "Aqua Infinite",
+            "Bujairami Aqua Infinite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aqua Prevail",
+          "aliases": [
+            "Aqua Prevail",
+            "Bujairami Aqua Prevail"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aqua Pure",
+          "aliases": [
+            "Aqua Pure",
+            "Bujairami Aqua Pure"
+          ]
+        },
+        {
+          "canonical_name": "Aqua Rush",
+          "aliases": [
+            "Aqua Rush",
+            "Bujairami Aqua Rush"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aqua Surge",
+          "aliases": [
+            "Aqua Surge",
+            "Bujairami Aqua Surge"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aquafina",
+          "aliases": [
+            "Aquafina",
+            "Bujairami Aquafina"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aquaman",
+          "aliases": [
+            "Aquaman",
+            "Bujairami Aquaman"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arabian Brew",
+          "aliases": [
+            "Arabian Brew",
+            "Bujairami Arabian Brew"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arabian Gold",
+          "aliases": [
+            "Arabian Gold",
+            "Bujairami Arabian Gold"
+          ]
+        },
+        {
+          "canonical_name": "Arabian Love",
+          "aliases": [
+            "Arabian Love",
+            "Bujairami Arabian Love"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arizona",
+          "aliases": [
+            "Arizona",
+            "Bujairami Arizona"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Artistic Lady",
+          "aliases": [
+            "Artistic Lady",
+            "Bujairami Artistic Lady"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ascension",
+          "aliases": [
+            "Ascension",
+            "Bujairami Ascension"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asfahan Oud",
+          "aliases": [
+            "Asfahan Oud",
+            "Bujairami Asfahan Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Assassin",
+          "aliases": [
+            "Assassin",
+            "Bujairami Assassin"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Astral",
+          "aliases": [
+            "Astral",
+            "Bujairami Astral"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Astro",
+          "aliases": [
+            "Astro",
+            "Bujairami Astro"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "At Last",
+          "aliases": [
+            "At Last",
+            "Bujairami At Last"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aurora",
+          "aliases": [
+            "Aurora",
+            "Bujairami Aurora"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Australian Tonka",
+          "aliases": [
+            "Australian Tonka",
+            "Bujairami Australian Tonka"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Baccarat Oud",
+          "aliases": [
+            "Baccarat Oud",
+            "Bujairami Baccarat Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Backstage",
+          "aliases": [
+            "Backstage",
+            "Bujairami Backstage"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Bad N Boujee",
+          "aliases": [
+            "Bad N Boujee",
+            "Bujairami Bad N Boujee"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Bad Obsession",
+          "aliases": [
+            "Bad Obsession",
+            "Bujairami Bad Obsession"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]

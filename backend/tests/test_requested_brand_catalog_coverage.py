@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
-    "Bujairami": 142,
+    "Bujairami": 220,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -463,6 +463,266 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_bujairami_official_collection_batch_one_has_verified_product_pages(self):
+        expected = {
+            "Glorious": ("https://bujairami.com.au/products/glorious", None),
+            "Ripper": ("https://bujairami.com.au/products/ripper-inspired-by-creed-avendus", 100),
+            "Madness Extreme": ("https://bujairami.com.au/products/madness-extreme-inspired-by-ombre-nomade-louis-vuitton", None),
+            "Woody Oud": ("https://bujairami.com.au/products/fair-dinkum-inspired-by-tom-ford-oud-wood", 100),
+            "Shortcake": ("https://bujairami.com.au/products/rise-up-inspired-vanilla-28-kayali", None),
+            "Lavish": ("https://bujairami.com.au/products/lavish-inspired-by-mfk-baccarat-rouge-540", 100),
+            "The Hype": ("https://bujairami.com.au/products/the-hype-inspired-by-side-effect-initio-parfums-prives", None),
+            "Lavish Life": ("https://bujairami.com.au/products/lavish-life-inspired-by-baccarat-rouge-540-extrait", None),
+            "Vanacco": ("https://bujairami.com.au/products/vanacco-inspired-by-tobacco-vanille-tom-ford", None),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                if size_ml is None:
+                    self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+                else:
+                    self.assertEqual(row.get("formats_ml"), [size_ml])
+                    matching = [
+                        v for v in variants
+                        if v.get("product_id") == row["product_id"] and v.get("size_ml") == size_ml
+                    ]
+                    self.assertEqual(len(matching), 1)
+                    self.assertNotIn("concentration", matching[0])
+
+
+    def test_bujairami_second_official_harvest_batch_has_verified_100ml_variants(self):
+        expected = {
+            "Dominus": ("Eau de Parfum", "https://bujairami.com.au/products/dominus-inspired-by-anelo-pernoire"),
+            "Lucid Dream": ("Extrait de Parfum", "https://bujairami.com.au/products/lucid-dream-inspired-by-lucius-fragrance-du-bois-extrait"),
+            "Drip": ("Extrait de Parfum", "https://bujairami.com.au/product/drip-inspired-by-afternoon-swim-louis-vuitton-extrait/?add-to-cart=243936"),
+            "Sandy Shores": ("Eau de Parfum", "https://bujairami.com.au/products/sea-of-emotions-inspired-louis-vuitton-by-on-the-beach"),
+            "Shinko": ("Eau de Parfum", "https://bujairami.com.au/products/137683"),
+            "Kokoma Paradise": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/kokoma-paradise/"),
+            "Eleganto": ("Extrait de Parfum", "https://bujairamiperfumes.eu/perfumes/eleganto/"),
+            "Safari Squeeze": ("Eau de Parfum", "https://bujairami.com.au/products/safari-squeeze-inspired-by-tales-from-zanzibar-memoirs-of-a-perfume-collector"),
+            "Stellar": ("Eau de Parfum", "https://bujairami.com.au/products/stellar-inspired-by-city-of-stars-by-louis-vuitton"),
+            "Downtown": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/downtown/"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (concentration, source_url) in expected.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name" if "bujairami.com.au" in source_url else "source_listed_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+
+
+
+    def test_bujairami_third_batch_name_listed_100ml_products(self):
+        expected = {
+            "10/10": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/10-10/"),
+            "22": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/22/"),
+            "25": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/25/"),
+            "26": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/26/"),
+            "29": ("Extrait de Parfum", "https://bujairamiperfumes.eu/perfumes/29/"),
+            "33": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/33/"),
+            "50 Shades": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/50-shades/"),
+            "A La Carte": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/a-la-carte/"),
+            "Above The Clouds": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/above-the-clouds/"),
+            "Abyss": ("Eau de Parfum", "https://bujairamiperfumes.eu/perfumes/abyss/"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (concentration, source_url) in expected.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+
+
+
+    def test_bujairami_fourth_batch_authorized_guide_products(self):
+        expected = [
+            "Addiction", "Adore", "Adversary", "Aethera", "Affectionate",
+            "Affinity", "After Dark", "Afterglow", "Afternoon Bliss", "Aftershock",
+        ]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name in expected:
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("formats_ml"), [100])
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+
+
+
+    def test_bujairami_fifth_batch_air_and_amber_names(self):
+        expected_sizes = {
+            "Air Affair": 100,
+            "Airborne": 100,
+            "Airy Oud": 100,
+            "Alpha": 100,
+            "Altitude": 100,
+            "Amaretto": 100,
+            "Amazing": 100,
+            "Amazing Night": 100,
+            "Amber Floweret": 100,
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, size_ml in expected_sizes.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                self.assertEqual(
+                    sum(v.get("product_id") == row["product_id"] and v.get("size_ml") == size_ml for v in variants),
+                    1,
+                )
+        al_waad = products["Al Waad"]
+        self.assertEqual(al_waad.get("concentration"), "Eau de Parfum")
+        self.assertNotIn("formats_ml", al_waad)
+        self.assertFalse(any(v.get("product_id") == al_waad["product_id"] for v in variants))
+
+
+
+    def test_bujairami_sixth_batch_amber_and_aqua_products(self):
+        expected_sizes = {
+            "Amber Grove": [100],
+            "Amira": [50, 100],
+            "Amoura": [100],
+            "Amplify": [100],
+            "Aoud Mineral": [100],
+            "Aqua Infinite": [100],
+            "Aqua Prevail": [100],
+            "Aqua Rush": [100],
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, sizes in expected_sizes.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), sizes)
+                self.assertEqual(
+                    sorted(v.get("size_ml") for v in variants if v.get("product_id") == row["product_id"]),
+                    sizes,
+                )
+        aqua_pure = products["Aqua Pure"]
+        self.assertEqual(aqua_pure.get("concentration"), "Eau de Parfum")
+        self.assertNotIn("formats_ml", aqua_pure)
+        self.assertFalse(any(v.get("product_id") == aqua_pure["product_id"] for v in variants))
+
+
+
+    def test_bujairami_seventh_batch_aqua_arabian_and_oud_names(self):
+        expected_sizes = {
+            "Aqua Surge": [100],
+            "Aquafina": [100],
+            "Aquaman": [100],
+            "Arabian Brew": [100],
+            "Arabian Love": [100],
+            "Arizona": [100],
+            "Artistic Lady": [100],
+            "Ascension": [100],
+            "Asfahan Oud": [100],
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, sizes in expected_sizes.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), sizes)
+                self.assertEqual(
+                    sorted(v.get("size_ml") for v in variants if v.get("product_id") == row["product_id"]),
+                    sizes,
+                )
+        arabian_gold = products["Arabian Gold"]
+        self.assertEqual(arabian_gold.get("concentration"), "Eau de Parfum")
+        self.assertNotIn("formats_ml", arabian_gold)
+        self.assertFalse(any(v.get("product_id") == arabian_gold["product_id"] for v in variants))
+
+
+
+    def test_bujairami_eighth_batch_assassin_to_bad_obsession(self):
+        expected = [
+            "Assassin", "Astral", "Astro", "At Last", "Aurora",
+            "Australian Tonka", "Baccarat Oud", "Backstage", "Bad N Boujee", "Bad Obsession",
+        ]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name in expected:
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [100])
+                self.assertEqual(
+                    sum(v.get("product_id") == row["product_id"] and v.get("size_ml") == 100 for v in variants),
+                    1,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
