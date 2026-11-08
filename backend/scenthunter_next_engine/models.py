@@ -38,7 +38,7 @@ class CanonicalVariant:
             raise ValueError("size_ml must be positive when provided")
         if any(not alias.strip() for alias in self.aliases):
             raise ValueError("variant aliases must not be empty strings")
-        if self.product_form is not None and self.product_form not in PRODUCT_FORM_VALUES:
+        if self.product_form is not None and (not isinstance(self.product_form, str) or self.product_form not in PRODUCT_FORM_VALUES):
             raise ValueError("product_form is not a supported product form")
 
 
