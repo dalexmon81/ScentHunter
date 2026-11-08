@@ -171,6 +171,24 @@ does not establish concentration. Do not bulk-fill these values or treat the
 88 rows as 88 missing products.
 
 
+
+## Mykonos 15 ml travel variants — follow-up correction
+
+Draft PR [#570](https://github.com/dalexmon81/ScentHunter/pull/570) records
+concentration and provenance on 15 existing 15 ml Mykonos travel variants.
+The concentration is copied only where the parent product already carries
+`Extrait de Parfum` and an official Mykonos source URL. The official Travel
+Size page confirms the 15 ml size and enumerates the fragrance options:
+`https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml`.
+Official collection pages provide the parent product concentration labels.
+
+The three travel variants deliberately left unchanged are **Sansa, Affair and
+Tea Poetry**: the current parent catalog rows do not provide an explicit
+concentration. No concentration was guessed. PR #570 adds a regression test
+to the existing requested-brand validation suite. At the time of this audit
+update, the PR head was `8c387691394ead6a578f88f120247ebe06693848`; its CI
+run had not yet appeared in the workflow-run lookup.
+
 ## Progress after the concentration-gap scan
 
 A focused evidence-backed correction is now proposed in draft PR
