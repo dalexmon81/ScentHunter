@@ -92,6 +92,37 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIn(name.casefold(), names)
 
+    def test_french_avenue_new_arrivals_are_present_as_verified_100ml_variants(self):
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "French Avenue"
+        }
+        variants = CATALOG.get("variants", [])
+        expected = {
+            "Eclipse": ("https://frenchavenue.com/products/eclipse", "Extrait de Parfum"),
+            "Eclipse Nova": (
+                "https://frenchavenue.com/products/eclipse-nova-extrait",
+                "Extrait de Parfum",
+            ),
+        }
+        for name, (source_url, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                self.assertEqual(products[name].get("identity_status"), "source_verified_name")
+                self.assertEqual(products[name].get("source_url"), source_url)
+                self.assertEqual(products[name].get("concentration"), concentration)
+                matching_variants = [
+                    row for row in variants if row.get("product_id") == products[name]["product_id"]
+                ]
+                self.assertTrue(
+                    any(
+                        row.get("size_ml") == 100
+                        and row.get("concentration") == concentration
+                        for row in matching_variants
+                    )
+                )
+
     def test_aromatix_signature_collection_is_present(self):
         names = {
             str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
