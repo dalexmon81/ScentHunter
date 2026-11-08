@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from .models import CanonicalProduct, CanonicalVariant
+from .product_form import normalize_product_form
 
 
 class CatalogFormatError(ValueError):
@@ -129,6 +130,7 @@ class CatalogRepository:
                     size_ml=size_ml,
                     label=label,
                     aliases=variant_aliases,
+                    product_form=normalize_product_form(record.get("product_form")),
                 )
             except ValueError:
                 skipped_variants += 1
