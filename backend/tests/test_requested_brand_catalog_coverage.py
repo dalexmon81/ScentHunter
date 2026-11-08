@@ -20,7 +20,7 @@ MINIMUM_BRAND_COUNTS = {
     "Assaf": 140,
     "Al Wataniah": 86,
     "Armaf": 190,
-    "French Avenue": 119,
+    "French Avenue": 117,
     "Arabiyat Prestige": 118,
     "Gulf Orchid": 23,
     "Swiss Arabian": 32,
@@ -565,6 +565,60 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             len(set(maison_alhambra_gtins)),
             "Maison Alhambra variant GTINs must not be duplicated across identities.",
         )
+
+
+    def test_french_avenue_genesis_archetypes_are_single_verified_product_identities(self):
+        expected = {
+            "Aries": (
+                "SH-FRENCH-AVENUE-6cc2b55d",
+                "https://frenchavenue.com/products/aries",
+                "Genesis Aries",
+            ),
+            "Aquarius": (
+                "SH-FRENCH-AVENUE-b7f6e788",
+                "https://frenchavenue.com/products/aquarius",
+                "Genesis Aquarius",
+            ),
+        }
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand") == "French Avenue"
+        ]
+        variants = CATALOG.get("variants", [])
+        for name, (product_id, source_url, former_label) in expected.items():
+            with self.subTest(name=name):
+                matches = [row for row in products if row.get("canonical_name") == name]
+                self.assertEqual(len(matches), 1)
+                row = matches[0]
+                self.assertEqual(row.get("product_id"), product_id)
+                self.assertEqual(row.get("family_id"), "french_avenue_genesis")
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_product_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [100])
+                self.assertIn(former_label, row.get("aliases", []))
+                matching = [v for v in variants if v.get("product_id") == product_id]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), 100)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertFalse(any(
+                    other.get("canonical_name") == former_label
+                    for other in products
+                ))
+
+    def test_amber_and_leather_deodorant_barcode_is_not_assigned_to_perfume_identity(self):
+        row = next(
+            product for product in CATALOG.get("products", [])
+            if product.get("brand") == "Maison Alhambra"
+            and product.get("canonical_name") == "Amber & Leather"
+        )
+        self.assertEqual(row.get("identity_status"), "source_listed_name")
+        self.assertNotIn("6291108731925", row.get("gtins", []))
+        self.assertFalse(any(
+            variant.get("product_id") == row["product_id"]
+            for variant in CATALOG.get("variants", [])
+        ))
 
 
 if __name__ == "__main__":
