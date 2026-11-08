@@ -172,6 +172,33 @@ does not establish concentration. Do not bulk-fill these values or treat the
 
 
 
+
+## French Avenue / Aromatix variant concentration review
+
+Draft PR [#571](https://github.com/dalexmon81/ScentHunter/pull/571) proposes
+seven concentration/provenance corrections using exact French Avenue product
+pages: Forbidden Fruit (EDP), Magnetiq (EDP), Naughty Dates (EDP), Royal Taboo
+(Extrait), Sun Kissed (EDP), Teas Me (EDP), and X Xandal (Extrait). The PR
+updates the corresponding existing 100 ml variant rows and replaces the
+generic `https://frenchavenue.com/products/` source with each product's exact
+manufacturer URL.
+
+**Retailer conflict:** Notino Belgium labels Magnetiq, Forbidden Fruit, Sun
+Kissed and Teas Me as Extrait, while the French Avenue manufacturer pages
+specify EDP. The draft follows the primary manufacturer product specifications
+and preserves the discrepancy here for future review.
+
+**Not changed:** Carnal Desire (the official page title/snippet says Extrait
+but its specifications say EDP), Frostbite (no clear manufacturer concentration
+found; retailer sources disagree), Platine Blanc (manufacturer page does not
+state concentration in the retrieved specifications), and Ora/Roza (no
+manufacturer detail page with explicit concentration identified). No values
+were guessed.
+
+PR #570's corrected Mykonos test suite passed on exact head
+`ad84d8894b5da3660a1bb4ed6452eacc1b86621c` (run 42526801677). PR #571 CI
+was still running when this audit section was added.
+
 ## Mykonos 15 ml travel variants — follow-up correction
 
 Draft PR [#570](https://github.com/dalexmon81/ScentHunter/pull/570) records
