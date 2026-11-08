@@ -12,7 +12,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 99,
+    "Mykonos": 98,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -532,6 +532,32 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matched), 1)
         black = products["Monaco Royale Black"]
         self.assertEqual(sorted(v.get("size_ml") for v in variants if v.get("product_id") == black["product_id"]), [50, 100])
+
+
+    def test_mykonos_imperium_is_an_alias_of_empire_x_rrq_not_a_duplicate_product(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertNotIn("Imperium", products)
+        empire = products["Empire x RRQ"]
+        self.assertIn("Imperium", empire.get("aliases", []))
+        self.assertIn("Mykonos Imperium", empire.get("aliases", []))
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == empire["product_id"] and row.get("size_ml") == 100
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertIn("Imperium 100 ml", variants[0].get("aliases", []))
+
+    def test_mykonos_inspire_parfum_fragrantica_name_is_an_alias(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Inspire Parfum", products["Inspire Perfume"].get("aliases", []))
 
     def test_mykonos_announced_names_are_catalogued_without_guessing_variants(self):
         expected = {
