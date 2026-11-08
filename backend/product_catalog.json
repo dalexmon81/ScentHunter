@@ -33967,7 +33967,8 @@
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-29189f4e-80-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6291108736081"
+      "gtin": "6291108736081",
+      "product_form": "fine_fragrance"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-61a3375c",
@@ -33978,7 +33979,8 @@
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-61a3375c-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6291107459080"
+      "gtin": "6291107459080",
+      "product_form": "fine_fragrance"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-2fc0bad4",
@@ -33989,7 +33991,8 @@
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-2fc0bad4-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6290360599243"
+      "gtin": "6290360599243",
+      "product_form": "fine_fragrance"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-9b536535",
@@ -36668,7 +36671,8 @@
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-0840cbf0-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6291108735879"
+      "gtin": "6291108735879",
+      "product_form": "fine_fragrance"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-482df3c5",
@@ -36679,7 +36683,8 @@
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-482df3c5-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6291108730058"
+      "gtin": "6291108730058",
+      "product_form": "fine_fragrance"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7c1ece5a",
@@ -36690,7 +36695,8 @@
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-7c1ece5a-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6291107459103"
+      "gtin": "6291107459103",
+      "product_form": "fine_fragrance"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-6cc2b55d",
@@ -36700,7 +36706,8 @@
         "French Avenue Aries 100 ml"
       ],
       "variant_id": "SHV-SH-FRENCH-AVENUE-6cc2b55d-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "product_form": "fine_fragrance"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-b7f6e788",
@@ -36710,7 +36717,8 @@
         "French Avenue Aquarius 100 ml"
       ],
       "variant_id": "SHV-SH-FRENCH-AVENUE-b7f6e788-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "product_form": "fine_fragrance"
     }
   ]
 }
