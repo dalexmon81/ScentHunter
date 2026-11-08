@@ -16,7 +16,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 99,
     "Maison Asrar": 120,
-    "Khadlaj": 116,
+    "Khadlaj": 233,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
@@ -966,6 +966,258 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         variants = [row for row in CATALOG.get("variants", []) if row.get("product_id") in products]
         self.assertEqual(len(variants), 84)
         missing = [row.get("variant_id") for row in variants if not str(row.get("source_evidence_url") or "").strip()]
+        self.assertEqual(missing, [])
+
+
+    def test_khadlaj_official_store_and_fragrantica_reconciliation_additions(self):
+        expected = {
+            "Bleu Glace": (100, "Extrait de Parfum"),
+            "Code Viola Nectar": (100, "Eau de Parfum"),
+            "Desert Rose": (100, "Extrait de Parfum"),
+            "Gaith": (100, "Eau de Parfum"),
+            "Johayna Green": (20, "Perfume Oil"),
+            "Kayaan Gold": (20, "Perfume Oil"),
+            "Maya": (20, "Perfume Oil"),
+            "Mocha Latte": (100, "Extrait de Parfum"),
+            "Nuha": (85, "Eau de Parfum"),
+            "Opulence Bleu": (100, "Eau de Parfum"),
+            "Pink Musk": (20, "Perfume Oil"),
+            "Purple Musk": (20, "Perfume Oil"),
+            "Rasayel Shagaf": (100, "Eau de Parfum"),
+            "Rasayel Vid": (100, "Eau de Parfum"),
+            "Rose And Romance": (100, "Eau de Parfum"),
+            "Uno Sensuale": (100, "Eau de Parfum"),
+            "Wow Oud": (100, "Eau de Parfum"),
+            "Biscotti Melon Misk": (100, "Extrait de Parfum"),
+            "Hareem Al Sultan Blue": (35, "Perfume Oil"),
+            "Hareem Al Sultan Silver": (35, "Perfume Oil"),
+            "Aaliya": (27, "Perfume Oil"),
+            "Al Riyan": (17, "Perfume Oil"),
+            "Alf Wardaat": (30, "Perfume Oil"),
+            "Amber Pure": (20, "Perfume Oil"),
+            "Anabia Blue": (20, "Perfume Oil"),
+            "Anabia Red": (20, "Perfume Oil"),
+            "Arabian Treasure": (20, "Perfume Oil"),
+            "Azaari": (17, "Perfume Oil"),
+            "Ghazlaan": (20, "Perfume Oil"),
+            "Haneen Gold": (20, "Perfume Oil"),
+            "Ibhaar": (18, "Perfume Oil"),
+            "Jameel": (25, "Perfume Oil"),
+            "Malika Red": (20, "Perfume Oil"),
+            "Oud & Musk": (20, "Perfume Oil"),
+            "Raniya": (18, "Perfume Oil"),
+            "Rimaal Brown": (15, "Perfume Oil"),
+            "Roohi Wa Roohak Gold": (20, "Perfume Oil"),
+            "Shamookh Gold": (20, "Perfume Oil"),
+            "Shamookh Silver": (20, "Perfume Oil"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                    and variant.get("size_ml") == size_ml
+                    and variant.get("concentration") == concentration
+                ]
+                self.assertEqual(len(matching), 1)
+        pure = products["Pure Musk"]
+        self.assertEqual(
+            {(v.get("size_ml"), v.get("concentration")) for v in variants if v.get("product_id") == pure["product_id"]},
+            {(20, "Perfume Oil")},
+        )
+        pure_edp = products["Pure Musk EDP"]
+        self.assertEqual(
+            {(v.get("size_ml"), v.get("concentration")) for v in variants if v.get("product_id") == pure_edp["product_id"]},
+            {(100, "Eau de Parfum")},
+        )
+        self.assertIn("Ana Wa Anta", products)
+        self.assertIn("Musk Ice", products["Private Blend Musk Ice"].get("aliases", []))
+        self.assertIn("Creation De Reve", products["Maison Creation De Reve"].get("aliases", []))
+        self.assertIn("Epoque Artistique", products["Maison Epoque Artistique"].get("aliases", []))
+        self.assertIn("Flor Oud", products["Maison Flor Oud"].get("aliases", []))
+        self.assertIn("L'Imaginaire", products["Maison L'Imaginaire"].get("aliases", []))
+        self.assertIn("L'Or Noir", products["Maison L'Or Noir"].get("aliases", []))
+        for name in ("D'Love", "Barwaaz Pure Navy", "Ghadeer Gold", "Vanilla Kiss", "Lulu Al Khaleej", "Nagham", "Rasha", "Safari Gold"):
+            self.assertIn(name, products)
+
+    def test_all_147_fragrantica_khadlaj_names_are_covered_by_canonical_names_or_aliases(self):
+        def normalize(value):
+            value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
+            return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+        khadlaj = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        ]
+        searchable = {
+            normalize(name)
+            for row in khadlaj
+            for name in [row.get("canonical_name"), *(row.get("aliases") or [])]
+            if name
+        }
+        fragrantica_names = [
+          "Bleu Glace",
+          "Caffe Latte",
+          "Cashmere Sunshine Musk",
+          "Cashmere Warm Oud",
+          "Cloud Candy",
+          "Code Viola Nectar",
+          "D'Love",
+          "Desert Rose",
+          "Gaith",
+          "Icon",
+          "Ihthiraam",
+          "Johayna Green",
+          "Kayaan Gold",
+          "Magnate Noble",
+          "Mansion",
+          "Maya",
+          "Mocha Latte",
+          "Muse",
+          "Musk Al Sabah",
+          "Musk Ice",
+          "Musk Pour Amber",
+          "Musk Pour Narcis",
+          "Ombre Notes",
+          "Opulence Bleu",
+          "Oud Noir",
+          "Pink Musk",
+          "Pure Musk",
+          "Purple Musk",
+          "Qarar",
+          "Rasayel Shagaf",
+          "Rasayel Vid",
+          "Ria",
+          "Rose & Romance",
+          "Rose Couture",
+          "Sara",
+          "Sawaar Vanille Blanc",
+          "Sensuous Night",
+          "Shiyaaka White",
+          "Strawberry Shake",
+          "Sueno",
+          "The Proposal Date Night",
+          "Titan",
+          "Uno Sensuale",
+          "Vanilla Kiss",
+          "Wow Oud",
+          "Zayaan Gold",
+          "Zayaan Silver",
+          "Barwaaz Pure Navy",
+          "Barwaaz Solid Grey",
+          "Biscotti Caramel Pop",
+          "Biscotti Date Toffee",
+          "Biscotti Melon Misk",
+          "Empire Crown",
+          "Empire Regent",
+          "Empire Victor",
+          "Fursan Brown",
+          "Fursan White",
+          "Ghadeer Gold",
+          "Ghadeer Silver",
+          "Hareem Al Sultan",
+          "Hareem Al Sultan Blue",
+          "Hareem Al Sultan Gold",
+          "Hareem Al Sultan Silver",
+          "Infini",
+          "Infini Absolute",
+          "Island",
+          "Island Dreams",
+          "Island Sun",
+          "Island Vanilla Dunes",
+          "Karus Amber Gold",
+          "Karus Blu Spice",
+          "Karus Gold Absolu",
+          "Karus Oud Fire",
+          "Karus Secret Musk",
+          "Khadlaj 25 Experience",
+          "Khadlaj 25 Heritage",
+          "Khadlaj 25 Integrity",
+          "Khadlaj 25 Loyalty",
+          "Khadlaj 25 Trust",
+          "Le Prestige Bold",
+          "Le Prestige Empress",
+          "Le Prestige King",
+          "Le Prestige Royal",
+          "Creation De Reve",
+          "Epoque Artistique",
+          "Flor Oud",
+          "L'imaginaire",
+          "L'Or Noir",
+          "Musk Pure Musk Blend",
+          "Mystical Indian Oud Pure",
+          "Oud Pure Oud Barakat",
+          "Oud Pure Oud Galazaid",
+          "Oud Pure Oud Jumeirah",
+          "Wild Indonesian Oud",
+          "Nafais Magrib",
+          "Nafais Sharq",
+          "Nuha",
+          "Nuha Bon Bon",
+          "Nuha Cherry Blush",
+          "Nuha Vanilla Pearl",
+          "Onyx Galaxy",
+          "Onyx Gold",
+          "Onyx Silver",
+          "Oud Pour Blueberry",
+          "Oud Pour Klassik",
+          "Panache Angel Dust",
+          "Panache Eleganza",
+          "Shiyaaka Blue",
+          "Shiyaaka For Men",
+          "Shiyaaka Gold",
+          "Shiyaaka Rose Gold",
+          "Shiyaaka Shadow",
+          "Shiyaaka Sky",
+          "Shiyaaka Snow",
+          "Stellar Musk",
+          "Stellar Oud",
+          "Valor Chivalry",
+          "Valor Enigma",
+          "Valor Honor",
+          "Valor Mystique",
+          "Azure Velvet",
+          "Cream Velvet",
+          "Peach Velvet",
+          "Aaliya",
+          "Al Riyan",
+          "Alf Wardat",
+          "Amber Pure",
+          "Ana Wa Anta",
+          "Anabia Blue",
+          "Anabia Red",
+          "Arabian Treasure",
+          "Azaari",
+          "Ghazlaan",
+          "Haneen Gold",
+          "Ibhaar",
+          "Jameel",
+          "Lulu Al Khaleej",
+          "Malika Red",
+          "Nagham",
+          "Oud & Musk",
+          "Raniya",
+          "Rasha",
+          "Rimaal Brown",
+          "Roohi Wa Roohak Gold",
+          "Safari Gold",
+          "Shamookh Gold",
+          "Shamookh Silver"
+]
+        missing = [
+            name for name in fragrantica_names
+            if normalize(name) not in searchable
+        ]
+        self.assertEqual(len(fragrantica_names), 147)
         self.assertEqual(missing, [])
 
 if __name__ == "__main__":
