@@ -171,6 +171,11 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     ):
         raise PromotionRejected("captured_at must be a timezone-aware datetime")
     observation_time = captured_at or datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    if observation_time < now - timedelta(minutes=store.offer_ttl_minutes):
+        raise PromotionRejected("source_capture_expired")
+    if observation_time > now + timedelta(minutes=5):
+        raise PromotionRejected("source_capture_time_in_future")
     valid_until = observation_time + timedelta(minutes=store.offer_ttl_minutes)
 
     # Retailer identity is the idempotency key. Never reuse an unrelated
