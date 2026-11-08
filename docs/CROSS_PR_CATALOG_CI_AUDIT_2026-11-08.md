@@ -10,16 +10,16 @@
 
 **CI gate: blocked — expected while overlaps remain unresolved.**
 
-The cross-PR audit completed its scan and reported **102 findings**. The job stopped at the audit step, so the existing catalog unit-test step was skipped in this run. This is not a green CI run and must not be described as one.
+The cross-PR audit completed its scan and reported **96 findings**. The job stopped at the audit step, so the existing catalog unit-test step was skipped in this run. This is not a green CI run and must not be described as one.
 
 | Finding type | Count | Meaning |
 |---|---:|---|
 | Normalized product identity collisions | 14 | Same brand/name represented by different product IDs |
 | Variant tuple collisions | 48 | Same product, size and concentration represented by different variant IDs |
-| Identical product additions across PRs | 2 | Same product ID/identity added independently |
-| Identical variant additions across PRs | 23 | Same variant change proposed by multiple PRs |
-| Shared family-registry additions | 15 | Same family/canonical entry added in more than one PR |
-| **Total findings** | **102** | Categories can describe the same underlying overlap |
+| Identical product additions across PRs | 0 | No identical product additions remain in the audited PR set |
+| Identical variant additions across PRs | 21 | Same Armaf variant change proposed by multiple PRs |
+| Shared family-registry additions | 13 | Same Armaf or Lattafa family/canonical entry added in more than one PR |
+| **Total findings** | **96** | Categories can describe the same underlying overlap |
 
 The audit compares each PR against its **actual base branch**. This is important: cumulative descendants are not counted as if all inherited rows were newly added by the descendant PR.
 
@@ -67,37 +67,36 @@ That produces **48 duplicated product/size/concentration tuples**. The variant I
 
 Choose one variant ID per tuple. Do not count the two naming schemes as distinct stock-keeping variants.
 
-## 3. Identical product additions — 2
+## 3. Gulf Orchid overlap — resolved in PR #584
 
-PRs #542 and #554 independently add the same Gulf Orchid products with the same IDs:
+The audit now uses PR #584 in place of the overlapping PR #554. PR #584 is based on PR #542 and carries only seven unique new-arrival additions: Belle, Amour, Chic, Phantom, Flamma, Vortex and Rosalia.
 
-- Cloud 9 — `SH-GULF-ORCHID-CLOUD-9`
-- Maestro — `SH-GULF-ORCHID-MAESTRO`
+- Cloud 9 and Maestro remain inherited once from PR #542.
+- The combined branch contains one product and one 100 ml EDP variant per fragrance.
+- The family registry contains the seven additional identities once.
+- Vanilla Aura and Vanilla Voyage remain excluded from Gulf Orchid because #542 corrected their brand attribution to Maison Asrar.
+- PR #554 remains open/draft but is no longer part of the audit candidate set; it has been identified as superseded by #584.
 
-Keep one product row per fragrance in the combined catalog.
+The resulting combined catalog was checked for unique product IDs, variant IDs, normalized brand/name identities and product/size/concentration tuples. The Gulf Orchid overlap findings have fallen to zero.
 
-## 4. Identical variant additions — 23
+## 4. Identical variant additions — 21
 
-- **21 Armaf variant concentration updates** are repeated by both #569 and #573. They are the same existing variant IDs and same EDP/source corrections, not 42 distinct corrections.
-- **2 Gulf Orchid variants** are repeated by #542 and #554:
-  - Cloud 9, 100 ml EDP
-  - Maestro, 100 ml EDP
+**21 Armaf variant concentration updates** are repeated by both #569 and #573. They are the same existing variant IDs and same EDP/source corrections, not 42 distinct corrections.
 
 Keep one change per variant tuple and preserve the best-supported source evidence.
 
-## 5. Shared family-registry additions — 15
+## 5. Shared family-registry additions — 13
 
 | Family | Canonical entries | PRs |
 |---|---|---|
 | Armaf | Check Mate White Knight; Odyssey French Kiss | #558, #564, #565 |
-| Gulf Orchid | Cloud 9; Maestro | #542, #554 |
 | Lattafa | Atlas Canyon; Atlas Glacial Valley; Badee Al Oud Amethyst Fusion; Beyond Precious; Farfasha; Harlequin Cream Give Me Gourmand; Khamrah Mira; Majd Al Sultan Black Intense; Matcha Swirl Give Me Gourmand; Petra Viola; Raghad | #555, #562, #576, #577 |
 
 The family registry should contain one canonical row for each fragrance identity. Legitimate alternate spellings belong in aliases, not duplicate canonical rows.
 
 ## Recommended reconciliation order
 
-1. **Gulf Orchid #542/#554:** remove the two repeated product rows, variant rows and family entries while preserving the genuinely new arrivals from both PRs.
+1. **Gulf Orchid #542/#554:** consolidated in #584; seven unique new arrivals are retained without duplicate Cloud 9 or Maestro records.
 2. **Velixir #465/#517:** select one stable variant-ID scheme for all 48 repeated tuples.
 3. **Armaf #558/#564/#565:** reconcile Check Mate White Knight and Odyssey French Kiss; keep the complementary regional source URLs.
 4. **Lattafa #555/#562/#576/#577/#578:** choose one product ID per canonical identity and consolidate aliases, source evidence and variants.
