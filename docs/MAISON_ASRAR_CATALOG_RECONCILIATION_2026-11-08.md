@@ -7,7 +7,7 @@ The brand-owned storefront is the primary source:
 - Fragrances: https://maisonasrar.com/collections/perfume-sprays
 - Collections: https://maisonasrar.com/collections
 
-At the time of this audit, the official all-products collection displayed 130 products, while the dedicated Fragrances collection displayed 74 product cards across seven pages. The final page repeats Belgravia, so the visible fragrance collection contains 73 distinct names. The storefront separately labels Room Spray and Home Fragrances in its navigation. Therefore the 130-item all-products count must not be interpreted as 130 perfumes.
+At the time of this audit, the official all-products collection displayed 130 products, while the dedicated Fragrances collection displayed 74 product cards across seven pages. The seven pages contain 74 distinct fragrance names. The storefront separately labels Room Spray and Home Fragrances in its navigation. Therefore the 130-item all-products count must not be interpreted as 130 perfumes.
 
 An independent EU reseller's guide lists 116 scents and explicitly states that it is not the official Maison Asrar website. It is useful as a discovery and historical cross-check, but it is not treated as primary proof of brand ownership or a substitute for official product pages:
 https://maisonasrarperfumes.eu/perfumes/
