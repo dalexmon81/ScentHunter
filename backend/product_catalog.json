@@ -32433,6 +32433,36 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-LATTAFA-QUEEN-OF-ARABIA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Queen of Arabia",
+      "name": "Queen of Arabia",
+      "family_id": "lattafa_asad",
+      "family_name": "Queen of Arabia",
+      "aliases": [
+        "Queen of Arabia",
+        "Lattafa Queen of Arabia"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/queen-of-arabia/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MUSAMAM-BLACK-INTENSE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Musamam Black Intense",
+      "name": "Musamam Black Intense",
+      "family_id": "lattafa_asad",
+      "family_name": "Musamam Black Intense",
+      "aliases": [
+        "Musamam Black Intense",
+        "Lattafa Musamam Black Intense"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/musamam-black-intense/"
     }
   ],
   "variants": [
