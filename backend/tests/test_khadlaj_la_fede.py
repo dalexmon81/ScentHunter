@@ -1,4 +1,9 @@
-"""Regression tests for Khadlaj La Fede collection reconciliation."""
+"""Regression tests for individually verified Khadlaj La Fede identities.
+
+The family registry contains a broader 36-name discovery list. Only names with
+individual official product-detail evidence are promoted into the canonical
+seed by this test; registry-only candidates are deliberately not bulk-imported.
+"""
 import json
 import unittest
 from pathlib import Path
@@ -6,6 +11,24 @@ from pathlib import Path
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+
+EXPECTED = {
+    "La Fede Intoxicate Mystique": {
+        "size_ml": 100,
+        "concentration": "Extrait de Parfum",
+        "url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy",
+    },
+    "La Fede Celebrity Crush": {
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum",
+    },
+    "La Fede Celebrity Fame": {
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum",
+    },
+}
 
 
 class KhadlajLaFedeTests(unittest.TestCase):
@@ -18,43 +41,40 @@ class KhadlajLaFedeTests(unittest.TestCase):
             f for f in REGISTRY["families"] if f["family_id"] == "khadlaj_la_fede"
         )
 
-    def test_official_la_fede_parent_collection_and_new_launch_are_reconciled(self):
-        self.assertEqual(len(self.products), 36)
-        names = {p["canonical_name"] for p in self.products}
-        self.assertIn("La Fede Intoxicate Mystique", names)
-        self.assertIn("La Fede Celebrity Crush", names)
-        self.assertIn("La Fede Celebrity Fame", names)
+    def test_individually_verified_la_fede_products_are_canonical(self):
+        self.assertEqual({p["canonical_name"] for p in self.products}, set(EXPECTED))
+        self.assertEqual(len(self.family["products"]), 36)
 
-    def test_family_registry_has_exact_product_parity(self):
-        catalog_names = {p["canonical_name"].casefold() for p in self.products}
-        registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
-        self.assertEqual(catalog_names, registry_names)
+    def test_each_canonical_la_fede_product_has_official_detail_evidence(self):
+        for name, expected in EXPECTED.items():
+            product = next(p for p in self.products if p["canonical_name"] == name)
+            self.assertEqual(product["identity_status"], "source_verified_name")
+            self.assertEqual(product["source_product_url"], expected["url"])
+            self.assertEqual(product["source_url"], expected["url"])
 
-    def test_la_fede_products_are_removed_from_other_khadlaj_families(self):
+    def test_verified_variants_match_official_product_details(self):
+        for name, expected in EXPECTED.items():
+            product = next(p for p in self.products if p["canonical_name"] == name)
+            variants = [
+                v for v in CATALOG["variants"]
+                if v["product_id"] == product["product_id"]
+            ]
+            self.assertEqual(len(variants), 1)
+            self.assertEqual(variants[0]["size_ml"], expected["size_ml"])
+            self.assertEqual(variants[0]["concentration"], expected["concentration"])
+
+    def test_la_fede_products_are_not_duplicated_in_other_khadlaj_families(self):
+        canonical_names = {p["canonical_name"].casefold() for p in self.products}
         for family in REGISTRY["families"]:
             if family["family_id"] == "khadlaj_la_fede":
                 continue
             names = {p["canonical_name"].casefold() for p in family.get("products", [])}
-            self.assertFalse(names & {p["canonical_name"].casefold() for p in self.products})
+            self.assertFalse(names & canonical_names)
 
-    def test_celebrity_crush_and_fame_have_verified_100ml_edp_variants(self):
-        for name in ("La Fede Celebrity Crush", "La Fede Celebrity Fame"):
-            product = next(p for p in self.products if p["canonical_name"] == name)
-            variant = next(v for v in CATALOG["variants"] if v["product_id"] == product["product_id"])
-            self.assertEqual(variant["size_ml"], 100)
-            self.assertEqual(variant["concentration"], "Eau de Parfum")
-
-    def test_intoxicate_mystique_is_verified_100ml_extrait(self):
-        product = next(p for p in self.products if p["canonical_name"] == "La Fede Intoxicate Mystique")
-        variant = next(v for v in CATALOG["variants"] if v["product_id"] == product["product_id"])
-        self.assertEqual(variant["size_ml"], 100)
-        self.assertEqual(variant["concentration"], "Extrait de Parfum")
-        self.assertEqual(product["source_product_url"], "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy")
-
-    def test_product_ids_and_variant_ids_are_unique(self):
-        ids = [p["product_id"] for p in self.products]
+    def test_product_and_variant_ids_are_unique(self):
+        product_ids = [p["product_id"] for p in CATALOG["products"]]
         variant_ids = [v["variant_id"] for v in CATALOG["variants"]]
-        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(len(product_ids), len(set(product_ids)))
         self.assertEqual(len(variant_ids), len(set(variant_ids)))
 
 
