@@ -25,7 +25,7 @@ MINIMUM_BRAND_COUNTS = {
     "Gulf Orchid": 23,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
-    "Lattafa": 114,
+    "Lattafa": 121,
     "Afnan": 87,
     "Aromatix": 12,
     "Maison Alhambra": 203,
@@ -542,6 +542,46 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
         self.assertEqual(matching[0].get("source_evidence_url"), official_url)
+
+
+
+    def test_seven_lattta_new_launches_have_official_pages_and_explicit_sizes(self):
+        expected = {
+            "Khamrah Mira": ("https://lattafa.com/product/khamrah-mira/", 100),
+            "Beyond Precious": ("https://lattafa.com/product/beyond-precious/", 100),
+            "Atlas Canyon": ("https://lattafa.com/product/atlas-canyon/", 55),
+            "Atlas Glacial Valley": ("https://lattafa.com/product/atlas-glacial-valley/", 55),
+            "Raghad": ("https://lattafa.com/product/raghad/", 100),
+            "Matcha Swirl – Give Me Gourmand": (
+                "https://lattafa.com/product/matcha-swirl-give-me-gourmand/", 75
+            ),
+            "Harlequin Cream – Give Me Gourmand": (
+                "https://lattafa.com/product/harlequin-cream-give-me-gourmand/", 75
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Lattafa"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("source_evidence_url"), source_url)
+                self.assertNotIn("concentration", row)
+                self.assertNotIn("concentration", matching[0])
 
 
 
