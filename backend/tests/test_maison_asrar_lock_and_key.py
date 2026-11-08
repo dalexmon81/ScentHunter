@@ -43,9 +43,11 @@ class MaisonAsrarLockAndKeyTests(unittest.TestCase):
     def test_listing_names_are_not_collapsed_into_unrelated_products(self):
         products = [p for p in CATALOG["products"] if p.get("brand") == "Maison Asrar"]
         black_grapefruit = [p for p in products if p["canonical_name"] == "Black Grapefruit"]
-        self.assertEqual(len(black_grapefruit), 1)
-        self.assertEqual(black_grapefruit[0]["identity_status"], "source_listed_name")
-        self.assertEqual(black_grapefruit[0]["source_url"], "https://maisonasrar.com/collections/all")
+        self.assertEqual(len(black_grapefruit), 0)
+        black = next(p for p in products if p["canonical_name"] == "Black")
+        self.assertEqual(black["identity_status"], "source_verified_name")
+        self.assertEqual(black["source_url"], "https://maisonasrar.com/products/black-eau-de-perfum-100ml")
+        self.assertEqual(black["formats_ml"], [100])
 
         # The official listing calls this fragrance "Bloom Bloom", not "Bloom".
         self.assertFalse(any(p["canonical_name"] == "Bloom" for p in products))
