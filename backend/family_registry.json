@@ -3167,1013 +3167,6 @@
       ]
     },
     {
-      "family_id": "bujairami_catalog",
-      "brand": "Bujairami",
-      "query_aliases": [
-        "Bujairami"
-      ],
-      "products": [
-        {
-          "canonical_name": "Gold Coast Shiraz",
-          "aliases": [
-            "Gold Coast Shiraz",
-            "Bujairami Gold Coast Shiraz"
-          ]
-        },
-        {
-          "canonical_name": "G’Day",
-          "aliases": [
-            "G’Day",
-            "Bujairami G’Day"
-          ]
-        },
-        {
-          "canonical_name": "Midnight in Melbourne",
-          "aliases": [
-            "Midnight in Melbourne",
-            "Bujairami Midnight in Melbourne"
-          ]
-        },
-        {
-          "canonical_name": "Sunrise in Sydney",
-          "aliases": [
-            "Sunrise in Sydney",
-            "Bujairami Sunrise in Sydney"
-          ]
-        },
-        {
-          "canonical_name": "Hectic",
-          "aliases": [
-            "Hectic",
-            "Bujairami Hectic"
-          ]
-        },
-        {
-          "canonical_name": "2000",
-          "aliases": [
-            "2000",
-            "Bujairami 2000"
-          ]
-        },
-        {
-          "canonical_name": "Absolute Power",
-          "aliases": [
-            "Absolute Power",
-            "Bujairami Absolute Power"
-          ]
-        },
-        {
-          "canonical_name": "ACE",
-          "aliases": [
-            "ACE",
-            "Bujairami ACE"
-          ]
-        },
-        {
-          "canonical_name": "Agha",
-          "aliases": [
-            "Agha",
-            "Bujairami Agha"
-          ]
-        },
-        {
-          "canonical_name": "Ahla Sabiyeh",
-          "aliases": [
-            "Ahla Sabiyeh",
-            "Bujairami Ahla Sabiyeh"
-          ]
-        },
-        {
-          "canonical_name": "Apex",
-          "aliases": [
-            "Apex",
-            "Bujairami Apex"
-          ]
-        },
-        {
-          "canonical_name": "Arabian Valley",
-          "aliases": [
-            "Arabian Valley",
-            "Bujairami Arabian Valley"
-          ]
-        },
-        {
-          "canonical_name": "Beautiful Lady",
-          "aliases": [
-            "Beautiful Lady",
-            "Bujairami Beautiful Lady"
-          ]
-        },
-        {
-          "canonical_name": "Blush",
-          "aliases": [
-            "Blush",
-            "Bujairami Blush"
-          ]
-        },
-        {
-          "canonical_name": "Booz Extreme",
-          "aliases": [
-            "Booz Extreme",
-            "Bujairami Booz Extreme"
-          ]
-        },
-        {
-          "canonical_name": "Boss Life",
-          "aliases": [
-            "Boss Life",
-            "Bujairami Boss Life"
-          ]
-        },
-        {
-          "canonical_name": "Boujee",
-          "aliases": [
-            "Boujee",
-            "Bujairami Boujee"
-          ]
-        },
-        {
-          "canonical_name": "Candy Carousel",
-          "aliases": [
-            "Candy Carousel",
-            "Bujairami Candy Carousel"
-          ]
-        },
-        {
-          "canonical_name": "Candy Crush",
-          "aliases": [
-            "Candy Crush",
-            "Bujairami Candy Crush"
-          ]
-        },
-        {
-          "canonical_name": "Catch Me At Sunset",
-          "aliases": [
-            "Catch Me At Sunset",
-            "Bujairami Catch Me At Sunset"
-          ]
-        },
-        {
-          "canonical_name": "Chic Wood",
-          "aliases": [
-            "Chic Wood",
-            "Bujairami Chic Wood"
-          ]
-        },
-        {
-          "canonical_name": "Chroma",
-          "aliases": [
-            "Chroma",
-            "Bujairami Chroma"
-          ]
-        },
-        {
-          "canonical_name": "City Life",
-          "aliases": [
-            "City Life",
-            "Bujairami City Life"
-          ]
-        },
-        {
-          "canonical_name": "Cosmic Fever",
-          "aliases": [
-            "Cosmic Fever",
-            "Bujairami Cosmic Fever"
-          ]
-        },
-        {
-          "canonical_name": "Damn Wild",
-          "aliases": [
-            "Damn Wild",
-            "Bujairami Damn Wild"
-          ]
-        },
-        {
-          "canonical_name": "Darkwood",
-          "aliases": [
-            "Darkwood",
-            "Bujairami Darkwood"
-          ]
-        },
-        {
-          "canonical_name": "Date Night",
-          "aliases": [
-            "Date Night",
-            "Bujairami Date Night"
-          ]
-        },
-        {
-          "canonical_name": "Dead Serious",
-          "aliases": [
-            "Dead Serious",
-            "Bujairami Dead Serious"
-          ]
-        },
-        {
-          "canonical_name": "Delulu",
-          "aliases": [
-            "Delulu",
-            "Bujairami Delulu"
-          ]
-        },
-        {
-          "canonical_name": "Dom",
-          "aliases": [
-            "Dom",
-            "Bujairami Dom"
-          ]
-        },
-        {
-          "canonical_name": "Drip No. 7",
-          "aliases": [
-            "Drip No. 7",
-            "Bujairami Drip No. 7"
-          ]
-        },
-        {
-          "canonical_name": "Dubai Crush",
-          "aliases": [
-            "Dubai Crush",
-            "Bujairami Dubai Crush"
-          ]
-        },
-        {
-          "canonical_name": "Emperor",
-          "aliases": [
-            "Emperor",
-            "Bujairami Emperor"
-          ]
-        },
-        {
-          "canonical_name": "Enforcer",
-          "aliases": [
-            "Enforcer",
-            "Bujairami Enforcer"
-          ]
-        },
-        {
-          "canonical_name": "Executor",
-          "aliases": [
-            "Executor",
-            "Bujairami Executor"
-          ]
-        },
-        {
-          "canonical_name": "Extra Pulse",
-          "aliases": [
-            "Extra Pulse",
-            "Bujairami Extra Pulse"
-          ]
-        },
-        {
-          "canonical_name": "Fairy Dust",
-          "aliases": [
-            "Fairy Dust",
-            "Bujairami Fairy Dust"
-          ]
-        },
-        {
-          "canonical_name": "Freeze",
-          "aliases": [
-            "Freeze",
-            "Bujairami Freeze"
-          ]
-        },
-        {
-          "canonical_name": "Full Throttle",
-          "aliases": [
-            "Full Throttle",
-            "Bujairami Full Throttle"
-          ]
-        },
-        {
-          "canonical_name": "Gem",
-          "aliases": [
-            "Gem",
-            "Bujairami Gem"
-          ]
-        },
-        {
-          "canonical_name": "Gladiator",
-          "aliases": [
-            "Gladiator",
-            "Bujairami Gladiator"
-          ]
-        },
-        {
-          "canonical_name": "Golden Night",
-          "aliases": [
-            "Golden Night",
-            "Bujairami Golden Night"
-          ]
-        },
-        {
-          "canonical_name": "Grand Affair",
-          "aliases": [
-            "Grand Affair",
-            "Bujairami Grand Affair"
-          ]
-        },
-        {
-          "canonical_name": "Happy Place",
-          "aliases": [
-            "Happy Place",
-            "Bujairami Happy Place"
-          ]
-        },
-        {
-          "canonical_name": "Helou",
-          "aliases": [
-            "Helou",
-            "Bujairami Helou"
-          ]
-        },
-        {
-          "canonical_name": "Her",
-          "aliases": [
-            "Her",
-            "Bujairami Her"
-          ]
-        },
-        {
-          "canonical_name": "High Roller",
-          "aliases": [
-            "High Roller",
-            "Bujairami High Roller"
-          ]
-        },
-        {
-          "canonical_name": "Honcho",
-          "aliases": [
-            "Honcho",
-            "Bujairami Honcho"
-          ]
-        },
-        {
-          "canonical_name": "Houdini",
-          "aliases": [
-            "Houdini",
-            "Bujairami Houdini"
-          ]
-        },
-        {
-          "canonical_name": "Ibiza",
-          "aliases": [
-            "Ibiza",
-            "Bujairami Ibiza"
-          ]
-        },
-        {
-          "canonical_name": "Inferno",
-          "aliases": [
-            "Inferno",
-            "Bujairami Inferno"
-          ]
-        },
-        {
-          "canonical_name": "KingsMan",
-          "aliases": [
-            "KingsMan",
-            "Bujairami KingsMan"
-          ]
-        },
-        {
-          "canonical_name": "Last Kingdom",
-          "aliases": [
-            "Last Kingdom",
-            "Bujairami Last Kingdom"
-          ]
-        },
-        {
-          "canonical_name": "Legacy",
-          "aliases": [
-            "Legacy",
-            "Bujairami Legacy"
-          ]
-        },
-        {
-          "canonical_name": "Limonana",
-          "aliases": [
-            "Limonana",
-            "Bujairami Limonana"
-          ]
-        },
-        {
-          "canonical_name": "Lychee",
-          "aliases": [
-            "Lychee",
-            "Bujairami Lychee"
-          ]
-        },
-        {
-          "canonical_name": "Mad Love",
-          "aliases": [
-            "Mad Love",
-            "Bujairami Mad Love"
-          ]
-        },
-        {
-          "canonical_name": "Madam",
-          "aliases": [
-            "Madam",
-            "Bujairami Madam"
-          ]
-        },
-        {
-          "canonical_name": "Madness",
-          "aliases": [
-            "Madness",
-            "Bujairami Madness"
-          ]
-        },
-        {
-          "canonical_name": "Mafia Boss",
-          "aliases": [
-            "Mafia Boss",
-            "Bujairami Mafia Boss"
-          ]
-        },
-        {
-          "canonical_name": "Mi Amor",
-          "aliases": [
-            "Mi Amor",
-            "Bujairami Mi Amor"
-          ]
-        },
-        {
-          "canonical_name": "Miss Vanilla",
-          "aliases": [
-            "Miss Vanilla",
-            "Bujairami Miss Vanilla"
-          ]
-        },
-        {
-          "canonical_name": "Mohabbat",
-          "aliases": [
-            "Mohabbat",
-            "Bujairami Mohabbat"
-          ]
-        },
-        {
-          "canonical_name": "Mojito Splash",
-          "aliases": [
-            "Mojito Splash",
-            "Bujairami Mojito Splash"
-          ]
-        },
-        {
-          "canonical_name": "Mood Swings",
-          "aliases": [
-            "Mood Swings",
-            "Bujairami Mood Swings"
-          ]
-        },
-        {
-          "canonical_name": "Mysterious",
-          "aliases": [
-            "Mysterious",
-            "Bujairami Mysterious"
-          ]
-        },
-        {
-          "canonical_name": "New York",
-          "aliases": [
-            "New York",
-            "Bujairami New York"
-          ]
-        },
-        {
-          "canonical_name": "Next Level",
-          "aliases": [
-            "Next Level",
-            "Bujairami Next Level"
-          ]
-        },
-        {
-          "canonical_name": "Nile Bloom",
-          "aliases": [
-            "Nile Bloom",
-            "Bujairami Nile Bloom"
-          ]
-        },
-        {
-          "canonical_name": "No Limit",
-          "aliases": [
-            "No Limit",
-            "Bujairami No Limit"
-          ]
-        },
-        {
-          "canonical_name": "Noctis Blue",
-          "aliases": [
-            "Noctis Blue",
-            "Bujairami Noctis Blue"
-          ]
-        },
-        {
-          "canonical_name": "Non Stop",
-          "aliases": [
-            "Non Stop",
-            "Bujairami Non Stop"
-          ]
-        },
-        {
-          "canonical_name": "Nuclear",
-          "aliases": [
-            "Nuclear",
-            "Bujairami Nuclear"
-          ]
-        },
-        {
-          "canonical_name": "Obsidian",
-          "aliases": [
-            "Obsidian",
-            "Bujairami Obsidian"
-          ]
-        },
-        {
-          "canonical_name": "Ocean Eyes",
-          "aliases": [
-            "Ocean Eyes",
-            "Bujairami Ocean Eyes"
-          ]
-        },
-        {
-          "canonical_name": "Omega",
-          "aliases": [
-            "Omega",
-            "Bujairami Omega"
-          ]
-        },
-        {
-          "canonical_name": "Only Ever",
-          "aliases": [
-            "Only Ever",
-            "Bujairami Only Ever"
-          ]
-        },
-        {
-          "canonical_name": "Perfect Life",
-          "aliases": [
-            "Perfect Life",
-            "Bujairami Perfect Life"
-          ]
-        },
-        {
-          "canonical_name": "Petals of Paradise",
-          "aliases": [
-            "Petals of Paradise",
-            "Bujairami Petals of Paradise"
-          ]
-        },
-        {
-          "canonical_name": "Power",
-          "aliases": [
-            "Power",
-            "Bujairami Power"
-          ]
-        },
-        {
-          "canonical_name": "Powerful Lady",
-          "aliases": [
-            "Powerful Lady",
-            "Bujairami Powerful Lady"
-          ]
-        },
-        {
-          "canonical_name": "Psycho",
-          "aliases": [
-            "Psycho",
-            "Bujairami Psycho"
-          ]
-        },
-        {
-          "canonical_name": "Pulse",
-          "aliases": [
-            "Pulse",
-            "Bujairami Pulse"
-          ]
-        },
-        {
-          "canonical_name": "Pulse Intense",
-          "aliases": [
-            "Pulse Intense",
-            "Bujairami Pulse Intense"
-          ]
-        },
-        {
-          "canonical_name": "Rain Man",
-          "aliases": [
-            "Rain Man",
-            "Bujairami Rain Man"
-          ]
-        },
-        {
-          "canonical_name": "Rare Edition",
-          "aliases": [
-            "Rare Edition",
-            "Bujairami Rare Edition"
-          ]
-        },
-        {
-          "canonical_name": "Red Eclipse",
-          "aliases": [
-            "Red Eclipse",
-            "Bujairami Red Eclipse"
-          ]
-        },
-        {
-          "canonical_name": "Red Static",
-          "aliases": [
-            "Red Static",
-            "Bujairami Red Static"
-          ]
-        },
-        {
-          "canonical_name": "Resolution",
-          "aliases": [
-            "Resolution",
-            "Bujairami Resolution"
-          ]
-        },
-        {
-          "canonical_name": "Rizz",
-          "aliases": [
-            "Rizz",
-            "Bujairami Rizz"
-          ]
-        },
-        {
-          "canonical_name": "Ruby Oud",
-          "aliases": [
-            "Ruby Oud",
-            "Bujairami Ruby Oud"
-          ]
-        },
-        {
-          "canonical_name": "Ruthless Vanilla",
-          "aliases": [
-            "Ruthless Vanilla",
-            "Bujairami Ruthless Vanilla"
-          ]
-        },
-        {
-          "canonical_name": "Saddle Up",
-          "aliases": [
-            "Saddle Up",
-            "Bujairami Saddle Up"
-          ]
-        },
-        {
-          "canonical_name": "Say Less",
-          "aliases": [
-            "Say Less",
-            "Bujairami Say Less"
-          ]
-        },
-        {
-          "canonical_name": "Silent Halo",
-          "aliases": [
-            "Silent Halo",
-            "Bujairami Silent Halo"
-          ]
-        },
-        {
-          "canonical_name": "Smokilla",
-          "aliases": [
-            "Smokilla",
-            "Bujairami Smokilla"
-          ]
-        },
-        {
-          "canonical_name": "Sovereign",
-          "aliases": [
-            "Sovereign",
-            "Bujairami Sovereign"
-          ]
-        },
-        {
-          "canonical_name": "Special Day",
-          "aliases": [
-            "Special Day",
-            "Bujairami Special Day"
-          ]
-        },
-        {
-          "canonical_name": "Sugar Rush",
-          "aliases": [
-            "Sugar Rush",
-            "Bujairami Sugar Rush"
-          ]
-        },
-        {
-          "canonical_name": "Suns Out",
-          "aliases": [
-            "Suns Out",
-            "Bujairami Suns Out"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Banana",
-          "aliases": [
-            "Sweet Banana",
-            "Bujairami Sweet Banana"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Rebel",
-          "aliases": [
-            "Sweet Rebel",
-            "Bujairami Sweet Rebel"
-          ]
-        },
-        {
-          "canonical_name": "Tangy",
-          "aliases": [
-            "Tangy",
-            "Bujairami Tangy"
-          ]
-        },
-        {
-          "canonical_name": "Tea Splash",
-          "aliases": [
-            "Tea Splash",
-            "Bujairami Tea Splash"
-          ]
-        },
-        {
-          "canonical_name": "Tempted",
-          "aliases": [
-            "Tempted",
-            "Bujairami Tempted"
-          ]
-        },
-        {
-          "canonical_name": "Tenfold",
-          "aliases": [
-            "Tenfold",
-            "Bujairami Tenfold"
-          ]
-        },
-        {
-          "canonical_name": "The Aftermath",
-          "aliases": [
-            "The Aftermath",
-            "Bujairami The Aftermath"
-          ]
-        },
-        {
-          "canonical_name": "The Rock Intensely",
-          "aliases": [
-            "The Rock Intensely",
-            "Bujairami The Rock Intensely"
-          ]
-        },
-        {
-          "canonical_name": "The Rock Powerfully",
-          "aliases": [
-            "The Rock Powerfully",
-            "Bujairami The Rock Powerfully"
-          ]
-        },
-        {
-          "canonical_name": "The Sheikh",
-          "aliases": [
-            "The Sheikh",
-            "Bujairami The Sheikh"
-          ]
-        },
-        {
-          "canonical_name": "Too Damn Good",
-          "aliases": [
-            "Too Damn Good",
-            "Bujairami Too Damn Good"
-          ]
-        },
-        {
-          "canonical_name": "Top Tier",
-          "aliases": [
-            "Top Tier",
-            "Bujairami Top Tier"
-          ]
-        },
-        {
-          "canonical_name": "Unforgettable",
-          "aliases": [
-            "Unforgettable",
-            "Bujairami Unforgettable"
-          ]
-        },
-        {
-          "canonical_name": "V-Luxe",
-          "aliases": [
-            "V-Luxe",
-            "Bujairami V-Luxe"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Dream",
-          "aliases": [
-            "Vanilla Dream",
-            "Bujairami Vanilla Dream"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Storm",
-          "aliases": [
-            "Vanilla Storm",
-            "Bujairami Vanilla Storm"
-          ]
-        },
-        {
-          "canonical_name": "Vibration",
-          "aliases": [
-            "Vibration",
-            "Bujairami Vibration"
-          ]
-        },
-        {
-          "canonical_name": "When in Rome",
-          "aliases": [
-            "When in Rome",
-            "Bujairami When in Rome"
-          ]
-        },
-        {
-          "canonical_name": "Why Not?",
-          "aliases": [
-            "Why Not?",
-            "Bujairami Why Not?"
-          ]
-        },
-        {
-          "canonical_name": "Wicked",
-          "aliases": [
-            "Wicked",
-            "Bujairami Wicked"
-          ]
-        },
-        {
-          "canonical_name": "Ya Habibi",
-          "aliases": [
-            "Ya Habibi",
-            "Bujairami Ya Habibi"
-          ]
-        },
-        {
-          "canonical_name": "Australian Watermelon",
-          "aliases": [
-            "Australian Watermelon",
-            "Bujairami Australian Watermelon"
-          ]
-        },
-        {
-          "canonical_name": "Top Life",
-          "aliases": [
-            "Top Life",
-            "Bujairami Top Life"
-          ]
-        },
-        {
-          "canonical_name": "Luxe Noir",
-          "aliases": [
-            "Luxe Noir",
-            "Bujairami Luxe Noir"
-          ]
-        },
-        {
-          "canonical_name": "Snow White",
-          "aliases": [
-            "Snow White",
-            "Bujairami Snow White"
-          ]
-        },
-        {
-          "canonical_name": "Down Under",
-          "aliases": [
-            "Down Under",
-            "Bujairami Down Under"
-          ]
-        },
-        {
-          "canonical_name": "HIM",
-          "aliases": [
-            "HIM",
-            "Bujairami HIM"
-          ]
-        },
-        {
-          "canonical_name": "Gold Coast",
-          "aliases": [
-            "Gold Coast",
-            "Bujairami Gold Coast"
-          ]
-        },
-        {
-          "canonical_name": "Coco Dream",
-          "aliases": [
-            "Coco Dream",
-            "Bujairami Coco Dream"
-          ]
-        },
-        {
-          "canonical_name": "Riverina",
-          "aliases": [
-            "Riverina",
-            "Bujairami Riverina"
-          ]
-        },
-        {
-          "canonical_name": "Aussie Glow",
-          "aliases": [
-            "Aussie Glow",
-            "Bujairami Aussie Glow"
-          ]
-        },
-        {
-          "canonical_name": "Madeira Cake",
-          "aliases": [
-            "Madeira Cake",
-            "Bujairami Madeira Cake"
-          ]
-        },
-        {
-          "canonical_name": "Apple Crumble",
-          "aliases": [
-            "Apple Crumble",
-            "Bujairami Apple Crumble"
-          ]
-        },
-        {
-          "canonical_name": "Knefeh",
-          "aliases": [
-            "Knefeh",
-            "Bujairami Knefeh"
-          ]
-        },
-        {
-          "canonical_name": "Love Spell",
-          "aliases": [
-            "Love Spell",
-            "Bujairami Love Spell"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "King Street",
-          "aliases": [
-            "King Street",
-            "Bujairami King Street"
-          ]
-        },
-        {
-          "canonical_name": "The F*ck Up",
-          "aliases": [
-            "The F*ck Up",
-            "Bujairami The F*ck Up"
-          ]
-        },
-        {
-          "canonical_name": "Harbour Tea",
-          "aliases": [
-            "Harbour Tea",
-            "Bujairami Harbour Tea"
-          ]
-        },
-        {
-          "canonical_name": "Queens Avenue",
-          "aliases": [
-            "Queens Avenue",
-            "Bujairami Queens Avenue"
-          ]
-        },
-        {
-          "canonical_name": "Pistachio Cake",
-          "aliases": [
-            "Pistachio Cake",
-            "Bujairami Pistachio Cake"
-          ]
-        },
-        {
-          "canonical_name": "Woolloomooloo",
-          "aliases": [
-            "Woolloomooloo",
-            "Bujairami Woolloomooloo"
-          ]
-        },
-        {
-          "canonical_name": "Cherry Cherry Lady",
-          "aliases": [
-            "Cherry Cherry Lady",
-            "Bujairami Cherry Cherry Lady"
-          ]
-        }
-      ]
-    },
-    {
       "family_id": "paris_corner_catalog",
       "brand": "Paris Corner",
       "query_aliases": [
@@ -19623,6 +18616,4741 @@
             18
           ],
           "concentration": "Perfume Oil"
+        }
+      ]
+    },
+    {
+      "family_id": "bujairami_catalog",
+      "brand": "Bujairami",
+      "query_aliases": [
+        "Bujairami"
+      ],
+      "products": [
+        {
+          "canonical_name": "10/10",
+          "aliases": [
+            "10/10",
+            "Bujairami 10/10"
+          ]
+        },
+        {
+          "canonical_name": "2000",
+          "aliases": [
+            "2000",
+            "Bujairami 2000"
+          ]
+        },
+        {
+          "canonical_name": "22",
+          "aliases": [
+            "22",
+            "Bujairami 22"
+          ]
+        },
+        {
+          "canonical_name": "25",
+          "aliases": [
+            "25",
+            "Bujairami 25"
+          ]
+        },
+        {
+          "canonical_name": "26",
+          "aliases": [
+            "26",
+            "Bujairami 26"
+          ]
+        },
+        {
+          "canonical_name": "29",
+          "aliases": [
+            "29",
+            "Bujairami 29"
+          ]
+        },
+        {
+          "canonical_name": "33",
+          "aliases": [
+            "33",
+            "Bujairami 33"
+          ]
+        },
+        {
+          "canonical_name": "50 Shades",
+          "aliases": [
+            "50 Shades",
+            "Bujairami 50 Shades"
+          ]
+        },
+        {
+          "canonical_name": "A La Carte",
+          "aliases": [
+            "A La Carte",
+            "Bujairami A La Carte"
+          ]
+        },
+        {
+          "canonical_name": "Above The Clouds",
+          "aliases": [
+            "Above The Clouds",
+            "Bujairami Above The Clouds"
+          ]
+        },
+        {
+          "canonical_name": "Absolute Power",
+          "aliases": [
+            "Absolute Power",
+            "Bujairami Absolute Power"
+          ]
+        },
+        {
+          "canonical_name": "Abyss",
+          "aliases": [
+            "Abyss",
+            "Bujairami Abyss"
+          ]
+        },
+        {
+          "canonical_name": "ACE",
+          "aliases": [
+            "ACE",
+            "Bujairami ACE"
+          ]
+        },
+        {
+          "canonical_name": "Addiction",
+          "aliases": [
+            "Addiction",
+            "Bujairami Addiction"
+          ]
+        },
+        {
+          "canonical_name": "Adore",
+          "aliases": [
+            "Adore",
+            "Bujairami Adore"
+          ]
+        },
+        {
+          "canonical_name": "Adversary",
+          "aliases": [
+            "Adversary",
+            "Bujairami Adversary"
+          ]
+        },
+        {
+          "canonical_name": "Aethera",
+          "aliases": [
+            "Aethera",
+            "Bujairami Aethera"
+          ]
+        },
+        {
+          "canonical_name": "Affectionate",
+          "aliases": [
+            "Affectionate",
+            "Bujairami Affectionate"
+          ]
+        },
+        {
+          "canonical_name": "Affinity",
+          "aliases": [
+            "Affinity",
+            "Bujairami Affinity"
+          ]
+        },
+        {
+          "canonical_name": "After Dark",
+          "aliases": [
+            "After Dark",
+            "Bujairami After Dark"
+          ]
+        },
+        {
+          "canonical_name": "After Light",
+          "aliases": [
+            "After Light",
+            "Bujairami After Light"
+          ]
+        },
+        {
+          "canonical_name": "Afterglow",
+          "aliases": [
+            "Afterglow",
+            "Bujairami Afterglow"
+          ]
+        },
+        {
+          "canonical_name": "Afternoon Bliss",
+          "aliases": [
+            "Afternoon Bliss",
+            "Bujairami Afternoon Bliss"
+          ]
+        },
+        {
+          "canonical_name": "Aftershock",
+          "aliases": [
+            "Aftershock",
+            "Bujairami Aftershock"
+          ]
+        },
+        {
+          "canonical_name": "Agha",
+          "aliases": [
+            "Agha",
+            "Bujairami Agha"
+          ]
+        },
+        {
+          "canonical_name": "Ahla Sabiyeh",
+          "aliases": [
+            "Ahla Sabiyeh",
+            "Bujairami Ahla Sabiyeh"
+          ]
+        },
+        {
+          "canonical_name": "Air Affair",
+          "aliases": [
+            "Air Affair",
+            "Bujairami Air Affair"
+          ]
+        },
+        {
+          "canonical_name": "Airborne",
+          "aliases": [
+            "Airborne",
+            "Bujairami Airborne"
+          ]
+        },
+        {
+          "canonical_name": "Airy Oud",
+          "aliases": [
+            "Airy Oud",
+            "Bujairami Airy Oud"
+          ]
+        },
+        {
+          "canonical_name": "Al Waad",
+          "aliases": [
+            "Al Waad",
+            "Bujairami Al Waad"
+          ]
+        },
+        {
+          "canonical_name": "Alpha",
+          "aliases": [
+            "Alpha",
+            "Bujairami Alpha"
+          ]
+        },
+        {
+          "canonical_name": "Altitude",
+          "aliases": [
+            "Altitude",
+            "Bujairami Altitude"
+          ]
+        },
+        {
+          "canonical_name": "Amaretto",
+          "aliases": [
+            "Amaretto",
+            "Bujairami Amaretto"
+          ]
+        },
+        {
+          "canonical_name": "Amazing",
+          "aliases": [
+            "Amazing",
+            "Bujairami Amazing"
+          ]
+        },
+        {
+          "canonical_name": "Amazing Night",
+          "aliases": [
+            "Amazing Night",
+            "Bujairami Amazing Night"
+          ]
+        },
+        {
+          "canonical_name": "Amber Eclipse",
+          "aliases": [
+            "Amber Eclipse",
+            "Bujairami Amber Eclipse"
+          ]
+        },
+        {
+          "canonical_name": "Amber Floweret",
+          "aliases": [
+            "Amber Floweret",
+            "Bujairami Amber Floweret"
+          ]
+        },
+        {
+          "canonical_name": "Amber Grove",
+          "aliases": [
+            "Amber Grove",
+            "Bujairami Amber Grove"
+          ]
+        },
+        {
+          "canonical_name": "Amber Hills",
+          "aliases": [
+            "Amber Hills",
+            "Bujairami Amber Hills"
+          ]
+        },
+        {
+          "canonical_name": "Amira",
+          "aliases": [
+            "Amira",
+            "Bujairami Amira"
+          ]
+        },
+        {
+          "canonical_name": "Amoura",
+          "aliases": [
+            "Amoura",
+            "Bujairami Amoura"
+          ]
+        },
+        {
+          "canonical_name": "Amplify",
+          "aliases": [
+            "Amplify",
+            "Bujairami Amplify"
+          ]
+        },
+        {
+          "canonical_name": "Aoud Mineral",
+          "aliases": [
+            "Aoud Mineral",
+            "Bujairami Aoud Mineral"
+          ]
+        },
+        {
+          "canonical_name": "Apex",
+          "aliases": [
+            "Apex",
+            "Bujairami Apex"
+          ]
+        },
+        {
+          "canonical_name": "Apple Crumble",
+          "aliases": [
+            "Apple Crumble",
+            "Bujairami Apple Crumble"
+          ]
+        },
+        {
+          "canonical_name": "Aqua Dew",
+          "aliases": [
+            "Aqua Dew",
+            "Bujairami Aqua Dew"
+          ]
+        },
+        {
+          "canonical_name": "Aqua Infinite",
+          "aliases": [
+            "Aqua Infinite",
+            "Bujairami Aqua Infinite"
+          ]
+        },
+        {
+          "canonical_name": "Aqua Prevail",
+          "aliases": [
+            "Aqua Prevail",
+            "Bujairami Aqua Prevail"
+          ]
+        },
+        {
+          "canonical_name": "Aqua Pure",
+          "aliases": [
+            "Aqua Pure",
+            "Bujairami Aqua Pure"
+          ]
+        },
+        {
+          "canonical_name": "Aqua Rush",
+          "aliases": [
+            "Aqua Rush",
+            "Bujairami Aqua Rush"
+          ]
+        },
+        {
+          "canonical_name": "Aqua Surge",
+          "aliases": [
+            "Aqua Surge",
+            "Bujairami Aqua Surge"
+          ]
+        },
+        {
+          "canonical_name": "Aquafina",
+          "aliases": [
+            "Aquafina",
+            "Bujairami Aquafina"
+          ]
+        },
+        {
+          "canonical_name": "Aquaman",
+          "aliases": [
+            "Aquaman",
+            "Bujairami Aquaman"
+          ]
+        },
+        {
+          "canonical_name": "Arabian Brew",
+          "aliases": [
+            "Arabian Brew",
+            "Bujairami Arabian Brew"
+          ]
+        },
+        {
+          "canonical_name": "Arabian Gold",
+          "aliases": [
+            "Arabian Gold",
+            "Bujairami Arabian Gold"
+          ]
+        },
+        {
+          "canonical_name": "Arabian Love",
+          "aliases": [
+            "Arabian Love",
+            "Bujairami Arabian Love"
+          ]
+        },
+        {
+          "canonical_name": "Arabian Valley",
+          "aliases": [
+            "Arabian Valley",
+            "Bujairami Arabian Valley"
+          ]
+        },
+        {
+          "canonical_name": "Arizona",
+          "aliases": [
+            "Arizona",
+            "Bujairami Arizona"
+          ]
+        },
+        {
+          "canonical_name": "Artistic Lady",
+          "aliases": [
+            "Artistic Lady",
+            "Bujairami Artistic Lady"
+          ]
+        },
+        {
+          "canonical_name": "Ascension",
+          "aliases": [
+            "Ascension",
+            "Bujairami Ascension"
+          ]
+        },
+        {
+          "canonical_name": "Asfahan Oud",
+          "aliases": [
+            "Asfahan Oud",
+            "Bujairami Asfahan Oud"
+          ]
+        },
+        {
+          "canonical_name": "Assassin",
+          "aliases": [
+            "Assassin",
+            "Bujairami Assassin"
+          ]
+        },
+        {
+          "canonical_name": "Astral",
+          "aliases": [
+            "Astral",
+            "Bujairami Astral"
+          ]
+        },
+        {
+          "canonical_name": "Astro",
+          "aliases": [
+            "Astro",
+            "Bujairami Astro"
+          ]
+        },
+        {
+          "canonical_name": "At Last",
+          "aliases": [
+            "At Last",
+            "Bujairami At Last"
+          ]
+        },
+        {
+          "canonical_name": "Aurora",
+          "aliases": [
+            "Aurora",
+            "Bujairami Aurora"
+          ]
+        },
+        {
+          "canonical_name": "Aussie Glow",
+          "aliases": [
+            "Aussie Glow",
+            "Bujairami Aussie Glow"
+          ]
+        },
+        {
+          "canonical_name": "Australian Tonka",
+          "aliases": [
+            "Australian Tonka",
+            "Bujairami Australian Tonka"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Australian Watermelon",
+          "aliases": [
+            "Australian Watermelon",
+            "Bujairami Australian Watermelon"
+          ]
+        },
+        {
+          "canonical_name": "Baccarat Oud",
+          "aliases": [
+            "Baccarat Oud",
+            "Bujairami Baccarat Oud"
+          ]
+        },
+        {
+          "canonical_name": "Backstage",
+          "aliases": [
+            "Backstage",
+            "Bujairami Backstage"
+          ]
+        },
+        {
+          "canonical_name": "Bad N Boujee",
+          "aliases": [
+            "Bad N Boujee",
+            "Bujairami Bad N Boujee"
+          ]
+        },
+        {
+          "canonical_name": "Bad Obsession",
+          "aliases": [
+            "Bad Obsession",
+            "Bujairami Bad Obsession"
+          ]
+        },
+        {
+          "canonical_name": "Bad Romance",
+          "aliases": [
+            "Bad Romance",
+            "Bujairami Bad Romance"
+          ]
+        },
+        {
+          "canonical_name": "Baddie",
+          "aliases": [
+            "Baddie",
+            "Bujairami Baddie"
+          ]
+        },
+        {
+          "canonical_name": "Bahebak",
+          "aliases": [
+            "Bahebak",
+            "Bujairami Bahebak"
+          ]
+        },
+        {
+          "canonical_name": "Baked Bliss",
+          "aliases": [
+            "Baked Bliss",
+            "Bujairami Baked Bliss"
+          ]
+        },
+        {
+          "canonical_name": "Ballerina",
+          "aliases": [
+            "Ballerina",
+            "Bujairami Ballerina"
+          ]
+        },
+        {
+          "canonical_name": "Banana Booz",
+          "aliases": [
+            "Banana Booz",
+            "Bujairami Banana Booz"
+          ]
+        },
+        {
+          "canonical_name": "Banger",
+          "aliases": [
+            "Banger",
+            "Bujairami Banger"
+          ]
+        },
+        {
+          "canonical_name": "Bare Oud",
+          "aliases": [
+            "Bare Oud",
+            "Bujairami Bare Oud"
+          ]
+        },
+        {
+          "canonical_name": "Barrel Breeze",
+          "aliases": [
+            "Barrel Breeze",
+            "Bujairami Barrel Breeze"
+          ]
+        },
+        {
+          "canonical_name": "Be Happy",
+          "aliases": [
+            "Be Happy",
+            "Bujairami Be Happy"
+          ]
+        },
+        {
+          "canonical_name": "Beach Vibe",
+          "aliases": [
+            "Beach Vibe",
+            "Bujairami Beach Vibe"
+          ]
+        },
+        {
+          "canonical_name": "Beast",
+          "aliases": [
+            "Beast",
+            "Bujairami Beast"
+          ]
+        },
+        {
+          "canonical_name": "Beastmode",
+          "aliases": [
+            "Beastmode",
+            "Bujairami Beastmode"
+          ]
+        },
+        {
+          "canonical_name": "Beautiful Lady",
+          "aliases": [
+            "Beautiful Lady",
+            "Bujairami Beautiful Lady"
+          ]
+        },
+        {
+          "canonical_name": "Beauty and the Beast",
+          "aliases": [
+            "Beauty and the Beast",
+            "Bujairami Beauty and the Beast"
+          ]
+        },
+        {
+          "canonical_name": "Bee Sting",
+          "aliases": [
+            "Bee Sting",
+            "Bujairami Bee Sting"
+          ]
+        },
+        {
+          "canonical_name": "Before Sunrise",
+          "aliases": [
+            "Before Sunrise",
+            "Bujairami Before Sunrise"
+          ]
+        },
+        {
+          "canonical_name": "Belissimo",
+          "aliases": [
+            "Belissimo",
+            "Bujairami Belissimo"
+          ]
+        },
+        {
+          "canonical_name": "Belle",
+          "aliases": [
+            "Belle",
+            "Bujairami Belle"
+          ]
+        },
+        {
+          "canonical_name": "Benzo",
+          "aliases": [
+            "Benzo",
+            "Bujairami Benzo"
+          ]
+        },
+        {
+          "canonical_name": "Big Love",
+          "aliases": [
+            "Big Love",
+            "Bujairami Big Love"
+          ]
+        },
+        {
+          "canonical_name": "Billion Dollar",
+          "aliases": [
+            "Billion Dollar",
+            "Bujairami Billion Dollar"
+          ]
+        },
+        {
+          "canonical_name": "Billionaires Club",
+          "aliases": [
+            "Billionaires Club",
+            "Bujairami Billionaires Club"
+          ]
+        },
+        {
+          "canonical_name": "Billionaires Club Intense",
+          "aliases": [
+            "Billionaires Club Intense",
+            "Bujairami Billionaires Club Intense"
+          ]
+        },
+        {
+          "canonical_name": "Bitter Sweet",
+          "aliases": [
+            "Bitter Sweet",
+            "Bujairami Bitter Sweet"
+          ]
+        },
+        {
+          "canonical_name": "Black Empire",
+          "aliases": [
+            "Black Empire",
+            "Bujairami Black Empire"
+          ]
+        },
+        {
+          "canonical_name": "Black Reserve",
+          "aliases": [
+            "Black Reserve",
+            "Bujairami Black Reserve"
+          ]
+        },
+        {
+          "canonical_name": "Black Tie",
+          "aliases": [
+            "Black Tie",
+            "Bujairami Black Tie"
+          ]
+        },
+        {
+          "canonical_name": "Blackjack",
+          "aliases": [
+            "Blackjack",
+            "Bujairami Blackjack"
+          ]
+        },
+        {
+          "canonical_name": "Blanc Bloom",
+          "aliases": [
+            "Blanc Bloom",
+            "Bujairami Blanc Bloom"
+          ]
+        },
+        {
+          "canonical_name": "Blazing",
+          "aliases": [
+            "Blazing",
+            "Bujairami Blazing"
+          ]
+        },
+        {
+          "canonical_name": "Blissful Juliet",
+          "aliases": [
+            "Blissful Juliet",
+            "Bujairami Blissful Juliet"
+          ]
+        },
+        {
+          "canonical_name": "Blood Cherry",
+          "aliases": [
+            "Blood Cherry",
+            "Bujairami Blood Cherry"
+          ]
+        },
+        {
+          "canonical_name": "Blood Suede",
+          "aliases": [
+            "Blood Suede",
+            "Bujairami Blood Suede"
+          ]
+        },
+        {
+          "canonical_name": "Bloodline",
+          "aliases": [
+            "Bloodline",
+            "Bujairami Bloodline"
+          ]
+        },
+        {
+          "canonical_name": "Bloom",
+          "aliases": [
+            "Bloom",
+            "Bujairami Bloom"
+          ]
+        },
+        {
+          "canonical_name": "Blossom",
+          "aliases": [
+            "Blossom",
+            "Bujairami Blossom"
+          ]
+        },
+        {
+          "canonical_name": "Blue Chill",
+          "aliases": [
+            "Blue Chill",
+            "Bujairami Blue Chill"
+          ]
+        },
+        {
+          "canonical_name": "Blue Citrus",
+          "aliases": [
+            "Blue Citrus",
+            "Bujairami Blue Citrus"
+          ]
+        },
+        {
+          "canonical_name": "Blue Fire",
+          "aliases": [
+            "Blue Fire",
+            "Bujairami Blue Fire"
+          ]
+        },
+        {
+          "canonical_name": "Blue Heat",
+          "aliases": [
+            "Blue Heat",
+            "Bujairami Blue Heat"
+          ]
+        },
+        {
+          "canonical_name": "Blue Knights",
+          "aliases": [
+            "Blue Knights",
+            "Bujairami Blue Knights"
+          ]
+        },
+        {
+          "canonical_name": "Blue Note",
+          "aliases": [
+            "Blue Note",
+            "Bujairami Blue Note"
+          ]
+        },
+        {
+          "canonical_name": "Blue Serenade",
+          "aliases": [
+            "Blue Serenade",
+            "Bujairami Blue Serenade"
+          ]
+        },
+        {
+          "canonical_name": "Blue Steel",
+          "aliases": [
+            "Blue Steel",
+            "Bujairami Blue Steel"
+          ]
+        },
+        {
+          "canonical_name": "Blue Voyage",
+          "aliases": [
+            "Blue Voyage",
+            "Bujairami Blue Voyage"
+          ]
+        },
+        {
+          "canonical_name": "Blue Water",
+          "aliases": [
+            "Blue Water",
+            "Bujairami Blue Water"
+          ]
+        },
+        {
+          "canonical_name": "Blush",
+          "aliases": [
+            "Blush",
+            "Bujairami Blush"
+          ]
+        },
+        {
+          "canonical_name": "Blush Milk",
+          "aliases": [
+            "Blush Milk",
+            "Bujairami Blush Milk"
+          ]
+        },
+        {
+          "canonical_name": "Bohemien",
+          "aliases": [
+            "Bohemien",
+            "Bujairami Bohemien"
+          ]
+        },
+        {
+          "canonical_name": "Bombshell",
+          "aliases": [
+            "Bombshell",
+            "Bujairami Bombshell"
+          ]
+        },
+        {
+          "canonical_name": "Bonfire",
+          "aliases": [
+            "Bonfire",
+            "Bujairami Bonfire"
+          ]
+        },
+        {
+          "canonical_name": "Booz",
+          "aliases": [
+            "Booz",
+            "Bujairami Booz"
+          ]
+        },
+        {
+          "canonical_name": "Booz Extreme",
+          "aliases": [
+            "Booz Extreme",
+            "Bujairami Booz Extreme"
+          ]
+        },
+        {
+          "canonical_name": "Born Nomad",
+          "aliases": [
+            "Born Nomad",
+            "Bujairami Born Nomad"
+          ]
+        },
+        {
+          "canonical_name": "Boss Lady",
+          "aliases": [
+            "Boss Lady",
+            "Bujairami Boss Lady"
+          ]
+        },
+        {
+          "canonical_name": "Boss Life",
+          "aliases": [
+            "Boss Life",
+            "Bujairami Boss Life"
+          ]
+        },
+        {
+          "canonical_name": "Boss Life Extreme",
+          "aliases": [
+            "Boss Life Extreme",
+            "Bujairami Boss Life Extreme"
+          ]
+        },
+        {
+          "canonical_name": "Bossman",
+          "aliases": [
+            "Bossman",
+            "Bujairami Bossman"
+          ]
+        },
+        {
+          "canonical_name": "Bottled Island",
+          "aliases": [
+            "Bottled Island",
+            "Bujairami Bottled Island"
+          ]
+        },
+        {
+          "canonical_name": "Bottled Paradise",
+          "aliases": [
+            "Bottled Paradise",
+            "Bujairami Bottled Paradise"
+          ]
+        },
+        {
+          "canonical_name": "Bottled Red City",
+          "aliases": [
+            "Bottled Red City",
+            "Bujairami Bottled Red City"
+          ]
+        },
+        {
+          "canonical_name": "Boujee",
+          "aliases": [
+            "Boujee",
+            "Bujairami Boujee"
+          ]
+        },
+        {
+          "canonical_name": "Boujee Oud",
+          "aliases": [
+            "Boujee Oud",
+            "Bujairami Boujee Oud"
+          ]
+        },
+        {
+          "canonical_name": "Boundless",
+          "aliases": [
+            "Boundless",
+            "Bujairami Boundless"
+          ]
+        },
+        {
+          "canonical_name": "Bravo",
+          "aliases": [
+            "Bravo",
+            "Bujairami Bravo"
+          ]
+        },
+        {
+          "canonical_name": "Breathless",
+          "aliases": [
+            "Breathless",
+            "Bujairami Breathless"
+          ]
+        },
+        {
+          "canonical_name": "Breezy",
+          "aliases": [
+            "Breezy",
+            "Bujairami Breezy"
+          ]
+        },
+        {
+          "canonical_name": "Bright Essence",
+          "aliases": [
+            "Bright Essence",
+            "Bujairami Bright Essence"
+          ]
+        },
+        {
+          "canonical_name": "Brumbie",
+          "aliases": [
+            "Brumbie",
+            "Bujairami Brumbie"
+          ]
+        },
+        {
+          "canonical_name": "Burn Slow",
+          "aliases": [
+            "Burn Slow",
+            "Bujairami Burn Slow"
+          ]
+        },
+        {
+          "canonical_name": "Burning Ambition",
+          "aliases": [
+            "Burning Ambition",
+            "Bujairami Burning Ambition"
+          ]
+        },
+        {
+          "canonical_name": "Burning Love",
+          "aliases": [
+            "Burning Love",
+            "Bujairami Burning Love"
+          ]
+        },
+        {
+          "canonical_name": "Burnt Sugar",
+          "aliases": [
+            "Burnt Sugar",
+            "Bujairami Burnt Sugar"
+          ]
+        },
+        {
+          "canonical_name": "Butter Me Up",
+          "aliases": [
+            "Butter Me Up",
+            "Bujairami Butter Me Up"
+          ]
+        },
+        {
+          "canonical_name": "Buzzin",
+          "aliases": [
+            "Buzzin",
+            "Bujairami Buzzin"
+          ]
+        },
+        {
+          "canonical_name": "Cafe Creme",
+          "aliases": [
+            "Cafe Creme",
+            "Bujairami Cafe Creme"
+          ]
+        },
+        {
+          "canonical_name": "Caffe OUD",
+          "aliases": [
+            "Caffe OUD",
+            "Bujairami Caffe OUD"
+          ]
+        },
+        {
+          "canonical_name": "Calabrian Sun",
+          "aliases": [
+            "Calabrian Sun",
+            "Bujairami Calabrian Sun"
+          ]
+        },
+        {
+          "canonical_name": "Calabrian Wear",
+          "aliases": [
+            "Calabrian Wear",
+            "Bujairami Calabrian Wear"
+          ]
+        },
+        {
+          "canonical_name": "Candlewood",
+          "aliases": [
+            "Candlewood",
+            "Bujairami Candlewood"
+          ]
+        },
+        {
+          "canonical_name": "Candy Carousel",
+          "aliases": [
+            "Candy Carousel",
+            "Bujairami Candy Carousel"
+          ]
+        },
+        {
+          "canonical_name": "Candy Crush",
+          "aliases": [
+            "Candy Crush",
+            "Bujairami Candy Crush"
+          ]
+        },
+        {
+          "canonical_name": "Candyland",
+          "aliases": [
+            "Candyland",
+            "Bujairami Candyland"
+          ]
+        },
+        {
+          "canonical_name": "Captivating",
+          "aliases": [
+            "Captivating",
+            "Bujairami Captivating"
+          ]
+        },
+        {
+          "canonical_name": "Caramel Drift",
+          "aliases": [
+            "Caramel Drift",
+            "Bujairami Caramel Drift"
+          ]
+        },
+        {
+          "canonical_name": "Caramelle",
+          "aliases": [
+            "Caramelle",
+            "Bujairami Caramelle"
+          ]
+        },
+        {
+          "canonical_name": "Carnival",
+          "aliases": [
+            "Carnival",
+            "Bujairami Carnival"
+          ]
+        },
+        {
+          "canonical_name": "Cartel",
+          "aliases": [
+            "Cartel",
+            "Bujairami Cartel"
+          ]
+        },
+        {
+          "canonical_name": "Casablanca",
+          "aliases": [
+            "Casablanca",
+            "Bujairami Casablanca"
+          ]
+        },
+        {
+          "canonical_name": "Casanova",
+          "aliases": [
+            "Casanova",
+            "Bujairami Casanova"
+          ]
+        },
+        {
+          "canonical_name": "Cascade",
+          "aliases": [
+            "Cascade",
+            "Bujairami Cascade"
+          ]
+        },
+        {
+          "canonical_name": "Catch Me At Sunset",
+          "aliases": [
+            "Catch Me At Sunset",
+            "Bujairami Catch Me At Sunset"
+          ]
+        },
+        {
+          "canonical_name": "Cavalier",
+          "aliases": [
+            "Cavalier",
+            "Bujairami Cavalier"
+          ]
+        },
+        {
+          "canonical_name": "Centre Stage",
+          "aliases": [
+            "Centre Stage",
+            "Bujairami Centre Stage"
+          ]
+        },
+        {
+          "canonical_name": "Chai Time",
+          "aliases": [
+            "Chai Time",
+            "Bujairami Chai Time"
+          ]
+        },
+        {
+          "canonical_name": "Chamber",
+          "aliases": [
+            "Chamber",
+            "Bujairami Chamber"
+          ]
+        },
+        {
+          "canonical_name": "Charmed",
+          "aliases": [
+            "Charmed",
+            "Bujairami Charmed"
+          ]
+        },
+        {
+          "canonical_name": "Chasing Sunsets",
+          "aliases": [
+            "Chasing Sunsets",
+            "Bujairami Chasing Sunsets"
+          ]
+        },
+        {
+          "canonical_name": "Check Mate",
+          "aliases": [
+            "Check Mate",
+            "Bujairami Check Mate"
+          ]
+        },
+        {
+          "canonical_name": "Cheeky Drizzle",
+          "aliases": [
+            "Cheeky Drizzle",
+            "Bujairami Cheeky Drizzle"
+          ]
+        },
+        {
+          "canonical_name": "Cheeky Pash",
+          "aliases": [
+            "Cheeky Pash",
+            "Bujairami Cheeky Pash"
+          ]
+        },
+        {
+          "canonical_name": "Cherry Berry",
+          "aliases": [
+            "Cherry Berry",
+            "Bujairami Cherry Berry"
+          ]
+        },
+        {
+          "canonical_name": "Cherry Cherry Lady",
+          "aliases": [
+            "Cherry Cherry Lady",
+            "Bujairami Cherry Cherry Lady"
+          ]
+        },
+        {
+          "canonical_name": "Cherry Fever",
+          "aliases": [
+            "Cherry Fever",
+            "Bujairami Cherry Fever"
+          ]
+        },
+        {
+          "canonical_name": "Cherry Lightning",
+          "aliases": [
+            "Cherry Lightning",
+            "Bujairami Cherry Lightning"
+          ]
+        },
+        {
+          "canonical_name": "Cherry Reign",
+          "aliases": [
+            "Cherry Reign",
+            "Bujairami Cherry Reign"
+          ]
+        },
+        {
+          "canonical_name": "Cherry Riot",
+          "aliases": [
+            "Cherry Riot",
+            "Bujairami Cherry Riot"
+          ]
+        },
+        {
+          "canonical_name": "Chic Star",
+          "aliases": [
+            "Chic Star",
+            "Bujairami Chic Star"
+          ]
+        },
+        {
+          "canonical_name": "Chic Wood",
+          "aliases": [
+            "Chic Wood",
+            "Bujairami Chic Wood"
+          ]
+        },
+        {
+          "canonical_name": "Choco Oud",
+          "aliases": [
+            "Choco Oud",
+            "Bujairami Choco Oud"
+          ]
+        },
+        {
+          "canonical_name": "Chosen",
+          "aliases": [
+            "Chosen",
+            "Bujairami Chosen"
+          ]
+        },
+        {
+          "canonical_name": "Chosen One",
+          "aliases": [
+            "Chosen One",
+            "Bujairami Chosen One"
+          ]
+        },
+        {
+          "canonical_name": "Chroma",
+          "aliases": [
+            "Chroma",
+            "Bujairami Chroma"
+          ]
+        },
+        {
+          "canonical_name": "Chubby",
+          "aliases": [
+            "Chubby",
+            "Bujairami Chubby"
+          ]
+        },
+        {
+          "canonical_name": "Cinder Kiss",
+          "aliases": [
+            "Cinder Kiss",
+            "Bujairami Cinder Kiss"
+          ]
+        },
+        {
+          "canonical_name": "CinnaMan",
+          "aliases": [
+            "CinnaMan",
+            "Bujairami CinnaMan"
+          ]
+        },
+        {
+          "canonical_name": "Citrus Breeze",
+          "aliases": [
+            "Citrus Breeze",
+            "Bujairami Citrus Breeze"
+          ]
+        },
+        {
+          "canonical_name": "Citrus Fever",
+          "aliases": [
+            "Citrus Fever",
+            "Bujairami Citrus Fever"
+          ]
+        },
+        {
+          "canonical_name": "Citrus Mirage",
+          "aliases": [
+            "Citrus Mirage",
+            "Bujairami Citrus Mirage"
+          ]
+        },
+        {
+          "canonical_name": "Citrus Spark",
+          "aliases": [
+            "Citrus Spark",
+            "Bujairami Citrus Spark"
+          ]
+        },
+        {
+          "canonical_name": "Citrusa",
+          "aliases": [
+            "Citrusa",
+            "Bujairami Citrusa"
+          ]
+        },
+        {
+          "canonical_name": "City Life",
+          "aliases": [
+            "City Life",
+            "Bujairami City Life"
+          ]
+        },
+        {
+          "canonical_name": "Clara Belle",
+          "aliases": [
+            "Clara Belle",
+            "Bujairami Clara Belle"
+          ]
+        },
+        {
+          "canonical_name": "Classic Life",
+          "aliases": [
+            "Classic Life",
+            "Bujairami Classic Life"
+          ]
+        },
+        {
+          "canonical_name": "Classy",
+          "aliases": [
+            "Classy",
+            "Bujairami Classy"
+          ]
+        },
+        {
+          "canonical_name": "Clean Slate",
+          "aliases": [
+            "Clean Slate",
+            "Bujairami Clean Slate"
+          ]
+        },
+        {
+          "canonical_name": "Cloud Kiss",
+          "aliases": [
+            "Cloud Kiss",
+            "Bujairami Cloud Kiss"
+          ]
+        },
+        {
+          "canonical_name": "Cloud Nine",
+          "aliases": [
+            "Cloud Nine",
+            "Bujairami Cloud Nine"
+          ]
+        },
+        {
+          "canonical_name": "Clubs",
+          "aliases": [
+            "Clubs",
+            "Bujairami Clubs"
+          ]
+        },
+        {
+          "canonical_name": "Coastal Mist",
+          "aliases": [
+            "Coastal Mist",
+            "Bujairami Coastal Mist"
+          ]
+        },
+        {
+          "canonical_name": "Cobra Kiss",
+          "aliases": [
+            "Cobra Kiss",
+            "Bujairami Cobra Kiss"
+          ]
+        },
+        {
+          "canonical_name": "Coco Crazy",
+          "aliases": [
+            "Coco Crazy",
+            "Bujairami Coco Crazy"
+          ]
+        },
+        {
+          "canonical_name": "Coco Dream",
+          "aliases": [
+            "Coco Dream",
+            "Bujairami Coco Dream"
+          ]
+        },
+        {
+          "canonical_name": "Coconara",
+          "aliases": [
+            "Coconara",
+            "Bujairami Coconara"
+          ]
+        },
+        {
+          "canonical_name": "Codebreaker",
+          "aliases": [
+            "Codebreaker",
+            "Bujairami Codebreaker"
+          ]
+        },
+        {
+          "canonical_name": "Cold Crush",
+          "aliases": [
+            "Cold Crush",
+            "Bujairami Cold Crush"
+          ]
+        },
+        {
+          "canonical_name": "Confessions",
+          "aliases": [
+            "Confessions",
+            "Bujairami Confessions"
+          ]
+        },
+        {
+          "canonical_name": "Confessions Absolu",
+          "aliases": [
+            "Confessions Absolu",
+            "Bujairami Confessions Absolu"
+          ]
+        },
+        {
+          "canonical_name": "Confetti Kisses",
+          "aliases": [
+            "Confetti Kisses",
+            "Bujairami Confetti Kisses"
+          ]
+        },
+        {
+          "canonical_name": "Cookies and Cream",
+          "aliases": [
+            "Cookies and Cream",
+            "Bujairami Cookies and Cream"
+          ]
+        },
+        {
+          "canonical_name": "Copa Nova",
+          "aliases": [
+            "Copa Nova",
+            "Bujairami Copa Nova"
+          ]
+        },
+        {
+          "canonical_name": "Copacabana Crush",
+          "aliases": [
+            "Copacabana Crush",
+            "Bujairami Copacabana Crush"
+          ]
+        },
+        {
+          "canonical_name": "Coral",
+          "aliases": [
+            "Coral",
+            "Bujairami Coral"
+          ]
+        },
+        {
+          "canonical_name": "Cosmic",
+          "aliases": [
+            "Cosmic",
+            "Bujairami Cosmic"
+          ]
+        },
+        {
+          "canonical_name": "Cosmic Fever",
+          "aliases": [
+            "Cosmic Fever",
+            "Bujairami Cosmic Fever"
+          ]
+        },
+        {
+          "canonical_name": "Countess",
+          "aliases": [
+            "Countess",
+            "Bujairami Countess"
+          ]
+        },
+        {
+          "canonical_name": "Cracka",
+          "aliases": [
+            "Cracka",
+            "Bujairami Cracka"
+          ]
+        },
+        {
+          "canonical_name": "Crave",
+          "aliases": [
+            "Crave",
+            "Bujairami Crave"
+          ]
+        },
+        {
+          "canonical_name": "Crazy in Love",
+          "aliases": [
+            "Crazy in Love",
+            "Bujairami Crazy in Love"
+          ]
+        },
+        {
+          "canonical_name": "Crazy Mango",
+          "aliases": [
+            "Crazy Mango",
+            "Bujairami Crazy Mango"
+          ]
+        },
+        {
+          "canonical_name": "Cream & Crave",
+          "aliases": [
+            "Cream & Crave",
+            "Bujairami Cream & Crave"
+          ]
+        },
+        {
+          "canonical_name": "Creamy Oud Bliss",
+          "aliases": [
+            "Creamy Oud Bliss",
+            "Bujairami Creamy Oud Bliss"
+          ]
+        },
+        {
+          "canonical_name": "Crown",
+          "aliases": [
+            "Crown",
+            "Bujairami Crown"
+          ]
+        },
+        {
+          "canonical_name": "Crown Chai",
+          "aliases": [
+            "Crown Chai",
+            "Bujairami Crown Chai"
+          ]
+        },
+        {
+          "canonical_name": "Crown of Fangs",
+          "aliases": [
+            "Crown of Fangs",
+            "Bujairami Crown of Fangs"
+          ]
+        },
+        {
+          "canonical_name": "Crownwood",
+          "aliases": [
+            "Crownwood",
+            "Bujairami Crownwood"
+          ]
+        },
+        {
+          "canonical_name": "Crying Moon",
+          "aliases": [
+            "Crying Moon",
+            "Bujairami Crying Moon"
+          ]
+        },
+        {
+          "canonical_name": "Cryptic",
+          "aliases": [
+            "Cryptic",
+            "Bujairami Cryptic"
+          ]
+        },
+        {
+          "canonical_name": "Crystal Glow",
+          "aliases": [
+            "Crystal Glow",
+            "Bujairami Crystal Glow"
+          ]
+        },
+        {
+          "canonical_name": "Cuban Nights",
+          "aliases": [
+            "Cuban Nights",
+            "Bujairami Cuban Nights"
+          ]
+        },
+        {
+          "canonical_name": "Cyprus",
+          "aliases": [
+            "Cyprus",
+            "Bujairami Cyprus"
+          ]
+        },
+        {
+          "canonical_name": "Daddy Issues",
+          "aliases": [
+            "Daddy Issues",
+            "Bujairami Daddy Issues"
+          ]
+        },
+        {
+          "canonical_name": "Dagger",
+          "aliases": [
+            "Dagger",
+            "Bujairami Dagger"
+          ]
+        },
+        {
+          "canonical_name": "Damn Wild",
+          "aliases": [
+            "Damn Wild",
+            "Bujairami Damn Wild"
+          ]
+        },
+        {
+          "canonical_name": "Dancing Oud",
+          "aliases": [
+            "Dancing Oud",
+            "Bujairami Dancing Oud"
+          ]
+        },
+        {
+          "canonical_name": "Dare Me",
+          "aliases": [
+            "Dare Me",
+            "Bujairami Dare Me"
+          ]
+        },
+        {
+          "canonical_name": "Dark Aqua",
+          "aliases": [
+            "Dark Aqua",
+            "Bujairami Dark Aqua"
+          ]
+        },
+        {
+          "canonical_name": "Dark Barista",
+          "aliases": [
+            "Dark Barista",
+            "Bujairami Dark Barista"
+          ]
+        },
+        {
+          "canonical_name": "Dark Blaze",
+          "aliases": [
+            "Dark Blaze",
+            "Bujairami Dark Blaze"
+          ]
+        },
+        {
+          "canonical_name": "Dark Desire",
+          "aliases": [
+            "Dark Desire",
+            "Bujairami Dark Desire"
+          ]
+        },
+        {
+          "canonical_name": "Dark Intentions",
+          "aliases": [
+            "Dark Intentions",
+            "Bujairami Dark Intentions"
+          ]
+        },
+        {
+          "canonical_name": "Dark Rose Oud",
+          "aliases": [
+            "Dark Rose Oud",
+            "Bujairami Dark Rose Oud"
+          ]
+        },
+        {
+          "canonical_name": "Dark Specter",
+          "aliases": [
+            "Dark Specter",
+            "Bujairami Dark Specter"
+          ]
+        },
+        {
+          "canonical_name": "Darkness",
+          "aliases": [
+            "Darkness",
+            "Bujairami Darkness"
+          ]
+        },
+        {
+          "canonical_name": "Darkwood",
+          "aliases": [
+            "Darkwood",
+            "Bujairami Darkwood"
+          ]
+        },
+        {
+          "canonical_name": "Darling",
+          "aliases": [
+            "Darling",
+            "Bujairami Darling"
+          ]
+        },
+        {
+          "canonical_name": "Date Night",
+          "aliases": [
+            "Date Night",
+            "Bujairami Date Night"
+          ]
+        },
+        {
+          "canonical_name": "Day Break",
+          "aliases": [
+            "Day Break",
+            "Bujairami Day Break"
+          ]
+        },
+        {
+          "canonical_name": "Dazzle Queen",
+          "aliases": [
+            "Dazzle Queen",
+            "Bujairami Dazzle Queen"
+          ]
+        },
+        {
+          "canonical_name": "Dead Serious",
+          "aliases": [
+            "Dead Serious",
+            "Bujairami Dead Serious"
+          ]
+        },
+        {
+          "canonical_name": "Deep Love",
+          "aliases": [
+            "Deep Love",
+            "Bujairami Deep Love"
+          ]
+        },
+        {
+          "canonical_name": "Deep Love Gold",
+          "aliases": [
+            "Deep Love Gold",
+            "Bujairami Deep Love Gold"
+          ]
+        },
+        {
+          "canonical_name": "Deep Moments",
+          "aliases": [
+            "Deep Moments",
+            "Bujairami Deep Moments"
+          ]
+        },
+        {
+          "canonical_name": "Deep Night",
+          "aliases": [
+            "Deep Night",
+            "Bujairami Deep Night"
+          ]
+        },
+        {
+          "canonical_name": "Delicate Veil",
+          "aliases": [
+            "Delicate Veil",
+            "Bujairami Delicate Veil"
+          ]
+        },
+        {
+          "canonical_name": "Delicious Bean",
+          "aliases": [
+            "Delicious Bean",
+            "Bujairami Delicious Bean"
+          ]
+        },
+        {
+          "canonical_name": "Delulu",
+          "aliases": [
+            "Delulu",
+            "Bujairami Delulu"
+          ]
+        },
+        {
+          "canonical_name": "Desert Crown",
+          "aliases": [
+            "Desert Crown",
+            "Bujairami Desert Crown"
+          ]
+        },
+        {
+          "canonical_name": "Desert Dates",
+          "aliases": [
+            "Desert Dates",
+            "Bujairami Desert Dates"
+          ]
+        },
+        {
+          "canonical_name": "Desert Dune",
+          "aliases": [
+            "Desert Dune",
+            "Bujairami Desert Dune"
+          ]
+        },
+        {
+          "canonical_name": "Desert Kings",
+          "aliases": [
+            "Desert Kings",
+            "Bujairami Desert Kings"
+          ]
+        },
+        {
+          "canonical_name": "Desired",
+          "aliases": [
+            "Desired",
+            "Bujairami Desired"
+          ]
+        },
+        {
+          "canonical_name": "Devious",
+          "aliases": [
+            "Devious",
+            "Bujairami Devious"
+          ]
+        },
+        {
+          "canonical_name": "Diamonds",
+          "aliases": [
+            "Diamonds",
+            "Bujairami Diamonds"
+          ]
+        },
+        {
+          "canonical_name": "Dictator",
+          "aliases": [
+            "Dictator",
+            "Bujairami Dictator"
+          ]
+        },
+        {
+          "canonical_name": "Dilemma",
+          "aliases": [
+            "Dilemma",
+            "Bujairami Dilemma"
+          ]
+        },
+        {
+          "canonical_name": "Dirty Money",
+          "aliases": [
+            "Dirty Money",
+            "Bujairami Dirty Money"
+          ]
+        },
+        {
+          "canonical_name": "Distilled Chaos",
+          "aliases": [
+            "Distilled Chaos",
+            "Bujairami Distilled Chaos"
+          ]
+        },
+        {
+          "canonical_name": "Diva",
+          "aliases": [
+            "Diva",
+            "Bujairami Diva"
+          ]
+        },
+        {
+          "canonical_name": "Divina",
+          "aliases": [
+            "Divina",
+            "Bujairami Divina"
+          ]
+        },
+        {
+          "canonical_name": "Divine Amberosia",
+          "aliases": [
+            "Divine Amberosia",
+            "Bujairami Divine Amberosia"
+          ]
+        },
+        {
+          "canonical_name": "Divinity",
+          "aliases": [
+            "Divinity",
+            "Bujairami Divinity"
+          ]
+        },
+        {
+          "canonical_name": "Dnd",
+          "aliases": [
+            "Dnd",
+            "Bujairami Dnd"
+          ]
+        },
+        {
+          "canonical_name": "Dolphin",
+          "aliases": [
+            "Dolphin",
+            "Bujairami Dolphin"
+          ]
+        },
+        {
+          "canonical_name": "Dom",
+          "aliases": [
+            "Dom",
+            "Bujairami Dom"
+          ]
+        },
+        {
+          "canonical_name": "Dominion",
+          "aliases": [
+            "Dominion",
+            "Bujairami Dominion"
+          ]
+        },
+        {
+          "canonical_name": "Dominus",
+          "aliases": [
+            "Dominus",
+            "Bujairami Dominus"
+          ]
+        },
+        {
+          "canonical_name": "Double Dose",
+          "aliases": [
+            "Double Dose",
+            "Bujairami Double Dose"
+          ]
+        },
+        {
+          "canonical_name": "Down Under",
+          "aliases": [
+            "Down Under",
+            "Bujairami Down Under"
+          ]
+        },
+        {
+          "canonical_name": "Downtown",
+          "aliases": [
+            "Downtown",
+            "Bujairami Downtown"
+          ]
+        },
+        {
+          "canonical_name": "Dragonfly",
+          "aliases": [
+            "Dragonfly",
+            "Bujairami Dragonfly"
+          ]
+        },
+        {
+          "canonical_name": "Drakkar",
+          "aliases": [
+            "Drakkar",
+            "Bujairami Drakkar"
+          ]
+        },
+        {
+          "canonical_name": "Dreams & Diamonds",
+          "aliases": [
+            "Dreams & Diamonds",
+            "Bujairami Dreams & Diamonds"
+          ]
+        },
+        {
+          "canonical_name": "Dreamscape",
+          "aliases": [
+            "Dreamscape",
+            "Bujairami Dreamscape"
+          ]
+        },
+        {
+          "canonical_name": "Dreamy Delight",
+          "aliases": [
+            "Dreamy Delight",
+            "Bujairami Dreamy Delight"
+          ]
+        },
+        {
+          "canonical_name": "Dreamy Escape",
+          "aliases": [
+            "Dreamy Escape",
+            "Bujairami Dreamy Escape"
+          ]
+        },
+        {
+          "canonical_name": "Drip",
+          "aliases": [
+            "Drip",
+            "Bujairami Drip"
+          ]
+        },
+        {
+          "canonical_name": "Drip No. 7",
+          "aliases": [
+            "Drip No. 7",
+            "Bujairami Drip No. 7"
+          ]
+        },
+        {
+          "canonical_name": "Drunk In Love",
+          "aliases": [
+            "Drunk In Love",
+            "Bujairami Drunk In Love"
+          ]
+        },
+        {
+          "canonical_name": "Dubai Crush",
+          "aliases": [
+            "Dubai Crush",
+            "Bujairami Dubai Crush"
+          ]
+        },
+        {
+          "canonical_name": "Dubai Spirit",
+          "aliases": [
+            "Dubai Spirit",
+            "Bujairami Dubai Spirit"
+          ]
+        },
+        {
+          "canonical_name": "Dui",
+          "aliases": [
+            "Dui",
+            "Bujairami Dui"
+          ]
+        },
+        {
+          "canonical_name": "Duo Night",
+          "aliases": [
+            "Duo Night",
+            "Bujairami Duo Night"
+          ]
+        },
+        {
+          "canonical_name": "Dusk Till Dawn",
+          "aliases": [
+            "Dusk Till Dawn",
+            "Bujairami Dusk Till Dawn"
+          ]
+        },
+        {
+          "canonical_name": "Dust Me Sweet",
+          "aliases": [
+            "Dust Me Sweet",
+            "Bujairami Dust Me Sweet"
+          ]
+        },
+        {
+          "canonical_name": "Earthbound",
+          "aliases": [
+            "Earthbound",
+            "Bujairami Earthbound"
+          ]
+        },
+        {
+          "canonical_name": "Earthy Woods",
+          "aliases": [
+            "Earthy Woods",
+            "Bujairami Earthy Woods"
+          ]
+        },
+        {
+          "canonical_name": "Eastern Beast",
+          "aliases": [
+            "Eastern Beast",
+            "Bujairami Eastern Beast"
+          ]
+        },
+        {
+          "canonical_name": "Easy Breeze",
+          "aliases": [
+            "Easy Breeze",
+            "Bujairami Easy Breeze"
+          ]
+        },
+        {
+          "canonical_name": "Easy Money",
+          "aliases": [
+            "Easy Money",
+            "Bujairami Easy Money"
+          ]
+        },
+        {
+          "canonical_name": "Eau So Fresh",
+          "aliases": [
+            "Eau So Fresh",
+            "Bujairami Eau So Fresh"
+          ]
+        },
+        {
+          "canonical_name": "Echoes",
+          "aliases": [
+            "Echoes",
+            "Bujairami Echoes"
+          ]
+        },
+        {
+          "canonical_name": "EchoVibe",
+          "aliases": [
+            "EchoVibe",
+            "Bujairami EchoVibe"
+          ]
+        },
+        {
+          "canonical_name": "Eclipse",
+          "aliases": [
+            "Eclipse",
+            "Bujairami Eclipse"
+          ]
+        },
+        {
+          "canonical_name": "El Amor",
+          "aliases": [
+            "El Amor",
+            "Bujairami El Amor"
+          ]
+        },
+        {
+          "canonical_name": "Electric Feel",
+          "aliases": [
+            "Electric Feel",
+            "Bujairami Electric Feel"
+          ]
+        },
+        {
+          "canonical_name": "Electric Romance",
+          "aliases": [
+            "Electric Romance",
+            "Bujairami Electric Romance"
+          ]
+        },
+        {
+          "canonical_name": "Eleganto",
+          "aliases": [
+            "Eleganto",
+            "Bujairami Eleganto"
+          ]
+        },
+        {
+          "canonical_name": "Elite",
+          "aliases": [
+            "Elite",
+            "Bujairami Elite"
+          ]
+        },
+        {
+          "canonical_name": "Elite One",
+          "aliases": [
+            "Elite One",
+            "Bujairami Elite One"
+          ]
+        },
+        {
+          "canonical_name": "Emperor",
+          "aliases": [
+            "Emperor",
+            "Bujairami Emperor"
+          ]
+        },
+        {
+          "canonical_name": "Empress",
+          "aliases": [
+            "Empress",
+            "Bujairami Empress"
+          ]
+        },
+        {
+          "canonical_name": "Enchantress",
+          "aliases": [
+            "Enchantress",
+            "Bujairami Enchantress"
+          ]
+        },
+        {
+          "canonical_name": "Encore",
+          "aliases": [
+            "Encore",
+            "Bujairami Encore"
+          ]
+        },
+        {
+          "canonical_name": "Endless Blue",
+          "aliases": [
+            "Endless Blue",
+            "Bujairami Endless Blue"
+          ]
+        },
+        {
+          "canonical_name": "Endless Love",
+          "aliases": [
+            "Endless Love",
+            "Bujairami Endless Love"
+          ]
+        },
+        {
+          "canonical_name": "Endless Road",
+          "aliases": [
+            "Endless Road",
+            "Bujairami Endless Road"
+          ]
+        },
+        {
+          "canonical_name": "Energy Burst",
+          "aliases": [
+            "Energy Burst",
+            "Bujairami Energy Burst"
+          ]
+        },
+        {
+          "canonical_name": "Enforcer",
+          "aliases": [
+            "Enforcer",
+            "Bujairami Enforcer"
+          ]
+        },
+        {
+          "canonical_name": "Enigma",
+          "aliases": [
+            "Enigma",
+            "Bujairami Enigma"
+          ]
+        },
+        {
+          "canonical_name": "Epic Moments",
+          "aliases": [
+            "Epic Moments",
+            "Bujairami Epic Moments"
+          ]
+        },
+        {
+          "canonical_name": "Eterna",
+          "aliases": [
+            "Eterna",
+            "Bujairami Eterna"
+          ]
+        },
+        {
+          "canonical_name": "Ethereal",
+          "aliases": [
+            "Ethereal",
+            "Bujairami Ethereal"
+          ]
+        },
+        {
+          "canonical_name": "Evermore",
+          "aliases": [
+            "Evermore",
+            "Bujairami Evermore"
+          ]
+        },
+        {
+          "canonical_name": "Exceptional",
+          "aliases": [
+            "Exceptional",
+            "Bujairami Exceptional"
+          ]
+        },
+        {
+          "canonical_name": "Exclusif",
+          "aliases": [
+            "Exclusif",
+            "Bujairami Exclusif"
+          ]
+        },
+        {
+          "canonical_name": "Executor",
+          "aliases": [
+            "Executor",
+            "Bujairami Executor"
+          ]
+        },
+        {
+          "canonical_name": "Exquisite",
+          "aliases": [
+            "Exquisite",
+            "Bujairami Exquisite"
+          ]
+        },
+        {
+          "canonical_name": "Extra Pulse",
+          "aliases": [
+            "Extra Pulse",
+            "Bujairami Extra Pulse"
+          ]
+        },
+        {
+          "canonical_name": "Fairy Dust",
+          "aliases": [
+            "Fairy Dust",
+            "Bujairami Fairy Dust"
+          ]
+        },
+        {
+          "canonical_name": "Falling Star",
+          "aliases": [
+            "Falling Star",
+            "Bujairami Falling Star"
+          ]
+        },
+        {
+          "canonical_name": "Fantasia",
+          "aliases": [
+            "Fantasia",
+            "Bujairami Fantasia"
+          ]
+        },
+        {
+          "canonical_name": "Fantasy",
+          "aliases": [
+            "Fantasy",
+            "Bujairami Fantasy"
+          ]
+        },
+        {
+          "canonical_name": "Fashion Avenue",
+          "aliases": [
+            "Fashion Avenue",
+            "Bujairami Fashion Avenue"
+          ]
+        },
+        {
+          "canonical_name": "Fashion Boy",
+          "aliases": [
+            "Fashion Boy",
+            "Bujairami Fashion Boy"
+          ]
+        },
+        {
+          "canonical_name": "Fashion Killa",
+          "aliases": [
+            "Fashion Killa",
+            "Bujairami Fashion Killa"
+          ]
+        },
+        {
+          "canonical_name": "Fashionista",
+          "aliases": [
+            "Fashionista",
+            "Bujairami Fashionista"
+          ]
+        },
+        {
+          "canonical_name": "Fate",
+          "aliases": [
+            "Fate",
+            "Bujairami Fate"
+          ]
+        },
+        {
+          "canonical_name": "Fearless",
+          "aliases": [
+            "Fearless",
+            "Bujairami Fearless"
+          ]
+        },
+        {
+          "canonical_name": "Fierce",
+          "aliases": [
+            "Fierce",
+            "Bujairami Fierce"
+          ]
+        },
+        {
+          "canonical_name": "Final Boss",
+          "aliases": [
+            "Final Boss",
+            "Bujairami Final Boss"
+          ]
+        },
+        {
+          "canonical_name": "Final Hour",
+          "aliases": [
+            "Final Hour",
+            "Bujairami Final Hour"
+          ]
+        },
+        {
+          "canonical_name": "Final Vow",
+          "aliases": [
+            "Final Vow",
+            "Bujairami Final Vow"
+          ]
+        },
+        {
+          "canonical_name": "Finesse",
+          "aliases": [
+            "Finesse",
+            "Bujairami Finesse"
+          ]
+        },
+        {
+          "canonical_name": "Firefly",
+          "aliases": [
+            "Firefly",
+            "Bujairami Firefly"
+          ]
+        },
+        {
+          "canonical_name": "Fireworks",
+          "aliases": [
+            "Fireworks",
+            "Bujairami Fireworks"
+          ]
+        },
+        {
+          "canonical_name": "First Class",
+          "aliases": [
+            "First Class",
+            "Bujairami First Class"
+          ]
+        },
+        {
+          "canonical_name": "First Date",
+          "aliases": [
+            "First Date",
+            "Bujairami First Date"
+          ]
+        },
+        {
+          "canonical_name": "First Light",
+          "aliases": [
+            "First Light",
+            "Bujairami First Light"
+          ]
+        },
+        {
+          "canonical_name": "First Love",
+          "aliases": [
+            "First Love",
+            "Bujairami First Love"
+          ]
+        },
+        {
+          "canonical_name": "Five",
+          "aliases": [
+            "Five",
+            "Bujairami Five"
+          ]
+        },
+        {
+          "canonical_name": "Fixation",
+          "aliases": [
+            "Fixation",
+            "Bujairami Fixation"
+          ]
+        },
+        {
+          "canonical_name": "Flare",
+          "aliases": [
+            "Flare",
+            "Bujairami Flare"
+          ]
+        },
+        {
+          "canonical_name": "Flawless",
+          "aliases": [
+            "Flawless",
+            "Bujairami Flawless"
+          ]
+        },
+        {
+          "canonical_name": "Flex",
+          "aliases": [
+            "Flex",
+            "Bujairami Flex"
+          ]
+        },
+        {
+          "canonical_name": "Flirty Breeze",
+          "aliases": [
+            "Flirty Breeze",
+            "Bujairami Flirty Breeze"
+          ]
+        },
+        {
+          "canonical_name": "Floral Obsession",
+          "aliases": [
+            "Floral Obsession",
+            "Bujairami Floral Obsession"
+          ]
+        },
+        {
+          "canonical_name": "Floral Walk",
+          "aliases": [
+            "Floral Walk",
+            "Bujairami Floral Walk"
+          ]
+        },
+        {
+          "canonical_name": "Floralicious",
+          "aliases": [
+            "Floralicious",
+            "Bujairami Floralicious"
+          ]
+        },
+        {
+          "canonical_name": "Flower Girl",
+          "aliases": [
+            "Flower Girl",
+            "Bujairami Flower Girl"
+          ]
+        },
+        {
+          "canonical_name": "Forbidden",
+          "aliases": [
+            "Forbidden",
+            "Bujairami Forbidden"
+          ]
+        },
+        {
+          "canonical_name": "Forest Air",
+          "aliases": [
+            "Forest Air",
+            "Bujairami Forest Air"
+          ]
+        },
+        {
+          "canonical_name": "Forever Her",
+          "aliases": [
+            "Forever Her",
+            "Bujairami Forever Her"
+          ]
+        },
+        {
+          "canonical_name": "Forever You",
+          "aliases": [
+            "Forever You",
+            "Bujairami Forever You"
+          ]
+        },
+        {
+          "canonical_name": "Fortune",
+          "aliases": [
+            "Fortune",
+            "Bujairami Fortune"
+          ]
+        },
+        {
+          "canonical_name": "Free Spirit",
+          "aliases": [
+            "Free Spirit",
+            "Bujairami Free Spirit"
+          ]
+        },
+        {
+          "canonical_name": "Freeze",
+          "aliases": [
+            "Freeze",
+            "Bujairami Freeze"
+          ]
+        },
+        {
+          "canonical_name": "Fresh",
+          "aliases": [
+            "Fresh",
+            "Bujairami Fresh"
+          ]
+        },
+        {
+          "canonical_name": "Fresh AF",
+          "aliases": [
+            "Fresh AF",
+            "Bujairami Fresh AF"
+          ]
+        },
+        {
+          "canonical_name": "Fresh Art",
+          "aliases": [
+            "Fresh Art",
+            "Bujairami Fresh Art"
+          ]
+        },
+        {
+          "canonical_name": "Fresh Booz",
+          "aliases": [
+            "Fresh Booz",
+            "Bujairami Fresh Booz"
+          ]
+        },
+        {
+          "canonical_name": "Fresh Life",
+          "aliases": [
+            "Fresh Life",
+            "Bujairami Fresh Life"
+          ]
+        },
+        {
+          "canonical_name": "Fresh Vanilla",
+          "aliases": [
+            "Fresh Vanilla",
+            "Bujairami Fresh Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Fresh'n Up",
+          "aliases": [
+            "Fresh'n Up",
+            "Bujairami Fresh'n Up"
+          ]
+        },
+        {
+          "canonical_name": "Freshly Baked",
+          "aliases": [
+            "Freshly Baked",
+            "Bujairami Freshly Baked"
+          ]
+        },
+        {
+          "canonical_name": "Frostine",
+          "aliases": [
+            "Frostine",
+            "Bujairami Frostine"
+          ]
+        },
+        {
+          "canonical_name": "Frozen Fantasy",
+          "aliases": [
+            "Frozen Fantasy",
+            "Bujairami Frozen Fantasy"
+          ]
+        },
+        {
+          "canonical_name": "Fruit Fusion",
+          "aliases": [
+            "Fruit Fusion",
+            "Bujairami Fruit Fusion"
+          ]
+        },
+        {
+          "canonical_name": "Fruit Wave",
+          "aliases": [
+            "Fruit Wave",
+            "Bujairami Fruit Wave"
+          ]
+        },
+        {
+          "canonical_name": "Fuego",
+          "aliases": [
+            "Fuego",
+            "Bujairami Fuego"
+          ]
+        },
+        {
+          "canonical_name": "Full Effect",
+          "aliases": [
+            "Full Effect",
+            "Bujairami Full Effect"
+          ]
+        },
+        {
+          "canonical_name": "Full Throttle",
+          "aliases": [
+            "Full Throttle",
+            "Bujairami Full Throttle"
+          ]
+        },
+        {
+          "canonical_name": "G Oud",
+          "aliases": [
+            "G Oud",
+            "Bujairami G Oud"
+          ]
+        },
+        {
+          "canonical_name": "G’Day",
+          "aliases": [
+            "G’Day",
+            "Bujairami G’Day",
+            "Gday",
+            "G'Day"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Gambit",
+          "aliases": [
+            "Gambit",
+            "Bujairami Gambit"
+          ]
+        },
+        {
+          "canonical_name": "Gas",
+          "aliases": [
+            "Gas",
+            "Bujairami Gas"
+          ]
+        },
+        {
+          "canonical_name": "Gem",
+          "aliases": [
+            "Gem",
+            "Bujairami Gem"
+          ]
+        },
+        {
+          "canonical_name": "Gentle Oud",
+          "aliases": [
+            "Gentle Oud",
+            "Bujairami Gentle Oud"
+          ]
+        },
+        {
+          "canonical_name": "Gentle Tide",
+          "aliases": [
+            "Gentle Tide",
+            "Bujairami Gentle Tide"
+          ]
+        },
+        {
+          "canonical_name": "Gentlemens Club",
+          "aliases": [
+            "Gentlemens Club",
+            "Bujairami Gentlemens Club"
+          ]
+        },
+        {
+          "canonical_name": "Ghost",
+          "aliases": [
+            "Ghost",
+            "Bujairami Ghost"
+          ]
+        },
+        {
+          "canonical_name": "Giggle",
+          "aliases": [
+            "Giggle",
+            "Bujairami Giggle"
+          ]
+        },
+        {
+          "canonical_name": "Gingerbread",
+          "aliases": [
+            "Gingerbread",
+            "Bujairami Gingerbread"
+          ]
+        },
+        {
+          "canonical_name": "Girls Night",
+          "aliases": [
+            "Girls Night",
+            "Bujairami Girls Night"
+          ]
+        },
+        {
+          "canonical_name": "Gladiator",
+          "aliases": [
+            "Gladiator",
+            "Bujairami Gladiator"
+          ]
+        },
+        {
+          "canonical_name": "Glamorous",
+          "aliases": [
+            "Glamorous",
+            "Bujairami Glamorous"
+          ]
+        },
+        {
+          "canonical_name": "Glass Moon",
+          "aliases": [
+            "Glass Moon",
+            "Bujairami Glass Moon"
+          ]
+        },
+        {
+          "canonical_name": "Glimmer",
+          "aliases": [
+            "Glimmer",
+            "Bujairami Glimmer"
+          ]
+        },
+        {
+          "canonical_name": "Glint",
+          "aliases": [
+            "Glint",
+            "Bujairami Glint"
+          ]
+        },
+        {
+          "canonical_name": "Glitter",
+          "aliases": [
+            "Glitter",
+            "Bujairami Glitter"
+          ]
+        },
+        {
+          "canonical_name": "Glorious",
+          "aliases": [
+            "Glorious",
+            "Bujairami Glorious"
+          ]
+        },
+        {
+          "canonical_name": "Glossed",
+          "aliases": [
+            "Glossed",
+            "Bujairami Glossed"
+          ]
+        },
+        {
+          "canonical_name": "Glow",
+          "aliases": [
+            "Glow",
+            "Bujairami Glow"
+          ]
+        },
+        {
+          "canonical_name": "Gold",
+          "aliases": [
+            "Gold",
+            "Bujairami Gold"
+          ]
+        },
+        {
+          "canonical_name": "Gold Coast",
+          "aliases": [
+            "Gold Coast",
+            "Bujairami Gold Coast"
+          ]
+        },
+        {
+          "canonical_name": "Gold Coast Shiraz",
+          "aliases": [
+            "Gold Coast Shiraz",
+            "Bujairami Gold Coast Shiraz"
+          ]
+        },
+        {
+          "canonical_name": "Golden Allure",
+          "aliases": [
+            "Golden Allure",
+            "Bujairami Golden Allure"
+          ]
+        },
+        {
+          "canonical_name": "Golden Boy",
+          "aliases": [
+            "Golden Boy",
+            "Bujairami Golden Boy"
+          ]
+        },
+        {
+          "canonical_name": "Golden Dawn",
+          "aliases": [
+            "Golden Dawn",
+            "Bujairami Golden Dawn"
+          ]
+        },
+        {
+          "canonical_name": "Golden Dust",
+          "aliases": [
+            "Golden Dust",
+            "Bujairami Golden Dust"
+          ]
+        },
+        {
+          "canonical_name": "Golden Flush",
+          "aliases": [
+            "Golden Flush",
+            "Bujairami Golden Flush"
+          ]
+        },
+        {
+          "canonical_name": "Golden Night",
+          "aliases": [
+            "Golden Night",
+            "Bujairami Golden Night"
+          ]
+        },
+        {
+          "canonical_name": "Golden Scale",
+          "aliases": [
+            "Golden Scale",
+            "Bujairami Golden Scale"
+          ]
+        },
+        {
+          "canonical_name": "Golden Souq",
+          "aliases": [
+            "Golden Souq",
+            "Bujairami Golden Souq"
+          ]
+        },
+        {
+          "canonical_name": "Golden Spice",
+          "aliases": [
+            "Golden Spice",
+            "Bujairami Golden Spice"
+          ]
+        },
+        {
+          "canonical_name": "Good As Gold",
+          "aliases": [
+            "Good As Gold",
+            "Bujairami Good As Gold"
+          ]
+        },
+        {
+          "canonical_name": "Gorgeous",
+          "aliases": [
+            "Gorgeous",
+            "Bujairami Gorgeous"
+          ]
+        },
+        {
+          "canonical_name": "Gotham",
+          "aliases": [
+            "Gotham",
+            "Bujairami Gotham"
+          ]
+        },
+        {
+          "canonical_name": "Grand Affair",
+          "aliases": [
+            "Grand Affair",
+            "Bujairami Grand Affair"
+          ]
+        },
+        {
+          "canonical_name": "Greatness",
+          "aliases": [
+            "Greatness",
+            "Bujairami Greatness"
+          ]
+        },
+        {
+          "canonical_name": "Green Beauty",
+          "aliases": [
+            "Green Beauty",
+            "Bujairami Green Beauty"
+          ]
+        },
+        {
+          "canonical_name": "Green Flag",
+          "aliases": [
+            "Green Flag",
+            "Bujairami Green Flag"
+          ]
+        },
+        {
+          "canonical_name": "Grounded",
+          "aliases": [
+            "Grounded",
+            "Bujairami Grounded"
+          ]
+        },
+        {
+          "canonical_name": "Guava Vice",
+          "aliases": [
+            "Guava Vice",
+            "Bujairami Guava Vice"
+          ]
+        },
+        {
+          "canonical_name": "Halo",
+          "aliases": [
+            "Halo",
+            "Bujairami Halo"
+          ]
+        },
+        {
+          "canonical_name": "Happy Feet",
+          "aliases": [
+            "Happy Feet",
+            "Bujairami Happy Feet"
+          ]
+        },
+        {
+          "canonical_name": "Happy Hour",
+          "aliases": [
+            "Happy Hour",
+            "Bujairami Happy Hour",
+            "Happy Hour Inspired By Mango Mood Phlur"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Happy Place",
+          "aliases": [
+            "Happy Place",
+            "Bujairami Happy Place"
+          ]
+        },
+        {
+          "canonical_name": "Harbour Tea",
+          "aliases": [
+            "Harbour Tea",
+            "Bujairami Harbour Tea"
+          ]
+        },
+        {
+          "canonical_name": "Haunted",
+          "aliases": [
+            "Haunted",
+            "Bujairami Haunted"
+          ]
+        },
+        {
+          "canonical_name": "Havana",
+          "aliases": [
+            "Havana",
+            "Bujairami Havana"
+          ]
+        },
+        {
+          "canonical_name": "Haven",
+          "aliases": [
+            "Haven",
+            "Bujairami Haven"
+          ]
+        },
+        {
+          "canonical_name": "Havoc",
+          "aliases": [
+            "Havoc",
+            "Bujairami Havoc"
+          ]
+        },
+        {
+          "canonical_name": "Heart Beat",
+          "aliases": [
+            "Heart Beat",
+            "Bujairami Heart Beat"
+          ]
+        },
+        {
+          "canonical_name": "Heart of the Sea",
+          "aliases": [
+            "Heart of the Sea",
+            "Bujairami Heart of the Sea"
+          ]
+        },
+        {
+          "canonical_name": "Heartstring",
+          "aliases": [
+            "Heartstring",
+            "Bujairami Heartstring"
+          ]
+        },
+        {
+          "canonical_name": "Heatwave",
+          "aliases": [
+            "Heatwave",
+            "Bujairami Heatwave"
+          ]
+        },
+        {
+          "canonical_name": "Heaven Scent",
+          "aliases": [
+            "Heaven Scent",
+            "Bujairami Heaven Scent"
+          ]
+        },
+        {
+          "canonical_name": "Hectic",
+          "aliases": [
+            "Hectic",
+            "Bujairami Hectic"
+          ]
+        },
+        {
+          "canonical_name": "Hella Fresh",
+          "aliases": [
+            "Hella Fresh",
+            "Bujairami Hella Fresh"
+          ]
+        },
+        {
+          "canonical_name": "Helou",
+          "aliases": [
+            "Helou",
+            "Bujairami Helou"
+          ]
+        },
+        {
+          "canonical_name": "Helou (light)",
+          "aliases": [
+            "Helou (light)",
+            "Bujairami Helou (light)"
+          ]
+        },
+        {
+          "canonical_name": "Her",
+          "aliases": [
+            "Her",
+            "Bujairami Her"
+          ]
+        },
+        {
+          "canonical_name": "Her Rules",
+          "aliases": [
+            "Her Rules",
+            "Bujairami Her Rules"
+          ]
+        },
+        {
+          "canonical_name": "Hero",
+          "aliases": [
+            "Hero",
+            "Bujairami Hero"
+          ]
+        },
+        {
+          "canonical_name": "Hex Appeal",
+          "aliases": [
+            "Hex Appeal",
+            "Bujairami Hex Appeal"
+          ]
+        },
+        {
+          "canonical_name": "Hidden Gem",
+          "aliases": [
+            "Hidden Gem",
+            "Bujairami Hidden Gem"
+          ]
+        },
+        {
+          "canonical_name": "High Peach",
+          "aliases": [
+            "High Peach",
+            "Bujairami High Peach"
+          ]
+        },
+        {
+          "canonical_name": "High Roller",
+          "aliases": [
+            "High Roller",
+            "Bujairami High Roller"
+          ]
+        },
+        {
+          "canonical_name": "High Rolless",
+          "aliases": [
+            "High Rolless",
+            "Bujairami High Rolless"
+          ]
+        },
+        {
+          "canonical_name": "High Society",
+          "aliases": [
+            "High Society",
+            "Bujairami High Society"
+          ]
+        },
+        {
+          "canonical_name": "High Tea",
+          "aliases": [
+            "High Tea",
+            "Bujairami High Tea"
+          ]
+        },
+        {
+          "canonical_name": "High Tide Mojito",
+          "aliases": [
+            "High Tide Mojito",
+            "Bujairami High Tide Mojito"
+          ]
+        },
+        {
+          "canonical_name": "HIM",
+          "aliases": [
+            "HIM",
+            "Bujairami HIM"
+          ]
+        },
+        {
+          "canonical_name": "His Night",
+          "aliases": [
+            "His Night",
+            "Bujairami His Night"
+          ]
+        },
+        {
+          "canonical_name": "His Secret",
+          "aliases": [
+            "His Secret",
+            "Bujairami His Secret"
+          ]
+        },
+        {
+          "canonical_name": "Honcho",
+          "aliases": [
+            "Honcho",
+            "Bujairami Honcho"
+          ]
+        },
+        {
+          "canonical_name": "Honey Glow",
+          "aliases": [
+            "Honey Glow",
+            "Bujairami Honey Glow"
+          ]
+        },
+        {
+          "canonical_name": "Honeyed Heart",
+          "aliases": [
+            "Honeyed Heart",
+            "Bujairami Honeyed Heart"
+          ]
+        },
+        {
+          "canonical_name": "Hooked",
+          "aliases": [
+            "Hooked",
+            "Bujairami Hooked"
+          ]
+        },
+        {
+          "canonical_name": "Hoot",
+          "aliases": [
+            "Hoot",
+            "Bujairami Hoot"
+          ]
+        },
+        {
+          "canonical_name": "Hot Cherry",
+          "aliases": [
+            "Hot Cherry",
+            "Bujairami Hot Cherry"
+          ]
+        },
+        {
+          "canonical_name": "Hot Rod",
+          "aliases": [
+            "Hot Rod",
+            "Bujairami Hot Rod"
+          ]
+        },
+        {
+          "canonical_name": "Hotter Than Roses",
+          "aliases": [
+            "Hotter Than Roses",
+            "Bujairami Hotter Than Roses"
+          ]
+        },
+        {
+          "canonical_name": "Houdini",
+          "aliases": [
+            "Houdini",
+            "Bujairami Houdini"
+          ]
+        },
+        {
+          "canonical_name": "Hush Money",
+          "aliases": [
+            "Hush Money",
+            "Bujairami Hush Money"
+          ]
+        },
+        {
+          "canonical_name": "Hustler",
+          "aliases": [
+            "Hustler",
+            "Bujairami Hustler"
+          ]
+        },
+        {
+          "canonical_name": "Hyper Pink",
+          "aliases": [
+            "Hyper Pink",
+            "Bujairami Hyper Pink"
+          ]
+        },
+        {
+          "canonical_name": "I Have Money",
+          "aliases": [
+            "I Have Money",
+            "Bujairami I Have Money"
+          ]
+        },
+        {
+          "canonical_name": "I Scent You",
+          "aliases": [
+            "I Scent You",
+            "Bujairami I Scent You"
+          ]
+        },
+        {
+          "canonical_name": "Ibiza",
+          "aliases": [
+            "Ibiza",
+            "Bujairami Ibiza"
+          ]
+        },
+        {
+          "canonical_name": "Ice",
+          "aliases": [
+            "Ice",
+            "Bujairami Ice"
+          ]
+        },
+        {
+          "canonical_name": "Icebreaker",
+          "aliases": [
+            "Icebreaker",
+            "Bujairami Icebreaker"
+          ]
+        },
+        {
+          "canonical_name": "Iconic",
+          "aliases": [
+            "Iconic",
+            "Bujairami Iconic"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Iconique",
+          "aliases": [
+            "Iconique",
+            "Bujairami Iconique"
+          ]
+        },
+        {
+          "canonical_name": "Ignite",
+          "aliases": [
+            "Ignite",
+            "Bujairami Ignite"
+          ]
+        },
+        {
+          "canonical_name": "Ignite Her",
+          "aliases": [
+            "Ignite Her",
+            "Bujairami Ignite Her"
+          ]
+        },
+        {
+          "canonical_name": "Imperial Blue",
+          "aliases": [
+            "Imperial Blue",
+            "Bujairami Imperial Blue"
+          ]
+        },
+        {
+          "canonical_name": "Imperial Oud",
+          "aliases": [
+            "Imperial Oud",
+            "Bujairami Imperial Oud"
+          ]
+        },
+        {
+          "canonical_name": "Imperial Rose",
+          "aliases": [
+            "Imperial Rose",
+            "Bujairami Imperial Rose"
+          ]
+        },
+        {
+          "canonical_name": "Imprint",
+          "aliases": [
+            "Imprint",
+            "Bujairami Imprint"
+          ]
+        },
+        {
+          "canonical_name": "Incanto",
+          "aliases": [
+            "Incanto",
+            "Bujairami Incanto"
+          ]
+        },
+        {
+          "canonical_name": "Incendia",
+          "aliases": [
+            "Incendia",
+            "Bujairami Incendia"
+          ]
+        },
+        {
+          "canonical_name": "Incensual",
+          "aliases": [
+            "Incensual",
+            "Bujairami Incensual"
+          ]
+        },
+        {
+          "canonical_name": "Independent Woman",
+          "aliases": [
+            "Independent Woman",
+            "Bujairami Independent Woman"
+          ]
+        },
+        {
+          "canonical_name": "Indulgent",
+          "aliases": [
+            "Indulgent",
+            "Bujairami Indulgent"
+          ]
+        },
+        {
+          "canonical_name": "Inferno",
+          "aliases": [
+            "Inferno",
+            "Bujairami Inferno"
+          ]
+        },
+        {
+          "canonical_name": "Infinite",
+          "aliases": [
+            "Infinite",
+            "Bujairami Infinite"
+          ]
+        },
+        {
+          "canonical_name": "Infinite Aura",
+          "aliases": [
+            "Infinite Aura",
+            "Bujairami Infinite Aura"
+          ]
+        },
+        {
+          "canonical_name": "Inner Waves",
+          "aliases": [
+            "Inner Waves",
+            "Bujairami Inner Waves"
+          ]
+        },
+        {
+          "canonical_name": "InstaSmash",
+          "aliases": [
+            "InstaSmash",
+            "Bujairami InstaSmash"
+          ]
+        },
+        {
+          "canonical_name": "Intoxicating",
+          "aliases": [
+            "Intoxicating",
+            "Bujairami Intoxicating"
+          ]
+        },
+        {
+          "canonical_name": "Iris Infinite",
+          "aliases": [
+            "Iris Infinite",
+            "Bujairami Iris Infinite"
+          ]
+        },
+        {
+          "canonical_name": "Iris Intense",
+          "aliases": [
+            "Iris Intense",
+            "Bujairami Iris Intense"
+          ]
+        },
+        {
+          "canonical_name": "Iris Tea",
+          "aliases": [
+            "Iris Tea",
+            "Bujairami Iris Tea"
+          ]
+        },
+        {
+          "canonical_name": "Iris Wear",
+          "aliases": [
+            "Iris Wear",
+            "Bujairami Iris Wear"
+          ]
+        },
+        {
+          "canonical_name": "Ironvale",
+          "aliases": [
+            "Ironvale",
+            "Bujairami Ironvale"
+          ]
+        },
+        {
+          "canonical_name": "Irresistible",
+          "aliases": [
+            "Irresistible",
+            "Bujairami Irresistible"
+          ]
+        },
+        {
+          "canonical_name": "Island Bloom",
+          "aliases": [
+            "Island Bloom",
+            "Bujairami Island Bloom"
+          ]
+        },
+        {
+          "canonical_name": "Island Glow",
+          "aliases": [
+            "Island Glow",
+            "Bujairami Island Glow"
+          ]
+        },
+        {
+          "canonical_name": "It's All Roses",
+          "aliases": [
+            "It's All Roses",
+            "Bujairami It's All Roses"
+          ]
+        },
+        {
+          "canonical_name": "Italian Soul",
+          "aliases": [
+            "Italian Soul",
+            "Bujairami Italian Soul"
+          ]
+        },
+        {
+          "canonical_name": "Ivory Floral",
+          "aliases": [
+            "Ivory Floral",
+            "Bujairami Ivory Floral"
+          ]
+        },
+        {
+          "canonical_name": "Ivory Kiss",
+          "aliases": [
+            "Ivory Kiss",
+            "Bujairami Ivory Kiss"
+          ]
+        },
+        {
+          "canonical_name": "Ivory Tower",
+          "aliases": [
+            "Ivory Tower",
+            "Bujairami Ivory Tower"
+          ]
+        },
+        {
+          "canonical_name": "Jalad",
+          "aliases": [
+            "Jalad",
+            "Bujairami Jalad"
+          ]
+        },
+        {
+          "canonical_name": "Jamal Musk",
+          "aliases": [
+            "Jamal Musk",
+            "Bujairami Jamal Musk"
+          ]
+        },
+        {
+          "canonical_name": "Jamila",
+          "aliases": [
+            "Jamila",
+            "Bujairami Jamila"
+          ]
+        },
+        {
+          "canonical_name": "Jammin",
+          "aliases": [
+            "Jammin",
+            "Bujairami Jammin"
+          ]
+        },
+        {
+          "canonical_name": "Jasmine",
+          "aliases": [
+            "Jasmine",
+            "Bujairami Jasmine"
+          ]
+        },
+        {
+          "canonical_name": "Jeddah",
+          "aliases": [
+            "Jeddah",
+            "Bujairami Jeddah"
+          ]
+        },
+        {
+          "canonical_name": "Juicy",
+          "aliases": [
+            "Juicy",
+            "Bujairami Juicy"
+          ]
+        },
+        {
+          "canonical_name": "Juicy Fig",
+          "aliases": [
+            "Juicy Fig",
+            "Bujairami Juicy Fig"
+          ]
+        },
+        {
+          "canonical_name": "Juicy Gossip",
+          "aliases": [
+            "Juicy Gossip",
+            "Bujairami Juicy Gossip"
+          ]
+        },
+        {
+          "canonical_name": "Juicy Kiss",
+          "aliases": [
+            "Juicy Kiss",
+            "Bujairami Juicy Kiss"
+          ]
+        },
+        {
+          "canonical_name": "Kept Secrets",
+          "aliases": [
+            "Kept Secrets",
+            "Bujairami Kept Secrets"
+          ]
+        },
+        {
+          "canonical_name": "Killer Oud",
+          "aliases": [
+            "Killer Oud",
+            "Bujairami Killer Oud"
+          ]
+        },
+        {
+          "canonical_name": "King",
+          "aliases": [
+            "King",
+            "Bujairami King"
+          ]
+        },
+        {
+          "canonical_name": "King Street",
+          "aliases": [
+            "King Street",
+            "Bujairami King Street"
+          ]
+        },
+        {
+          "canonical_name": "Kingmaker",
+          "aliases": [
+            "Kingmaker",
+            "Bujairami Kingmaker"
+          ]
+        },
+        {
+          "canonical_name": "Kingpin",
+          "aliases": [
+            "Kingpin",
+            "Bujairami Kingpin"
+          ]
+        },
+        {
+          "canonical_name": "Kings Code",
+          "aliases": [
+            "Kings Code",
+            "Bujairami Kings Code"
+          ]
+        },
+        {
+          "canonical_name": "KingsMan",
+          "aliases": [
+            "KingsMan",
+            "Bujairami KingsMan"
+          ]
+        },
+        {
+          "canonical_name": "Kiss & Tell",
+          "aliases": [
+            "Kiss & Tell",
+            "Bujairami Kiss & Tell"
+          ]
+        },
+        {
+          "canonical_name": "Kiwi Me Softly",
+          "aliases": [
+            "Kiwi Me Softly",
+            "Bujairami Kiwi Me Softly"
+          ]
+        },
+        {
+          "canonical_name": "Knefeh",
+          "aliases": [
+            "Knefeh",
+            "Bujairami Knefeh"
+          ]
+        },
+        {
+          "canonical_name": "Kokoma Paradise",
+          "aliases": [
+            "Kokoma Paradise",
+            "Bujairami Kokoma Paradise"
+          ]
+        },
+        {
+          "canonical_name": "Kuwaiti Love",
+          "aliases": [
+            "Kuwaiti Love",
+            "Bujairami Kuwaiti Love"
+          ]
+        },
+        {
+          "canonical_name": "La Flame",
+          "aliases": [
+            "La Flame",
+            "Bujairami La Flame"
+          ]
+        },
+        {
+          "canonical_name": "La Vie En Rose",
+          "aliases": [
+            "La Vie En Rose",
+            "Bujairami La Vie En Rose"
+          ]
+        },
+        {
+          "canonical_name": "Lady Fortune",
+          "aliases": [
+            "Lady Fortune",
+            "Bujairami Lady Fortune"
+          ]
+        },
+        {
+          "canonical_name": "Lady Like",
+          "aliases": [
+            "Lady Like",
+            "Bujairami Lady Like"
+          ]
+        },
+        {
+          "canonical_name": "Last Call",
+          "aliases": [
+            "Last Call",
+            "Bujairami Last Call"
+          ]
+        },
+        {
+          "canonical_name": "Last Flame",
+          "aliases": [
+            "Last Flame",
+            "Bujairami Last Flame"
+          ]
+        },
+        {
+          "canonical_name": "Last Kingdom",
+          "aliases": [
+            "Last Kingdom",
+            "Bujairami Last Kingdom"
+          ]
+        },
+        {
+          "canonical_name": "Last Move",
+          "aliases": [
+            "Last Move",
+            "Bujairami Last Move"
+          ]
+        },
+        {
+          "canonical_name": "Last Reign",
+          "aliases": [
+            "Last Reign",
+            "Bujairami Last Reign"
+          ]
+        },
+        {
+          "canonical_name": "Last Ride",
+          "aliases": [
+            "Last Ride",
+            "Bujairami Last Ride"
+          ]
+        },
+        {
+          "canonical_name": "Late Night",
+          "aliases": [
+            "Late Night",
+            "Bujairami Late Night"
+          ]
+        },
+        {
+          "canonical_name": "Latte Obsession",
+          "aliases": [
+            "Latte Obsession",
+            "Bujairami Latte Obsession"
+          ]
+        },
+        {
+          "canonical_name": "Lavish",
+          "aliases": [
+            "Lavish",
+            "Bujairami Lavish"
+          ]
+        },
+        {
+          "canonical_name": "Lavish Life",
+          "aliases": [
+            "Lavish Life",
+            "Bujairami Lavish Life"
+          ]
+        },
+        {
+          "canonical_name": "Leader",
+          "aliases": [
+            "Leader",
+            "Bujairami Leader"
+          ]
+        },
+        {
+          "canonical_name": "Leatherbound",
+          "aliases": [
+            "Leatherbound",
+            "Bujairami Leatherbound"
+          ]
+        },
+        {
+          "canonical_name": "Legacy",
+          "aliases": [
+            "Legacy",
+            "Bujairami Legacy"
+          ]
+        },
+        {
+          "canonical_name": "Legend",
+          "aliases": [
+            "Legend",
+            "Bujairami Legend"
+          ]
+        },
+        {
+          "canonical_name": "Lemon Crush",
+          "aliases": [
+            "Lemon Crush",
+            "Bujairami Lemon Crush"
+          ]
+        },
+        {
+          "canonical_name": "Lets Run",
+          "aliases": [
+            "Lets Run",
+            "Bujairami Lets Run"
+          ]
+        },
+        {
+          "canonical_name": "Liana",
+          "aliases": [
+            "Liana",
+            "Bujairami Liana"
+          ]
+        },
+        {
+          "canonical_name": "Life in Dubai",
+          "aliases": [
+            "Life in Dubai",
+            "Bujairami Life in Dubai"
+          ]
+        },
+        {
+          "canonical_name": "Light in Blue",
+          "aliases": [
+            "Light in Blue",
+            "Bujairami Light in Blue"
+          ]
+        },
+        {
+          "canonical_name": "Lilypop",
+          "aliases": [
+            "Lilypop",
+            "Bujairami Lilypop"
+          ]
+        },
+        {
+          "canonical_name": "Lime Surge",
+          "aliases": [
+            "Lime Surge",
+            "Bujairami Lime Surge"
+          ]
+        },
+        {
+          "canonical_name": "Limonana",
+          "aliases": [
+            "Limonana",
+            "Bujairami Limonana"
+          ]
+        },
+        {
+          "canonical_name": "Little Miss",
+          "aliases": [
+            "Little Miss",
+            "Bujairami Little Miss"
+          ]
+        },
+        {
+          "canonical_name": "Loaded",
+          "aliases": [
+            "Loaded",
+            "Bujairami Loaded"
+          ]
+        },
+        {
+          "canonical_name": "Loco",
+          "aliases": [
+            "Loco",
+            "Bujairami Loco"
+          ]
+        },
+        {
+          "canonical_name": "Lolita",
+          "aliases": [
+            "Lolita",
+            "Bujairami Lolita"
+          ]
+        },
+        {
+          "canonical_name": "Lolliepop",
+          "aliases": [
+            "Lolliepop",
+            "Bujairami Lolliepop"
+          ]
+        },
+        {
+          "canonical_name": "London Vice",
+          "aliases": [
+            "London Vice",
+            "Bujairami London Vice"
+          ]
+        },
+        {
+          "canonical_name": "Long Way Home",
+          "aliases": [
+            "Long Way Home",
+            "Bujairami Long Way Home"
+          ]
+        },
+        {
+          "canonical_name": "Loose Ends",
+          "aliases": [
+            "Loose Ends",
+            "Bujairami Loose Ends"
+          ]
+        },
+        {
+          "canonical_name": "Lost in Love",
+          "aliases": [
+            "Lost in Love",
+            "Bujairami Lost in Love"
+          ]
+        },
+        {
+          "canonical_name": "Love Bomb",
+          "aliases": [
+            "Love Bomb",
+            "Bujairami Love Bomb"
+          ]
+        },
+        {
+          "canonical_name": "Love in Bloom",
+          "aliases": [
+            "Love in Bloom",
+            "Bujairami Love in Bloom"
+          ]
+        },
+        {
+          "canonical_name": "Love Life",
+          "aliases": [
+            "Love Life",
+            "Bujairami Love Life"
+          ]
+        },
+        {
+          "canonical_name": "Love Note",
+          "aliases": [
+            "Love Note",
+            "Bujairami Love Note"
+          ]
+        },
+        {
+          "canonical_name": "Love Obsession",
+          "aliases": [
+            "Love Obsession",
+            "Bujairami Love Obsession"
+          ]
+        },
+        {
+          "canonical_name": "Love Spell",
+          "aliases": [
+            "Love Spell",
+            "Bujairami Love Spell"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Lovelace",
+          "aliases": [
+            "Lovelace",
+            "Bujairami Lovelace"
+          ]
+        },
+        {
+          "canonical_name": "Lovely",
+          "aliases": [
+            "Lovely",
+            "Bujairami Lovely"
+          ]
+        },
+        {
+          "canonical_name": "Lucid Dream",
+          "aliases": [
+            "Lucid Dream",
+            "Bujairami Lucid Dream"
+          ]
+        },
+        {
+          "canonical_name": "Lucky",
+          "aliases": [
+            "Lucky",
+            "Bujairami Lucky"
+          ]
+        },
+        {
+          "canonical_name": "Lullaby",
+          "aliases": [
+            "Lullaby",
+            "Bujairami Lullaby"
+          ]
+        },
+        {
+          "canonical_name": "Luminous",
+          "aliases": [
+            "Luminous",
+            "Bujairami Luminous"
+          ]
+        },
+        {
+          "canonical_name": "Luna Paradiso",
+          "aliases": [
+            "Luna Paradiso",
+            "Bujairami Luna Paradiso"
+          ]
+        },
+        {
+          "canonical_name": "Lunar Gleam",
+          "aliases": [
+            "Lunar Gleam",
+            "Bujairami Lunar Gleam"
+          ]
+        },
+        {
+          "canonical_name": "Lupo",
+          "aliases": [
+            "Lupo",
+            "Bujairami Lupo"
+          ]
+        },
+        {
+          "canonical_name": "Lush Cane",
+          "aliases": [
+            "Lush Cane",
+            "Bujairami Lush Cane"
+          ]
+        },
+        {
+          "canonical_name": "Lush Fig",
+          "aliases": [
+            "Lush Fig",
+            "Bujairami Lush Fig"
+          ]
+        },
+        {
+          "canonical_name": "Lush Petals",
+          "aliases": [
+            "Lush Petals",
+            "Bujairami Lush Petals"
+          ]
+        },
+        {
+          "canonical_name": "Lust",
+          "aliases": [
+            "Lust",
+            "Bujairami Lust"
+          ]
+        },
+        {
+          "canonical_name": "Lust In Paris",
+          "aliases": [
+            "Lust In Paris",
+            "Bujairami Lust In Paris"
+          ]
+        },
+        {
+          "canonical_name": "Luster",
+          "aliases": [
+            "Luster",
+            "Bujairami Luster"
+          ]
+        },
+        {
+          "canonical_name": "Luxe Noir",
+          "aliases": [
+            "Luxe Noir",
+            "Bujairami Luxe Noir"
+          ]
+        },
+        {
+          "canonical_name": "Lychee",
+          "aliases": [
+            "Lychee",
+            "Bujairami Lychee"
+          ]
+        },
+        {
+          "canonical_name": "Mad Love",
+          "aliases": [
+            "Mad Love",
+            "Bujairami Mad Love"
+          ]
+        },
+        {
+          "canonical_name": "Madam",
+          "aliases": [
+            "Madam",
+            "Bujairami Madam"
+          ]
+        },
+        {
+          "canonical_name": "Madeira Cake",
+          "aliases": [
+            "Madeira Cake",
+            "Bujairami Madeira Cake"
+          ]
+        },
+        {
+          "canonical_name": "Madness",
+          "aliases": [
+            "Madness",
+            "Bujairami Madness"
+          ]
+        },
+        {
+          "canonical_name": "Mafia Boss",
+          "aliases": [
+            "Mafia Boss",
+            "Bujairami Mafia Boss"
+          ]
+        },
+        {
+          "canonical_name": "Mi Amor",
+          "aliases": [
+            "Mi Amor",
+            "Bujairami Mi Amor"
+          ]
+        },
+        {
+          "canonical_name": "Midnight in Melbourne",
+          "aliases": [
+            "Midnight in Melbourne",
+            "Bujairami Midnight in Melbourne"
+          ]
+        },
+        {
+          "canonical_name": "Miss Vanilla",
+          "aliases": [
+            "Miss Vanilla",
+            "Bujairami Miss Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Mohabbat",
+          "aliases": [
+            "Mohabbat",
+            "Bujairami Mohabbat"
+          ]
+        },
+        {
+          "canonical_name": "Mojito Splash",
+          "aliases": [
+            "Mojito Splash",
+            "Bujairami Mojito Splash"
+          ]
+        },
+        {
+          "canonical_name": "Mood Swings",
+          "aliases": [
+            "Mood Swings",
+            "Bujairami Mood Swings"
+          ]
+        },
+        {
+          "canonical_name": "Mysterious",
+          "aliases": [
+            "Mysterious",
+            "Bujairami Mysterious"
+          ]
+        },
+        {
+          "canonical_name": "New York",
+          "aliases": [
+            "New York",
+            "Bujairami New York"
+          ]
+        },
+        {
+          "canonical_name": "Next Level",
+          "aliases": [
+            "Next Level",
+            "Bujairami Next Level"
+          ]
+        },
+        {
+          "canonical_name": "Nile Bloom",
+          "aliases": [
+            "Nile Bloom",
+            "Bujairami Nile Bloom"
+          ]
+        },
+        {
+          "canonical_name": "No Limit",
+          "aliases": [
+            "No Limit",
+            "Bujairami No Limit"
+          ]
+        },
+        {
+          "canonical_name": "Noctis Blue",
+          "aliases": [
+            "Noctis Blue",
+            "Bujairami Noctis Blue"
+          ]
+        },
+        {
+          "canonical_name": "Non Stop",
+          "aliases": [
+            "Non Stop",
+            "Bujairami Non Stop"
+          ]
+        },
+        {
+          "canonical_name": "Nuclear",
+          "aliases": [
+            "Nuclear",
+            "Bujairami Nuclear"
+          ]
+        },
+        {
+          "canonical_name": "Obsidian",
+          "aliases": [
+            "Obsidian",
+            "Bujairami Obsidian"
+          ]
+        },
+        {
+          "canonical_name": "Ocean Eyes",
+          "aliases": [
+            "Ocean Eyes",
+            "Bujairami Ocean Eyes"
+          ]
+        },
+        {
+          "canonical_name": "Omega",
+          "aliases": [
+            "Omega",
+            "Bujairami Omega"
+          ]
+        },
+        {
+          "canonical_name": "Only Ever",
+          "aliases": [
+            "Only Ever",
+            "Bujairami Only Ever"
+          ]
+        },
+        {
+          "canonical_name": "Perfect Life",
+          "aliases": [
+            "Perfect Life",
+            "Bujairami Perfect Life"
+          ]
+        },
+        {
+          "canonical_name": "Petals of Paradise",
+          "aliases": [
+            "Petals of Paradise",
+            "Bujairami Petals of Paradise"
+          ]
+        },
+        {
+          "canonical_name": "Pistachio Cake",
+          "aliases": [
+            "Pistachio Cake",
+            "Bujairami Pistachio Cake"
+          ]
+        },
+        {
+          "canonical_name": "Power",
+          "aliases": [
+            "Power",
+            "Bujairami Power"
+          ]
+        },
+        {
+          "canonical_name": "Powerful Lady",
+          "aliases": [
+            "Powerful Lady",
+            "Bujairami Powerful Lady"
+          ]
+        },
+        {
+          "canonical_name": "Psycho",
+          "aliases": [
+            "Psycho",
+            "Bujairami Psycho"
+          ]
+        },
+        {
+          "canonical_name": "Pulse",
+          "aliases": [
+            "Pulse",
+            "Bujairami Pulse"
+          ]
+        },
+        {
+          "canonical_name": "Pulse Intense",
+          "aliases": [
+            "Pulse Intense",
+            "Bujairami Pulse Intense"
+          ]
+        },
+        {
+          "canonical_name": "Queens Avenue",
+          "aliases": [
+            "Queens Avenue",
+            "Bujairami Queens Avenue"
+          ]
+        },
+        {
+          "canonical_name": "Rain Man",
+          "aliases": [
+            "Rain Man",
+            "Bujairami Rain Man"
+          ]
+        },
+        {
+          "canonical_name": "Rare Edition",
+          "aliases": [
+            "Rare Edition",
+            "Bujairami Rare Edition"
+          ]
+        },
+        {
+          "canonical_name": "Red Eclipse",
+          "aliases": [
+            "Red Eclipse",
+            "Bujairami Red Eclipse"
+          ]
+        },
+        {
+          "canonical_name": "Red Static",
+          "aliases": [
+            "Red Static",
+            "Bujairami Red Static"
+          ]
+        },
+        {
+          "canonical_name": "Resolution",
+          "aliases": [
+            "Resolution",
+            "Bujairami Resolution"
+          ]
+        },
+        {
+          "canonical_name": "Riverina",
+          "aliases": [
+            "Riverina",
+            "Bujairami Riverina"
+          ]
+        },
+        {
+          "canonical_name": "Rizz",
+          "aliases": [
+            "Rizz",
+            "Bujairami Rizz"
+          ]
+        },
+        {
+          "canonical_name": "Ruby Oud",
+          "aliases": [
+            "Ruby Oud",
+            "Bujairami Ruby Oud"
+          ]
+        },
+        {
+          "canonical_name": "Ruthless Vanilla",
+          "aliases": [
+            "Ruthless Vanilla",
+            "Bujairami Ruthless Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Saddle Up",
+          "aliases": [
+            "Saddle Up",
+            "Bujairami Saddle Up"
+          ]
+        },
+        {
+          "canonical_name": "Say Less",
+          "aliases": [
+            "Say Less",
+            "Bujairami Say Less"
+          ]
+        },
+        {
+          "canonical_name": "Silent Halo",
+          "aliases": [
+            "Silent Halo",
+            "Bujairami Silent Halo"
+          ]
+        },
+        {
+          "canonical_name": "Smokilla",
+          "aliases": [
+            "Smokilla",
+            "Bujairami Smokilla"
+          ]
+        },
+        {
+          "canonical_name": "Snow White",
+          "aliases": [
+            "Snow White",
+            "Bujairami Snow White"
+          ]
+        },
+        {
+          "canonical_name": "Sovereign",
+          "aliases": [
+            "Sovereign",
+            "Bujairami Sovereign"
+          ]
+        },
+        {
+          "canonical_name": "Special Day",
+          "aliases": [
+            "Special Day",
+            "Bujairami Special Day"
+          ]
+        },
+        {
+          "canonical_name": "Sugar Rush",
+          "aliases": [
+            "Sugar Rush",
+            "Bujairami Sugar Rush"
+          ]
+        },
+        {
+          "canonical_name": "Sunrise in Sydney",
+          "aliases": [
+            "Sunrise in Sydney",
+            "Bujairami Sunrise in Sydney"
+          ]
+        },
+        {
+          "canonical_name": "Suns Out",
+          "aliases": [
+            "Suns Out",
+            "Bujairami Suns Out"
+          ]
+        },
+        {
+          "canonical_name": "Sweet Banana",
+          "aliases": [
+            "Sweet Banana",
+            "Bujairami Sweet Banana"
+          ]
+        },
+        {
+          "canonical_name": "Sweet Rebel",
+          "aliases": [
+            "Sweet Rebel",
+            "Bujairami Sweet Rebel"
+          ]
+        },
+        {
+          "canonical_name": "Tangy",
+          "aliases": [
+            "Tangy",
+            "Bujairami Tangy"
+          ]
+        },
+        {
+          "canonical_name": "Tea Splash",
+          "aliases": [
+            "Tea Splash",
+            "Bujairami Tea Splash"
+          ]
+        },
+        {
+          "canonical_name": "Tempted",
+          "aliases": [
+            "Tempted",
+            "Bujairami Tempted"
+          ]
+        },
+        {
+          "canonical_name": "Tenfold",
+          "aliases": [
+            "Tenfold",
+            "Bujairami Tenfold"
+          ]
+        },
+        {
+          "canonical_name": "The Aftermath",
+          "aliases": [
+            "The Aftermath",
+            "Bujairami The Aftermath"
+          ]
+        },
+        {
+          "canonical_name": "The F*ck Up",
+          "aliases": [
+            "The F*ck Up",
+            "Bujairami The F*ck Up"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "The Rock Intensely",
+          "aliases": [
+            "The Rock Intensely",
+            "Bujairami The Rock Intensely"
+          ]
+        },
+        {
+          "canonical_name": "The Rock Powerfully",
+          "aliases": [
+            "The Rock Powerfully",
+            "Bujairami The Rock Powerfully"
+          ]
+        },
+        {
+          "canonical_name": "The Sheikh",
+          "aliases": [
+            "The Sheikh",
+            "Bujairami The Sheikh"
+          ]
+        },
+        {
+          "canonical_name": "Too Damn Good",
+          "aliases": [
+            "Too Damn Good",
+            "Bujairami Too Damn Good"
+          ]
+        },
+        {
+          "canonical_name": "Top Life",
+          "aliases": [
+            "Top Life",
+            "Bujairami Top Life"
+          ]
+        },
+        {
+          "canonical_name": "Top Tier",
+          "aliases": [
+            "Top Tier",
+            "Bujairami Top Tier"
+          ]
+        },
+        {
+          "canonical_name": "Unforgettable",
+          "aliases": [
+            "Unforgettable",
+            "Bujairami Unforgettable"
+          ]
+        },
+        {
+          "canonical_name": "V-Luxe",
+          "aliases": [
+            "V-Luxe",
+            "Bujairami V-Luxe"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Dream",
+          "aliases": [
+            "Vanilla Dream",
+            "Bujairami Vanilla Dream"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Storm",
+          "aliases": [
+            "Vanilla Storm",
+            "Bujairami Vanilla Storm"
+          ]
+        },
+        {
+          "canonical_name": "Vibration",
+          "aliases": [
+            "Vibration",
+            "Bujairami Vibration"
+          ]
+        },
+        {
+          "canonical_name": "When in Rome",
+          "aliases": [
+            "When in Rome",
+            "Bujairami When in Rome"
+          ]
+        },
+        {
+          "canonical_name": "Why Not?",
+          "aliases": [
+            "Why Not?",
+            "Bujairami Why Not?"
+          ]
+        },
+        {
+          "canonical_name": "Wicked",
+          "aliases": [
+            "Wicked",
+            "Bujairami Wicked"
+          ]
+        },
+        {
+          "canonical_name": "Woolloomooloo",
+          "aliases": [
+            "Woolloomooloo",
+            "Bujairami Woolloomooloo"
+          ]
+        },
+        {
+          "canonical_name": "Ya Habibi",
+          "aliases": [
+            "Ya Habibi",
+            "Bujairami Ya Habibi"
+          ]
+        },
+        {
+          "canonical_name": "Sasha",
+          "aliases": [
+            "Sasha",
+            "Bujairami Sasha"
+          ]
+        },
+        {
+          "canonical_name": "Mousse Cake",
+          "aliases": [
+            "Mousse Cake",
+            "Bujairami Mousse Cake"
+          ]
+        },
+        {
+          "canonical_name": "No.1 Father",
+          "aliases": [
+            "No.1 Father",
+            "No. 1 Father",
+            "Bujairami No.1 Father"
+          ]
+        },
+        {
+          "canonical_name": "Pretty F**ked Up",
+          "aliases": [
+            "Pretty F**ked Up",
+            "Pretty F**ked up",
+            "Bujairami Pretty F**ked Up"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Vicious",
+          "aliases": [
+            "Vicious",
+            "Bujairami Vicious",
+            "Vicious Inspired by Dirty Heaven"
+          ]
+        },
+        {
+          "canonical_name": "Sunset Bay",
+          "aliases": [
+            "Sunset Bay",
+            "Bujairami Sunset Bay",
+            "Sunset Bay Inspired by Cap Camarat"
+          ]
         }
       ]
     }
