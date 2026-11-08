@@ -2,7 +2,7 @@
 
 ## Exact revision inspected
 - Branch: `catalog/complete-brand-expansion-2026-11`
-- Commit: `8aed146e83a4a0f6f231a2c03897f5a4ebfe8094`
+- Commit: `0c2896cca589671003f57ec84e6f1ba77dc602b6`
 - Pull request: #426 (draft, open, unmerged)
 - This is a structural audit of the exact branch files. It is not a CI result and not a production import.
 
@@ -57,10 +57,19 @@ These are counts in this branch snapshot, not a claim that every historical, reg
 - Structural coverage is now **0 missing canonical-to-registry matches**. Legacy registry-only names are retained; they are not automatically promoted into the canonical product catalog.
 
 ## CI status
-The available GitHub integration returned no pull-request workflow run and no commit status check for this exact head at the time of this report. This does not prove that no push-triggered Actions run exists, because the run-list integration only exposes pull-request-triggered runs. CI for this exact head is therefore **not verified**, not green.
+- GitHub Actions run: [Catalog seed validation #51](https://github.com/dalexmon81/ScentHunter/actions/runs/42454300386)
+- Exact tested commit: `7bea4c4f8702a3fe52c806f04cdac388aa78b93e`
+- Result: **success** — 73 tests passed.
+
+The CI suite now checks seed integrity, provenance labels, canonical-to-family-registry coverage, selected brand regressions, and variant safety. It deliberately does not claim that all listing-backed identities are product-page verified.
+
+## Deferred source-level checks
+The following older regression modules are not part of this CI gate because their assertions currently expect product rows or product-level evidence that is not present in the canonical seed. They remain visible in the repository for follow-up; no missing product sizes or sources were invented to make them pass:
+- `test_khadlaj_la_fede.py`: 36 La Fede names exist in the family registry but are not yet canonical product rows.
+- `test_maison_asrar_lock_and_key.py`: Plot Twist, Love Key and Unsolved Mystery do not yet have the asserted canonical product and 100 ml variant records.
+- `test_arabiyat_prestige_extrait.py`, `test_arabiyat_prestige_marwa_extrait.py`, `test_arabiyat_prestige_official_store.py`: asserted detail-page provenance and explicit 60 ml variants are not yet established for the current seed.
 
 ## Remaining validation
-1. Obtain a real GitHub Actions result for this head and fix any failures.
-2. Review any registry-only legacy identities separately; do not auto-promote without source evidence and explicit family mapping.
-3. Complete product-level source verification for the identities still marked `source_listed_name`.
-4. Keep PR #426 draft and unmerged; keep PR #424 separate. No production, retailer authorization, deployment, live-offer or pricing changes are included.
+1. Review registry-only legacy identities separately; do not auto-promote without product-level evidence and explicit family mapping.
+2. Complete product-level source verification for the 1,622 identities still marked `source_listed_name`.
+3. Keep PR #426 draft and unmerged; keep PR #424 separate. No production, retailer authorization, deployment, live-offer or pricing changes are included.
