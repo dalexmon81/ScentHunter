@@ -20767,6 +20767,630 @@
       "identity_status": "source_listed_name",
       "source_url": "https://frenchavenue.com/collections/all?page=3",
       "source_evidence_url": "https://frenchavenue.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-ABIYAD-MUKHALLAT",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "ABIYAD MUKHALLAT",
+      "name": "ABIYAD MUKHALLAT",
+      "family_id": "afnan_catalog",
+      "family_name": "ABIYAD MUKHALLAT",
+      "aliases": [
+        "ABIYAD MUKHALLAT",
+        "Afnan ABIYAD MUKHALLAT"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-ABIYAD-MUSK",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "ABIYAD MUSK",
+      "name": "ABIYAD MUSK",
+      "family_id": "afnan_catalog",
+      "family_name": "ABIYAD MUSK",
+      "aliases": [
+        "ABIYAD MUSK",
+        "Afnan ABIYAD MUSK"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-ABIYAD-SANDAL",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "ABIYAD SANDAL",
+      "name": "ABIYAD SANDAL",
+      "family_id": "afnan_catalog",
+      "family_name": "ABIYAD SANDAL",
+      "aliases": [
+        "ABIYAD SANDAL",
+        "Afnan ABIYAD SANDAL"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-ADWAA-AL-SHARQ",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "ADWAA AL SHARQ",
+      "name": "ADWAA AL SHARQ",
+      "family_id": "afnan_catalog",
+      "family_name": "ADWAA AL SHARQ",
+      "aliases": [
+        "ADWAA AL SHARQ",
+        "Afnan ADWAA AL SHARQ"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-DEHN-AL-OUDH-ABIYAD",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "DEHN AL OUDH ABIYAD",
+      "name": "DEHN AL OUDH ABIYAD",
+      "family_id": "afnan_catalog",
+      "family_name": "DEHN AL OUDH ABIYAD",
+      "aliases": [
+        "DEHN AL OUDH ABIYAD",
+        "Afnan DEHN AL OUDH ABIYAD"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-DELICIOUS-BOUQUET",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Delicious Bouquet",
+      "name": "Delicious Bouquet",
+      "family_id": "afnan_catalog",
+      "family_name": "Delicious Bouquet",
+      "aliases": [
+        "Delicious Bouquet",
+        "Afnan Delicious Bouquet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-EBDAA-CONCENTRATED-PERFUME-OIL",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "Ebdaa Concentrated Perfume Oil",
+      "name": "Ebdaa Concentrated Perfume Oil",
+      "family_id": "afnan_catalog",
+      "family_name": "Ebdaa Concentrated Perfume Oil",
+      "aliases": [
+        "Ebdaa Concentrated Perfume Oil",
+        "Afnan Ebdaa Concentrated Perfume Oil"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-EDICT-AMBERYTHME",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "EDICT AMBERYTHME",
+      "name": "EDICT AMBERYTHME",
+      "family_id": "afnan_catalog",
+      "family_name": "EDICT AMBERYTHME",
+      "aliases": [
+        "EDICT AMBERYTHME",
+        "Afnan EDICT AMBERYTHME"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-EDICT-MUSCTIQUE",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "EDICT MUSCTIQUE",
+      "name": "EDICT MUSCTIQUE",
+      "family_id": "afnan_catalog",
+      "family_name": "EDICT MUSCTIQUE",
+      "aliases": [
+        "EDICT MUSCTIQUE",
+        "Afnan EDICT MUSCTIQUE"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-EDICT-OUDDICTION",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "EDICT OUDDICTION",
+      "name": "EDICT OUDDICTION",
+      "family_id": "afnan_catalog",
+      "family_name": "EDICT OUDDICTION",
+      "aliases": [
+        "EDICT OUDDICTION",
+        "Afnan EDICT OUDDICTION"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-AFNAN-FAKHAR-AL-JAMAAL",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "FAKHAR AL JAMAAL",
+      "name": "FAKHAR AL JAMAAL",
+      "family_id": "afnan_catalog",
+      "family_name": "FAKHAR AL JAMAAL",
+      "aliases": [
+        "FAKHAR AL JAMAAL",
+        "Afnan FAKHAR AL JAMAAL"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://afnan.com/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAED-ABSOLU",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raed Absolu",
+      "name": "Raed Absolu",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raed Absolu",
+      "aliases": [
+        "Raed Absolu",
+        "Lattafa Raed Absolu"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAED-INTENSELY",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raed Intensely",
+      "name": "Raed Intensely",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raed Intensely",
+      "aliases": [
+        "Raed Intensely",
+        "Lattafa Raed Intensely"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/"
+    },
+    {
+      "product_id": "SH-LATTAFA-LIAM-BLUE-SHINE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Liam Blue Shine",
+      "name": "Liam Blue Shine",
+      "family_id": "lattafa_catalog",
+      "family_name": "Liam Blue Shine",
+      "aliases": [
+        "Liam Blue Shine",
+        "Lattafa Liam Blue Shine"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-DETOUR-NOIR",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Detour Noir",
+      "name": "Detour Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Detour Noir",
+      "aliases": [
+        "Detour Noir",
+        "Al Haramain Detour Noir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-PLATINUM-OUD",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Platinum Oud",
+      "name": "Platinum Oud",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Platinum Oud",
+      "aliases": [
+        "Platinum Oud",
+        "Al Haramain Platinum Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ROSE-OUD",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Rose Oud",
+      "name": "Rose Oud",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Rose Oud",
+      "aliases": [
+        "Rose Oud",
+        "Al Haramain Rose Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-WARDI",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Wardi",
+      "name": "Wardi",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Wardi",
+      "aliases": [
+        "Wardi",
+        "Al Haramain Wardi"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-RAWAA",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Rawaa",
+      "name": "Rawaa",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Rawaa",
+      "aliases": [
+        "Rawaa",
+        "Al Haramain Rawaa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-DETOUR-ROUGE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Detour Rouge",
+      "name": "Detour Rouge",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Detour Rouge",
+      "aliases": [
+        "Detour Rouge",
+        "Al Haramain Detour Rouge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-SIGNATURE-BLUE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Signature Blue",
+      "name": "Signature Blue",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Signature Blue",
+      "aliases": [
+        "Signature Blue",
+        "Al Haramain Signature Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-PORTFOLIO-IMPERIAL-OUD",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Portfolio Imperial Oud",
+      "name": "Portfolio Imperial Oud",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Portfolio Imperial Oud",
+      "aliases": [
+        "Portfolio Imperial Oud",
+        "Al Haramain Portfolio Imperial Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-PORTFOLIO-ROYALE-STALLION",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Portfolio Royale Stallion",
+      "name": "Portfolio Royale Stallion",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Portfolio Royale Stallion",
+      "aliases": [
+        "Portfolio Royale Stallion",
+        "Al Haramain Portfolio Royale Stallion"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-OYUNY",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Oyuny",
+      "name": "Oyuny",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Oyuny",
+      "aliases": [
+        "Oyuny",
+        "Al Haramain Oyuny"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-OPULENT-SAPPHIRE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Opulent Sapphire",
+      "name": "Opulent Sapphire",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Opulent Sapphire",
+      "aliases": [
+        "Opulent Sapphire",
+        "Al Haramain Opulent Sapphire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-MANEGE-ROUGE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Manege Rouge",
+      "name": "Manege Rouge",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Manege Rouge",
+      "aliases": [
+        "Manege Rouge",
+        "Al Haramain Manege Rouge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-PORTFOLIO-FLORAL-SCULPTURE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Portfolio Floral Sculpture",
+      "name": "Portfolio Floral Sculpture",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Portfolio Floral Sculpture",
+      "aliases": [
+        "Portfolio Floral Sculpture",
+        "Al Haramain Portfolio Floral Sculpture"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-PORTFOLIO-EUPHORIC-ROOTS",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Portfolio Euphoric Roots",
+      "name": "Portfolio Euphoric Roots",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Portfolio Euphoric Roots",
+      "aliases": [
+        "Portfolio Euphoric Roots",
+        "Al Haramain Portfolio Euphoric Roots"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-MUSK-AL-HARAMAIN-NOIR",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Musk Al Haramain Noir",
+      "name": "Musk Al Haramain Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Musk Al Haramain Noir",
+      "aliases": [
+        "Musk Al Haramain Noir",
+        "Al Haramain Musk Al Haramain Noir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AMBER-MUSK",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Musk",
+      "name": "Amber Musk",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Musk",
+      "aliases": [
+        "Amber Musk",
+        "Al Haramain Amber Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-MYSTIQUE-MUSK-SPRAY",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Mystique Musk Spray",
+      "name": "Mystique Musk Spray",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Mystique Musk Spray",
+      "aliases": [
+        "Mystique Musk Spray",
+        "Al Haramain Mystique Musk Spray"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-TREASURE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Treasure",
+      "name": "Treasure",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Treasure",
+      "aliases": [
+        "Treasure",
+        "Al Haramain Treasure"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ROYAL-MUSK",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Royal Musk",
+      "name": "Royal Musk",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Royal Musk",
+      "aliases": [
+        "Royal Musk",
+        "Al Haramain Royal Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-XPLORE-SAPPHIRE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Xplore Sapphire",
+      "name": "Xplore Sapphire",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Xplore Sapphire",
+      "aliases": [
+        "Xplore Sapphire",
+        "Al Haramain Xplore Sapphire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-TANASUK",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Tanasuk",
+      "name": "Tanasuk",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Tanasuk",
+      "aliases": [
+        "Tanasuk",
+        "Al Haramain Tanasuk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ALMAS-GOLD",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Almas Gold",
+      "name": "Almas Gold",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Almas Gold",
+      "aliases": [
+        "Almas Gold",
+        "Al Haramain Almas Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ALMAS-SILVER",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Almas Silver",
+      "name": "Almas Silver",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Almas Silver",
+      "aliases": [
+        "Almas Silver",
+        "Al Haramain Almas Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-DEHNAL-OUDH-ATEEQ",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Dehnal Oudh Ateeq",
+      "name": "Dehnal Oudh Ateeq",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Dehnal Oudh Ateeq",
+      "aliases": [
+        "Dehnal Oudh Ateeq",
+        "Al Haramain Dehnal Oudh Ateeq"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-SALAM-ATTAR",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Salam Attar",
+      "name": "Salam Attar",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Salam Attar",
+      "aliases": [
+        "Salam Attar",
+        "Al Haramain Salam Attar"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     }
   ],
   "variants": [
