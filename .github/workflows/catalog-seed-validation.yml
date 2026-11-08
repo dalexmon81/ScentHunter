@@ -27,6 +27,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/velixir-evidence-status-correction-2026-11-08
       - catalog/maison-asrar-detail-source-refresh-2026-11-08
+      - catalog/al-wataniah-detail-verification-2026-11-08
 
 permissions:
   contents: read
