@@ -37,8 +37,13 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
             if product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
                 self.assertEqual(product["identity_status"], "source_listed_name")
                 self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
-                self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
+                if product["canonical_name"] == "Hareem Al Sultan":
+                    self.assertEqual(product.get("formats_ml"), [75])
+                    self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                    self.assertEqual(product.get("source_evidence_url"), "https://khadlaj-perfumes.com/collections/premium-colllection")
+                else:
+                    self.assertNotIn("concentration", product)
+                    self.assertNotIn("formats_ml", product)
 
 if __name__ == "__main__":
     unittest.main()

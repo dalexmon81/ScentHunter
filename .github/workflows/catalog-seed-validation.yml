@@ -13,6 +13,8 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-fragrantica-84-reconciliation-2026-11-08
       - catalog/velixir-official-variant-reconciliation-2026-11-08
+      - catalog/maison-asrar-cross-source-reconciliation-2026-11-08
+      - catalog/khadlaj-perfume-oil-fragrantica-reconciliation-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -28,6 +30,8 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/mykonos-fragrantica-84-reconciliation-2026-11-08
       - catalog/velixir-official-variant-reconciliation-2026-11-08
+      - catalog/maison-asrar-cross-source-reconciliation-2026-11-08
+      - catalog/khadlaj-perfume-oil-fragrantica-reconciliation-2026-11-08
 
 permissions:
   contents: read
@@ -71,6 +75,8 @@ jobs:
           backend.tests.test_al_haramain_gulf_orchid_store_harvest
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
+          backend.tests.test_khadlaj_perfume_oils
+          backend.tests.test_khadlaj_official_detail_pages
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest

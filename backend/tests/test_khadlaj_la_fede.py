@@ -23,6 +23,11 @@ EXPECTED = {
         "concentration": "Eau de Parfum",
         "url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum",
     },
+    "Code Viola Nectar": {
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+    },
     "La Fede Celebrity Fame": {
         "size_ml": 100,
         "concentration": "Eau de Parfum",
@@ -43,7 +48,7 @@ class KhadlajLaFedeTests(unittest.TestCase):
 
     def test_individually_verified_la_fede_products_are_canonical(self):
         self.assertEqual({p["canonical_name"] for p in self.products}, set(EXPECTED))
-        self.assertEqual(len(self.family["products"]), 36)
+        self.assertEqual(len(self.family["products"]), 37)
 
     def test_each_canonical_la_fede_product_has_official_detail_evidence(self):
         for name, expected in EXPECTED.items():
