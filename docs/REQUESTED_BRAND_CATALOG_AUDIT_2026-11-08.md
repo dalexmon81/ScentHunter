@@ -353,3 +353,33 @@ Seven existing Assaf canonical identities were checked against individual produc
 No concentration was inferred because the inspected pages did not consistently provide an explicit concentration field for these items. The 100 ml and 200 ml Gris Erik listings remain variants of one canonical identity. Existing independent-index rows not covered by individual official pages remain listing-level.
 
 After these updates, the Assaf subtotal remains 140 identities: 7 individually detail-verified and 133 listing-level. Across the 20 requested brands, the subtotal remains 2,057 identities: 157 `source_verified_name` and 1,900 `source_listed_name`.
+
+
+### Paris Corner: eight further official product-page verifications (8 November 2026)
+
+Eight existing Paris Corner identities were checked against individual product-detail pages on the brand's official storefront. No new canonical identities were created. Each page explicitly states a 100 ml size, so one 100 ml variant was added to each existing identity:
+
+| Canonical identity | Official product detail | Explicit concentration |
+|---|---|---|
+| Dulzura Vanilla Envie | https://www.pariscornerperfumes.com/products/dulzura-vanilla-envie | Not stated on page |
+| Empire de la Rouge | https://www.pariscornerperfumes.com/products/empire-de-la-rouge | Eau de Parfum |
+| Green Bet | https://www.pariscornerperfumes.com/products/green-bet | Not stated on page |
+| Heer | https://www.pariscornerperfumes.com/products/heer | Not stated on page |
+| Marshmallow Blush | https://www.pariscornerperfumes.com/products/marshmallow-blush | Not stated on page |
+| Oravea | https://www.pariscornerperfumes.com/products/oravea | Eau de Parfum |
+| Rawq | https://www.pariscornerperfumes.com/products/rawq | Not stated on page |
+| The Show Magnifique | https://www.pariscornerperfumes.com/products/the-show-magnifique | Not stated on page |
+
+For the six pages that only state size, concentration was deliberately left blank in both the canonical row and variant. Ciao Citrus and Zariya remain listing-level because this pass found collection/new-launch evidence but did not verify their individual product-detail specifications. No new products were inferred from bundle listings.
+
+Paris Corner remains at 245 canonical identities; 15 are now individually detail-verified and 230 remain listing-level. The full seed remains at 2,060 canonical identities and now has 255 explicit variants. Across the 20 requested brands, the subtotal is 2,057 identities: 165 individually verified and 1,892 listing-level.
+
+Official source pages:
+- https://www.pariscornerperfumes.com/products/dulzura-vanilla-envie
+- https://www.pariscornerperfumes.com/products/empire-de-la-rouge
+- https://www.pariscornerperfumes.com/products/green-bet
+- https://www.pariscornerperfumes.com/products/heer
+- https://www.pariscornerperfumes.com/products/marshmallow-blush
+- https://www.pariscornerperfumes.com/products/oravea
+- https://www.pariscornerperfumes.com/products/rawq
+- https://www.pariscornerperfumes.com/products/the-show-magnifique
