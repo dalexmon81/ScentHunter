@@ -12,7 +12,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 72,
+    "Mykonos": 99,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -492,6 +492,149 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
                 self.assertNotIn("concentration", matching[0])
+
+
+
+
+    def test_mykonos_reconciled_catalog_has_99_identities_and_102_variants(self):
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        ]
+        product_ids = {row["product_id"] for row in products}
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") in product_ids
+        ]
+        self.assertEqual(len(products), 99)
+        self.assertEqual(len({row.get("canonical_name") for row in products}), 99)
+        self.assertEqual(len(variants), 102)
+        self.assertEqual(sum(row.get("size_ml") == 15 for row in variants), 18)
+
+    def test_mykonos_new_cross_source_identities_have_provenance(self):
+        expected = (
+            "Adelina", "Avra Kehdabra", "Berry Caramel Pancake", "Bloody Mary",
+            "Café Lyon", "Celestial", "Crystals", "Daydream", "Déjà Vu",
+            "Dolce Cherry", "Eclipse", "Elysian", "Forever Musc",
+            "Inception Reimagined", "Inspire Perfume", "It's Not Ella",
+            "Kingsman", "Monaco Royale Black", "Nashi Pear Garden", "President",
+            "Roulette", "Shape Shift", "Soft Hour x NCT Haechan", "Undercover",
+            "Violette", "Wallflower", "Zeus",
+        )
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertTrue(set(expected).issubset(products))
+        for name in expected:
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertTrue(row.get("source_url"))
+                self.assertIn(row.get("identity_status"), {"source_verified_name", "source_listed_name"})
+        legacy = ("Adelina", "Bloody Mary", "Crystals", "Eclipse", "It's Not Ella",
+                  "Nashi Pear Garden", "Roulette", "Zeus")
+        variants = CATALOG.get("variants", [])
+        for name in legacy:
+            with self.subTest(legacy=name):
+                product_id = products[name]["product_id"]
+                self.assertEqual(products[name].get("identity_status"), "source_listed_name")
+                self.assertFalse(any(v.get("product_id") == product_id for v in variants))
+
+    def test_mykonos_new_variants_have_variant_level_source_evidence(self):
+        expected = {
+            "Avra Kehdabra": (100, "Eau de Parfum"),
+            "Berry Caramel Pancake": (50, "Eau de Parfum"),
+            "Daydream": (100, "Extrait de Parfum"),
+            "Dolce Cherry": (50, "Extrait de Parfum"),
+            "Forever Musc": (100, "Eau de Parfum"),
+            "Inception Reimagined": (100, "Extrait de Parfum"),
+            "Monaco Royale Black": (50, "Extrait de Parfum"),
+            "Shape Shift": (100, "Extrait de Parfum"),
+            "Soft Hour x NCT Haechan": (100, "Extrait de Parfum"),
+            "Violette": (100, "Eau de Parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        expected_rows = 11
+        found = []
+        for name, (size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                product = products[name]
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == product["product_id"]
+                    and v.get("size_ml") == size_ml
+                    and v.get("concentration") == concentration
+                ]
+                if name == "Monaco Royale Black":
+                    matching = [
+                        v for v in variants
+                        if v.get("product_id") == product["product_id"]
+                        and v.get("size_ml") in (50, 100)
+                        and v.get("concentration") == concentration
+                    ]
+                    self.assertEqual({v.get("size_ml") for v in matching}, {50, 100})
+                else:
+                    self.assertEqual(len(matching), 1)
+                for variant in matching:
+                    self.assertEqual(variant.get("source_evidence_url"), product.get("source_url"))
+                    found.append(variant)
+        self.assertEqual(len(found), expected_rows)
+
+    def test_mykonos_empire_x_rrq_and_imperium_are_distinct_official_products(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        empire = products["Empire x RRQ"]
+        imperium = products["Imperium"]
+        self.assertNotEqual(empire["product_id"], imperium["product_id"])
+        self.assertEqual(empire.get("source_url"),
+                         "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml")
+        self.assertEqual(imperium.get("source_url"),
+                         "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml")
+        self.assertIn("Empire", empire.get("aliases", []))
+        self.assertNotIn("Imperium", empire.get("aliases", []))
+        self.assertEqual(
+            {v.get("size_ml") for v in CATALOG.get("variants", [])
+             if v.get("product_id") == empire["product_id"]},
+            {50, 100},
+        )
+        self.assertEqual(
+            {v.get("size_ml") for v in CATALOG.get("variants", [])
+             if v.get("product_id") == imperium["product_id"]},
+            {100},
+        )
+
+
+
+
+    def test_mykonos_source_name_variants_are_aliases_not_duplicate_products(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        expected_aliases = {
+            "California": "California Signature",
+            "Jynx": "Jinx",
+            "Nautilus": "Nautilius",
+            "Shades Perfume": "Shades Parfum",
+            "Affair": "Intimate Affair",
+            "Xoxo Rosy": "XoXo, Rosy",
+        }
+        for canonical, alias in expected_aliases.items():
+            with self.subTest(canonical=canonical, alias=alias):
+                self.assertIn(canonical, products)
+                self.assertIn(alias, products[canonical].get("aliases", []))
+        canonical_names = [str(row.get("canonical_name", "")).casefold() for row in products.values()]
+        self.assertEqual(len(canonical_names), len(set(canonical_names)))
 
 
 if __name__ == "__main__":
