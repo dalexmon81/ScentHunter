@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "product_catalog.json"
+FAMILY_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "family_registry.json"
 PRODUCTS = {
     "New York the City of Dreams": "https://lattafa.com/product/new-york-the-city-of-dreams/",
     "Love In Paris": "https://lattafa.com/product/love-in-paris/",
@@ -54,6 +55,14 @@ class LattafaFourOfficialProductsTests(unittest.TestCase):
                     self.assertNotIn(forbidden, variants[0])
 
     def test_family_registry_and_variant_ids_remain_consistent(self):
+        family = next(
+            f for f in self.family_registry["families"]
+            if f.get("family_id") == "lattafa_catalog"
+        )
+        registered = {p.get("canonical_name") for p in family.get("products", [])}
+        for name in PRODUCTS:
+            with self.subTest(product=name):
+                self.assertIn(name, registered)
         ids = [v.get("variant_id") for v in self.variants]
         self.assertEqual(len(ids), len(set(ids)))
 
