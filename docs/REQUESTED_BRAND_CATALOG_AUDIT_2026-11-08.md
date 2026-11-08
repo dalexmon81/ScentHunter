@@ -19,7 +19,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Khadlaj | 116 | 3 | 113 |
 | Bujairami | 142 | 20 | 122 |
 | Paris Corner | 245 | 7 | 238 |
-| Assaf | 140 | 0 | 140 |
+| Assaf | 140 | 7 | 133 |
 | Al Wataniah | 86 | 2 | 84 |
 | Armaf | 190 | 6 | 184 |
 | French Avenue | 119 | 6 | 113 |
@@ -33,7 +33,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Maison Alhambra | 207 | 6 | 201 |
 | Zimaya | 77 | 15 | 62 |
 | Al Haramain | 101 | 8 | 93 |
-| **Total requested brands** | **2,057** | **150** | **1,907** |
+| **Total requested brands** | **2,057** | **157** | **1,900** |
 
 The full seed contains 2,060 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
@@ -47,7 +47,7 @@ The full seed contains 2,060 identities. The remaining three belong to other bra
 | Khadlaj | khadlaj-perfumes.com (116) |
 | Bujairami | bujairami.ae (117); bujairami.com.au (21); bujairami.eu (4) |
 | Paris Corner | www.pariscornerperfumes.com (245) |
-| Assaf | assafperfumes.eu (119); assaf.ae (21) |
+| Assaf | assafperfumes.eu (113); assaf.ae (27) |
 | Al Wataniah | www.alwataniah.com (86) |
 | Armaf | armaf.com (190) |
 | French Avenue | frenchavenue.com (80); www.fragrantica.com (39) |
@@ -334,3 +334,22 @@ Eight existing canonical identities were checked against individual Al Haramain 
 Amber Oud Ruby Edition is one canonical identity with two verified sizes, not two products. Collection pages also display other sizes for some fragrances, but those sizes were not added unless supported by the inspected individual detail pages. Gift sets, deodorants, oils and other non-spray formats remain outside the canonical spray-fragrance variant model.
 
 The requested-brand subtotal remains 2,057 identities after the previously removed Zimaya duplicate. Evidence status is now 150 individual-page verified identities and 1,907 listing-level identities. The full catalog remains 2,060 identities.
+
+
+### Assaf: individual official product-page verification (8 November 2026)
+
+Seven existing Assaf canonical identities were checked against individual product pages on the brand-owned `assaf.ae` storefront. The rows now point to their official product pages, have `source_verified_name` evidence status, and carry only the sizes explicitly shown on those pages:
+
+| Canonical identity | Official product detail | Verified size(s) |
+|---|---|---:|
+| Arrogate Pink | https://assaf.ae/products/arrogate-pink-200ml | 200 ml |
+| Arrogate Pink Diva | https://assaf.ae/products/arrogate-pink-diva | 200 ml |
+| Dangerous Arrogate | https://assaf.ae/products/dangerous-arrogate-200ml | 200 ml |
+| Gris Erik | https://assaf.ae/products/gris-erik-200-ml and https://assaf.ae/products/gris-erik | 100 ml, 200 ml |
+| Miss Arrogate | https://assaf.ae/products/miss-arrogate | 200 ml |
+| Rebel Enable | https://assaf.ae/products/edp-rebel-enable-150ml | 150 ml |
+| Wild Colt Elixir | https://assaf.ae/products/edp-wild-colt-elixer-200ml | 200 ml |
+
+No concentration was inferred because the inspected pages did not consistently provide an explicit concentration field for these items. The 100 ml and 200 ml Gris Erik listings remain variants of one canonical identity. Existing independent-index rows not covered by individual official pages remain listing-level.
+
+After these updates, the Assaf subtotal remains 140 identities: 7 individually detail-verified and 133 listing-level. Across the 20 requested brands, the subtotal remains 2,057 identities: 157 `source_verified_name` and 1,900 `source_listed_name`.
