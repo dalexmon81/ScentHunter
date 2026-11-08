@@ -1655,3 +1655,12 @@ Two names remain in the discovery harvest but were deliberately **not** added to
 - This may be a distinct concentration/release, not merely a bottle-size variant. No canonical row was created pending authoritative brand confirmation and a clear identity/variant decision.
 
 The harvest overlay now records these cross-checks and the reason for holding both candidates outside the canonical seed.
+
+
+## Pass 32 — Bujairami Hectic official identity verification (2026-11-08)
+
+- Added **Hectic** as a canonical Bujairami fragrance name after locating the official brand product page: https://bujairami.com.au/products/hectic-inspired-by-louis-vuitton-imagination-extrait .
+- The official product page confirms the product name and note profile but does not expose a clear concentration or bottle size in the extracted page.
+- A Luxembourg retailer page calls it 100 ml Extrait de Parfum and publishes UPC 9362014000157, but the URL slug says EDP. An EU retailer guide also lists it as Extrait. Due to this conflict, no concentration, size or GTIN is imported and no variant row is created.
+- Synchronized the Bujairami family registry and harvest overlay; added `backend/tests/test_bujairami_catalog.py` to guard official provenance and prevent inferred commercial/variant fields.
+- Current catalog count after this identity-only addition: **1,922 canonical identities; 245 explicit variants**. CI remains unverified on the current PR head.
