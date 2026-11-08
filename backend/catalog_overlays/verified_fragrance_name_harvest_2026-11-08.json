@@ -1,0 +1,1634 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "verified_fragrance_name_harvest",
+  "created_at": "2026-11-08",
+  "status": "discovery_overlay_not_yet_canonical_seed",
+  "description": "Product-level fragrance name candidates collected from public retailer and collection indexes for requested brands. This is a research overlay, not retailer offer data and not yet imported into the canonical database. Names are retained once per brand/name pair; variants, GTINs, prices, availability, and shipping are never inferred.",
+  "policy": {
+    "no_manual_offers": true,
+    "no_prices": true,
+    "no_stock_claims": true,
+    "no_shipping_claims": true,
+    "no_gtin_inference": true,
+    "no_variant_inference": true,
+    "deduplicate_by_normalized_brand_and_name": true,
+    "canonical_import_requires_variant_review": true,
+    "brand_listing_is_not_proof_of_exclusive_or_complete_catalog": true
+  },
+  "summary": {
+    "product_name_candidates": 172,
+    "maison_asrar": 116,
+    "maison_asrar_royal_collection": 9,
+    "aromatix_x_french_avenue": 10,
+    "games_of_spades": 28,
+    "other_requested_brands": 18
+  },
+  "sources": [
+    {
+      "name": "Maison Asrar complete perfume index (independent guide)",
+      "url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "supports": "116 named fragrances; explicitly says independent, non-official guide; source page records sizes and notes where published."
+    },
+    {
+      "name": "Maison Asrar official Royal Collection",
+      "url": "https://maisonasrar.com/collections/royal-collection",
+      "supports": "Royal Collection listing; nine entries including Belgravia, Legacy, Vanguard, Regent, Majesty, Heritage, Monarch, Treasure and Imperial."
+    },
+    {
+      "name": "Shop Aromatix - Signature Aromatix Collection",
+      "url": "https://shoparomatix.com/pages/aromatic-collection",
+      "supports": "Ten Aromatix X French Avenue fragrance names; EDP 100 ml stated for the listed bottles."
+    },
+    {
+      "name": "Jo Milano Paris - Game of Spades Coffret Set II",
+      "url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "supports": "Official product page names nine Game of Spades fragrances in a 9 x 10 ml coffret; it is not evidence of 100 ml variants."
+    },
+    {
+      "name": "Azmara all products",
+      "url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "supports": "Retailer listing with brand facets and named products; used for selected examples."
+    },
+    {
+      "name": "Essência Árabe full bottles collection",
+      "url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
+      "supports": "Retailer product list with brand and named fragrance listings."
+    }
+  ],
+  "product_candidates": [
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Belgravia",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Legacy",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Vanguard",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Regent",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Ameer",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Majesty",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Veyra",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Vanilla Aura",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Faris Al Arab",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Vanilla Voyage",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "III Thriller",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Last Swim",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Pomme Rouge",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Haven",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Muharib",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Silent Surge",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Treasure",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Hunter",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Imperial",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Monarch",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "1963",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Adorable",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Alonoud",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Aseel",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Basma",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Black",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Bloom Bloom",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Bonita",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Casablanca",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Cascade",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Coffee Blend",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Daham",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Date Night",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Dear Jasmine",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Desire",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Dubai London",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Dubai Miami",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Dubai Milano",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "DXB",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "DXB Jumeirah",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Emerald",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Emessa",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Fairy Tale",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Fairyland",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Fakhama",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Flair",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Fresh Iris",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Gentle Oud",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Gold Noir",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Hamsat Gharam",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Hamsat Ghazal",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Hamsat Hob",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Hamsat Ishq",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Harmony",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Heritage",
+      "collection": "Royal Collection",
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Hikaya",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Hilm",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Icon",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Infina",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Italian Leather",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Jawhara Black",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Jawhara Rouge",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Joy",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Khateer",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Khayal",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Khayyal",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Kiss My Lips",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Larimar",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Leo",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Librae",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Lily",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Lolita",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Lumiere",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Luna",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Magic Night",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Masterpiece",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Milky Way",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Mohra",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Nada",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Never Forget Me",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Night in Paris",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Oh Honey!",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Omniya",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Oscar",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Patchouli with Love",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Petra",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Pink Crush",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Qamar",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Red Velvet",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rey",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rose",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rose Honey",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rose Musk",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rose Oud",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rose Vanilla",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rosé Absolute",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rosé Bouquet",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Rubellite",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Silver Elixer",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Soirée",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Soudfa",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Sunset in Capri",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Throne",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Throne Eclipse",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Timeless",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Tornado",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Trophy",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Turath",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Turath Malaki",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Vanilla Rouge",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Vanilla Seduction",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Vision",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Wadi",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Whisper",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Wood Intense",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance_name": "Zenobia",
+      "collection": null,
+      "evidence_source": "Maison Asrar perfume index (independent retailer guide)",
+      "source_url": "https://maisonasrarperfumes.eu/fr/perfumes/",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Teas Me",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Frostbite",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Naughty Dates",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Sun Kissed",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Forbidden Fruit",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Magnetiq",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Platine Blanc",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "X Xandal",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Royal Taboo",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Aromatix X French Avenue",
+      "fragrance_name": "Carnal Desire",
+      "collection": "Signature Aromatix Collection",
+      "evidence_source": "Shop Aromatix collection page",
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "EDP 100 ml explicitly stated on source collection page",
+      "concentration": "EDP",
+      "size_ml": 100
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Wildcard",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Full-House",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Royale",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Double Bonus",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades No Limit",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Black Sapphire",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Emerald",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades King",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Bonus",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Blind-Bid",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Moon",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades All In",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Boston",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Diamond",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Gold",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Ruby",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Yellow Sapphire",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Blue Sapphire",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Bluff",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades High Roller",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Opal",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Win",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Topaz",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Ace",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Bid",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Queen",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Rouge",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Jo Milano Paris",
+      "fragrance_name": "Game of Spades Trick",
+      "collection": "Games of Spades",
+      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "do not infer full-size variant from sample/coffret records"
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance_name": "Khamrah",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance_name": "Queen Of Arabia",
+      "evidence_source": "Essência Árabe",
+      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance_name": "Musamam Black Intense",
+      "evidence_source": "Essência Árabe",
+      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Lattafa",
+      "fragrance_name": "Musamam White Intense",
+      "evidence_source": "Essência Árabe",
+      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance_name": "Jasmere",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance_name": "Vulcan Feu",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance_name": "Amber Empire",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance_name": "Liquid Brun",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance_name": "After Effect",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance_name": "Safari Breeze",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance_name": "Hectic",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Khadlaj",
+      "fragrance_name": "Karus Gold Absolu",
+      "evidence_source": "Essência Árabe",
+      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Marwa",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance_name": "Mahd Al Dhahab Extrait",
+      "evidence_source": "Essência Árabe",
+      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance_name": "Jean Lowe Vibe",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Maison Alhambra",
+      "fragrance_name": "Jean Lowe Immortal",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Armaf",
+      "fragrance_name": "Infinity Silver",
+      "evidence_source": "Azmara",
+      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Swiss Arabian",
+      "fragrance_name": "Incense 01",
+      "evidence_source": "Essência Árabe",
+      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
+      "evidence_level": "named_fragrance_listed",
+      "variant_details": "not_inferred"
+    }
+  ],
+  "remaining_harvest": {
+    "brands": [
+      "Velixir",
+      "Mykonos",
+      "Khadlaj",
+      "Bujairami",
+      "Paris Corner",
+      "Assaf",
+      "Al Wataniah",
+      "Armaf",
+      "French Avenue",
+      "Arabiyat Prestige",
+      "Gulf Orchid",
+      "Swiss Arabian",
+      "Lattafa",
+      "Afnan",
+      "Maison Alhambra",
+      "Zimaya",
+      "Al Haramain",
+      "Al Ambra"
+    ],
+    "note": "The sources confirm retailer brand coverage and counts for many of these brands, but a full product-level extraction has not yet been completed for every brand. Do not mark these lines complete until product names have been individually harvested and deduplicated.",
+    "games_of_spades_brand_attribution": "Jo Milano Paris is the brand; Games of Spades is the collection. Keep this hierarchy to avoid creating a false manufacturer brand."
+  }
+}
