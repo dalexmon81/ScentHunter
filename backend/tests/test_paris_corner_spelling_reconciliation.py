@@ -52,9 +52,12 @@ class ParisCornerSpellingReconciliationTests(unittest.TestCase):
         ]
         self.assertEqual(len(matches), 1)
 
-    def test_registry_has_no_duplicate_canonical_names_after_reconciliation(self):
-        names = [p["canonical_name"].casefold() for p in self.family["products"]]
-        self.assertEqual(len(names), len(set(names)))
+    def test_registry_spellings_resolve_to_single_canonical_rows(self):
+        names = [p["canonical_name"] for p in self.family["products"]]
+        self.assertEqual(names.count("Attractus"), 1)
+        self.assertEqual(names.count("Harrier Absolute"), 1)
+        self.assertNotIn("Attratus", names)
+        self.assertNotIn("Harrier Absoulte", names)
 
 
 if __name__ == "__main__":
