@@ -17,6 +17,11 @@ EXPECTED = {
     "Muharib": "https://maisonasrar.com/products/muharib",
     "Hunter": "https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml",
     "1963": "https://maisonasrar.com/products/1963-eau-de-perfum-100ml",
+    "Lumiere": "https://maisonasrar.com/products/lumiere",
+    "Milky Way": "https://maisonasrar.com/products/milky-way",
+    "Mohra": "https://maisonasrar.com/products/mohrab",
+    "Luna": "https://maisonasrar.com/products/luna-eau-de-parfum-100ml",
+    "Magic Night": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
 }
 
 
