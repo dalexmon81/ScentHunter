@@ -3607,24 +3607,6 @@
           ]
         },
         {
-          "canonical_name": "Attractus",
-          "aliases": [
-            "Attractus",
-            "Paris Corner Attractus"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Attratus",
-          "aliases": [
-            "Attratus",
-            "Paris Corner Attratus",
-            "Paris Corner Attratus"
-          ]
-        },
-        {
           "canonical_name": "Azm",
           "aliases": [
             "Azm",
@@ -4056,7 +4038,11 @@
             "Harrier Absoulte",
             "Paris Corner Harrier Absoulte",
             "Paris Corner Harrier Absoulte"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Heer",
@@ -4447,7 +4433,11 @@
             "Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ministry of Oud - Gladiators Oath",
@@ -4455,6 +4445,9 @@
             "Ministry of Oud - Gladiators Oath",
             "Paris Corner Ministry of Oud - Gladiators Oath",
             "Paris Corner Ministry of Oud - Gladiators Oath"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4463,6 +4456,9 @@
             "Ministry of Oud - Maestro's Symphony",
             "Paris Corner Ministry of Oud - Maestro's Symphony",
             "Paris Corner Ministry of Oud - Maestro's Symphony"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4471,6 +4467,9 @@
             "Ministry of Oud - Nile Whispers",
             "Paris Corner Ministry of Oud - Nile Whispers",
             "Paris Corner Ministry of Oud - Nile Whispers"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4479,6 +4478,9 @@
             "Ministry of Oud - Oud Beyond the Wall",
             "Paris Corner Ministry of Oud - Oud Beyond the Wall",
             "Paris Corner Ministry of Oud - Oud Beyond the Wall"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4487,7 +4489,11 @@
             "Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ministry of Oud - Oud Royal",
@@ -4495,7 +4501,11 @@
             "Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ministry of Oud - Oud Satin",
@@ -4503,6 +4513,9 @@
             "Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4511,6 +4524,9 @@
             "Ministry of Oud - Romance Reverie",
             "Paris Corner Ministry of Oud - Romance Reverie",
             "Paris Corner Ministry of Oud - Romance Reverie"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4519,7 +4535,11 @@
             "Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ministry of Oud - Thailand Oud in Cairo",
@@ -4535,7 +4555,11 @@
             "Ministry of Oud Greatest",
             "Paris Corner Ministry of Oud Greatest",
             "Paris Corner Ministry of Oud Greatest"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Minya",
@@ -5551,6 +5575,18 @@
           "aliases": [
             "Un I Expressions North Stag",
             "Paris Corner Un I Expressions North Stag"
+          ]
+        },
+        {
+          "canonical_name": "Attractus",
+          "aliases": [
+            "Attractus",
+            "Paris Corner Attractus",
+            "Attratus",
+            "Paris Corner Attratus"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
