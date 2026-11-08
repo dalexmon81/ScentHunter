@@ -4103,6 +4103,16 @@
             "Niche",
             "Arabiyat Prestige Niche"
           ]
+        },
+        {
+          "canonical_name": "Mahd Al Dhahab Extrait",
+          "aliases": [
+            "Mahd Al Dhahab Extrait",
+            "Arabiyat Prestige Mahd Al Dhahab Extrait"
+          ],
+          "formats_ml": [
+            60
+          ]
         }
       ]
     },
