@@ -25276,7 +25276,8 @@
       "family_name": "Silver Elixer",
       "aliases": [
         "Silver Elixer",
-        "Maison Asrar Silver Elixer"
+        "Maison Asrar Silver Elixer",
+        "Silver Elixir"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://maisonasrar.com/collections/all",
@@ -25623,6 +25624,46 @@
       "identity_status": "source_listed_name",
       "source_url": "https://maisonasrar.com/collections/all",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-AMAL",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Amal",
+      "name": "Amal",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Amal",
+      "aliases": [
+        "Amal",
+        "Maison Asrar Amal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://nufaar.com/gb/en/products/maison-asrar-amal",
+      "source_evidence_url": "https://thealternativebeauty.co.uk/product/maison-asrar-amal-eau-de-parfum-100ml/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-ASALA",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Asala",
+      "name": "Asala",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Asala",
+      "aliases": [
+        "Asala",
+        "Maison Asrar Asala"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.divaparfum.com/shop/eau-de-parfum-asala-100ml-maison-asrar-17964",
+      "source_evidence_url": "https://youshahperfumes.co.uk/product/asala-eau-de-parfum-100ml/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-b0a32a7c",
@@ -26192,6 +26233,66 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-RED-CARPET",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Red Carpet",
+      "name": "Red Carpet",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Red Carpet",
+      "aliases": [
+        "Red Carpet",
+        "Maison Asrar Red Carpet"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/red-carpet",
+      "source_evidence_url": "https://shop-gulforchid.com/products/red-carpet",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-RUNWAY-GIRL",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Runway Girl",
+      "name": "Runway Girl",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Runway Girl",
+      "aliases": [
+        "Runway Girl",
+        "Maison Asrar Runway Girl"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/runway-girl",
+      "source_evidence_url": "https://shop-gulforchid.com/products/runway-girl",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-SMOKEY-EYES",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
+      "canonical_name": "Smokey Eyes",
+      "name": "Smokey Eyes",
+      "family_id": "maison_asrar_catalog",
+      "family_name": "Smokey Eyes",
+      "aliases": [
+        "Smokey Eyes",
+        "Maison Asrar Smokey Eyes"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/smokey-eyes",
+      "source_evidence_url": "https://shop-gulforchid.com/products/smokey-eyes",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-UNSOLVED-MYSTERY-X001",
@@ -37187,6 +37288,56 @@
       "aliases": [
         "Liquid Brun Eau de Parfum 100 ml",
         "French Avenue Liquid Brun EDP 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-AMAL",
+      "variant_id": "VAR-SH-MAISON-ASRAR-AMAL-100",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Amal 100 ml",
+        "Maison Asrar Amal 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-ASALA",
+      "variant_id": "VAR-SH-MAISON-ASRAR-ASALA-100",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Asala 100 ml",
+        "Maison Asrar Asala 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-RED-CARPET",
+      "variant_id": "VAR-SH-MAISON-ASRAR-RED-CARPET-100",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Red Carpet 100 ml",
+        "Maison Asrar Red Carpet 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-RUNWAY-GIRL",
+      "variant_id": "VAR-SH-MAISON-ASRAR-RUNWAY-GIRL-100",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Runway Girl 100 ml",
+        "Maison Asrar Runway Girl 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-SMOKEY-EYES",
+      "variant_id": "VAR-SH-MAISON-ASRAR-SMOKEY-EYES-100",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Smokey Eyes 100 ml",
+        "Maison Asrar Smokey Eyes 100 ml"
       ]
     },
     {
