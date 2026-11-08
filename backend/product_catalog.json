@@ -33725,6 +33725,70 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-024",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "New York the City of Dreams",
+      "name": "New York the City of Dreams",
+      "family_id": "lattafa_catalog",
+      "family_name": "New York the City of Dreams",
+      "aliases": [
+        "New York the City of Dreams",
+        "Lattafa New York the City of Dreams"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
+      "source_evidence_url": "https://lattafa.com/product/new-york-the-city-of-dreams/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-025",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Love In Paris",
+      "name": "Love In Paris",
+      "family_id": "lattafa_catalog",
+      "family_name": "Love In Paris",
+      "aliases": [
+        "Love In Paris",
+        "Lattafa Love In Paris"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/love-in-paris/",
+      "source_evidence_url": "https://lattafa.com/product/love-in-paris/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-026",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raghad",
+      "name": "Raghad",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raghad",
+      "aliases": [
+        "Raghad",
+        "Lattafa Raghad"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raghad/",
+      "source_evidence_url": "https://lattafa.com/product/raghad/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-027",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Amethyst Fusion",
+      "name": "Badee Al Oud Amethyst Fusion",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud Amethyst Fusion",
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion",
+        "Lattafa Badee Al Oud Amethyst Fusion"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/"
     }
   ],
   "variants": [
@@ -36666,6 +36730,42 @@
         "Lattafa Mishlah 100 ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-7eca557a-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-024",
+      "size_ml": 100,
+      "aliases": [
+        "New York the City of Dreams 100 ml",
+        "Lattafa New York the City of Dreams 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-024-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-025",
+      "size_ml": 100,
+      "aliases": [
+        "Love In Paris 100 ml",
+        "Lattafa Love In Paris 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-025-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-026",
+      "size_ml": 100,
+      "aliases": [
+        "Raghad 100 ml",
+        "Lattafa Raghad 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-026-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-027",
+      "size_ml": 100,
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion 100 ml",
+        "Lattafa Badee Al Oud Amethyst Fusion 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-027-100-000"
     }
   ]
 }
