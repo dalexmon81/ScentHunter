@@ -16,7 +16,7 @@ MINIMUM_BRAND_COUNTS = {
     "Maison Asrar": 125,
     "Khadlaj": 220,
     "Bujairami": 671,
-    "Paris Corner": 245,
+    "Paris Corner": 285,
     "Assaf": 140,
     "Al Wataniah": 86,
     "Armaf": 190,
@@ -819,6 +819,82 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertNotIn("formats_ml", row)
         self.assertNotIn("concentration", row)
         self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
+
+
+    def test_paris_corner_official_uae_additions_and_variants(self):
+        expected = [["A Chaos In The Ocean","https://ae.pariscorner.com/products/a-chaos-in-the-ocean-valar-series-100ml",100,"Valar Series"],["A Walk on Dirt","https://ae.pariscorner.com/products/a-walk-on-dirt-valar-series-100ml",100,"Valar Series"],["Amber Oud","https://ae.pariscorner.com/products/amber-oud-100ml",100,"Paris Corner"],["Arabian Oryx Intense Oud","https://ae.pariscorner.com/products/intense-oud-arabian-oryx-100ml",100,"Arabian Oryx"],["Arabian Oryx Intense Oud Saffron","https://ae.pariscorner.com/products/intense-oud-saffron-100ml",100,"Arabian Oryx"],["Aseerah","https://ae.pariscorner.com/products/aseerah-eau-de-parfum-100ml",100,"Paris Corner"],["Autobiography Citron Vanille","https://ae.pariscorner.com/products/citron-vanille-65-ml",65,"Autobiography"],["Autobiography Oh Boy","https://ae.pariscorner.com/products/oh-boy-65ml",65,"Autobiography"],["Autobiography Salty Breeze","https://ae.pariscorner.com/products/salty-breeze-autobiography-65ml",65,"Autobiography"],["Autobiography Supreme Gold","https://ae.pariscorner.com/products/supreme-gold-65-ml",65,"Autobiography"],["Cedrat Essence","https://ae.pariscorner.com/products/cedrat-essence-75ml",75,"Paris Corner"],["Celestial","https://ae.pariscorner.com/products/celestial-100ml",100,"Paris Corner"],["Cloud Born","https://ae.pariscorner.com/products/cloud-born-eau-de-parfum-100ml",100,"Paris Corner"],["Corazon Bourbon","https://ae.pariscorner.com/products/corazon-bourbon-100ml",100,"Pendora Scents"],["Corazon Le Parfum","https://ae.pariscorner.com/products/corazon-le-parfum-100ml",100,"Pendora Scents"],["Factory Edition Camp Fire","https://ae.pariscorner.com/products/factory-edition-camp-fire-100ml",100,"Factory Edition"],["Factory Edition Just Bergamot","https://ae.pariscorner.com/products/factory-edition-just-bergamot-100ml",100,"Factory Edition"],["Factory Edition Rich Santal","https://ae.pariscorner.com/products/factory-edition-rich-santal-100ml",100,"Factory Edition"],["Factory Edition Ultra Citrus","https://ae.pariscorner.com/products/factory-edition-ultra-citrus-100ml",100,"Factory Edition"],["Factory Edition Warm Leather","https://ae.pariscorner.com/products/factory-edition-warm-leather-100ml",100,"Factory Edition"],["Fascination","https://ae.pariscorner.com/products/fascination-100ml",100,"Paris Corner"],["Fire Your Desire","https://ae.pariscorner.com/products/fire-your-desire-100ml",100,"Paris Corner"],["Forbidden Sugar","https://ae.pariscorner.com/products/forbidden-sugar-100ml",100,"Emir"],["Hurriya Gingerique","https://ae.pariscorner.com/products/hurriya-gingerique-100ml",100,"Paris Corner"],["Magic Oud in Dark Roses","https://ae.pariscorner.com/products/magic-oud-in-dark-roses-100ml",100,"Magic Oud"],["Magic Oud in Kalimath","https://ae.pariscorner.com/products/magic-oud-in-kalimath-100ml",100,"Magic Oud"],["Magic Oud in Sandal Wood","https://ae.pariscorner.com/products/magic-oud-in-sandal-wood-100ml",100,"Magic Oud"]]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url, size, collection in expected:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("collection_name"), collection)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size])
+                matching = [v for v in variants if v.get("product_id") == row["product_id"]]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), size)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+
+
+    def test_paris_corner_ministry_of_oud_and_tiramisu_official_products(self):
+        expected = {
+            "Ministry of Oud - Amber Oud": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+            "Ministry of Oud - Gladiators Oath": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath",
+            "Ministry of Oud - Maestro's Symphony": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony",
+            "Ministry of Oud - Nile Whispers": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers",
+            "Ministry of Oud - Oud Beyond the Wall": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall",
+            "Ministry of Oud - Oud Indonesian": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+            "Ministry of Oud - Oud Royal": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+            "Ministry of Oud - Oud Satin": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+            "Ministry of Oud - Romance Reverie": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie",
+            "Ministry of Oud - Strictly Oud": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+            "Ministry of Oud Greatest": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+            "Tiramisu Speculoos": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"] and v.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertNotIn("concentration", matching[0])
+
+
+    def test_paris_corner_spelling_variants_are_aliases_not_new_products(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        expected = {
+            "Attractus": ["Attratus"],
+            "Harrier Absolute": ["Harrier Absoulte"],
+        }
+        for canonical, aliases in expected.items():
+            with self.subTest(canonical=canonical):
+                self.assertIn(canonical, products)
+                for alias in aliases:
+                    self.assertIn(alias, products[canonical].get("aliases", []))
 
 
 if __name__ == "__main__":
