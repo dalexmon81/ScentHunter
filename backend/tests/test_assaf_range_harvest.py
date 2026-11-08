@@ -168,13 +168,46 @@ class AssafRangeHarvestTests(unittest.TestCase):
     def test_no_duplicate_assaf_canonical_names(self):
         self.assertEqual(len(self.products), len(self.by_name))
 
-    def test_new_harvest_records_remain_listing_backed(self):
+    def test_unverified_harvest_records_remain_listing_backed(self):
+        detail_verified = {
+            "Arrogate Pink",
+            "Arrogate Pink Diva",
+            "Dangerous Arrogate",
+            "Gris Erik",
+            "Miss Arrogate",
+            "Rebel Enable",
+        }
         for product in self.products:
-            if product["product_id"].startswith("SH-ASSAF-HARVEST-"):
-                self.assertEqual(product["identity_status"], "source_listed_name")
-                self.assertEqual(product["source_url"], "https://assafperfumes.eu/perfumes/")
+            if product["product_id"].startswith("SH-ASSAF-HARVEST-") and product["canonical_name"] not in detail_verified:
+                with self.subTest(product=product["canonical_name"]):
+                    self.assertEqual(product["identity_status"], "source_listed_name")
+                    self.assertEqual(product["source_url"], "https://assafperfumes.eu/perfumes/")
+                    self.assertNotIn("concentration", product)
+                    self.assertNotIn("formats_ml", product)
+
+    def test_official_detail_pages_upgrade_seven_existing_identities(self):
+        expected = {
+            "Arrogate Pink": ({"200"}, "https://assaf.ae/products/arrogate-pink-200ml"),
+            "Arrogate Pink Diva": ({"200"}, "https://assaf.ae/products/arrogate-pink-diva"),
+            "Dangerous Arrogate": ({"200"}, "https://assaf.ae/products/dangerous-arrogate-200ml"),
+            "Gris Erik": ({"100", "200"}, "https://assaf.ae/products/gris-erik"),
+            "Miss Arrogate": ({"200"}, "https://assaf.ae/products/miss-arrogate"),
+            "Rebel Enable": ({"150"}, "https://assaf.ae/products/edp-rebel-enable-150ml"),
+            "Wild Colt Elixir": ({"200"}, "https://assaf.ae/products/edp-wild-colt-elixer-200ml"),
+        }
+        variants = self.catalog["variants"]
+        for name, (sizes, source_url) in expected.items():
+            with self.subTest(product=name):
+                product = self.by_name[name.casefold()]
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_url"], source_url)
+                actual_sizes = {
+                    str(v["size_ml"]) for v in variants
+                    if v["product_id"] == product["product_id"]
+                }
+                self.assertEqual(actual_sizes, sizes)
+                self.assertTrue(set(map(int, sizes)).issubset(set(product["formats_ml"])))
                 self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
 
 if __name__ == "__main__":
     unittest.main()
