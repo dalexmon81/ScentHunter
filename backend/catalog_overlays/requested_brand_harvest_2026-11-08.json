@@ -1,0 +1,872 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "source_backed_catalog_discovery_overlay",
+  "created_at": "2026-11-08",
+  "status": "discovery_harvest_partial",
+  "description": "Source-backed fragrance identity discovery for the requested brands. Names are discovery identities only; this file does not create commercial offers, infer GTINs, sizes or concentrations, or claim that every brand range has been exhausted.",
+  "policy": {
+    "include": "Perfume/fragrance product identities explicitly listed on brand-owned or brand-authorized catalogue pages.",
+    "exclude": "Body mists, deodorants, room sprays, diffusers, incense, cosmetics, accessories and gift sets unless they are fragrance products with a distinct perfume identity.",
+    "identity_status": "source_listed_name",
+    "no_inferred_variants": true,
+    "no_offers_or_prices": true,
+    "official_verification_required_before_promotion": true,
+    "note": "The repository's large product_catalog.json could not be retrieved through the connected GitHub file reader in this run. Therefore this is an additive discovery overlay, not a deduplicated merge into canonical products."
+  },
+  "sources": [
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/collections/royal-collection",
+      "source_type": "brand_official_collection",
+      "scope": "Royal Collection",
+      "observed_count": 9
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisonasrar.com/collections/all",
+      "source_type": "brand_official_catalogue",
+      "scope": "All products",
+      "observed_count": 129
+    },
+    {
+      "brand": "Mykonos",
+      "url": "https://mykonosperfumes.eu/pages/explore",
+      "source_type": "authorized_eu_retailer_catalogue",
+      "scope": "Full house catalogue",
+      "observed_count": 90
+    },
+    {
+      "brand": "Mykonos",
+      "url": "https://mykonosperfumes.eu/pages/our-story",
+      "source_type": "brand_information",
+      "scope": "Brand, formats and concentrations"
+    },
+    {
+      "brand": "Paris Corner",
+      "url": "https://www.pariscornerperfumes.com/collections/all",
+      "source_type": "brand_official_catalogue",
+      "scope": "All products",
+      "observed_count": 252
+    },
+    {
+      "brand": "Khadlaj",
+      "url": "https://khadlaj-perfumes.com/collections",
+      "source_type": "brand_official_collections",
+      "scope": "Perfume collections and category listings"
+    },
+    {
+      "brand": "Afnan",
+      "url": "https://www.it.afnan.com/en/collections/all-products",
+      "source_type": "brand_official_eu_catalogue",
+      "scope": "All products"
+    },
+    {
+      "brand": "Afnan",
+      "url": "https://www.it.afnan.com/en",
+      "source_type": "brand_official_eu_catalogue",
+      "scope": "Top products and collections"
+    },
+    {
+      "brand": "Armaf",
+      "url": "https://armaf.com/collections/all-perfumes",
+      "source_type": "brand_official_catalogue",
+      "scope": "All fragrances",
+      "observed_count": 464
+    },
+    {
+      "brand": "Lattafa",
+      "url": "https://lattafa.com/product-category/perfumes/",
+      "source_type": "brand_official_catalogue",
+      "scope": "Perfumes"
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products",
+      "source_type": "brand_catalogue",
+      "scope": "Product catalogue; perfume category must be separated from non-perfume ranges"
+    }
+  ],
+  "products": [
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Belgravia",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Legacy",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Vanguard",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Regent",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Majesty",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Heritage",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Monarch",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Treasure",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Maison Asrar",
+      "canonical_name": "Imperial",
+      "collection_name": "Royal Collection",
+      "source_url": "https://maisonasrar.com/collections/royal-collection",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Empire",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Inception",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Baby Love",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Pink Drops",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "California",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Enchanted",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Xoxo Rosy",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Hawaiian Crush",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Vanilla Clouds",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Verve",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Seven Roses",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Ivory",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Blossom",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Zora",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Down to Earth",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "When in Paris",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Pandan Sticky Rice",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Nautilus",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Untamed",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Inferno",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Marbella",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Sorrento",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Dreamscape",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Silent Whisper",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Royal Ispahan",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Monaco Royale",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Glitch",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Luminos",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "MyEgo",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Constantine",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Slow Living",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "Reflection Elixir",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Mykonos",
+      "canonical_name": "California Blue",
+      "source_url": "https://mykonosperfumes.eu/pages/explore",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Acadia Intenso",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Affogato Al Caffe",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Aira",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Arcana",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Arwa",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Atomise Intensive Men",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Atoof",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Attractus",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Azm",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Banana Bliss",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Bayn Al Asrar",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Blackberry Wish",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Cake Temptation",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Camaro Homme Intense",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Camp Fire Emir Factory Edition",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Caramel Bash",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Cedrat Essence Emir",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Celestial Emir",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Charuto Mysterious Tobacco",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Charuto Regal Reserve",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Charuto Tobacco Vanille",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Cherry Cola",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Cherry Gossip",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Choco Cult",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Choco Lait",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Ciao Citrus",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Coconut Lagoon",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Confidential",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Cornflower Delight",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Cosmic Giardino",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Paris Corner",
+      "canonical_name": "Cosmopolitan Dubai",
+      "source_url": "https://www.pariscornerperfumes.com/collections/all",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 AM",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 AM Pour Femme",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 AM Dive",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 PM",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 PM Pour Femme",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 PM Elixir",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 PM Night Out",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "9 PM Rebel",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Turathi Electric",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Rare Reef",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Supremacy Collector's Edition",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Supremacy Not Only Intense",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Supremacy Silver",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Kiaana Vibes",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Lynked Freedom",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Lynked Forever",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Historic Olmeda",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Historic Sahara",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Turathi Brown Homme",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Mystique Bouquet",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Souvenir Floral Bouquet",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Historic Doria",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Supremacy Pink",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Supremacy Purple",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Supremacy Gala",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Supremacy Gold",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Mirsaal With Love",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Ornament Pour Femme",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Violet Bouquet",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Cherry Bouquet",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Paris Oud",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Afnan",
+      "canonical_name": "Modest Deux",
+      "source_url": "https://www.it.afnan.com/en",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Untold",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Elite",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Intense Overdose",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Intense Man Pure Parfum",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Intenso Fuego",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Odyssey Mandarin Sky",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Woman",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Armaf",
+      "canonical_name": "Club de Nuit Sillage",
+      "source_url": "https://armaf.com/collections/all-perfumes",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Fahad",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Khamrah Waha",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Sheikh Al Shuyukh Supreme",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Jouri",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Ana Abiyedh Passion",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Ameerat Al Arab Sugar Crown",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Mishlah",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Angham Second Song",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Maahir Honor",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Dalal",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Yara Elixir",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    },
+    {
+      "brand": "Lattafa",
+      "canonical_name": "Asad Elixir",
+      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_listed_name"
+    }
+  ],
+  "requested_brands_pending_full_harvest": [
+    "Velixir",
+    "Bujairami",
+    "Assaf",
+    "Al Wataniah",
+    "French Avenue",
+    "Arabiyat Prestige",
+    "Gulf Orchid",
+    "Swiss Arabian",
+    "Games of Spades",
+    "Aromatix",
+    "Maison Alhambra",
+    "Zimaya",
+    "Al Haramain"
+  ],
+  "provenance_note": "Collection counts are page observations, not counts of new canonical identities. Duplicate reconciliation against the existing catalogue remains mandatory."
+}
