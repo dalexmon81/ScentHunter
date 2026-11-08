@@ -545,7 +545,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
-    def test_seven_lattta_new_launches_have_official_pages_and_explicit_sizes(self):
+    def test_seven_lattafa_new_launches_have_official_pages_and_explicit_sizes(self):
         expected = {
             "Khamrah Mira": ("https://lattafa.com/product/khamrah-mira/", 100),
             "Beyond Precious": ("https://lattafa.com/product/beyond-precious/", 100),
