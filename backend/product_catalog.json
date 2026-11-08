@@ -11311,7 +11311,9 @@
       "family_name": "Empire x RRQ",
       "aliases": [
         "Empire x RRQ",
-        "Mykonos Empire x RRQ"
+        "Mykonos Empire x RRQ",
+        "Empire (Mykonos x RRQ)",
+        "Mykonos Empire (Mykonos x RRQ)"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11435,7 +11437,9 @@
       "family_name": "Glitch",
       "aliases": [
         "Glitch",
-        "Mykonos Glitch"
+        "Mykonos Glitch",
+        "Glitch (Mykonos x SetiawanAde)",
+        "Mykonos Glitch (Mykonos x SetiawanAde)"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -12947,7 +12951,9 @@
       "family_name": "MyEgo",
       "aliases": [
         "MyEgo",
-        "Mykonos MyEgo"
+        "Mykonos MyEgo",
+        "MyEgo (Mykonos x AlterEgo)",
+        "Mykonos MyEgo (Mykonos x AlterEgo)"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all?page=4",
@@ -12968,7 +12974,9 @@
       "family_name": "Invade",
       "aliases": [
         "Invade",
-        "Mykonos Invade"
+        "Mykonos Invade",
+        "Invade (Mykonos x SetiawanAde)",
+        "Mykonos Invade (Mykonos x SetiawanAde)"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all?page=4",
@@ -27582,89 +27590,6 @@
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
       "source_evidence_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
       "collection": "Arabiyat Prestige"
-    },
-    {
-      "product_id": "SH-MYKONOS-MYEGO-MYKONOS-X-ALTEREGO",
-      "brand": "Mykonos",
-      "brand_name": "Mykonos",
-      "canonical_name": "MyEgo (Mykonos x AlterEgo)",
-      "name": "MyEgo (Mykonos x AlterEgo)",
-      "family_id": "mykonos_catalog",
-      "family_name": "MyEgo (Mykonos x AlterEgo)",
-      "aliases": [
-        "MyEgo (Mykonos x AlterEgo)",
-        "Mykonos MyEgo (Mykonos x AlterEgo)"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all",
-      "concentration": "Extrait",
-      "formats_ml": [
-        50,
-        100
-      ]
-    },
-    {
-      "product_id": "SH-MYKONOS-EMPIRE-MYKONOS-X-RRQ",
-      "brand": "Mykonos",
-      "brand_name": "Mykonos",
-      "canonical_name": "Empire (Mykonos x RRQ)",
-      "name": "Empire (Mykonos x RRQ)",
-      "family_id": "mykonos_catalog",
-      "family_name": "Empire (Mykonos x RRQ)",
-      "aliases": [
-        "Empire (Mykonos x RRQ)",
-        "Mykonos Empire (Mykonos x RRQ)"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all",
-      "concentration": "Extrait",
-      "formats_ml": [
-        50,
-        100
-      ]
-    },
-    {
-      "product_id": "SH-MYKONOS-GLITCH-MYKONOS-X-SETIAWANADE",
-      "brand": "Mykonos",
-      "brand_name": "Mykonos",
-      "canonical_name": "Glitch (Mykonos x SetiawanAde)",
-      "name": "Glitch (Mykonos x SetiawanAde)",
-      "family_id": "mykonos_catalog",
-      "family_name": "Glitch (Mykonos x SetiawanAde)",
-      "aliases": [
-        "Glitch (Mykonos x SetiawanAde)",
-        "Mykonos Glitch (Mykonos x SetiawanAde)"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all",
-      "concentration": "Extrait",
-      "formats_ml": [
-        50,
-        100
-      ]
-    },
-    {
-      "product_id": "SH-MYKONOS-INVADE-MYKONOS-X-SETIAWANADE",
-      "brand": "Mykonos",
-      "brand_name": "Mykonos",
-      "canonical_name": "Invade (Mykonos x SetiawanAde)",
-      "name": "Invade (Mykonos x SetiawanAde)",
-      "family_id": "mykonos_catalog",
-      "family_name": "Invade (Mykonos x SetiawanAde)",
-      "aliases": [
-        "Invade (Mykonos x SetiawanAde)",
-        "Mykonos Invade (Mykonos x SetiawanAde)"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all",
-      "concentration": "Extrait",
-      "formats_ml": [
-        50
-      ]
     }
   ],
   "variants": [
@@ -29120,76 +29045,6 @@
         "Lattafa Asad Bourbon 100ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-ASAD-BOURBON-001-100-000"
-    },
-    {
-      "product_id": "SH-MYKONOS-MYEGO-MYKONOS-X-ALTEREGO",
-      "variant_id": "SHV-SH-MYKONOS-MYEGO-MYKONOS-X-ALTEREGO-50-000",
-      "size_ml": 50,
-      "aliases": [
-        "MyEgo (Mykonos x AlterEgo) 50 ml",
-        "Mykonos MyEgo (Mykonos x AlterEgo) 50 ml"
-      ],
-      "concentration": "Extrait"
-    },
-    {
-      "product_id": "SH-MYKONOS-MYEGO-MYKONOS-X-ALTEREGO",
-      "variant_id": "SHV-SH-MYKONOS-MYEGO-MYKONOS-X-ALTEREGO-100-000",
-      "size_ml": 100,
-      "aliases": [
-        "MyEgo (Mykonos x AlterEgo) 100 ml",
-        "Mykonos MyEgo (Mykonos x AlterEgo) 100 ml"
-      ],
-      "concentration": "Extrait"
-    },
-    {
-      "product_id": "SH-MYKONOS-EMPIRE-MYKONOS-X-RRQ",
-      "variant_id": "SHV-SH-MYKONOS-EMPIRE-MYKONOS-X-RRQ-50-000",
-      "size_ml": 50,
-      "aliases": [
-        "Empire (Mykonos x RRQ) 50 ml",
-        "Mykonos Empire (Mykonos x RRQ) 50 ml"
-      ],
-      "concentration": "Extrait"
-    },
-    {
-      "product_id": "SH-MYKONOS-EMPIRE-MYKONOS-X-RRQ",
-      "variant_id": "SHV-SH-MYKONOS-EMPIRE-MYKONOS-X-RRQ-100-000",
-      "size_ml": 100,
-      "aliases": [
-        "Empire (Mykonos x RRQ) 100 ml",
-        "Mykonos Empire (Mykonos x RRQ) 100 ml"
-      ],
-      "concentration": "Extrait"
-    },
-    {
-      "product_id": "SH-MYKONOS-GLITCH-MYKONOS-X-SETIAWANADE",
-      "variant_id": "SHV-SH-MYKONOS-GLITCH-MYKONOS-X-SETIAWANADE-50-000",
-      "size_ml": 50,
-      "aliases": [
-        "Glitch (Mykonos x SetiawanAde) 50 ml",
-        "Mykonos Glitch (Mykonos x SetiawanAde) 50 ml"
-      ],
-      "concentration": "Extrait"
-    },
-    {
-      "product_id": "SH-MYKONOS-GLITCH-MYKONOS-X-SETIAWANADE",
-      "variant_id": "SHV-SH-MYKONOS-GLITCH-MYKONOS-X-SETIAWANADE-100-000",
-      "size_ml": 100,
-      "aliases": [
-        "Glitch (Mykonos x SetiawanAde) 100 ml",
-        "Mykonos Glitch (Mykonos x SetiawanAde) 100 ml"
-      ],
-      "concentration": "Extrait"
-    },
-    {
-      "product_id": "SH-MYKONOS-INVADE-MYKONOS-X-SETIAWANADE",
-      "variant_id": "SHV-SH-MYKONOS-INVADE-MYKONOS-X-SETIAWANADE-50-000",
-      "size_ml": 50,
-      "aliases": [
-        "Invade (Mykonos x SetiawanAde) 50 ml",
-        "Mykonos Invade (Mykonos x SetiawanAde) 50 ml"
-      ],
-      "concentration": "Extrait"
     }
   ]
 }
