@@ -35215,7 +35215,8 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-DESERT-ROSE",
@@ -35435,9 +35436,10 @@
       "size_ml": 35,
       "aliases": [
         "Hareem Al Sultan Gold 35 ml",
-        "Khadlaj Hareem Al Sultan Gold 35ml"
+        "Khadlaj Hareem Al Sultan Gold 35 ml"
       ],
-      "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000"
+      "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000",
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -40013,16 +40015,6 @@
       "aliases": [
         "Al Riyan 17 ml",
         "Khadlaj Al Riyan 17 ml"
-      ]
-    },
-    {
-      "product_id": "SH-KHADLAJ-f492c4b4",
-      "variant_id": "SHV-SH-KHADLAJ-HAREEM-AL-SULTAN-GOLD-35-OIL",
-      "size_ml": 35,
-      "concentration": "Perfume Oil",
-      "aliases": [
-        "Hareem Al Sultan Gold 35 ml",
-        "Khadlaj Hareem Al Sultan Gold 35 ml"
       ]
     },
     {
