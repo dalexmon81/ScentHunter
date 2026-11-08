@@ -142,6 +142,16 @@
       "brand": "Khadlaj",
       "url": "https://khadlaj-perfumes.sa/",
       "note": "Official Khadlaj Saudi storefront product cards explicitly state product name, fragrance concentration and 100ml size for these perfume sprays. Other categories (oils, home fragrance, gift sets) excluded."
+    },
+    {
+      "brand": "Maison Asrar",
+      "url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "note": "Secondary EU retailer category listing. Only product entries whose displayed title explicitly states perfume concentration and 100ml size were added; no prices, stock or offer records copied."
+    },
+    {
+      "brand": "Bujairami",
+      "url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "note": "Secondary EU retailer category listing. Only product entries whose displayed title explicitly states perfume concentration and 100ml size were added; no prices, stock or offer records copied."
     }
   ],
   "products": [
@@ -804,6 +814,10 @@
         {
           "concentration": null,
           "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
         }
       ]
     },
@@ -814,6 +828,10 @@
       "variants": [
         {
           "concentration": null,
+          "size_ml": 100
+        },
+        {
+          "concentration": "Eau de Parfum",
           "size_ml": 100
         }
       ]
@@ -3528,6 +3546,347 @@
       "variants": [
         {
           "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Imperial",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Rose",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Mohra",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Wadi",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Cascade",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Infina",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Regent",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Librae",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Veyra",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Belgravia",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Lily",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Monarch",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Vanguard",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Khayyal",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Aseel",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "III Thriller",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Legacy",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Vanilla Voyage",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Gold Noir",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Maison Asrar",
+      "fragrance": "Vanilla Aura",
+      "source_url": "https://maisondisfragrances.com/fr/collections/maison-asrar",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Date Night",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Chroma",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Kingsman",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Hectic",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "The Rock Intensely",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Vanilla Dream",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Special Day",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Gladiator",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Inferno",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "The Rock Unleashed",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Bujairami",
+      "fragrance": "Sugar Rush",
+      "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
           "size_ml": 100
         }
       ]
