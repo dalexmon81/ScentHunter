@@ -16,7 +16,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 98,
     "Maison Asrar": 125,
-    "Khadlaj": 116,
+    "Khadlaj": 165,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
@@ -1008,6 +1008,80 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("size_ml"), 100)
                 self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
         self.assertIn("Silver Elixir", products["Silver Elixer"].get("aliases", []))
+
+
+    def test_khadlaj_official_store_and_fragrantica_reconciliation_additions(self):
+        expected = {
+            "Bleu Glace": (100, "Extrait de Parfum"),
+            "Code Viola Nectar": (100, "Eau de Parfum"),
+            "Desert Rose": (100, "Extrait de Parfum"),
+            "Gaith": (100, "Eau de Parfum"),
+            "Johayna Green": (20, "Perfume Oil"),
+            "Kayaan Gold": (20, "Perfume Oil"),
+            "Maya": (20, "Perfume Oil"),
+            "Mocha Latte": (100, "Extrait de Parfum"),
+            "Nuha": (85, "Eau de Parfum"),
+            "Pink Musk": (20, "Perfume Oil"),
+            "Purple Musk": (20, "Perfume Oil"),
+            "Rasayel Shagaf": (100, "Eau de Parfum"),
+            "Rasayel Vid": (100, "Eau de Parfum"),
+            "Rose & Romance": (100, "Eau de Parfum"),
+            "Uno Sensuale": (100, "Eau de Parfum"),
+            "Wow Oud": (100, "Eau de Parfum"),
+            "Biscotti Melon Misk": (100, "Extrait de Parfum"),
+            "Hareem Al Sultan Blue": (35, "Perfume Oil"),
+            "Hareem Al Sultan Silver": (35, "Perfume Oil"),
+            "Aaliya": (27, "Perfume Oil"),
+            "Al Riyan": (17, "Perfume Oil"),
+            "Alf Wardaat": (30, "Perfume Oil"),
+            "Amber Pure": (20, "Perfume Oil"),
+            "Anabia Blue": (20, "Perfume Oil"),
+            "Anabia Red": (20, "Perfume Oil"),
+            "Arabian Treasure": (20, "Perfume Oil"),
+            "Azaari": (17, "Perfume Oil"),
+            "Ghazlaan": (20, "Perfume Oil"),
+            "Haneen Gold": (20, "Perfume Oil"),
+            "Ibhaar": (18, "Perfume Oil"),
+            "Jameel": (25, "Perfume Oil"),
+            "Malika Red": (20, "Perfume Oil"),
+            "Oud & Musk": (20, "Perfume Oil"),
+            "Raniya": (18, "Perfume Oil"),
+            "Rimaal Brown": (15, "Perfume Oil"),
+            "Roohi Wa Roohak Gold": (20, "Perfume Oil"),
+            "Shamookh Gold": (20, "Perfume Oil"),
+            "Shamookh Silver": (20, "Perfume Oil"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                    and variant.get("size_ml") == size_ml
+                    and variant.get("concentration") == concentration
+                ]
+                self.assertEqual(len(matching), 1)
+        pure = products["Pure Musk"]
+        self.assertEqual(
+            {(v.get("size_ml"), v.get("concentration")) for v in variants if v.get("product_id") == pure["product_id"]},
+            {(20, "Perfume Oil"), (100, "Eau de Parfum")},
+        )
+        self.assertIn("Musk Ice", products["Private Blend Musk Ice"].get("aliases", []))
+        self.assertIn("Creation De Reve", products["Maison Creation De Reve"].get("aliases", []))
+        self.assertIn("Epoque Artistique", products["Maison Epoque Artistique"].get("aliases", []))
+        self.assertIn("Flor Oud", products["Maison Flor Oud"].get("aliases", []))
+        self.assertIn("L'Imaginaire", products["Maison L'Imaginaire"].get("aliases", []))
+        self.assertIn("L'Or Noir", products["Maison L'Or Noir"].get("aliases", []))
+        for name in ("D'Love", "Barwaaz Pure Navy", "Ghadeer Gold", "Vanilla Kiss", "Lulu Al Khaleej", "Nagham", "Rasha", "Safari Gold"):
+            self.assertIn(name, products)
 
 if __name__ == "__main__":
     unittest.main()
