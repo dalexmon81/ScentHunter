@@ -464,5 +464,39 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+
+    def test_mykonos_official_travel_size_page_has_18_explicit_15ml_variants(self):
+        travel_url = "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+        expected = (
+            "Dark Secret", "Musk Aura", "Sansa", "Satin Blanc", "Sparkling Rosé",
+            "Black Opera", "Moroccan Vanilla", "Affair", "Utopia", "Tea Poetry",
+            "Hawaiian Crush", "On The Rocks", "Royal Ispahan", "Crimson",
+            "California", "California Blue", "Penthouse", "Monaco Royale",
+        )
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        self.assertEqual(len(expected), 18)
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertIn(15, row.get("formats_ml", []))
+                self.assertEqual(row.get("source_evidence_url"), travel_url)
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"] and v.get("size_ml") == 15
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
+                if row.get("concentration"):
+                    self.assertEqual(matching[0].get("concentration"), row["concentration"])
+                else:
+                    self.assertNotIn("concentration", matching[0])
+
+
 if __name__ == "__main__":
     unittest.main()
