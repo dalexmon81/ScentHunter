@@ -35335,6 +35335,111 @@
       "source_url": "https://www.alwataniah.com/",
       "source_evidence_url": "https://www.alwataniah.com/",
       "collection_name": "Launching Soon"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-ATTAR-AL-YOUM-BLACK",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Attar Al Youm Black",
+      "name": "Attar Al Youm Black",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Attar Al Youm Black",
+      "aliases": [
+        "Attar Al Youm Black",
+        "Arabiyat Prestige Attar Al Youm Black"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/products/attar-al-youm-edp-100ml-1",
+      "source_evidence_url": "https://arabiyatprestige.com/products/attar-al-youm-edp-100ml-1",
+      "source_product_url": "https://arabiyatprestige.com/products/attar-al-youm-edp-100ml-1",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-MUSK-AL-YOUM",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Musk Al Youm",
+      "name": "Musk Al Youm",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Musk Al Youm",
+      "aliases": [
+        "Musk Al Youm",
+        "Arabiyat Prestige Musk Al Youm"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/collections/arabiyat-prestige/products/musk-al-youm-edp-100ml-1",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/arabiyat-prestige/products/musk-al-youm-edp-100ml-1",
+      "source_product_url": "https://arabiyatprestige.com/collections/arabiyat-prestige/products/musk-al-youm-edp-100ml-1",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-OUD-AL-YOUM",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Oud Al Youm",
+      "name": "Oud Al Youm",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Oud Al Youm",
+      "aliases": [
+        "Oud Al Youm",
+        "Arabiyat Prestige Oud Al Youm"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/products/oud-al-youm-edp-100ml-1",
+      "source_evidence_url": "https://arabiyatprestige.com/products/oud-al-youm-edp-100ml-1",
+      "source_product_url": "https://arabiyatprestige.com/products/oud-al-youm-edp-100ml-1",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-RED-OUD",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Red Oud",
+      "name": "Red Oud",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Red Oud",
+      "aliases": [
+        "Red Oud",
+        "Arabiyat Prestige Red Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/products/red-oud-edp-100ml-1",
+      "source_evidence_url": "https://arabiyatprestige.com/products/red-oud-edp-100ml-1",
+      "source_product_url": "https://arabiyatprestige.com/products/red-oud-edp-100ml-1",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-AL-SHUJAE",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Al Shujae",
+      "name": "Al Shujae",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Al Shujae",
+      "aliases": [
+        "Al Shujae",
+        "Arabiyat Prestige Al Shujae"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/products/al-shujae-edp-100-ml",
+      "source_evidence_url": "https://arabiyatprestige.com/products/al-shujae-edp-100-ml",
+      "source_product_url": "https://arabiyatprestige.com/products/al-shujae-edp-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -39221,6 +39326,61 @@
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/extrait-de-parfum-range/products/wow-oud-100-ml-edp-spray",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-ATTAR-AL-YOUM-BLACK",
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-ATTAR-AL-YOUM-BLACK-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Attar Al Youm Black 100 ml",
+        "Arabiyat Prestige Attar Al Youm Black 100 ml"
+      ],
+      "source_url": "https://arabiyatprestige.com/products/attar-al-youm-edp-100ml-1"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-MUSK-AL-YOUM",
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-MUSK-AL-YOUM-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Al Youm 100 ml",
+        "Arabiyat Prestige Musk Al Youm 100 ml"
+      ],
+      "source_url": "https://arabiyatprestige.com/collections/arabiyat-prestige/products/musk-al-youm-edp-100ml-1"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-OUD-AL-YOUM",
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-OUD-AL-YOUM-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Al Youm 100 ml",
+        "Arabiyat Prestige Oud Al Youm 100 ml"
+      ],
+      "source_url": "https://arabiyatprestige.com/products/oud-al-youm-edp-100ml-1"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-RED-OUD",
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-RED-OUD-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Red Oud 100 ml",
+        "Arabiyat Prestige Red Oud 100 ml"
+      ],
+      "source_url": "https://arabiyatprestige.com/products/red-oud-edp-100ml-1"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-AL-SHUJAE",
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-AL-SHUJAE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Al Shujae 100 ml",
+        "Arabiyat Prestige Al Shujae 100 ml"
+      ],
+      "source_url": "https://arabiyatprestige.com/products/al-shujae-edp-100-ml"
     }
   ]
 }
