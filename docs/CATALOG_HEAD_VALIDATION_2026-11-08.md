@@ -7,15 +7,15 @@
 - This is a structural audit of the exact branch files. It is not a CI result and not a production import.
 
 ## Canonical seed snapshot
-- Canonical product identities: **1720**
-- Explicit variant rows: **185**
+- Canonical product identities: **1723**
+- Explicit variant rows: **188**
 - Family registry groups: **34**
 - Product IDs duplicated: **0**
 - Variant IDs duplicated: **0**
 - Products missing source_url: **0**
 - Orphan variants: **0**
 - Duplicate brand + accent-normalized canonical-name pairs: **0**
-- Product identity evidence: **99 source_verified_name**, **1621 source_listed_name**.
+- Product identity evidence: **102 source_verified_name**, **1621 source_listed_name**.
 - Canonical products without an exact family-registry name match after accent/punctuation normalization: **0**.
 
 The evidence statuses are intentionally different. A collection/listing-backed name is a discovery candidate; it is not proof of an individual SKU, concentration, size, GTIN or current commercial availability.
@@ -68,7 +68,6 @@ A separate `fly-pilot.yml` workflow reports a failed status on this branch, but 
 
 ## Deferred source-level checks
 The following older regression modules are not part of this CI gate because their assertions currently expect product rows or product-level evidence that is not present in the canonical seed. They remain visible in the repository for follow-up; no missing product sizes or sources were invented to make them pass:
-- `test_khadlaj_la_fede.py`: 36 La Fede names exist in the family registry but are not yet canonical product rows.
 - `test_maison_asrar_lock_and_key.py`: Plot Twist, Love Key and Unsolved Mystery do not yet have the asserted canonical product and 100 ml variant records.
 - `test_arabiyat_prestige_extrait.py`, `test_arabiyat_prestige_marwa_extrait.py`, `test_arabiyat_prestige_official_store.py`: asserted detail-page provenance and explicit 60 ml variants are not yet established for the current seed.
 
@@ -78,8 +77,14 @@ The following older regression modules are not part of this CI gate because thei
 3. Keep PR #426 draft and unmerged; keep PR #424 separate. No production, retailer authorization, deployment, live-offer or pricing changes are included.
 
 
+## Khadlaj La Fede detail verification
+- Added three canonical La Fede identities that were already present in the family registry but missing from the product seed: Intoxicate Mystique, Celebrity Crush and Celebrity Fame.
+- Verified each against its individual official Khadlaj product detail. Recorded 100 ml Extrait de Parfum for Intoxicate Mystique and 100 ml Eau de Parfum for Celebrity Crush and Celebrity Fame.
+- Synchronized the three family-registry `formats_ml` entries; the La Fede family now has 36 canonical product rows with exact registry parity.
+- Added `backend.tests.test_khadlaj_la_fede` to the CI workflow.
+
 ## Arabiyat Prestige Extrait follow-up
 - Promoted the existing `Mahd Al Dhahab Extrait` canonical identity from collection/index-listed to `source_verified_name` using the individual MyPerfumes Europe official Arabiyat Prestige product detail: https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait
 - Added the explicitly stated **60 ml Extrait de Parfum** variant; the family registry already contained this identity and `formats_ml: [60]`, so no registry duplication was needed.
 - Added `backend.tests.test_arabiyat_prestige_extrait` to the CI workflow. Other Arabiyat and legacy brand modules remain deferred until their missing product-level evidence and catalog rows are reconciled.
-- Totals after this change: **1,720 identities**, **185 variants**, **99 source-verified names**, **1,621 source-listed names**.
+- Totals after this change: **1,723 identities**, **188 variants**, **102 source-verified names**, **1,621 source-listed names**.
