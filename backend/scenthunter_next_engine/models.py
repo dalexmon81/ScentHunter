@@ -10,6 +10,8 @@ from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Any, Mapping
 
+from .product_form import PRODUCT_FORM_VALUES
+
 
 class MatchStatus(str, Enum):
     """Outcome of resolving a retailer offer against the canonical catalog."""
@@ -27,6 +29,7 @@ class CanonicalVariant:
     size_ml: int | None = None
     label: str | None = None
     aliases: tuple[str, ...] = field(default_factory=tuple)
+    product_form: str | None = None
 
     def __post_init__(self) -> None:
         if not self.variant_id.strip():
@@ -35,6 +38,8 @@ class CanonicalVariant:
             raise ValueError("size_ml must be positive when provided")
         if any(not alias.strip() for alias in self.aliases):
             raise ValueError("variant aliases must not be empty strings")
+        if self.product_form is not None and self.product_form not in PRODUCT_FORM_VALUES:
+            raise ValueError("product_form is not a supported product form")
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +83,7 @@ class RetailerOffer:
     availability: str | None = None
     retailer_image_url: str | None = None
     raw_payload: Mapping[str, Any] = field(default_factory=dict)
+    product_form: str | None = None
 
     def __post_init__(self) -> None:
         if not self.retailer.strip():
@@ -90,6 +96,8 @@ class RetailerOffer:
             raise ValueError("price must not be negative")
         if len(self.currency.strip()) != 3:
             raise ValueError("currency must be a 3-letter code")
+        if self.product_form is not None and self.product_form not in PRODUCT_FORM_VALUES:
+            raise ValueError("product_form is not a supported product form")
 
 
 @dataclass(frozen=True, slots=True)
