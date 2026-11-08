@@ -22,7 +22,7 @@ MINIMUM_BRAND_COUNTS = {
     "Armaf": 190,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 22,
+    "Gulf Orchid": 26,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 114,
@@ -503,6 +503,36 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertNotIn(name, gulf_names)
                 self.assertIn(name, asrar_names)
+
+
+    def test_four_more_gulf_orchid_official_pages_and_100ml_edp_variants_are_verified(self):
+        expected = {
+            "Candy Bite": "https://shop-gulforchid.com/products/candy-bite",
+            "Matcha Latte": "https://shop-gulforchid.com/products/matcha-latte",
+            "Maestro": "https://shop-gulforchid.com/products/maestro",
+            "Rice Milk": "https://shop-gulforchid.com/products/rice-milk",
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Gulf Orchid"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertIn(100, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                    and variant.get("concentration") == "Eau de Parfum"
+                ]
+                self.assertEqual(len(matching), 1)
 
 if __name__ == "__main__":
     unittest.main()
