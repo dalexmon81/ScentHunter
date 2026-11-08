@@ -81,4 +81,7 @@ jobs:
           if [ -f backend/tests/test_lattafa_four_official_products.py ]; then
             python -m unittest backend.tests.test_lattafa_four_official_products -v
           fi
+          if [ -f backend/tests/test_lattafa_further_official_products.py ]; then
+            python -m unittest backend.tests.test_lattafa_further_official_products -v
+          fi
 # Keep this workflow aligned with the official Lattafa catalog regression suite.
