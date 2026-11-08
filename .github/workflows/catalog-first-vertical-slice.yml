@@ -48,6 +48,8 @@ on:
       - "backend/app/workers/connector_ingestion.py"
       - "backend/tests/test_catalog_first_vertical_slice.py"
       - "backend/tests/test_catalog_contract_alignment.py"
+      - "backend/scripts/audit_variant_coverage.py"
+      - "backend/tests/test_audit_variant_coverage.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/alembic/**"
       - ".github/workflows/catalog-first-vertical-slice.yml"
@@ -159,6 +161,9 @@ jobs:
           backend/tests/test_phase2_bplatz_postgres.py
           backend/tests/test_manage_store_authorization_cli.py
           backend/tests/test_shipping_quotes.py
+
+      - name: Validate canonical identity and normalization
+        run: pytest -q backend/tests/test_audit_variant_coverage.py
 
       - name: Validate canonical identity and normalization
         run: >-
