@@ -5766,7 +5766,8 @@
       "source_url": "https://zimayaperfumes.com/products/amber-is-great-100ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-f0c3841b",
@@ -5844,7 +5845,8 @@
       "source_url": "https://zimayaperfumes.com/products/bahja",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-06a5e5b6",
@@ -5922,7 +5924,8 @@
       "source_url": "https://zimayaperfumes.com/products/crysta-oud-100ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-df1d1a4c",
@@ -5940,7 +5943,8 @@
       "source_url": "https://zimayaperfumes.com/products/cult",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-fdec30af",
@@ -6033,7 +6037,8 @@
       "source_url": "https://zimayaperfumes.com/products/exquisite",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-926533d0",
@@ -6051,7 +6056,8 @@
       "source_url": "https://zimayaperfumes.com/products/farah",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-d8ad5e64",
@@ -6144,7 +6150,8 @@
       "source_url": "https://zimayaperfumes.com/products/grandeur-100ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-8d10253c",
@@ -6417,7 +6424,8 @@
       "source_url": "https://zimayaperfumes.com/products/sharaf-blend-100ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-a0de1e54",
@@ -27968,6 +27976,38 @@
       "source_url": "https://bujairami.com.au/products/cherry-cherry-lady-original-creation-extrait",
       "source_evidence_url": "https://bujairami.com.au/products/cherry-cherry-lady-original-creation-extrait",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-WUJOOD",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Wujood",
+      "name": "Wujood",
+      "family_id": "zimaya_catalog",
+      "family_name": "Wujood",
+      "aliases": [
+        "Wujood",
+        "Zimaya Wujood"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/wujood-100ml",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-LUXOR",
+      "brand": "Zimaya",
+      "brand_name": "Zimaya",
+      "canonical_name": "Luxor",
+      "name": "Luxor",
+      "family_id": "zimaya_catalog",
+      "family_name": "Luxor",
+      "aliases": [
+        "Luxor",
+        "Zimaya Luxor"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/luxor-100ml",
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -29792,6 +29832,26 @@
         "Zimaya Bahjah 100 ml"
       ],
       "variant_id": "SHV-SH-ZIMAYA-3e4052d6-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-WUJOOD",
+      "size_ml": 100,
+      "aliases": [
+        "Wujood 100 ml",
+        "Zimaya Wujood 100ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-WUJOOD-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-LUXOR",
+      "size_ml": 100,
+      "aliases": [
+        "Luxor 100 ml",
+        "Zimaya Luxor 100ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-LUXOR-100-000",
       "concentration": "Eau de Parfum"
     }
   ]
