@@ -33866,6 +33866,44 @@
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/",
       "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Amethyst Fusion",
+      "name": "Badee Al Oud Amethyst Fusion",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud Amethyst Fusion",
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion",
+        "Lattafa Badee Al Oud Amethyst Fusion"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/"
+    },
+    {
+      "product_id": "SH-LATTAFA-PETRA-VIOLA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Petra Viola",
+      "name": "Petra Viola",
+      "family_id": "lattafa_catalog",
+      "family_name": "Petra Viola",
+      "aliases": [
+        "Petra Viola",
+        "Lattafa Petra Viola"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola"
     }
   ],
   "variants": [
@@ -36899,6 +36937,26 @@
       ],
       "variant_id": "SHV-SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND-75-000",
       "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
+      "size_ml": 100,
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion 100 ml",
+        "Lattafa Badee Al Oud Amethyst Fusion 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION-100-000",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/"
+    },
+    {
+      "product_id": "SH-LATTAFA-PETRA-VIOLA",
+      "size_ml": 100,
+      "aliases": [
+        "Petra Viola 100 ml",
+        "Lattafa Petra Viola 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-PETRA-VIOLA-100-000",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola"
     }
   ]
 }

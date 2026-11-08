@@ -11837,6 +11837,26 @@
           "formats_ml": [
             75
           ]
+        },
+        {
+          "canonical_name": "Badee Al Oud Amethyst Fusion",
+          "aliases": [
+            "Badee Al Oud Amethyst Fusion",
+            "Lattafa Badee Al Oud Amethyst Fusion"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Petra Viola",
+          "aliases": [
+            "Petra Viola",
+            "Lattafa Petra Viola"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
