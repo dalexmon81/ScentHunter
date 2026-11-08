@@ -2065,7 +2065,12 @@
           "canonical_name": "Black",
           "aliases": [
             "Black",
-            "Maison Asrar Black"
+            "Maison Asrar Black",
+            "Black Grapefruit",
+            "Maison Asrar Black Grapefruit"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2551,13 +2556,6 @@
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Black Grapefruit",
-          "aliases": [
-            "Black Grapefruit",
-            "Maison Asrar Black Grapefruit"
           ]
         }
       ]
