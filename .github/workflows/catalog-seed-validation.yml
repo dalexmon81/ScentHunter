@@ -19,6 +19,7 @@ on:
       - catalog/paris-corner-pendora-registry-fixes-2026-11-08
       - catalog/khadlaj-la-fede-official-harvest-2026-11-08
       - catalog/khadlaj-main-range-official-reconciliation-2026-11-08
+      - catalog/al-wataniah-launching-soon-identities-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -41,6 +42,7 @@ on:
       - catalog/paris-corner-pendora-registry-fixes-2026-11-08
       - catalog/khadlaj-la-fede-official-harvest-2026-11-08
       - catalog/khadlaj-main-range-official-reconciliation-2026-11-08
+      - catalog/al-wataniah-launching-soon-identities-2026-11-08
 
 permissions:
   contents: read
