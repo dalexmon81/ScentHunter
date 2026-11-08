@@ -1542,3 +1542,44 @@ These are listing-level identity records only. Product sizes, concentrations, GT
 
 GitHub Actions run **#42420558957** for test commit **f0c4b4872d8faf1208f4237538982bf4da297e58** passed the Phase 2 schema-contract suite: **44 passed, 1 warning**. This includes the 73 Al Wataniah listing identities, page-level source URLs, and family-registry consistency assertions.
 
+
+
+## Official listing reconciliation pass 7 — Velixir, Mykonos, Lattafa, Khadlaj, Paris Corner (2026-11-08)
+
+### Velixir
+- The brand's official site is https://velixirparfums.com/ .
+- An independent full-range index at https://velixirperfumes.eu/perfumes/ lists 28 named fragrances (24 EDP and four Extrait), including the October 2026 additions Comus, Ether, Orpheus and Panacea. The index explicitly identifies itself as an independent reseller, not the official brand website.
+- The current PR snapshot reports 28 Velixir identities. Treat this as a name-level cross-check, not proof that all current global SKUs/variants are present.
+- A dated research overlay now records the 28 names and size/concentration claims as source-listed candidates; do not create variants until the individual brand product pages confirm each detail.
+
+### Mykonos
+- Official collection: https://officialmykonos.com/collections/all . It currently reports 54 products and the product list was inspected across pages 1–4:
+  - https://officialmykonos.com/collections/all?page=1
+  - https://officialmykonos.com/collections/all?page=2
+  - https://officialmykonos.com/collections/all?page=3
+  - https://officialmykonos.com/collections/all?page=4
+- One listing, "Travel Size 15ML", is a presentation/size format rather than a separate fragrance identity and was excluded from the 53 named fragrance candidates. Collaboration products (MyEgo, Empire, Glitch, Invade) retain their collaboration labels.
+- Independent Fragrantica index lists 84 Mykonos fragrances, which is a different scope from the current official shop's 54 products. Do not force these totals to match.
+- The current PR snapshot reports 72 Mykonos canonical identities. This exceeds the 53 currently named fragrance candidates in the official shop. The discrepancy requires name-by-name reconciliation for discontinued products, new releases, aliases, collaborations, and possible non-fragrance listings; do not blindly add these candidates as new identities.
+- Product title size/concentration options in the official collection are discovery evidence only. They are not yet canonical variant rows.
+
+### Lattafa
+- Official perfume category: https://lattafa.com/product-category/perfumes/ . The visible sample includes Fahad, Khamrah Waha, Sheikh Al Shuyukh Supreme, Jouri, Ana Abiyedh Passion, Ameerat Al Arab Sugar Crown, Lattafa Mishlah, Angham Second Song, Maahir Honor, Dalal, Yara Elixir and Asad Elixir.
+- An official US shop index at https://www.lattafa-usa.com/collections/all reports mixed product counts and includes air fresheners, oils, deodorants and other non-perfume formats. Do not use its overall count as a perfume-only canonical count.
+- The earlier audit sample found ten names already in the current catalog. This remains a spot-check, not a full pagination reconciliation.
+
+### Khadlaj
+- Official collections index: https://khadlaj-perfumes.com/collections . It reports 308 products in "All Products" but explicitly mixes perfume sprays, concentrated oils, bakhoor, air fresheners, home fragrance and gift sets.
+- The "Khadlaj Perfume Spray" collection reports 88 products; it is a more relevant starting point but still requires product-level type and variant review.
+- Fragrantica's current index lists additional names across lines such as Biscotti, Empire, Fursan, Hareem Al Sultan, Karus, Shiyaaka, Valor and Velvet. Treat it as a cross-check only, not official master data.
+- Do not import the 308 count or every collection listing as a standalone fragrance.
+
+### Paris Corner
+- Official core-brand collection: https://www.pariscornerperfumes.com/collections/paris-corner . It currently reports 104 products (a prior dated observation showed 105). The visible page distinguishes product names; the broader collections index lists separate sub-lines including Emir, Magic Oud Series, Ministry of Gourmand, Ministry of Oud, North Stag and Pendora Scents.
+- Parent brand and sub-line ownership must remain separate; do not automatically attribute every sub-line item to the core Paris Corner brand.
+- Pagination and product-type reconciliation remain required.
+
+### Artifacts
+- `backend/catalog_overlays/official_brand_listing_reconciliation_2026-11-08.json` records 28 Velixir and 53 Mykonos name candidates with source links and the unresolved catalog reconciliation.
+- No retailer offers, prices, stock, shipping costs, or inferred GTINs were imported.
+- No production database, production configuration, or store authorization was changed.
