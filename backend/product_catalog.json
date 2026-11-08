@@ -11071,7 +11071,8 @@
       "family_name": "California",
       "aliases": [
         "California",
-        "Mykonos California"
+        "Mykonos California",
+        "California Signature"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml",
@@ -11415,7 +11416,8 @@
       "family_name": "Xoxo Rosy",
       "aliases": [
         "Xoxo Rosy",
-        "Mykonos Xoxo Rosy"
+        "Mykonos Xoxo Rosy",
+        "XoXo, Rosy"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11437,7 +11439,9 @@
         "Empire x RRQ",
         "Mykonos Empire x RRQ",
         "Empire (Mykonos x RRQ)",
-        "Mykonos Empire (Mykonos x RRQ)"
+        "Mykonos Empire (Mykonos x RRQ)",
+        "Empire",
+        "Mykonos Empire"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11722,7 +11726,8 @@
       "family_name": "Nautilus",
       "aliases": [
         "Nautilus",
-        "Mykonos Nautilus"
+        "Mykonos Nautilus",
+        "Nautilius"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11820,7 +11825,8 @@
       "family_name": "Affair",
       "aliases": [
         "Affair",
-        "Mykonos Affair"
+        "Mykonos Affair",
+        "Intimate Affair"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11852,7 +11858,8 @@
       "family_name": "Shades Perfume",
       "aliases": [
         "Shades Perfume",
-        "Mykonos Shades Perfume"
+        "Mykonos Shades Perfume",
+        "Shades Parfum"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -11884,7 +11891,8 @@
       "family_name": "Jynx",
       "aliases": [
         "Jynx",
-        "Mykonos Jynx"
+        "Mykonos Jynx",
+        "Jinx"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -34069,6 +34077,134 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-MYKONOS-ADELINA",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Adelina",
+      "name": "Adelina",
+      "family_id": "mykonos_catalog",
+      "family_name": "Adelina",
+      "aliases": [
+        "Adelina",
+        "Mykonos Adelina"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-BLOODY-MARY",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Bloody Mary",
+      "name": "Bloody Mary",
+      "family_id": "mykonos_catalog",
+      "family_name": "Bloody Mary",
+      "aliases": [
+        "Bloody Mary",
+        "Mykonos Bloody Mary"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-CRYSTALS",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Crystals",
+      "name": "Crystals",
+      "family_id": "mykonos_catalog",
+      "family_name": "Crystals",
+      "aliases": [
+        "Crystals",
+        "Mykonos Crystals"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-ECLIPSE",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Eclipse",
+      "name": "Eclipse",
+      "family_id": "mykonos_catalog",
+      "family_name": "Eclipse",
+      "aliases": [
+        "Eclipse",
+        "Mykonos Eclipse"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-NASHI-PEAR-GARDEN",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Nashi Pear Garden",
+      "name": "Nashi Pear Garden",
+      "family_id": "mykonos_catalog",
+      "family_name": "Nashi Pear Garden",
+      "aliases": [
+        "Nashi Pear Garden",
+        "Mykonos Nashi Pear Garden"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-ROULETTE",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Roulette",
+      "name": "Roulette",
+      "family_id": "mykonos_catalog",
+      "family_name": "Roulette",
+      "aliases": [
+        "Roulette",
+        "Mykonos Roulette"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-ZEUS",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Zeus",
+      "name": "Zeus",
+      "family_id": "mykonos_catalog",
+      "family_name": "Zeus",
+      "aliases": [
+        "Zeus",
+        "Mykonos Zeus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
+    },
+    {
+      "product_id": "SH-MYKONOS-ITS-NOT-ELLA",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "It's Not Ella",
+      "name": "It's Not Ella",
+      "family_id": "mykonos_catalog",
+      "family_name": "It's Not Ella",
+      "aliases": [
+        "It's Not Ella",
+        "Mykonos It's Not Ella"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Mykonos.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Mykonos.html"
     }
   ],
   "variants": [
