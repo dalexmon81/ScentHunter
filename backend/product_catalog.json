@@ -27057,9 +27057,7 @@
         "Empire (Mykonos x RRQ)",
         "Mykonos Empire (Mykonos x RRQ)",
         "Empire",
-        "Mykonos Empire",
-        "Imperium",
-        "Mykonos Imperium"
+        "Mykonos Empire"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://mykonosperfumes.eu/products/mykonos-x-rrq-empire",
@@ -27826,6 +27824,26 @@
         100
       ],
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-IMPERIUM",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Imperium",
+      "name": "Imperium",
+      "family_id": "mykonos_catalog",
+      "family_name": "Imperium",
+      "aliases": [
+        "Imperium",
+        "Mykonos Imperium"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-MYKONOS-INCEPTION-REIMAGINED",
@@ -37045,6 +37063,16 @@
       "aliases": [
         "Liquid Brun Eau de Parfum 100 ml",
         "French Avenue Liquid Brun EDP 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MYKONOS-IMPERIUM",
+      "variant_id": "VAR-SH-MYKONOS-IMPERIUM-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Imperium 100 ml",
+        "Mykonos Imperium 100 ml"
       ]
     }
   ]
