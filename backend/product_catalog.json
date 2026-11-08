@@ -26609,12 +26609,11 @@
       "family_name": "California",
       "aliases": [
         "California",
-        "Mykonos California",
-        "California Signature"
+        "Mykonos California"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml",
-      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml",
+      "source_url": "https://mykonosperfumes.eu/products/mykonos-california",
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-california",
       "formats_ml": [
         50,
         100
@@ -27056,9 +27055,7 @@
         "Empire (Mykonos x RRQ)",
         "Mykonos Empire (Mykonos x RRQ)",
         "Empire",
-        "Mykonos Empire",
-        "Imperium",
-        "Mykonos Imperium"
+        "Mykonos Empire"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
@@ -34188,6 +34185,47 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-MYKONOS-IMPERIUM",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "Imperium",
+      "name": "Imperium",
+      "family_id": "mykonos_catalog",
+      "family_name": "Imperium",
+      "aliases": [
+        "Imperium",
+        "Mykonos Imperium"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-MYKONOS-CALIFORNIA-SIGNATURE",
+      "brand": "Mykonos",
+      "brand_name": "Mykonos",
+      "canonical_name": "California Signature",
+      "name": "California Signature",
+      "family_id": "mykonos_catalog",
+      "family_name": "California Signature",
+      "aliases": [
+        "California Signature",
+        "Mykonos California Signature"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://mykonosperfumes.me/products/mykonos-california-signature-eau-de-parfum-edp-100ml",
+      "source_evidence_url": "https://www.fragrantica.com/perfume/Mykonos/California-Signature-120466.html",
+      "formats_ml": [
+        50,
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     }
   ],
   "variants": [
@@ -35867,9 +35905,7 @@
       "concentration": "Extrait de Parfum",
       "aliases": [
         "Empire x RRQ 100 ml",
-        "Mykonos Empire x RRQ 100 ml",
-        "Imperium 100 ml",
-        "Mykonos Imperium 100 ml"
+        "Mykonos Empire x RRQ 100 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
     },
@@ -37041,6 +37077,39 @@
         "Liquid Brun Eau de Parfum 100 ml",
         "French Avenue Liquid Brun EDP 100ml"
       ]
+    },
+    {
+      "product_id": "SH-MYKONOS-IMPERIUM",
+      "variant_id": "VAR-MYKONOS-IMPERIUM-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Imperium 100 ml",
+        "Mykonos Imperium 100 ml"
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-MYKONOS-CALIFORNIA-SIGNATURE",
+      "variant_id": "VAR-MYKONOS-CALIFORNIA-SIGNATURE-50-EXDP",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "California Signature 50 ml",
+        "Mykonos California Signature 50 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.me/products/mykonos-california-signature-eau-de-parfum-edp-100ml"
+    },
+    {
+      "product_id": "SH-MYKONOS-CALIFORNIA-SIGNATURE",
+      "variant_id": "VAR-MYKONOS-CALIFORNIA-SIGNATURE-100-EXDP",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "California Signature 100 ml",
+        "Mykonos California Signature 100 ml"
+      ],
+      "source_evidence_url": "https://mykonosperfumes.me/products/mykonos-california-signature-eau-de-parfum-edp-100ml"
     }
   ]
 }
