@@ -152,6 +152,16 @@
       "brand": "Bujairami",
       "url": "https://maisondisfragrances.com/fr/collections/bujairami",
       "note": "Secondary EU retailer category listing. Only product entries whose displayed title explicitly states perfume concentration and 100ml size were added; no prices, stock or offer records copied."
+    },
+    {
+      "brand": "French Avenue",
+      "url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "note": "Secondary EU retailer product listing. Product card text explicitly states product name, concentration and size. Aromatix collaboration releases are retained under French Avenue; no prices or availability copied."
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "url": "https://arabiyatprestige.com/",
+      "note": "Arabiyat Prestige storefront product cards explicitly state product name, concentration and size for these entries. No price, stock or offer data copied."
     }
   ],
   "products": [
@@ -3884,6 +3894,303 @@
       "brand": "Bujairami",
       "fragrance": "Sugar Rush",
       "source_url": "https://maisondisfragrances.com/fr/collections/bujairami",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Spectre Ghost",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Royal Blend",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Azzure Aoud",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Liquid Brun",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Spectre Wraith",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Aether",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Vulcan Feu",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Aromatix Carnal Desire",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Aromatix X Xandal",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "After Effect",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Royal Blend Sequoia",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Vulcan Baie",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Amber Empire",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Aromatix Magnetiq",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Aromatix Forbidden Fruit",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Aromatix Frostbite",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "French Avenue",
+      "fragrance": "Liquid Brun Limited Edition",
+      "source_url": "https://www.alvanetti.com/brands/french-avenue?collection=all",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 150
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Asháa Oud Noir",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 110
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Marwa Extrait",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 60
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Nyla",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Nyla Vani-elle",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Nyla Suede",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 80
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Blueberry Musk",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Bedour",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Attar Al Youm Black",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Hamdan The Hero",
+      "source_url": "https://arabiyatprestige.com/",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 75
+        }
+      ]
+    },
+    {
+      "brand": "Arabiyat Prestige",
+      "fragrance": "Lychee Musk",
+      "source_url": "https://arabiyatprestige.com/",
       "variants": [
         {
           "concentration": "Eau de Parfum",
