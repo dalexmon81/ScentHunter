@@ -34475,6 +34475,203 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIR-AFFAIR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Air Affair",
+      "name": "Air Affair",
+      "family_id": "bujairami_catalog",
+      "family_name": "Air Affair",
+      "aliases": [
+        "Air Affair",
+        "Bujairami Air Affair"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/air-affair/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/air-affair/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRBORNE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Airborne",
+      "name": "Airborne",
+      "family_id": "bujairami_catalog",
+      "family_name": "Airborne",
+      "aliases": [
+        "Airborne",
+        "Bujairami Airborne"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airborne/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/airborne/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRY-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Airy Oud",
+      "name": "Airy Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Airy Oud",
+      "aliases": [
+        "Airy Oud",
+        "Bujairami Airy Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airy-oud/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/airy-oud/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AL-WAAD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Al Waad",
+      "name": "Al Waad",
+      "family_id": "bujairami_catalog",
+      "family_name": "Al Waad",
+      "aliases": [
+        "Al Waad",
+        "Bujairami Al Waad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/al-waad/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/al-waad/",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALPHA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Alpha",
+      "name": "Alpha",
+      "family_id": "bujairami_catalog",
+      "family_name": "Alpha",
+      "aliases": [
+        "Alpha",
+        "Bujairami Alpha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/alpha/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/alpha/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALTITUDE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Altitude",
+      "name": "Altitude",
+      "family_id": "bujairami_catalog",
+      "family_name": "Altitude",
+      "aliases": [
+        "Altitude",
+        "Bujairami Altitude"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/altitude/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/altitude/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMARETTO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amaretto",
+      "name": "Amaretto",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amaretto",
+      "aliases": [
+        "Amaretto",
+        "Bujairami Amaretto"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amaretto/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amaretto/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amazing",
+      "name": "Amazing",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amazing",
+      "aliases": [
+        "Amazing",
+        "Bujairami Amazing"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amazing/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING-NIGHT",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amazing Night",
+      "name": "Amazing Night",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amazing Night",
+      "aliases": [
+        "Amazing Night",
+        "Bujairami Amazing Night"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing-night/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amazing-night/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMBER-FLOWERET",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Floweret",
+      "name": "Amber Floweret",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Floweret",
+      "aliases": [
+        "Amber Floweret",
+        "Bujairami Amber Floweret"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-floweret/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amber-floweret/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37554,6 +37751,96 @@
         "Bujairami Aftershock 100ml"
       ],
       "source_url": "https://bujairamiperfumes.eu/perfumes/aftershock/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIR-AFFAIR",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AIR-AFFAIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Air Affair 100 ml",
+        "Bujairami Air Affair 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/air-affair/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRBORNE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AIRBORNE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Airborne 100 ml",
+        "Bujairami Airborne 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airborne/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AIRY-OUD",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AIRY-OUD-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Airy Oud 100 ml",
+        "Bujairami Airy Oud 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/airy-oud/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALPHA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-ALPHA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Alpha 100 ml",
+        "Bujairami Alpha 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/alpha/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-ALTITUDE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-ALTITUDE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Altitude 100 ml",
+        "Bujairami Altitude 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/altitude/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMARETTO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMARETTO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amaretto 100 ml",
+        "Bujairami Amaretto 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amaretto/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMAZING-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amazing 100 ml",
+        "Bujairami Amazing 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMAZING-NIGHT",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMAZING-NIGHT-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amazing Night 100 ml",
+        "Bujairami Amazing Night 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amazing-night/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH5-AMBER-FLOWERET",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH5-AMBER-FLOWERET-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Floweret 100 ml",
+        "Bujairami Amber Floweret 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-floweret/"
     }
   ]
 }
