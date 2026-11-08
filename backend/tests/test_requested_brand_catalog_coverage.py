@@ -525,6 +525,26 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         ))
 
 
+    def test_french_avenue_arabian_incense_official_detail_and_variant_are_verified(self):
+        row = next(
+            p for p in CATALOG["products"]
+            if p.get("brand_name") == "French Avenue"
+            and p.get("canonical_name") == "Arabian Incense"
+        )
+        official_url = "https://frenchavenue.com/products/arabian-incense"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), official_url)
+        self.assertIn(80, row.get("formats_ml", []))
+        matching = [
+            v for v in CATALOG["variants"]
+            if v.get("product_id") == row["product_id"] and v.get("size_ml") == 80
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(matching[0].get("source_evidence_url"), official_url)
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
