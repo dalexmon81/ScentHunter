@@ -1266,19 +1266,19 @@
     },
     {
       "brand": "Lattafa",
-      "fragrance_name": "Queen Of Arabia",
-      "evidence_source": "Essência Árabe",
-      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "not_inferred"
+      "fragrance_name": "Queen of Arabia",
+      "evidence_source": "Lattafa official product page",
+      "source_url": "https://lattafa.com/product/queen-of-arabia/",
+      "evidence_level": "official_product_detail",
+      "variant_details": "100 ml displayed on page; no canonical variant row created in this pass"
     },
     {
       "brand": "Lattafa",
       "fragrance_name": "Musamam Black Intense",
-      "evidence_source": "Essência Árabe",
-      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "not_inferred"
+      "evidence_source": "Lattafa official product page",
+      "source_url": "https://lattafa.com/product/musamam-black-intense/",
+      "evidence_level": "official_product_detail",
+      "variant_details": "Eau de Parfum stated on page; size not inferred"
     },
     {
       "brand": "Lattafa",
