@@ -123,6 +123,35 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     )
                 )
 
+    def test_zimaya_verified_new_launches_have_official_pages_and_100ml_edp_variants(self):
+        expected = {
+            "Kibria Supremo": "https://ro.zimayaperfumes.com/products/kibria-supremo",
+            "Oscar Platinum": "https://fr.zimayaperfumes.com/products/oscar-platinum",
+            "Zukhruf Peach Please": "https://de.zimayaperfumes.com/en/products/zukhruf-peach",
+            "Mazaaj Rhythm": "https://zimayaperfumes.com/products/mazaaj-rhythm",
+            "Tiramisu S’mores": "https://zimayaperfumes.com/products/tiramisu-s-mores",
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Zimaya"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertTrue(
+                    any(
+                        variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == 100
+                        and variant.get("concentration") == "Eau de Parfum"
+                        for variant in CATALOG.get("variants", [])
+                    )
+                )
+
     def test_afnan_9pm_night_out_official_product_page_and_variant_are_verified(self):
         row = next(
             (
