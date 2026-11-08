@@ -4,7 +4,6 @@ import unittest
 from pathlib import Path
 
 CATALOG = Path(__file__).resolve().parents[1] / "product_catalog.json"
-SOURCE = "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar"
 EXPECTED = {
     "Basma": ("SH-MAISON-ASRAR-a39f5b0c", "https://maisonasrar.com/products/maison-asrar-basma-eau-de-parfum-100-ml-unisex"),
     "Vanilla Rouge": ("SH-MAISON-ASRAR-02826afd", "https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml"),
@@ -23,15 +22,14 @@ class MaisonAsrarOfficialVariantTests(unittest.TestCase):
         cls.data = json.loads(CATALOG.read_text(encoding="utf-8"))
         cls.products = {p["canonical_name"]: p for p in cls.data["products"] if p.get("brand_name") == "Maison Asrar"}
 
-    def test_three_official_100ml_edp_variants(self):
+    def test_eight_official_100ml_edp_variants(self):
         for name, (product_id, product_url) in EXPECTED.items():
             with self.subTest(product=name):
                 product = self.products[name]
                 self.assertEqual(product["product_id"], product_id)
                 self.assertEqual(product["source_url"], product_url)
                 self.assertEqual(product["identity_status"], "source_verified_name")
-                self.assertEqual(product["source_evidence_url"], url)
-                self.assertEqual(product["source_url"], url)
+                self.assertEqual(product["source_evidence_url"], product_url)
                 self.assertIn(100, product["formats_ml"])
                 variants = [v for v in self.data["variants"] if v["product_id"] == product_id]
                 self.assertEqual(len(variants), 1)
