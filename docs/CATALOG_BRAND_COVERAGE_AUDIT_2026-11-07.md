@@ -1637,3 +1637,21 @@ GitHub Actions run **#42420558957** for test commit **f0c4b4872d8faf1208f4237538
 
 ### Correction to Games of Spades pass 29 — Jack remains discovery-only (2026-11-08)
 A final source check found that **Jack** was present in the pre-existing family registry but could not be confirmed in the current Jo Milano Paris official product listings or individual product pages reviewed for this pass. It has therefore been removed from the canonical product seed and from the official-listing harvest candidates. The registry entry is retained as a discovery-only candidate pending authoritative product evidence. The Games of Spades canonical count is **29**, not 30. The regression test now requires canonical identities to be a subset of the broader family registry, allowing unverified discovery names to remain outside the canonical seed.
+
+
+## Pass 32 — Remaining candidate gate: Hectic and Mahd Al Dhahab Extrait (2026-11-08)
+
+Two names remain in the discovery harvest but were deliberately **not** added to the canonical product seed:
+
+### Bujairami — Hectic
+- The official Bujairami web presence was reviewed, but a specific official Hectic product detail page was not located.
+- FragranceGems' EU guide identifies itself as an independent authorized Bujairami retailer and lists Hectic Extrait de Parfum: https://bujairamiperfumes.eu/
+- Luxembourg retailer PerfumeMarket lists Hectic 100 ml and UPC 9362014000157, but its product title says Extrait while the URL slug says EDP: https://perfumemarket.lu/en/products/bujairami-hectic-100ml-edp
+- Because of this concentration conflict and lack of a located official product page, Hectic remains a discovery candidate. No canonical product or variant was created.
+
+### Arabiyat Prestige — Mahd Al Dhahab Extrait
+- Retailer listings distinguish Mahd Al Dhahab Extrait from the standard Mahd Al Dhahab: https://fenicethebrand.pt/collections/arabiyat-prestige and https://arabicparfums.com/products/mahd-al-dhahab-extrait-arabiyat-prestige
+- Parfumo independently records a 2026 Extrait release: https://www.parfumo.com/Perfumes/arabiyat-prestige/mahd-al-dhahab-extrait
+- This may be a distinct concentration/release, not merely a bottle-size variant. No canonical row was created pending authoritative brand confirmation and a clear identity/variant decision.
+
+The harvest overlay now records these cross-checks and the reason for holding both candidates outside the canonical seed.
