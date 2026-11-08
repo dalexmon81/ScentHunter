@@ -141,18 +141,17 @@ PR #568 adds automated regression guards for unique normalized product identitie
 
 ## Family-registry normalization debt found in the base snapshot
 
-A separate read-only scan of the 34-family registry found 19 pairs of canonical
-labels within the same family that collapse to the same normalized spelling
-when case, punctuation and diacritics are ignored. Examples include:
+A separate read-only scan of the exact base-branch registry blob
+`6981b9619abf7af30153ea2948035b99c9e2a58d` (34 families) found **18 pairs** of
+canonical labels within the same family that collapse to the same normalized
+spelling when case, punctuation and diacritics are ignored. The full list is:
 
-- Paris Corner: `Jardin Des Papillons` / `Jardin des Papillons`;
-  `Noir D'Arabie` / `Noir d'Arabie`; and `Rua` / `RUA`.
-- Arabiyat Prestige: `Nyla Vani-elle` / `Nyla Vani-Elle`;
-  `Noire` / `Noirè`.
-- Lattafa: `Ajwad Pink To Pink` / `Ajwad Pink to Pink`.
-- Khadlaj: `Sueño` / `Sueno`.
+- Paris Corner (14): `Deux II Expressions, North Stag` / `Deux II Expressions North Stag`; `Jardin Des Papillons` / `Jardin des Papillons`; `Lueur D'Espoir Arena Intense` / `Lueur d'Espoir Arena Intense`; `Lueur D'Espoir Memories of Summer` / `Lueur d'Espoir Memories of Summer`; `Lueur D'Espoir Serene Grove` / `Lueur d'Espoir Serene Grove`; `Lueur D'Espoir Silhouette` / `Lueur d'Espoir Silhouette`; `Midnight Sin By Daniel Rene` / `Midnight Sin by Daniel René`; `Noir D'Arabie` / `Noir d'Arabie`; `Papillon Des Vents` / `Papillon des Vents`; `Quatre IV Expressions, North Stag` / `Quatre IV Expressions North Stag`; `Rua` / `RUA`; `Taskeen Lactea Divina` / `Taskeen Lactéa Divina`; `Trois III Expressions, North Stag` / `Trois III Expressions North Stag`; `Un I Expressions, North Stag` / `Un I Expressions North Stag`.
+- Arabiyat Prestige (2): `Nyla Vani-elle` / `Nyla Vani-Elle`; `Noire` / `Noirè`.
+- Lattafa (1): `Ajwad Pink To Pink` / `Ajwad Pink to Pink`.
+- Khadlaj (1): `Sueño` / `Sueno`.
 
-These are registry-label normalization collisions, not 19 confirmed duplicate
+These are registry-label normalization collisions, not 18 confirmed duplicate
 catalog product rows: the current product catalog itself has no duplicate
 normalized brand + canonical-name identities. Some pairs may be legitimate
 orthographic variants, but they should be represented as one canonical
