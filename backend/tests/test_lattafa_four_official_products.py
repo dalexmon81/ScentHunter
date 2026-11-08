@@ -11,6 +11,11 @@ PRODUCTS = {
     "Love In Paris": "https://lattafa.com/product/love-in-paris/",
     "Raghad": "https://lattafa.com/product/raghad/",
     "Badee Al Oud Amethyst Fusion": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+    "Creative Art": "https://lattafa.com/product/creative-art/",
+    "London the City of Contrast": "https://lattafa.com/product/london-the-city-of-contrast/",
+    "Queen of Roses": "https://lattafa.com/product/queen-of-roses/",
+    "King of Arabia": "https://lattafa.com/product/king-of-arabia/",
+    "Lattafa Pride – Stop Wait Go": "https://lattafa.com/product/lattafa-pride-stop-wait-go/",
 }
 
 
@@ -52,7 +57,10 @@ class LattafaFourOfficialProductsTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(variants), 1)
                 self.assertEqual(variants[0].get("size_ml"), 100)
-                self.assertNotIn("concentration", variants[0])
+                if name == "Queen of Roses":
+                    self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
+                else:
+                    self.assertNotIn("concentration", variants[0])
                 for forbidden in ("price", "stock", "shipping_cost", "store_url"):
                     self.assertNotIn(forbidden, variants[0])
 
