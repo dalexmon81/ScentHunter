@@ -63,8 +63,8 @@ class KhadlajCatalogParityTests(unittest.TestCase):
     def test_reconciled_khadlaj_totals_and_variant_provenance(self):
         product_ids = {p["product_id"] for p in self.products}
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in product_ids]
-        self.assertEqual(len(self.products), 209)
-        self.assertEqual(len(variants), 199)
+        self.assertEqual(len(self.products), 220)
+        self.assertEqual(len(variants), 212)
         self.assertTrue(all(v.get("source_evidence_url") for v in variants))
         self.assertFalse(any("fragrantica.com" in v["source_evidence_url"].lower() for v in variants))
 
@@ -123,6 +123,50 @@ class KhadlajCatalogParityTests(unittest.TestCase):
         self.assertNotEqual(private_blend["product_id"], tobac["product_id"])
         self.assertTrue(any(v.get("product_id") == tobac["product_id"] and v.get("size_ml") == 100 and v.get("concentration") == "Extrait de Parfum" for v in CATALOG["variants"]))
         self.assertFalse(any(v.get("product_id") == private_blend["product_id"] and v.get("size_ml") == 100 and v.get("concentration") == "Extrait de Parfum" for v in CATALOG["variants"]))
+
+
+    def test_pure_musk_has_separate_oil_and_edp_variants(self):
+        product = next(p for p in self.products if p["canonical_name"] == "Pure Musk")
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") == product["product_id"]]
+        self.assertTrue(any(v.get("size_ml") == 20 and v.get("concentration") == "Perfume Oil" for v in variants))
+        self.assertTrue(any(v.get("size_ml") == 100 and v.get("concentration") == "Eau de Parfum" for v in variants))
+        self.assertIsNone(product.get("concentration"))
+
+    def test_rasayel_vid_concentration_remains_unspecified(self):
+        product = next(p for p in self.products if p["canonical_name"] == "Rasayel Vid")
+        self.assertIsNone(product.get("concentration"))
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") == product["product_id"]]
+        self.assertTrue(any(v.get("size_ml") == 100 and not v.get("concentration") and v.get("source_evidence_url") for v in variants))
+
+    def test_alf_wardaat_is_a_30ml_perfume_oil_with_spelling_alias(self):
+        product = next(p for p in self.products if p["canonical_name"] == "Alf Wardaat")
+        self.assertIn("Alf Wardat", product.get("aliases", []))
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") == product["product_id"]]
+        self.assertTrue(any(v.get("size_ml") == 30 and v.get("concentration") == "Perfume Oil" and v.get("source_evidence_url") for v in variants))
+
+    def test_hareem_al_sultan_blue_is_a_35ml_perfume_oil(self):
+        product = next(p for p in self.products if p["canonical_name"] == "Hareem Al Sultan Blue")
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") == product["product_id"]]
+        self.assertTrue(any(v.get("size_ml") == 35 and v.get("concentration") == "Perfume Oil" and v.get("source_evidence_url") for v in variants))
+
+    def test_extended_la_fede_collection_products_are_present(self):
+        expected = (
+            "Uno Durable", "Uno Lusso", "La Fede Lavish Luna", "La Fede Lavish Rouge",
+            "La Fede Lavish Blush", "La Fede Aura Vanilla Milk",
+        )
+        names = {normalized(p["canonical_name"]) for p in self.products}
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(normalized(name), names)
+
+    def test_oil_family_registry_contains_the_reconciled_oil_products(self):
+        family = next(f for f in self.families if f["family_id"] == "khadlaj_perfume_oils")
+        self.assertEqual(len(family["products"]), 42)
+        family_names = {normalized(p["canonical_name"]) for p in family["products"]}
+        expected = ("Johayna Purple", "Kayaan Silver", "Malika Green", "Mibraak", "Zainab")
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(normalized(name), family_names)
 
 if __name__ == "__main__":
     unittest.main()
