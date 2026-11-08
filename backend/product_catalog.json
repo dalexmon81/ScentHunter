@@ -5361,7 +5361,7 @@
       "brand_name": "Lattafa",
       "canonical_name": "Asad Elixir",
       "name": "Asad Elixir",
-      "family_id": "lattafa_catalog",
+      "family_id": "lattafa_asad",
       "family_name": "Asad Elixir",
       "aliases": [
         "Asad Elixir",
@@ -10594,31 +10594,17 @@
       "concentration": "Eau de Parfum",
       "formats_ml": [
         75,
+        100,
         125
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-125-ml-man_z771966/",
-      "source_evidence_url": "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en"
-    },
-    {
-      "product_id": "SH-AUTO-0019",
-      "brand": "Giorgio Armani",
-      "brand_name": "Giorgio Armani",
-      "canonical_name": "Acqua di Giò Profondo",
-      "name": "Acqua di Giò Profondo",
-      "family_id": "giorgio_armani_catalog",
-      "family_name": "Acqua di Giò Profondo",
-      "aliases": [
-        "Acqua di Giò Profondo",
-        "Acqua di Gio Profondo",
-        "Giorgio Armani Acqua di Gio Profondo"
-      ],
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        100
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
+      "source_evidence_url": "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en",
+      "source_evidence_urls": [
+        "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-125-ml-man_z771966/",
+        "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en",
+        "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-4758ef74",
@@ -24179,7 +24165,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Scorpio",
       "name": "Genesis Scorpio",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Scorpio",
@@ -24196,7 +24182,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Leo",
       "name": "Genesis Leo",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Leo",
@@ -24213,7 +24199,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Virgo",
       "name": "Genesis Virgo",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Virgo",
@@ -24230,7 +24216,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Cancer",
       "name": "Genesis Cancer",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Cancer",
@@ -24247,7 +24233,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Capricorn",
       "name": "Genesis Capricorn",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Capricorn",
@@ -24264,7 +24250,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Aries",
       "name": "Genesis Aries",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Aries",
@@ -24281,7 +24267,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Libra",
       "name": "Genesis Libra",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Libra",
@@ -24298,7 +24284,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Gemini",
       "name": "Genesis Gemini",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Gemini",
@@ -24315,7 +24301,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Taurus",
       "name": "Genesis Taurus",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Taurus",
@@ -24332,7 +24318,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Aquarius",
       "name": "Genesis Aquarius",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Aquarius",
@@ -24349,7 +24335,7 @@
       "brand_name": "French Avenue",
       "canonical_name": "Genesis Pisces",
       "name": "Genesis Pisces",
-      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "family_id": "french_avenue_genesis",
       "family_name": "Genesis",
       "aliases": [
         "Genesis Pisces",
@@ -27198,7 +27184,7 @@
       "brand_name": "Lattafa",
       "canonical_name": "Queen of Arabia",
       "name": "Queen of Arabia",
-      "family_id": "lattafa_asad",
+      "family_id": "lattafa_catalog",
       "family_name": "Queen of Arabia",
       "aliases": [
         "Queen of Arabia",
@@ -27214,7 +27200,7 @@
       "brand_name": "Lattafa",
       "canonical_name": "Musamam White Intense",
       "name": "Musamam White Intense",
-      "family_id": "lattafa_asad",
+      "family_id": "lattafa_catalog",
       "family_name": "Musamam White Intense",
       "aliases": [
         "Musamam White Intense",
@@ -28624,7 +28610,7 @@
       ]
     },
     {
-      "product_id": "SH-AUTO-0019",
+      "product_id": "SH-0043",
       "variant_id": "VAR-46b03c1f1cff0a6e",
       "size_ml": 100,
       "concentration": "Eau de Parfum",
