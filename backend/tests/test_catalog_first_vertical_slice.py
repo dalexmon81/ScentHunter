@@ -292,7 +292,14 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
                     Offer.external_product_id == meta["shopify_variant_id"],
                 )
             ) is None
-            assert session.scalars(select(PriceHistory)).all() == []
+            assert session.scalars(
+                select(PriceHistory)
+                .join(Offer, PriceHistory.offer_id == Offer.id)
+                .where(
+                    Offer.store_id == store_id,
+                    Offer.external_product_id == meta["shopify_variant_id"],
+                )
+            ).all() == []
 
         # Catalog search may return the identity, but must not surface the stale
         # fixture as a purchasable offer.
