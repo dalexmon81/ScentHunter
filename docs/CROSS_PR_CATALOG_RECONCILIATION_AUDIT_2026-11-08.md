@@ -68,6 +68,52 @@ Reconcile official spelling, canonical identity, aliases, product IDs, variants 
 
 PR #539 and PR #546 both upgrade the same existing Mykonos products from collection-level evidence to official product-detail-page evidence. Fourteen official detail-page URLs occur in both patches. This is overlapping source-evidence work, not by itself proof of duplicate product rows. Select one cumulative branch as the integration path and avoid replaying the same edits independently.
 
+
+## Aromatix — identity coverage and variant-evidence gap
+
+The base catalog currently contains 12 Aromatix product identities:
+Carnal Desire, Forbidden Fruit, Frostbite, Magnetiq, Naughty Dates, Ora,
+Platine Blanc, Royal Taboo, Roza, Sun Kissed, Teas Me and X Xandal.
+All 12 are marked `source_listed_name`, point to the same Notino Belgium
+brand/category page as `source_url`, and cite the Aromatix X French Avenue
+Fragrantica designer page as `source_evidence_url`.
+
+The naming/ownership needs to remain explicit rather than being silently
+collapsed into a generic Aromatix manufacturer assumption:
+- The Fragrantica designer listing identifies the collaboration as
+  **Aromatix X French Avenue**, names French Avenue as parent company, and
+  lists 12 fragrances, including Ora and Roza (2026).
+- Shop Aromatix describes a separate “Signature Aromatix Collection” as a
+  ten-fragrance collaboration, and its collection page names those ten
+  signature scents. Its current Aromatix X French Avenue product collection
+  shows 12 items, but the last two are Summer Vibes Blue and Yellow discovery
+  sets (5 x 30 ml), not two additional single-fragrance identities.
+- The catalog's two registry families, `aromatix_catalog` (brand Aromatix)
+  and `aromatix_french_avenue` (brand French Avenue), contain the same 12
+  canonical names. These appear to be dual lookup/alias coverage for one
+  collaboration, not 12 additional product identities. Preserve one catalog
+  product row per fragrance; make the alias relationship explicit in tests or
+  documentation so future harvests do not add duplicate products under
+  French Avenue.
+- The 12 Aromatix catalog product rows currently have **no variant rows**.
+  Retailer pages show 100 ml EDP for the ten signature collection scents, and
+  European retailer listings also show 100 ml EDP for Ora and Roza. However,
+  those are retailer-level sources, not manufacturer product-detail pages.
+  Do not create 100 ml variants as officially verified until a suitable
+  primary product source or an approved evidence policy supports them.
+
+**Action:** keep the 12 identities as one collaboration set; distinguish the
+ten original signature scents from the two 2026 launches Ora and Roza; retain
+the French Avenue/Aromatix dual-name mapping as aliases, not duplicate
+canonical products; and leave variant rows uncreated until the evidence
+standard is met.
+
+Evidence checked on 2026-11-08:
+- https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html
+- https://shoparomatix.com/pages/aromatic-collection
+- https://shoparomatix.com/collections/aromatix-x-french-avenue
+- https://olvio.co.uk/collections/aromatix-x-french-avenue-collection?sort_by=created-descending
+
 ## CI status and limitation
 
 The following individual catalog validation runs were checked and passed:
