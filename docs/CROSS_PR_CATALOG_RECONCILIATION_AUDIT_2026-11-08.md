@@ -415,3 +415,82 @@ integration candidate.
 The exact #573 catalog patch repeats #569's 21 data edits; this is a
 cross-PR duplication finding, not a request to close either PR automatically.
 No merge or branch deletion was performed.
+
+
+## Additional remaining-brand review — Assaf, Bujairami, Khadlaj and Lattafa
+
+### Assaf — seven remaining size variants
+
+The seven still-unconfirmed variants after the proposed Gris Erik 100 ml correction
+were checked against their linked manufacturer pages:
+
+- Arrogate Pink 200 ml — official page does not state EDP/Extrait.
+- Arrogate Pink Diva 200 ml — official page identifies 200 ml but does not state EDP/Extrait.
+- Dangerous Arrogate 200 ml — the catalog URL redirects to the Arrogate collection, not a product-detail specification.
+- Gris Erik 200 ml — the old direct product URL could not be retrieved (404); the separate 100 ml page explicitly identifies EDP, but that does not prove the 200 ml variant is the same concentration.
+- Miss Arrogate 200 ml — official page does not state EDP/Extrait.
+- Rebel Enable 150 ml — the URL contains “edp”, but the retrieved page body does not explicitly identify concentration; URL slug alone is not sufficient evidence.
+- Wild Colt Elixir 200 ml — same issue: “edp” appears in the URL slug, but the retrieved manufacturer page body does not explicitly state concentration.
+
+**Action:** no further Assaf variant concentrations added. Do not propagate the Gris Erik 100 ml EDP label to 200 ml without a direct manufacturer statement.
+
+### Bujairami — Love Spell 50 ml and 100 ml
+
+The two official Bujairami product pages confirm the sizes and fragrance notes, but do
+not state EDP/EDT/Extrait. A European retailer page describes both sizes as EDP,
+but it is not the brand's own product page. The official evidence standard used
+for this catalog pass does not justify copying that retailer label into the
+variant records.
+
+Evidence:
+- https://bujairami.com.au/products/love-spell-original-creation
+- https://bujairami.com.au/products/love-spell-original-creation-50ml
+
+**Action:** leave both concentrations blank pending explicit brand evidence.
+
+### Khadlaj — Hareem Al Sultan Gold 35 ml is a concentrated perfume oil
+
+The exact official Khadlaj product page identifies Hareem Al Sultan Gold 35 ml as
+a **concentrated, non-alcoholic perfume oil**. This is not an EDP/EDT/Extrait
+spray concentration. The original catalog source was only a generic collection
+URL, so draft PR [#574](https://github.com/dalexmon81/ScentHunter/pull/574)
+updates the product and variant provenance to the direct official product page
+and adds a regression test. It deliberately leaves the `concentration` field
+unset rather than misclassifying an oil as a spray concentration.
+
+Official source:
+https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-gold-35ml
+
+PR #574 is open and draft. Its exact head at the time of this update is
+`56c5d5a997223b68ce433009bcbfd95bd54e6b98`; Catalog seed validation run
+42527658396 was queued when last checked. No merge performed.
+
+### Lattafa — Asad Elixir 100 ml
+
+The Lattafa main-site product URL in the catalog returned 403 during direct
+inspection. A Lattafa-branded US storefront page confirms the product and 100 ml
+size but does not explicitly state EDP/EDT/Extrait in the retrieved product
+description. No concentration was inferred from the name “Elixir”.
+
+**Action:** leave the variant concentration blank until a manufacturer source
+explicitly identifies the concentration.
+
+### Mykonos — Sansa, Affair and Tea Poetry travel variants
+
+The 15 ml travel-size offering is confirmed by the official Mykonos Travel Size
+page, but the parent product records for Sansa, Affair and Tea Poetry still do
+not establish an explicit concentration. The other 15 Mykonos travel variants
+are the subject of draft PR #570; these three were intentionally excluded.
+
+**Action:** leave all three travel-variant concentrations blank.
+
+## Revised interpretation of the proposed remaining concentration queue
+
+The arithmetic total of 44 blank variant-level concentration fields after
+proposed PRs #569–#572 remains correct as a raw field count. However, the
+Khadlaj Hareem Al Sultan Gold 35 ml row is now evidenced as a concentrated
+perfume oil rather than an EDP/EDT/Extrait spray. It should be tracked as a
+formulation/type classification issue, not as a missing spray concentration.
+Accordingly, the remaining review queue is 43 spray-concentration candidates
+plus one separately classified perfume-oil row. This is still a proposed
+cross-PR view; the component catalog PRs remain unmerged.
