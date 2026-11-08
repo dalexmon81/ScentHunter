@@ -40,13 +40,17 @@ class MaisonAsrarLockAndKeyTests(unittest.TestCase):
                 record = next(p for p in family["products"] if p["canonical_name"] == name)
                 self.assertEqual(record["formats_ml"], [100])
 
-    def test_listing_descriptors_are_aliases_not_duplicate_products(self):
+    def test_listing_names_are_not_collapsed_into_unrelated_products(self):
         products = [p for p in CATALOG["products"] if p.get("brand") == "Maison Asrar"]
-        self.assertFalse(any(p["canonical_name"] in {"Black Grapefruit", "Bloom"} for p in products))
-        black = next(p for p in products if p["canonical_name"] == "Black")
+        black_grapefruit = [p for p in products if p["canonical_name"] == "Black Grapefruit"]
+        self.assertEqual(len(black_grapefruit), 1)
+        self.assertEqual(black_grapefruit[0]["identity_status"], "source_listed_name")
+        self.assertEqual(black_grapefruit[0]["source_url"], "https://maisonasrar.com/collections/all")
+
+        # The official listing calls this fragrance "Bloom Bloom", not "Bloom".
+        self.assertFalse(any(p["canonical_name"] == "Bloom" for p in products))
         bloom = next(p for p in products if p["canonical_name"] == "Bloom Bloom")
-        self.assertIn("Black Grapefruit", black["aliases"])
-        self.assertIn("Bloom", bloom["aliases"])
+        self.assertIn("Bloom Bloom", bloom["aliases"])
 
     def test_catalog_ids_and_brand_name_pairs_are_unique(self):
         products = CATALOG["products"]
