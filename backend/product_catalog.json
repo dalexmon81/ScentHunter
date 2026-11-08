@@ -33731,6 +33731,141 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah Mira",
+      "name": "Khamrah Mira",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khamrah Mira",
+      "aliases": [
+        "Khamrah Mira",
+        "Lattafa Khamrah Mira"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/khamrah-mira/",
+      "source_evidence_url": "https://lattafa.com/product/khamrah-mira/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Beyond Precious",
+      "name": "Beyond Precious",
+      "family_id": "lattafa_catalog",
+      "family_name": "Beyond Precious",
+      "aliases": [
+        "Beyond Precious",
+        "Lattafa Beyond Precious"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/beyond-precious/",
+      "source_evidence_url": "https://lattafa.com/product/beyond-precious/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Canyon",
+      "name": "Atlas Canyon",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Canyon",
+      "aliases": [
+        "Atlas Canyon",
+        "Lattafa Atlas Canyon"
+      ],
+      "formats_ml": [
+        55
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-canyon/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-canyon/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Glacial Valley",
+      "name": "Atlas Glacial Valley",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Glacial Valley",
+      "aliases": [
+        "Atlas Glacial Valley",
+        "Lattafa Atlas Glacial Valley"
+      ],
+      "formats_ml": [
+        55
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-glacial-valley/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raghad",
+      "name": "Raghad",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raghad",
+      "aliases": [
+        "Raghad",
+        "Lattafa Raghad"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raghad/",
+      "source_evidence_url": "https://lattafa.com/product/raghad/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Matcha Swirl – Give Me Gourmand",
+      "name": "Matcha Swirl – Give Me Gourmand",
+      "family_id": "lattafa_catalog",
+      "family_name": "Matcha Swirl – Give Me Gourmand",
+      "aliases": [
+        "Matcha Swirl – Give Me Gourmand",
+        "Matcha Swirl",
+        "Lattafa Matcha Swirl"
+      ],
+      "formats_ml": [
+        75
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Harlequin Cream – Give Me Gourmand",
+      "name": "Harlequin Cream – Give Me Gourmand",
+      "family_id": "lattafa_catalog",
+      "family_name": "Harlequin Cream – Give Me Gourmand",
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand",
+        "Harlequin Cream",
+        "Lattafa Harlequin Cream"
+      ],
+      "formats_ml": [
+        75
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/"
     }
   ],
   "variants": [
@@ -36694,6 +36829,76 @@
       "variant_id": "SHV-SH-FRENCH-AVENUE-9CAC4756-80-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://frenchavenue.com/products/arabian-incense"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
+      "size_ml": 100,
+      "aliases": [
+        "Khamrah Mira 100 ml",
+        "Lattafa Khamrah Mira 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KHAMRAH-MIRA-100-000",
+      "source_evidence_url": "https://lattafa.com/product/khamrah-mira/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
+      "size_ml": 100,
+      "aliases": [
+        "Beyond Precious 100 ml",
+        "Lattafa Beyond Precious 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BEYOND-PRECIOUS-100-000",
+      "source_evidence_url": "https://lattafa.com/product/beyond-precious/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Canyon 55 ml",
+        "Lattafa Atlas Canyon 55ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-CANYON-55-000",
+      "source_evidence_url": "https://lattafa.com/product/atlas-canyon/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Glacial Valley 55 ml",
+        "Lattafa Atlas Glacial Valley 55ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-GLACIAL-VALLEY-55-000",
+      "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD",
+      "size_ml": 100,
+      "aliases": [
+        "Raghad 100 ml",
+        "Lattafa Raghad 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-RAGHAD-100-000",
+      "source_evidence_url": "https://lattafa.com/product/raghad/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND",
+      "size_ml": 75,
+      "aliases": [
+        "Matcha Swirl – Give Me Gourmand 75 ml",
+        "Lattafa Matcha Swirl – Give Me Gourmand 75ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND-75-000",
+      "source_evidence_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND",
+      "size_ml": 75,
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand 75 ml",
+        "Lattafa Harlequin Cream – Give Me Gourmand 75ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND-75-000",
+      "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/"
     }
   ]
 }
