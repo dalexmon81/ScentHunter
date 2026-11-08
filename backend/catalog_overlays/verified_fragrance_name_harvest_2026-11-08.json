@@ -19,7 +19,7 @@
     "games_of_spades_unverified_registry_entry": "Jack remains in the family registry as a discovery-only/historical candidate, but is not imported into the canonical product seed because no current official Jo Milano Paris listing or product detail page was verified in this pass.",
     "pending_candidates": "Bujairami Hectic and Arabiyat Prestige Mahd Al Dhahab Extrait remain discovery candidates only. Their retailer evidence is recorded, but neither was imported into the canonical seed because official brand-level identity evidence and/or concentration modeling is unresolved.",
     "bujairami_hectic": "Hectic is now admitted as a source-verified canonical name from the official Bujairami product page. Concentration, volume and GTIN are not imported because the official detail page omits them and retailer sources conflict.",
-    "mahd_al_dhahab_extrait": "Kept pending primary brand/distributor product detail. Retailer evidence and independent database are strong corroboration but are not substituted for brand-level confirmation."
+    "mahd_al_dhahab_extrait": "Confirmed as a distinct canonical fragrance identity from the EDP. MyPerfumes Europe official Arabiyat perfumes store product detail identifies Extrait de Parfum 60 ml. Do not merge into EDP identity."
   },
   "summary": {
     "product_name_candidates": 173,
@@ -1381,25 +1381,20 @@
     {
       "brand": "Arabiyat Prestige",
       "fragrance_name": "Mahd Al Dhahab Extrait",
-      "evidence_source": "Essência Árabe",
-      "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
-      "evidence_level": "multiple_retailer_and_independent_database_cross_check_pending_brand_source",
-      "variant_details": "Retailers and independent perfume database distinguish this 2026 Extrait release from Mahd Al Dhahab EDP. Do not add as canonical identity until official brand/distributor primary source is confirmed; do not model as an EDP variant.",
+      "evidence_source": "MyPerfumes Europe official Arabiyat perfumes store / product detail",
+      "source_url": "https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait",
+      "evidence_level": "official_brand_store_product_detail",
+      "variant_details": "Official Arabiyat perfumes store lists this as Extrait de Parfum 60 ml. Kept as a distinct canonical identity from Mahd Al Dhahab EDP; explicit 60 ml Extrait variant created.",
       "cross_check_sources": [
         {
           "url": "https://fenicethebrand.pt/collections/arabiyat-prestige",
           "publisher": "Fenice retailer",
-          "note": "Lists Mahd Al Dhahab Extrait Parfum separately from Mahd Al Dhahab 100 ml."
-        },
-        {
-          "url": "https://arabicparfums.com/products/mahd-al-dhahab-extrait-arabiyat-prestige",
-          "publisher": "Arabic Parfums retailer",
-          "note": "Lists an Extrait de Parfum 60 ml presentation; product page is retailer evidence, not the brand's official site."
+          "note": "Lists Mahd Al Dhahab EDP 100 ml and Mahd Al Dhahab Extrait Parfum as separate products."
         },
         {
           "url": "https://www.parfumo.com/Perfumes/arabiyat-prestige/mahd-al-dhahab-extrait",
-          "publisher": "Parfumo",
-          "note": "Independent perfume database identifies a 2026 Arabiyat Prestige Extrait release."
+          "publisher": "Parfumo independent perfume database",
+          "note": "Lists the Extrait as a 2026 Arabiyat Prestige release."
         }
       ]
     },
