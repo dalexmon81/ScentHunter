@@ -36,11 +36,15 @@ All 11 individual brand product pages explicitly show 100 ml.
 - Leaves concentration absent for Gladiators Oath, Maestro's Symphony, Nile Whispers, Oud Beyond the Wall, Oud Satin, and Romance Reverie. Their product pages show size and fragrance notes, but do not explicitly state concentration in the retrieved detail content.
 - Adds no prices, retailer offers, stock, shipping, or availability data.
 
+## Additional legacy-name reconciliation
+
+- The family registry contained the misspelling `Attratus`; the official Pendora Scents collection and individual brand page show `Attractus`. The typo is now an alias of the existing Attractus canonical identity, not a separate product.
+- The registry also contained `Harrier Absoulte`; the existing canonical identity is `Harrier Absolute`. The typo is now an alias of that existing record. Its current catalog evidence remains the brand's general collection listing; no individual official product page was located, so its source confidence is not upgraded.
+
 ## Deliberate exclusions
 
 - The 50 ml Signature Set is a multi-fragrance gift set, not a single canonical fragrance identity.
 - Thailand Oud in Cairo already has a separate catalogue status and was not part of this registry gap.
-- Registry spellings `Attratus` and `Harrier Absoulte` remain unresolved discovery entries. They are not silently converted into product identities or corrected without a verified brand-owned detail page.
 
 ## Snapshot after change
 
