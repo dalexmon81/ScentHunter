@@ -32507,6 +32507,22 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://bujairami.com.au/products/hectic-inspired-by-louis-vuitton-imagination-extrait"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-MAHD-AL-DHAHAB-EXTRAIT",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Mahd Al Dhahab Extrait",
+      "name": "Mahd Al Dhahab Extrait",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Mahd Al Dhahab Extrait",
+      "aliases": [
+        "Mahd Al Dhahab Extrait",
+        "Arabiyat Prestige Mahd Al Dhahab Extrait",
+        "Mahd Al Dhahab Extrait De Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/products/mahd-al-dhahab-extrait"
     }
   ],
   "variants": [
@@ -34883,6 +34899,16 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-LAVISH-BLUSH-LAFEDE14-100-000",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-MAHD-AL-DHAHAB-EXTRAIT",
+      "size_ml": 60,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Mahd Al Dhahab Extrait 60 ml",
+        "Arabiyat Prestige Mahd Al Dhahab Extrait 60ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-MAHD-AL-DHAHAB-EXTRAIT-60-000"
     }
   ]
 }
