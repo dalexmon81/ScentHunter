@@ -10561,6 +10561,55 @@
           "formats_ml": [
             110
           ]
+        },
+        {
+          "canonical_name": "Belle",
+          "aliases": [
+            "Belle",
+            "Gulf Orchid Belle"
+          ]
+        },
+        {
+          "canonical_name": "Amour",
+          "aliases": [
+            "Amour",
+            "Gulf Orchid Amour"
+          ]
+        },
+        {
+          "canonical_name": "Chic",
+          "aliases": [
+            "Chic",
+            "Gulf Orchid Chic"
+          ]
+        },
+        {
+          "canonical_name": "Phantom",
+          "aliases": [
+            "Phantom",
+            "Gulf Orchid Phantom"
+          ]
+        },
+        {
+          "canonical_name": "Flamma",
+          "aliases": [
+            "Flamma",
+            "Gulf Orchid Flamma"
+          ]
+        },
+        {
+          "canonical_name": "Vortex",
+          "aliases": [
+            "Vortex",
+            "Gulf Orchid Vortex"
+          ]
+        },
+        {
+          "canonical_name": "Rosalia",
+          "aliases": [
+            "Rosalia",
+            "Gulf Orchid Rosalia"
+          ]
         }
       ]
     },
