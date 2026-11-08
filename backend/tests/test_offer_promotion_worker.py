@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -14,7 +14,9 @@ from app.services.product_normalization import normalize_product
 from app.workers.offer_promotion import promote_matched_offers
 
 
-def setup_db(availability="in_stock", captured_at="2025-01-02T03:04:05+00:00", offer_ttl_minutes=1440):
+def setup_db(availability="in_stock", captured_at=None, offer_ttl_minutes=1440):
+    if captured_at is None:
+        captured_at = datetime.now(timezone.utc).isoformat()
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
@@ -67,13 +69,12 @@ def test_promotion_creates_offer_history_and_audit():
         assert len(offers) == len(history) == len(audits) == 1
         assert offers[0].price == Decimal("90.50")
         assert offers[0].status == "active"
-        expected_capture = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        raw_capture = datetime.fromisoformat(raw.raw_payload["capturedAt"])
+        expected_capture = raw_capture.astimezone(timezone.utc)
+        expected_expiry = expected_capture + timedelta(minutes=1440)
         assert offers[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
-        assert offers[0].valid_until.replace(tzinfo=timezone.utc) == expected_capture.replace(day=3)
+        assert offers[0].valid_until.replace(tzinfo=timezone.utc) == expected_expiry
         assert history[0].captured_at.replace(tzinfo=timezone.utc) == expected_capture
-        assert offers[0].valid_until.replace(tzinfo=timezone.utc) == datetime(
-            2025, 1, 3, 3, 4, 5, tzinfo=timezone.utc
-        )
         assert history[0].price == Decimal("90.50")
         assert audits[0].method == "canonical_key_exact"
         assert raw.status == "promoted"
@@ -250,7 +251,7 @@ def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
         raw.rejection_reason = None
         raw.raw_payload = {
             **raw.raw_payload,
-            "capturedAt": "2025-02-01T10:30:00+00:00",
+            "capturedAt": datetime.now(timezone.utc).isoformat(),
             "price": "88.00",
         }
         session.commit()
@@ -260,12 +261,9 @@ def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
     with factory() as session:
         offer = session.scalar(select(Offer))
         assert offer.price == Decimal("88.00")
-        assert offer.captured_at.replace(tzinfo=timezone.utc) == datetime(
-            2025, 2, 1, 10, 30, tzinfo=timezone.utc
-        )
-        assert offer.valid_until.replace(tzinfo=timezone.utc) == datetime(
-            2025, 2, 2, 10, 30, tzinfo=timezone.utc
-        )
+        expected_capture = datetime.fromisoformat(raw.raw_payload["capturedAt"]).astimezone(timezone.utc)
+        assert offer.captured_at.replace(tzinfo=timezone.utc) == expected_capture
+        assert offer.valid_until.replace(tzinfo=timezone.utc) == expected_capture + timedelta(minutes=1440)
 
 
 
@@ -313,3 +311,35 @@ def test_unexpected_error_rolls_back_entire_offer_promotion_batch(monkeypatch):
         assert session.scalars(select(MatchAudit)).all() == []
         assert session.get(IngestionRaw, first_raw_id).status == "matched"
         assert session.get(IngestionRaw, second_raw_id).status == "matched"
+
+
+
+def test_stale_source_capture_is_blocked_from_publication():
+    stale_capture = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+    factory, raw_id = setup_db(captured_at=stale_capture, offer_ttl_minutes=1440)
+
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        assert session.scalars(select(PriceHistory)).all() == []
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "promotion_blocked:source_capture_expired" == raw.rejection_reason
+
+
+def test_future_source_capture_is_blocked_from_publication():
+    future_capture = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    factory, raw_id = setup_db(captured_at=future_capture)
+
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "promotion_blocked:source_capture_time_in_future" == raw.rejection_reason
