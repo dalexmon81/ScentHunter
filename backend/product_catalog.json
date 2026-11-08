@@ -3730,7 +3730,9 @@
       "family_name": "Shiyaaka Snow",
       "aliases": [
         "Shiyaaka Snow",
-        "Khadlaj Shiyaaka Snow"
+        "Khadlaj Shiyaaka Snow",
+        "Special Edition Shiyaaka Snow",
+        "Khadlaj Special Edition Shiyaaka Snow"
       ],
       "formats_ml": [
         100
@@ -32024,10 +32026,18 @@
       "family_name": "Ghadeer Silver",
       "aliases": [
         "Ghadeer Silver",
-        "Khadlaj Ghadeer Silver"
+        "Khadlaj Ghadeer Silver",
+        "Ghadeer Silver Women",
+        "Ghadeer Silver for Women",
+        "Khadlaj Ghadeer Silver Women"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/ghadeer-silver-100-ml-edp-spray-for-men-women-best-edp-perfume-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/ghadeer-silver-100-ml-edp-spray-for-men-women-best-edp-perfume-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-108",
@@ -33248,6 +33258,188 @@
         100
       ],
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-dd52c839",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Barwaaz Saddle Brown",
+      "name": "Barwaaz Saddle Brown",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Barwaaz Saddle Brown",
+      "aliases": [
+        "Barwaaz Saddle Brown",
+        "Khadlaj Barwaaz Saddle Brown"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://kw.khadlaj-perfumes.com/products/barwaaz-saddle-brown-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://kw.khadlaj-perfumes.com/products/barwaaz-saddle-brown-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-9d09370a",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Nuha",
+      "name": "Nuha",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Nuha",
+      "aliases": [
+        "Nuha",
+        "Khadlaj Nuha"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae/products/nuha-85-ml-edp-spray-perfume-for-women-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae/products/nuha-85-ml-edp-spray-perfume-for-women-dubai-uae",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-4a895b47",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ghadeer Gold",
+      "name": "Ghadeer Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Ghadeer Gold",
+      "aliases": [
+        "Ghadeer Gold",
+        "Khadlaj Ghadeer Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-17ed8d74",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Wa Oud",
+      "name": "Musk Wa Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Musk Wa Oud",
+      "aliases": [
+        "Musk Wa Oud",
+        "Khadlaj Musk Wa Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://kw.khadlaj-perfumes.com/products/musk-wa-oud-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://kw.khadlaj-perfumes.com/products/musk-wa-oud-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-5225f31d",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Private Blend Tobac Extra",
+      "name": "Private Blend Tobac Extra",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Private Blend Tobac Extra",
+      "aliases": [
+        "Private Blend Tobac Extra",
+        "Khadlaj Private Blend Tobac Extra"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-5c2ad300",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rasayel Shagaf",
+      "name": "Rasayel Shagaf",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rasayel Shagaf",
+      "aliases": [
+        "Rasayel Shagaf",
+        "Khadlaj Rasayel Shagaf"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-c825233b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rasayel Vid",
+      "name": "Rasayel Vid",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rasayel Vid",
+      "aliases": [
+        "Rasayel Vid",
+        "Khadlaj Rasayel Vid"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-1c80aefe",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Vanilla Milk",
+      "name": "La Fede Aura Vanilla Milk",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Aura Vanilla Milk",
+      "aliases": [
+        "La Fede Aura Vanilla Milk",
+        "Khadlaj La Fede Aura Vanilla Milk",
+        "Aura Vanilla Milk",
+        "Khadlaj Aura Vanilla Milk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/la-fede-aura-vanilla-milk-100-ml-edp-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/la-fede-aura-vanilla-milk-100-ml-edp-spray-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-7c18a02b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Desert Rose",
+      "name": "Desert Rose",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Desert Rose",
+      "aliases": [
+        "Desert Rose",
+        "Khadlaj Desert Rose"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-THESHOWMAGNIFIQUE",
@@ -37252,6 +37444,106 @@
       "aliases": [
         "Musk Rasaas 100 ml",
         "Khadlaj Musk Rasaas 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-dd52c839",
+      "variant_id": "SHV-SH-KHADLAJ-dd52c839-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Barwaaz Saddle Brown 100 ml",
+        "Khadlaj Barwaaz Saddle Brown 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-9d09370a",
+      "variant_id": "SHV-SH-KHADLAJ-9d09370a-85-000",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nuha 85 ml",
+        "Khadlaj Nuha 85ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-4a895b47",
+      "variant_id": "SHV-SH-KHADLAJ-4a895b47-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ghadeer Gold 100 ml",
+        "Khadlaj Ghadeer Gold 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-17ed8d74",
+      "variant_id": "SHV-SH-KHADLAJ-17ed8d74-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Wa Oud 100 ml",
+        "Khadlaj Musk Wa Oud 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-5225f31d",
+      "variant_id": "SHV-SH-KHADLAJ-5225f31d-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Private Blend Tobac Extra 100 ml",
+        "Khadlaj Private Blend Tobac Extra 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-5c2ad300",
+      "variant_id": "SHV-SH-KHADLAJ-5c2ad300-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rasayel Shagaf 100 ml",
+        "Khadlaj Rasayel Shagaf 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-c825233b",
+      "variant_id": "SHV-SH-KHADLAJ-c825233b-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rasayel Vid 100 ml",
+        "Khadlaj Rasayel Vid 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-1c80aefe",
+      "variant_id": "SHV-SH-KHADLAJ-1c80aefe-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Aura Vanilla Milk 100 ml",
+        "Khadlaj La Fede Aura Vanilla Milk 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-7c18a02b",
+      "variant_id": "SHV-SH-KHADLAJ-7c18a02b-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Desert Rose 100 ml",
+        "Khadlaj Desert Rose 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-107",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-107-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ghadeer Silver 100 ml",
+        "Khadlaj Ghadeer Silver 100ml"
       ]
     },
     {
