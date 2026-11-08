@@ -53,9 +53,45 @@ class KhadlajCatalogParityTests(unittest.TestCase):
         self.assertGreater(len(sprays["products"]), 0)
 
     def test_perfume_oil_identity_is_not_recast_as_a_spray_variant(self):
-        maya = next(p for p in next(f for f in self.families if f["family_id"] == "khadlaj_catalog")["products"] if p["canonical_name"] == "Maya")
+        maya = next(p for p in self.products if p["canonical_name"] == "Maya")
         self.assertEqual(maya.get("formats_ml"), [20])
-        self.assertFalse(any(p["canonical_name"] == "Maya" for p in self.products))
+        self.assertEqual(maya.get("concentration"), "Perfume Oil")
+        variants = [
+            v for v in CATALOG["variants"]
+            if v.get("product_id") == maya["product_id"]
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("size_ml"), 20)
+        self.assertEqual(variants[0].get("concentration"), "Perfume Oil")
+
+
+
+    def test_all_khadlaj_variants_have_source_evidence_and_no_duplicate_skus(self):
+        ids = {p["product_id"] for p in self.products}
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") in ids]
+        self.assertEqual(len(variants), 226)
+        self.assertTrue(all(v.get("source_evidence_url") for v in variants))
+        keys = [(v["product_id"], v["size_ml"], v.get("concentration")) for v in variants]
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_musk_pure_musk_blend_creation_of_iqbal_is_an_alias_not_a_second_identity(self):
+        rows = [p for p in self.products if p["canonical_name"] == "Musk Pure Musk Blend"]
+        self.assertEqual(len(rows), 1)
+        self.assertIn("Musk Pure Musk Blend Creation of Iqbal", rows[0].get("aliases", []))
+        self.assertFalse(any(p["canonical_name"] == "Musk Pure Musk Blend Creation of Iqbal" for p in self.products))
+
+    def test_rasayel_vid_is_edp_and_saqr_concentration_remains_unset(self):
+        rasayel = next(p for p in self.products if p["canonical_name"] == "Rasayel Vid")
+        self.assertEqual(rasayel.get("concentration"), "Eau de Parfum")
+        rasayel_variants = [v for v in CATALOG["variants"] if v.get("product_id") == rasayel["product_id"]]
+        self.assertEqual(len(rasayel_variants), 1)
+        self.assertEqual(rasayel_variants[0].get("concentration"), "Eau de Parfum")
+        saqr = next(p for p in self.products if p["canonical_name"] == "Saqr Al Badiya")
+        self.assertEqual(saqr.get("formats_ml"), [100])
+        self.assertNotIn("concentration", saqr)
+        saqr_variants = [v for v in CATALOG["variants"] if v.get("product_id") == saqr["product_id"]]
+        self.assertEqual(len(saqr_variants), 1)
+        self.assertNotIn("concentration", saqr_variants[0])
 
 
 if __name__ == "__main__":
