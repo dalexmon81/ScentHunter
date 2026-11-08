@@ -32,13 +32,22 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(pairs), len(set(pairs)))
 
-    def test_new_rows_remain_name_only(self):
+    def test_new_rows_remain_name_only_except_officially_sized_oud_pure_barakat(self):
         for product in self.catalog["products"]:
             if product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
                 self.assertEqual(product["identity_status"], "source_listed_name")
                 self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
+                if product["canonical_name"] == "Oud Pure Oud Barakat":
+                    self.assertEqual(product.get("formats_ml"), [60])
+                    self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                    continue
                 self.assertNotIn("concentration", product)
                 self.assertNotIn("formats_ml", product)
+
+    def test_oud_pure_oud_barakat_variant_is_supported_by_official_collection(self):
+        product = next(p for p in self.catalog["products"] if p.get("brand") == "Khadlaj" and p["canonical_name"] == "Oud Pure Oud Barakat")
+        variants = [v for v in self.catalog["variants"] if v.get("product_id") == product["product_id"]]
+        self.assertTrue(any(v.get("size_ml") == 60 and v.get("concentration") == "Eau de Parfum" and v.get("source_evidence_url") for v in variants))
 
 if __name__ == "__main__":
     unittest.main()
