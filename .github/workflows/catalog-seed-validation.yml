@@ -86,4 +86,5 @@ jobs:
           backend.tests.test_games_of_spades_official_page_variants
           backend.tests.test_velixir_official_product_variants
           backend.tests.test_mykonos_official_detail_evidence
+          backend.tests.test_bujairami_original_detail_evidence
           -v
