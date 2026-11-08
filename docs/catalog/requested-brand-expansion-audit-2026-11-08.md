@@ -120,3 +120,20 @@ Official source collection: https://shop-gulforchid.com/collections/gulf-orchid-
 Maison Asrar cross-check: official all-products page reports 130 products, but its visible first-page listing exposes only a subset and the page includes non-perfume categories in the navigation. Its Royal Collection contains 9 products; all 9 names are already present in the catalog. The separate Maison Asrar catalog remains subject to a full pagination/product-type audit; do not equate the total 130 with 130 perfume identities.
 
 Velixir cross-check: the official range is reported as 28 perfumes; the current catalog already contains 28 Velixir identities. The opened full-range listing is an independent reseller's reproduction of brand-site information, so it is used as a cross-check rather than direct official source proof. Source: https://velixirperfumes.eu/perfumes/ .
+
+
+## Aromatix line verification — 2026-11-08
+
+The Shop Aromatix signature collaboration page identifies a ten-fragrance Aromatix X French Avenue collection: Teas Me, Frostbite, Naughty Dates, Sun Kissed, Forbidden Fruit, Magnetiq, Platine Blanc, X Xandal, Royal Taboo and Carnal Desire. All ten identities are already present in the catalog under the Aromatix brand; no duplicate rows were added. The shop's collection listing reports 12 products because it also contains two Summer Vibes boxed sets; these are not added as standalone perfume identities. Existing Aromatix catalog count remains 12 (the ten signature fragrances plus two other entries already present).
+
+Sources: https://shoparomatix.com/pages/aromatic-collection and https://shoparomatix.com/collections/aromatix-x-french-avenue . This verifies the collaboration line only; it does not establish a broader independent Aromatix manufacturer range.
+
+## Latest integrity snapshot
+- 1,041 canonical identities
+- 141 variant rows
+- 31 discovery families
+- Gulf Orchid: 20 identities
+- Aromatix: 12 identities
+- Paris Corner: 99 identities
+- Lattafa: 16 identities
+- 0 duplicate product IDs; 0 duplicate variant IDs; 0 orphan variants; 0 canonical products missing from the registry.
