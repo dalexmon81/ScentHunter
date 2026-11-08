@@ -48,6 +48,12 @@ EXPECTED = {
     ),
 }
 
+LOCK_KEY = {
+    "Plot Twist": "https://shop-gulforchid.com/products/plot-twist",
+    "Love Key": "https://shop-gulforchid.com/products/love-key",
+    "Unsolved Mystery": "https://shop-gulforchid.com/products/unsolved-mystery",
+}
+
 
 class MaisonAsrarOfficialFragranceTests(unittest.TestCase):
     def test_existing_identities_use_official_individual_product_pages(self):
@@ -63,6 +69,28 @@ class MaisonAsrarOfficialFragranceTests(unittest.TestCase):
                 self.assertEqual(product.get("identity_status"), "source_verified_name")
                 self.assertEqual(product.get("source_url"), url)
                 self.assertEqual(product.get("source_evidence_url"), url)
+
+
+    def test_lock_and_key_products_keep_gulf_orchid_brand_and_variant_evidence(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, url in LOCK_KEY.items():
+            product = products[name]
+            matching = [
+                row for row in variants
+                if row.get("product_id") == product.get("product_id")
+                and row.get("size_ml") == 100
+            ]
+            with self.subTest(product=name):
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), url)
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), url)
 
     def test_verified_sizes_are_synced_to_family_registry(self):
         family = next(
