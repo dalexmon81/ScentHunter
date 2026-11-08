@@ -16,7 +16,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 99,
     "Maison Asrar": 120,
-    "Khadlaj": 116,
+    "Khadlaj": 117,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
@@ -1158,6 +1158,440 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         )
         self.assertEqual(variant.get("size_ml"), 100)
         self.assertIn("Black Grapefruit 100 ml", variant.get("aliases", []))
+
+
+    def test_khadlaj_official_perfume_spray_visible_products_and_variants(self):
+        expected = {
+                  "Panache Angel Dust": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Icon": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Sawaar Vanille Blanc": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Island Dreams": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Onyx Silver": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Strawberry Shake": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Nuha Bon Bon": [
+                            85,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pure Oud Barakat": [
+                            60,
+                            "Eau de Parfum"
+                  ],
+                  "Nafais Magrib": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pure Oud Galazaid": [
+                            60,
+                            "Eau de Parfum"
+                  ],
+                  "Onyx Gold": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pure Oud Jumeirah": [
+                            60,
+                            "Eau de Parfum"
+                  ],
+                  "Shiyaaka Snow": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Ria": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Peach Velvet": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Titan": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Mansion": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Shiyaaka Shadow": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Nafais Sharq": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Island Vanilla Dunes": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Oud Pour Leather": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Cloud Candy": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Hareem Al Sultan": [
+                            75,
+                            "Eau de Parfum"
+                  ],
+                  "Island": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Private Blend Tobac Extra": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Nuha Cherry Blush": [
+                            85,
+                            "Eau de Parfum"
+                  ],
+                  "Nuha Vanilla Pearl": [
+                            85,
+                            "Eau de Parfum"
+                  ],
+                  "Azure Velvet": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Cream Velvet": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Maison L'Imaginaire": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Caffe Latte": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Saqr Al Badiya": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Opus Reborn": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Musk Pour Amber": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Fursan Brown": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Fursan White": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Sara": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Musk Pure Musk Blend": [
+                            60,
+                            "Eau de Parfum"
+                  ],
+                  "Le Prestige King": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "The Proposal Date Night": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Le Prestige Royal": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Le Prestige Empress": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Le Prestige Bold": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "The Proposal Special Occasion": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "25 Experience": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "25 Trust": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "25 Loyalty": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "25 Heritage": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "25 Integrity": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Valor Mystique": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Valor Honor": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Valor Chivalry": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Valor Enigma": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Empire Victor": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Empire Empress": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Empire Crown": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Empire Regent": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Karus Blu Spice": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Karus Secret Musk": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Karus Oud Fire": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Karus Amber Gold": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Maison Creation De Reve": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Maison Epoque Artistique": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Maison L'Or Noir": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Maison Flor Oud": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Wild Indonesian Oud": [
+                            60,
+                            "Eau de Parfum"
+                  ],
+                  "Mystical Indian Oud Pure": [
+                            60,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pour Klassik": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pour Noble": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Musk Pour Narcis": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pour Shaikh": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pour Rouge": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Pour Blueberry": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Infini Absolute": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Cashmere Warm Oud": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Cashmere Sunshine Musk": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Noir": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Sensuous Night": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Ombre Notes": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Ghadeer Silver": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Musk Al Sabah": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Oud Al Sabah": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Magnate Noble": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Magnate Premier": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Infini": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Shahi Oud": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Barwaaz Solid Grey": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Rose Couture": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Musk Couture": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Private Blend Musk Ice": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Biscotti Caramel Pop": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Biscotti Date Toffee": [
+                            100,
+                            "Extrait de Parfum"
+                  ],
+                  "Zayaan Gold": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "La Fede Celebrity Fame": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "La Fede Celebrity Crush": [
+                            100,
+                            "Eau de Parfum"
+                  ],
+                  "Ihthiraam": [
+                            60,
+                            "Extrait de Parfum"
+                  ]
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        self.assertEqual(len(expected), 96)
+        for name, (size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                product = products[name]
+                self.assertEqual(product.get("concentration"), concentration)
+                self.assertIn(size_ml, product.get("formats_ml", []))
+                matches = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                    and row.get("size_ml") == size_ml
+                    and row.get("concentration") == concentration
+                ]
+                self.assertEqual(len(matches), 1)
+
+    def test_khadlaj_new_private_blend_tobac_extra_is_a_distinct_product(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        self.assertIn("Private Blend", products)
+        self.assertIn("Private Blend Tobac Extra", products)
+        self.assertNotEqual(
+            products["Private Blend"]["product_id"],
+            products["Private Blend Tobac Extra"]["product_id"],
+        )
+        self.assertEqual(
+            products["Private Blend Tobac Extra"].get("source_url"),
+            "https://khadlaj-perfumes.com/collections/perfumes-spray/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
+        )
+
+    def test_khadlaj_sensuos_night_is_spelling_alias(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        self.assertIn("Sensuos Night", products["Sensuous Night"].get("aliases", []))
 
 if __name__ == "__main__":
     unittest.main()

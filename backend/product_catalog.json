@@ -17175,7 +17175,8 @@
       "family_name": "Musk Pure Musk Blend",
       "aliases": [
         "Musk Pure Musk Blend",
-        "Khadlaj Musk Pure Musk Blend"
+        "Khadlaj Musk Pure Musk Blend",
+        "Musk Pure Musk Blend Creation of Iqbal"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/all",
@@ -17235,7 +17236,11 @@
         "Khadlaj Cream Velvet"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-20646841",
@@ -17269,7 +17274,11 @@
         "Khadlaj Sawaar Vanille Blanc"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-263fcf43",
@@ -17303,7 +17312,11 @@
         "Khadlaj Nuha Cherry Blush"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -17356,7 +17369,11 @@
         "Khadlaj Onyx Gold"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-70d32855",
@@ -17409,7 +17426,11 @@
         "Khadlaj Nuha Vanilla Pearl"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-78fd361a",
@@ -17443,7 +17464,11 @@
         "Khadlaj Nuha Bon Bon"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-81775c55",
@@ -17660,7 +17685,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-c0a0f7d9",
@@ -17728,7 +17757,11 @@
         "Khadlaj Onyx Silver"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-ce6dbd60",
@@ -17838,7 +17871,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-IHTHIRAAM",
@@ -17854,7 +17891,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-CRUSH",
@@ -17875,7 +17916,8 @@
       "source_product_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME",
@@ -17896,7 +17938,8 @@
       "source_product_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE",
@@ -17933,7 +17976,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-MUSE",
@@ -17965,7 +18012,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-ONYX-GALAXY",
@@ -17997,7 +18048,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-PEACH-VELVET",
@@ -18013,7 +18068,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-PRIVATE-BLEND",
@@ -18076,7 +18135,11 @@
         "Khadlaj Oud Pure Oud Barakat"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-057",
@@ -18091,7 +18154,11 @@
         "Khadlaj Oud Pure Oud Galazaid"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-058",
@@ -18106,7 +18173,11 @@
         "Khadlaj Oud Pure Oud Jumeirah"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-059",
@@ -18121,7 +18192,11 @@
         "Khadlaj Hareem Al Sultan"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-060",
@@ -18136,7 +18211,11 @@
         "Khadlaj Azure Velvet"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-061",
@@ -18148,10 +18227,15 @@
       "family_name": "Maison L'Imaginaire",
       "aliases": [
         "Maison L'Imaginaire",
-        "Khadlaj Maison L'Imaginaire"
+        "Khadlaj Maison L'Imaginaire",
+        "Maison L' Imaginaire"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-062",
@@ -18166,7 +18250,11 @@
         "Khadlaj Saqr Al Badiya"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-063",
@@ -18181,7 +18269,11 @@
         "Khadlaj Opus Reborn"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-064",
@@ -18196,7 +18288,11 @@
         "Khadlaj Musk Pour Amber"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-065",
@@ -18211,7 +18307,11 @@
         "Khadlaj Fursan Brown"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-066",
@@ -18226,7 +18326,11 @@
         "Khadlaj Sara"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
@@ -18256,7 +18360,11 @@
         "Khadlaj Le Prestige King"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-069",
@@ -18271,7 +18379,11 @@
         "Khadlaj The Proposal Date Night"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-070",
@@ -18286,7 +18398,11 @@
         "Khadlaj Le Prestige Royal"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-071",
@@ -18301,7 +18417,11 @@
         "Khadlaj Le Prestige Empress"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-072",
@@ -18316,7 +18436,11 @@
         "Khadlaj Le Prestige Bold"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-073",
@@ -18331,7 +18455,11 @@
         "Khadlaj The Proposal Special Occasion"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-074",
@@ -18346,7 +18474,11 @@
         "Khadlaj 25 Experience"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-075",
@@ -18361,7 +18493,11 @@
         "Khadlaj 25 Trust"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-076",
@@ -18376,7 +18512,11 @@
         "Khadlaj 25 Loyalty"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-077",
@@ -18391,7 +18531,11 @@
         "Khadlaj 25 Heritage"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-078",
@@ -18406,7 +18550,11 @@
         "Khadlaj 25 Integrity"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-079",
@@ -18421,7 +18569,11 @@
         "Khadlaj Valor Mystique"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-080",
@@ -18436,7 +18588,11 @@
         "Khadlaj Valor Honor"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-081",
@@ -18451,7 +18607,11 @@
         "Khadlaj Valor Chivalry"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-082",
@@ -18466,7 +18626,11 @@
         "Khadlaj Valor Enigma"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-083",
@@ -18481,7 +18645,11 @@
         "Khadlaj Empire Empress"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-084",
@@ -18496,7 +18664,11 @@
         "Khadlaj Empire Crown"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-085",
@@ -18511,7 +18683,11 @@
         "Khadlaj Empire Regent"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-086",
@@ -18526,7 +18702,11 @@
         "Khadlaj Karus Blu Spice"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-087",
@@ -18541,7 +18721,11 @@
         "Khadlaj Karus Secret Musk"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-088",
@@ -18556,7 +18740,11 @@
         "Khadlaj Karus Oud Fire"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-089",
@@ -18571,7 +18759,11 @@
         "Khadlaj Karus Amber Gold"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-090",
@@ -18587,7 +18779,11 @@
         "Khadlaj Maison Creation De Reve"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-091",
@@ -18602,7 +18798,11 @@
         "Khadlaj Maison Epoque Artistique"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-092",
@@ -18617,7 +18817,11 @@
         "Khadlaj Maison L'Or Noir"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-093",
@@ -18632,7 +18836,11 @@
         "Khadlaj Maison Flor Oud"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-094",
@@ -18649,7 +18857,11 @@
         "Khadlaj Wild Indonesian Oud Pure"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-095",
@@ -18664,7 +18876,11 @@
         "Khadlaj Mystical Indian Oud Pure"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-096",
@@ -18679,7 +18895,11 @@
         "Khadlaj Oud Pour Noble"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-097",
@@ -18694,7 +18914,11 @@
         "Khadlaj Musk Pour Narcis"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-098",
@@ -18709,7 +18933,11 @@
         "Khadlaj Oud Pour Shaikh"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-099",
@@ -18724,7 +18952,11 @@
         "Khadlaj Oud Pour Rouge"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-100",
@@ -18739,7 +18971,11 @@
         "Khadlaj Oud Pour Blueberry"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-101",
@@ -18754,7 +18990,11 @@
         "Khadlaj Infini Absolute"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-102",
@@ -18769,7 +19009,11 @@
         "Khadlaj Cashmere Warm Oud"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-103",
@@ -18784,7 +19028,11 @@
         "Khadlaj Cashmere Sunshine Musk"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-104",
@@ -18799,7 +19047,11 @@
         "Khadlaj Oud Noir"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-105",
@@ -18811,10 +19063,16 @@
       "family_name": "Sensuous Night",
       "aliases": [
         "Sensuous Night",
-        "Khadlaj Sensuous Night"
+        "Khadlaj Sensuous Night",
+        "Sensuos Night"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/sensous-night-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/sensous-night-edp-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-106",
@@ -18829,7 +19087,11 @@
         "Khadlaj Ombre Notes"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-107",
@@ -18844,7 +19106,11 @@
         "Khadlaj Ghadeer Silver"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-108",
@@ -18859,7 +19125,11 @@
         "Khadlaj Musk Al Sabah"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-109",
@@ -18874,7 +19144,11 @@
         "Khadlaj Oud Al Sabah"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-110",
@@ -18889,7 +19163,11 @@
         "Khadlaj Magnate Noble"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-111",
@@ -18904,7 +19182,11 @@
         "Khadlaj Magnate Premier"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-112",
@@ -18919,7 +19201,11 @@
         "Khadlaj Infini"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-113",
@@ -18934,7 +19220,11 @@
         "Khadlaj Shahi Oud"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-114",
@@ -18949,7 +19239,11 @@
         "Khadlaj Barwaaz Solid Grey"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-115",
@@ -18964,7 +19258,11 @@
         "Khadlaj Rose Couture"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-116",
@@ -18979,7 +19277,11 @@
         "Khadlaj Musk Couture"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-STRAWBERRY-SHAKE",
@@ -18995,7 +19297,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SUENO",
@@ -19027,7 +19333,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-ZAYAAN-SILVER",
@@ -34392,6 +34702,26 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-PRIVATE-BLEND-TOBAC-EXTRA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Private Blend Tobac Extra",
+      "name": "Private Blend Tobac Extra",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Private Blend Tobac Extra",
+      "aliases": [
+        "Private Blend Tobac Extra",
+        "Khadlaj Private Blend Tobac Extra"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     }
   ],
   "variants": [
@@ -35133,10 +35463,12 @@
       "size_ml": 60,
       "aliases": [
         "Musk Pure Musk Blend 60 ml",
-        "Khadlaj Musk Pure Musk Blend 60ml"
+        "Khadlaj Musk Pure Musk Blend 60ml",
+        "Musk Pure Musk Blend Creation of Iqbal 60 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-04832397-60-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
     },
     {
       "product_id": "SH-KHADLAJ-04a500ea",
@@ -35176,7 +35508,8 @@
         "Khadlaj Caffe Latte 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-263fcf43-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -35186,27 +35519,32 @@
         "Khadlaj Island Vanilla Dunes 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-47b079b3-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-5fee5359",
       "size_ml": 100,
       "aliases": [
         "Island Dreams 100 ml",
-        "Khadlaj Island Dreams 100ml"
+        "Khadlaj Island Dreams 100ml",
+        "Khadlaj Island Dreams 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-5fee5359-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
     },
     {
       "product_id": "SH-KHADLAJ-70d32855",
       "size_ml": 100,
       "aliases": [
         "Nafais Sharq 100 ml",
-        "Khadlaj Nafais Sharq 100ml"
+        "Khadlaj Nafais Sharq 100ml",
+        "Khadlaj Nafais Sharq 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-70d32855-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-75815e2a",
@@ -35216,7 +35554,8 @@
         "Khadlaj Biscotti Date Toffee 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-75815e2a-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
     },
     {
       "product_id": "SH-KHADLAJ-78fd361a",
@@ -35226,7 +35565,8 @@
         "Khadlaj Cloud Candy 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-78fd361a-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-935bcf95",
@@ -35236,7 +35576,8 @@
         "Khadlaj Empire Victor 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-935bcf95-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
     },
     {
       "product_id": "SH-KHADLAJ-93c5a51d",
@@ -35253,10 +35594,12 @@
       "size_ml": 100,
       "aliases": [
         "Ria 100 ml",
-        "Khadlaj Ria 100ml"
+        "Khadlaj Ria 100ml",
+        "Khadlaj Ria 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-a1c6306a-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-a56e7c92",
@@ -35286,7 +35629,8 @@
         "Khadlaj Shiyaaka Shadow 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-b23ae855-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-b9170594",
@@ -35316,7 +35660,8 @@
         "Khadlaj Shiyaaka Snow 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-bbb43d66-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-c7ff964c",
@@ -35326,7 +35671,8 @@
         "Khadlaj Oud Pour Klassik 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-c7ff964c-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
     },
     {
       "product_id": "SH-KHADLAJ-cdaa81f2",
@@ -35336,27 +35682,32 @@
         "Khadlaj Fursan White 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-cdaa81f2-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
     },
     {
       "product_id": "SH-KHADLAJ-ce6dbd60",
       "size_ml": 100,
       "aliases": [
         "Titan 100 ml",
-        "Khadlaj Titan 100ml"
+        "Khadlaj Titan 100ml",
+        "Khadlaj Titan 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-ce6dbd60-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
       "size_ml": 100,
       "aliases": [
         "Island 100 ml",
-        "Khadlaj Island 100ml"
+        "Khadlaj Island 100ml",
+        "Khadlaj Island 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-d348f0b3-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
     },
     {
       "product_id": "SH-KHADLAJ-dd1434f1",
@@ -35366,7 +35717,8 @@
         "Khadlaj Private Blend Musk Ice 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-dd1434f1-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
     },
     {
       "product_id": "SH-KHADLAJ-f26d9535",
@@ -35376,7 +35728,8 @@
         "Khadlaj Panache Angel Dust 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-f26d9535-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
     },
     {
       "product_id": "SH-KHADLAJ-f492c4b4",
@@ -35395,7 +35748,8 @@
         "Khadlaj La Fede Celebrity Crush 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-CRUSH-100-EDP",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
     },
     {
       "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME",
@@ -35405,7 +35759,8 @@
         "Khadlaj La Fede Celebrity Fame 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME-100-EDP",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
     },
     {
       "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE",
@@ -38502,6 +38857,853 @@
         "Black Grapefruit 100 ml"
       ],
       "source_evidence_url": "https://maisonasrar.com/products/black-eau-de-perfum-100ml"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ICON",
+      "variant_id": "SHV-SH-KHADLAJ-ICON-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Icon 100 ml",
+        "Khadlaj Icon 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-24969f48",
+      "variant_id": "SHV-SH-KHADLAJ-24969f48-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Sawaar Vanille Blanc 100 ml",
+        "Sawaar Vanille Blanc 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ce66d76f",
+      "variant_id": "SHV-SH-KHADLAJ-ce66d76f-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Onyx Silver 100 ml",
+        "Khadlaj Onyx Silver 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-STRAWBERRY-SHAKE",
+      "variant_id": "SHV-SH-KHADLAJ-STRAWBERRY-SHAKE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Strawberry Shake 100 ml",
+        "Khadlaj Strawberry Shake 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-7ecbb58c",
+      "variant_id": "SHV-SH-KHADLAJ-7ecbb58c-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nuha Bon Bon 85 ml",
+        "Nuha Bon Bon 85 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-056",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-056-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pure Oud Barakat 60 ml",
+        "Oud Pure Oud Barakat 60 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-NAFAIS-MAGRIB",
+      "variant_id": "SHV-SH-KHADLAJ-NAFAIS-MAGRIB-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nafais Magrib 100 ml",
+        "Khadlaj Nafais Magrib 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-057",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-057-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pure Oud Galazaid 60 ml",
+        "Oud Pure Oud Galazaid 60 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-6494ea68",
+      "variant_id": "SHV-SH-KHADLAJ-6494ea68-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Onyx Gold 100 ml",
+        "Khadlaj Onyx Gold 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-058",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-058-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pure Oud Jumeirah 60 ml",
+        "Oud Pure Oud Jumeirah 60 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=1"
+    },
+    {
+      "product_id": "SH-KHADLAJ-PEACH-VELVET",
+      "variant_id": "SHV-SH-KHADLAJ-PEACH-VELVET-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Peach Velvet 100 ml",
+        "Peach Velvet 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MANSION",
+      "variant_id": "SHV-SH-KHADLAJ-MANSION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mansion 100 ml",
+        "Khadlaj Mansion 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OUD-POUR-LEATHER",
+      "variant_id": "SHV-SH-KHADLAJ-OUD-POUR-LEATHER-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pour Leather 100 ml",
+        "Oud Pour Leather 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-059",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-059-75-EDP",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Hareem Al Sultan 75 ml",
+        "Hareem Al Sultan 75 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=2"
+    },
+    {
+      "product_id": "SH-KHADLAJ-PRIVATE-BLEND-TOBAC-EXTRA",
+      "variant_id": "SHV-SH-KHADLAJ-PRIVATE-BLEND-TOBAC-EXTRA-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Private Blend Tobac Extra 100 ml",
+        "Private Blend Tobac Extra 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-37d5907b",
+      "variant_id": "SHV-SH-KHADLAJ-37d5907b-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nuha Cherry Blush 85 ml",
+        "Nuha Cherry Blush 85 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-76dd12b7",
+      "variant_id": "SHV-SH-KHADLAJ-76dd12b7-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nuha Vanilla Pearl 85 ml",
+        "Nuha Vanilla Pearl 85 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-060",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-060-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Azure Velvet 100 ml",
+        "Azure Velvet 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-142e4d1e",
+      "variant_id": "SHV-SH-KHADLAJ-142e4d1e-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Cream Velvet 100 ml",
+        "Cream Velvet 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-061",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-061-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Maison L'Imaginaire 100 ml",
+        "Maison L' Imaginaire 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-062",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-062-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Saqr Al Badiya 100 ml",
+        "Saqr Al Badiya 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-063",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-063-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Opus Reborn 100 ml",
+        "Opus Reborn 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-064",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-064-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Pour Amber 100 ml",
+        "Musk Pour Amber 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-065",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-065-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Fursan Brown 100 ml",
+        "Fursan Brown 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=3"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-066",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-066-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sara 100 ml",
+        "Sara 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-068",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-068-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Le Prestige King 100 ml",
+        "Le Prestige King 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-069",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-069-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "The Proposal Date Night 100 ml",
+        "The Proposal Date Night 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-070",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-070-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Le Prestige Royal 100 ml",
+        "Le Prestige Royal 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-071",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-071-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Le Prestige Empress 100 ml",
+        "Le Prestige Empress 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-072",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-072-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Le Prestige Bold 100 ml",
+        "Le Prestige Bold 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-073",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-073-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "The Proposal Special Occasion 100 ml",
+        "The Proposal Special Occasion 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-074",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-074-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "25 Experience 100 ml",
+        "Khadlaj 25 Experience 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-075",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-075-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "25 Trust 100 ml",
+        "Khadlaj 25 Trust 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-076",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-076-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "25 Loyalty 100 ml",
+        "Khadlaj 25 Loyalty 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-077",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-077-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "25 Heritage 100 ml",
+        "Khadlaj 25 Heritage 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=4"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-078",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-078-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "25 Integrity 100 ml",
+        "Khadlaj 25 Integrity 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-079",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-079-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Valor Mystique 100 ml",
+        "Valor Mystique 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-080",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-080-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Valor Honor 100 ml",
+        "Valor Honor 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-081",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-081-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Valor Chivalry 100 ml",
+        "Valor Chivalry 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-082",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-082-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Valor Enigma 100 ml",
+        "Valor Enigma 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-083",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-083-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Empire Empress 100 ml",
+        "Empire Empress 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-084",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-084-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Empire Crown 100 ml",
+        "Empire Crown 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-085",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-085-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Empire Regent 100 ml",
+        "Empire Regent 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-086",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-086-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Karus Blu Spice 100 ml",
+        "Karus Blu Spice 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-087",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-087-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Karus Secret Musk 100 ml",
+        "Karus Secret Musk 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-088",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-088-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Karus Oud Fire 100 ml",
+        "Karus Oud Fire 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=5"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-089",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-089-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Karus Amber Gold 100 ml",
+        "Karus Amber Gold 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-090",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-090-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Maison Creation De Reve 100 ml",
+        "Maison Creation de Reve 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-091",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-091-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Maison Epoque Artistique 100 ml",
+        "Maison Epoque Artistique 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-092",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-092-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Maison L'Or Noir 100 ml",
+        "Maison L'Or Noir 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-093",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-093-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Maison Flor Oud 100 ml",
+        "Maison Flor Oud 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-094",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-094-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Wild Indonesian Oud 60 ml",
+        "Wild Indonesian Oud Pure 60 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-095",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-095-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mystical Indian Oud Pure 60 ml",
+        "Mystical Indian Oud Pure 60 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-096",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-096-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pour Noble 100 ml",
+        "Oud Pour Noble 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-097",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-097-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Pour Narcis 100 ml",
+        "Musk Pour Narcis 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-098",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-098-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pour Shaikh 100 ml",
+        "Oud Pour Shaikh 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-099",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-099-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pour Rouge 100 ml",
+        "Oud Pour Rouge 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=6"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-100",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-100-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Pour Blueberry 100 ml",
+        "Oud Pour Blueberry 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-101",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-101-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Infini Absolute 100 ml",
+        "Infini Absolute 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-102",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-102-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cashmere Warm Oud 100 ml",
+        "Cashmere Warm Oud 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-103",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-103-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cashmere Sunshine Musk 100 ml",
+        "Cashmere Sunshine Musk 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-104",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-104-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Noir 100 ml",
+        "Oud Noir 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-105",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-105-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sensuous Night 100 ml",
+        "Sensuos Night 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-106",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-106-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ombre Notes 100 ml",
+        "Ombre Notes 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-107",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-107-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ghadeer Silver 100 ml",
+        "Ghadeer Silver 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-108",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-108-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Al Sabah 100 ml",
+        "Musk Al Sabah 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-109",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-109-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Oud Al Sabah 100 ml",
+        "Oud Al Sabah 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-110",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-110-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Magnate Noble 100 ml",
+        "Magnate Noble 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-111",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-111-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Magnate Premier 100 ml",
+        "Magnate Premier 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=7"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-112",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-112-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Infini 100 ml",
+        "Infini 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-113",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-113-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Shahi Oud 100 ml",
+        "Shahi Oud 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-114",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-114-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Barwaaz Solid Grey 100 ml",
+        "Barwaaz Solid Grey 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-115",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-115-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rose Couture 100 ml",
+        "Rose Couture 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-116",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-116-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Couture 100 ml",
+        "Musk Couture 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-KHADLAJ-BISCOTTI-CARAMEL-POP",
+      "variant_id": "SHV-SH-KHADLAJ-BISCOTTI-CARAMEL-POP-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Biscotti Caramel Pop 100 ml",
+        "Biscotti Caramel Pop 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ZAYAAN-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-ZAYAAN-GOLD-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Zayaan Gold 100 ml",
+        "Zayaan Gold 100 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
+    },
+    {
+      "product_id": "SH-KHADLAJ-IHTHIRAAM",
+      "variant_id": "SHV-SH-KHADLAJ-IHTHIRAAM-60-EXTRAIT",
+      "size_ml": 60,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Ihthiraam 60 ml",
+        "Ihthiraam 60 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray?page=8"
     }
   ]
 }

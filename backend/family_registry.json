@@ -14547,6 +14547,9 @@
           "aliases": [
             "Cream Velvet",
             "Khadlaj Cream Velvet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14651,6 +14654,9 @@
           "aliases": [
             "Karus Secret Musk",
             "Khadlaj Karus Secret Musk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14694,6 +14700,9 @@
           "aliases": [
             "Nafais Magrib",
             "Khadlaj Nafais Magrib"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14711,6 +14720,9 @@
           "aliases": [
             "Nuha Bon Bon",
             "Khadlaj Nuha Bon Bon"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {
@@ -14718,6 +14730,9 @@
           "aliases": [
             "Nuha Cherry Blush",
             "Khadlaj Nuha Cherry Blush"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {
@@ -14725,6 +14740,9 @@
           "aliases": [
             "Nuha Vanilla Pearl",
             "Khadlaj Nuha Vanilla Pearl"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {
@@ -14732,6 +14750,9 @@
           "aliases": [
             "Onyx Gold",
             "Khadlaj Onyx Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14739,6 +14760,9 @@
           "aliases": [
             "Onyx Silver",
             "Khadlaj Onyx Silver"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14810,6 +14834,9 @@
           "aliases": [
             "Sawaar Vanille Blanc",
             "Khadlaj Sawaar Vanille Blanc"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14913,6 +14940,9 @@
           "aliases": [
             "Zayaan Gold",
             "Khadlaj Zayaan Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14944,6 +14974,9 @@
           "aliases": [
             "Ihthiraam",
             "Khadlaj Ihthiraam"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -14951,6 +14984,9 @@
           "aliases": [
             "Icon",
             "Khadlaj Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14958,6 +14994,9 @@
           "aliases": [
             "Strawberry Shake",
             "Khadlaj Strawberry Shake"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14965,6 +15004,9 @@
           "aliases": [
             "Mansion",
             "Khadlaj Mansion"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14972,6 +15014,9 @@
           "aliases": [
             "Peach Velvet",
             "Khadlaj Peach Velvet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14979,6 +15024,9 @@
           "aliases": [
             "Biscotti Caramel Pop",
             "Khadlaj Biscotti Caramel Pop"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14986,6 +15034,9 @@
           "aliases": [
             "Oud Pour Leather",
             "Khadlaj Oud Pour Leather"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15000,6 +15051,16 @@
           "aliases": [
             "Sueno",
             "Khadlaj Sueno"
+          ]
+        },
+        {
+          "canonical_name": "Private Blend Tobac Extra",
+          "aliases": [
+            "Private Blend Tobac Extra",
+            "Khadlaj Private Blend Tobac Extra"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
