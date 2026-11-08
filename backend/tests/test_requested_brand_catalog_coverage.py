@@ -12,7 +12,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 76,
+    "Mykonos": 91,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -509,6 +509,50 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(matching), 1)
                 self.assertEqual(matching[0].get("concentration"), concentration)
+
+
+    def test_mykonos_current_eu_catalog_additions_and_confirmed_variants(self):
+        expected = {
+            "Daydream": ("https://mykonosperfumes.eu/products/mykonos-daydream", 100, "Extrait de Parfum"),
+            "Inception Reimagined": ("https://mykonosperfumes.eu/products/mykonos-inception-reimagined", 100, "Extrait de Parfum"),
+            "Monaco Royale Black": ("https://mykonosperfumes.eu/products/mykonos-monaco-royale-black", 50, "Extrait de Parfum"),
+            "Shape Shift": ("https://mykonosperfumes.eu/products/mykonos-shape-shift", 100, "Extrait de Parfum"),
+            "Forever Musc": ("https://mykonosperfumes.eu/products/mykonos-forever-musc", 100, "Eau de Parfum"),
+            "Soft Hour x NCT Haechan": ("https://mykonosperfumes.eu/products/mykonos-x-nct-haechan-soft-hour", 100, "Extrait de Parfum"),
+        }
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Mykonos"}
+        variants = CATALOG.get("variants", [])
+        for name, (url, size, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("source_url"), url)
+                self.assertIn(size, row.get("formats_ml", []))
+                matched = [v for v in variants if v.get("product_id") == row["product_id"] and v.get("size_ml") == size and v.get("concentration") == concentration]
+                self.assertEqual(len(matched), 1)
+        black = products["Monaco Royale Black"]
+        self.assertEqual(sorted(v.get("size_ml") for v in variants if v.get("product_id") == black["product_id"]), [50, 100])
+
+    def test_mykonos_announced_names_are_catalogued_without_guessing_variants(self):
+        expected = {
+            "Kingsman": "https://mykonosperfumes.eu/products/mykonos-kingsman",
+            "Wallflower": "https://mykonosperfumes.eu/products/mykonos-wallflower",
+            "Elysian": "https://mykonosperfumes.eu/products/mykonos-elysian",
+            "Undercover": "https://mykonosperfumes.eu/products/mykonos-undercover",
+            "Celestial": "https://mykonosperfumes.eu/products/mykonos-celestial",
+            "Café Lyon": "https://mykonosperfumes.eu/products/mykonos-cafe-lyon",
+            "President": "https://mykonosperfumes.eu/products/mykonos-president",
+            "Déjà Vu": "https://mykonosperfumes.eu/products/mykonos-deja-vu",
+            "Inspire Perfume": "https://mykonosperfumes.eu/products/mykonos-inspire",
+        }
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Mykonos"}
+        variants = CATALOG.get("variants", [])
+        for name, url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("source_url"), url)
+                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants), "Do not invent an unconfirmed size/concentration variant")
 
 if __name__ == "__main__":
     unittest.main()
