@@ -1692,3 +1692,12 @@ The harvest overlay now records these cross-checks and the reason for holding bo
 - Added official product detail URLs, updated the harvest overlay and Arabiyat Prestige family registry, and created `backend/tests/test_arabiyat_prestige_official_store.py` to verify identity provenance, variant size/concentration, registry format and uniqueness.
 - No price, stock, shipping cost, retailer offer or GTIN was imported.
 - Catalog totals after this pass: **1,943 canonical identities; 266 explicit variants**.
+
+
+## Pass 36 — Arabiyat Prestige registry synchronization and spelling deduplication (2026-11-08)
+
+- Synchronized the Arabiyat Prestige family registry with all canonical product identities in the seed. The family registry now covers the full current Arabiyat Prestige canonical set, including legacy entries that were previously absent from the registry.
+- Detected a duplicate caused by spelling variation: the existing canonical identity **Gelato Black Currant Lolly** and the official-store display title **Gelato Black Current Lolly** refer to the same product (same official product URL).
+- Kept the pre-existing canonical product ID/name, added the official-store spelling as aliases, moved the verified 100 ml EDP variant onto that canonical ID, and removed the duplicate canonical row. The variant ID itself is preserved.
+- Updated the harvest overlay and regression test to enforce one identity for both spellings.
+- Corrected catalog totals after deduplication: **1,942 canonical identities; 266 explicit variants**. No commercial offer data was added.
