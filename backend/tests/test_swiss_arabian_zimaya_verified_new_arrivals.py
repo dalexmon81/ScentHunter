@@ -18,6 +18,15 @@ EXPECTED = {
         "Siada Regal": ("https://us.zimayaperfumes.com/products/siada-regal-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/siada-regal-perfume"),
         "Siada Nova": ("https://us.zimayaperfumes.com/products/siada-nova-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/siada-nova-perfume"),
         "Nojoum": ("https://us.zimayaperfumes.com/products/nojoum-perfume-oil", 20, "Concentrated Perfume Oil", "https://us.zimayaperfumes.com/products/nojoum-perfume-oil"),
+        "Kibria Glory": ("https://us.zimayaperfumes.com/products/kibria-glory", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/kibria-glory"),
+        "Ode to Rose Royale": ("https://us.zimayaperfumes.com/products/ode-to-rose-royale", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/ode-to-rose-royale"),
+        "Ode to Rose Bella": ("https://us.zimayaperfumes.com/products/ode-to-rose-bella", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/ode-to-rose-bella"),
+        "Ghali Imperial": ("https://us.zimayaperfumes.com/products/ghali-imperial", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/ghali-imperial"),
+        "Modhesh Noble": ("https://us.zimayaperfumes.com/products/modhesh-noble-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/modhesh-noble-perfume"),
+        "Al Embratur Absolu": ("https://us.zimayaperfumes.com/products/al-embratur-absolu-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/al-embratur-absolu-perfume"),
+        "Daiman Eclipse": ("https://us.zimayaperfumes.com/products/daiman-eclipse-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/daiman-eclipse-perfume"),
+        "Daiman Eden": ("https://us.zimayaperfumes.com/products/daiman-eden-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/daiman-eden-perfume"),
+        "Sharaf Divine": ("https://us.zimayaperfumes.com/products/sharaf-divine-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/sharaf-divine-perfume"),
     },
 }
 
