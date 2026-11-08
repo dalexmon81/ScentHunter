@@ -34,11 +34,26 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
 
     def test_new_rows_remain_name_only(self):
         for product in self.catalog["products"]:
-            if product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
+            if product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-") and product["canonical_name"] != "Ghadeer Silver":
                 self.assertEqual(product["identity_status"], "source_listed_name")
                 self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
                 self.assertNotIn("concentration", product)
                 self.assertNotIn("formats_ml", product)
+
+
+    def test_ghadeer_silver_has_official_detail_and_confirmed_variant(self):
+        product = next(
+            p for p in self.catalog["products"]
+            if p.get("brand") == "Khadlaj" and p.get("canonical_name") == "Ghadeer Silver"
+        )
+        self.assertEqual(product["identity_status"], "source_verified_name")
+        self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray/products/ghadeer-silver-100-ml-edp-spray-for-men-women-best-edp-perfume-dubai-uae")
+        self.assertEqual(product["formats_ml"], [100])
+        self.assertEqual(product["concentration"], "Eau de Parfum")
+        variants = [v for v in self.catalog["variants"] if v["product_id"] == product["product_id"]]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0]["size_ml"], 100)
+        self.assertEqual(variants[0]["concentration"], "Eau de Parfum")
 
 if __name__ == "__main__":
     unittest.main()

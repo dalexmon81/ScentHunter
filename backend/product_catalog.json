@@ -3633,7 +3633,9 @@
       "family_name": "Shiyaaka For Men",
       "aliases": [
         "Shiyaaka For Men",
-        "Khadlaj Shiyaaka For Men"
+        "Khadlaj Shiyaaka For Men",
+        "Shiyaaka Men",
+        "Khadlaj Shiyaaka Men"
       ],
       "formats_ml": [
         100
@@ -3728,7 +3730,9 @@
       "family_name": "Shiyaaka Snow",
       "aliases": [
         "Shiyaaka Snow",
-        "Khadlaj Shiyaaka Snow"
+        "Khadlaj Shiyaaka Snow",
+        "Special Edition Shiyaaka Snow",
+        "Khadlaj Special Edition Shiyaaka Snow"
       ],
       "formats_ml": [
         100
@@ -18543,7 +18547,9 @@
       "family_name": "Sueno",
       "aliases": [
         "Sueno",
-        "Khadlaj Sueno"
+        "Khadlaj Sueno",
+        "Sueño",
+        "Khadlaj Sueño"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
@@ -28330,7 +28336,7 @@
       "canonical_name": "La Fede Intoxicate Mystique",
       "name": "La Fede Intoxicate Mystique",
       "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
+      "family_name": "La Fede Intoxicate Mystique",
       "aliases": [
         "La Fede Intoxicate Mystique",
         "Khadlaj La Fede Intoxicate Mystique",
@@ -28351,7 +28357,7 @@
       "canonical_name": "La Fede Celebrity Crush",
       "name": "La Fede Celebrity Crush",
       "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
+      "family_name": "La Fede Celebrity Crush",
       "aliases": [
         "La Fede Celebrity Crush",
         "Khadlaj La Fede Celebrity Crush",
@@ -28372,7 +28378,7 @@
       "canonical_name": "La Fede Celebrity Fame",
       "name": "La Fede Celebrity Fame",
       "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
+      "family_name": "La Fede Celebrity Fame",
       "aliases": [
         "La Fede Celebrity Fame",
         "Khadlaj La Fede Celebrity Fame",
@@ -31988,7 +31994,9 @@
       "family_name": "Sensuous Night",
       "aliases": [
         "Sensuous Night",
-        "Khadlaj Sensuous Night"
+        "Khadlaj Sensuous Night",
+        "Sensuos Night",
+        "Khadlaj Sensuos Night"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
@@ -32018,10 +32026,18 @@
       "family_name": "Ghadeer Silver",
       "aliases": [
         "Ghadeer Silver",
-        "Khadlaj Ghadeer Silver"
+        "Khadlaj Ghadeer Silver",
+        "Ghadeer Silver Women",
+        "Ghadeer Silver for Women",
+        "Khadlaj Ghadeer Silver Women"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/ghadeer-silver-100-ml-edp-spray-for-men-women-best-edp-perfume-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/ghadeer-silver-100-ml-edp-spray-for-men-women-best-edp-perfume-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-108",
@@ -32157,6 +32173,1273 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-b55a977b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Edge Intense",
+      "name": "La Fede Edge Intense",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Edge Intense",
+      "aliases": [
+        "La Fede Edge Intense",
+        "Khadlaj La Fede Edge Intense",
+        "Edge Intense"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-5a157be9",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Edge Original",
+      "name": "La Fede Edge Original",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Edge Original",
+      "aliases": [
+        "La Fede Edge Original",
+        "Khadlaj La Fede Edge Original",
+        "Edge Original"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-7af7285c",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Symbol of Love",
+      "name": "La Fede Symbol of Love",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Symbol of Love",
+      "aliases": [
+        "La Fede Symbol of Love",
+        "Khadlaj La Fede Symbol of Love",
+        "Symbol of Love"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-8ae50308",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Symbol of Power",
+      "name": "La Fede Symbol of Power",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Symbol of Power",
+      "aliases": [
+        "La Fede Symbol of Power",
+        "Khadlaj La Fede Symbol of Power",
+        "Symbol of Power"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-3f7ddc1c",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Choco Brown",
+      "name": "La Fede Choco Brown",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Choco Brown",
+      "aliases": [
+        "La Fede Choco Brown",
+        "Khadlaj La Fede Choco Brown",
+        "Choco Brown"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-dec7bda1",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede White Forest Strawberry",
+      "name": "La Fede White Forest Strawberry",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede White Forest Strawberry",
+      "aliases": [
+        "La Fede White Forest Strawberry",
+        "Khadlaj La Fede White Forest Strawberry",
+        "White Forest Strawberry"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-9c9ec640",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Toffee",
+      "name": "La Fede Celeste Toffee",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Celeste Toffee",
+      "aliases": [
+        "La Fede Celeste Toffee",
+        "Khadlaj La Fede Celeste Toffee",
+        "Celeste Toffee"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-efb1449b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Fleur",
+      "name": "La Fede Celeste Fleur",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Celeste Fleur",
+      "aliases": [
+        "La Fede Celeste Fleur",
+        "Khadlaj La Fede Celeste Fleur",
+        "Celeste Fleur",
+        "La Fede Celeste Fluer",
+        "Celeste Fluer"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-587ce0fe",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Joice",
+      "name": "La Fede Celeste Joice",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Celeste Joice",
+      "aliases": [
+        "La Fede Celeste Joice",
+        "Khadlaj La Fede Celeste Joice",
+        "Celeste Joice"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-fd495c5c",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celeste Aqua",
+      "name": "La Fede Celeste Aqua",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Celeste Aqua",
+      "aliases": [
+        "La Fede Celeste Aqua",
+        "Khadlaj La Fede Celeste Aqua",
+        "Celeste Aqua"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-eb8fcdbf",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Intoxicate Blue Elixir",
+      "name": "La Fede Intoxicate Blue Elixir",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Intoxicate Blue Elixir",
+      "aliases": [
+        "La Fede Intoxicate Blue Elixir",
+        "Khadlaj La Fede Intoxicate Blue Elixir",
+        "Intoxicate Blue Elixir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-01e31ce9",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Intoxicate",
+      "name": "La Fede Intoxicate",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Intoxicate",
+      "aliases": [
+        "La Fede Intoxicate",
+        "Khadlaj La Fede Intoxicate",
+        "Intoxicate"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-62cba8aa",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Manga Splash",
+      "name": "La Fede Aura Manga Splash",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Aura Manga Splash",
+      "aliases": [
+        "La Fede Aura Manga Splash",
+        "Khadlaj La Fede Aura Manga Splash",
+        "Aura Manga Splash"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ce81924e",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Pista Dessert",
+      "name": "La Fede Aura Pista Dessert",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Aura Pista Dessert",
+      "aliases": [
+        "La Fede Aura Pista Dessert",
+        "Khadlaj La Fede Aura Pista Dessert",
+        "Aura Pista Dessert"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-df852372",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Opera Noir L'Or",
+      "name": "La Fede Opera Noir L'Or",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Opera Noir L'Or",
+      "aliases": [
+        "La Fede Opera Noir L'Or",
+        "Khadlaj La Fede Opera Noir L'Or",
+        "Opera Noir L'Or"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-584c1bfa",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Opera Rose L'Or",
+      "name": "La Fede Opera Rose L'Or",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Opera Rose L'Or",
+      "aliases": [
+        "La Fede Opera Rose L'Or",
+        "Khadlaj La Fede Opera Rose L'Or",
+        "Opera Rose L'Or"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-a7fd2e6c",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Crystallia Imperio",
+      "name": "La Fede Crystallia Imperio",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Crystallia Imperio",
+      "aliases": [
+        "La Fede Crystallia Imperio",
+        "Khadlaj La Fede Crystallia Imperio",
+        "Crystallia Imperio"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-9a968e4a",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Crystallia Primaso",
+      "name": "La Fede Crystallia Primaso",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Crystallia Primaso",
+      "aliases": [
+        "La Fede Crystallia Primaso",
+        "Khadlaj La Fede Crystallia Primaso",
+        "Crystallia Primaso"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-9166c702",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Extreme Blue",
+      "name": "La Fede Magnum Extreme Blue",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Magnum Extreme Blue",
+      "aliases": [
+        "La Fede Magnum Extreme Blue",
+        "Khadlaj La Fede Magnum Extreme Blue",
+        "Magnum Extreme Blue"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-5f03348e",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Wild Green",
+      "name": "La Fede Magnum Wild Green",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Magnum Wild Green",
+      "aliases": [
+        "La Fede Magnum Wild Green",
+        "Khadlaj La Fede Magnum Wild Green",
+        "Magnum Wild Green"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-bd59f7ed",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Gold Edition",
+      "name": "La Fede Magnum Gold Edition",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Magnum Gold Edition",
+      "aliases": [
+        "La Fede Magnum Gold Edition",
+        "Khadlaj La Fede Magnum Gold Edition",
+        "Magnum Gold Edition"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-3f3c22bd",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Magnum Silver Edition",
+      "name": "La Fede Magnum Silver Edition",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Magnum Silver Edition",
+      "aliases": [
+        "La Fede Magnum Silver Edition",
+        "Khadlaj La Fede Magnum Silver Edition",
+        "Magnum Silver Edition"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-81df5138",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Kiss of Rose",
+      "name": "La Fede Aura Kiss of Rose",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Aura Kiss of Rose",
+      "aliases": [
+        "La Fede Aura Kiss of Rose",
+        "Khadlaj La Fede Aura Kiss of Rose",
+        "Aura Kiss of Rose"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-f6c0cb4b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Crisp Flower",
+      "name": "La Fede Aura Crisp Flower",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Aura Crisp Flower",
+      "aliases": [
+        "La Fede Aura Crisp Flower",
+        "Khadlaj La Fede Aura Crisp Flower",
+        "Aura Crisp Flower"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-0ab0819e",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Belle Reve Segrato Viola",
+      "name": "La Fede Belle Reve Segrato Viola",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Belle Reve Segrato Viola",
+      "aliases": [
+        "La Fede Belle Reve Segrato Viola",
+        "Khadlaj La Fede Belle Reve Segrato Viola",
+        "Belle Reve Segrato Viola"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-7da8d876",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Bella Reve Dolce Flore",
+      "name": "La Fede Bella Reve Dolce Flore",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Bella Reve Dolce Flore",
+      "aliases": [
+        "La Fede Bella Reve Dolce Flore",
+        "Khadlaj La Fede Bella Reve Dolce Flore",
+        "Bella Reve Dolce Flore"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-4df2dad4",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Statesman",
+      "name": "La Fede Statesman",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Statesman",
+      "aliases": [
+        "La Fede Statesman",
+        "Khadlaj La Fede Statesman",
+        "Statesman"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-6c7529bf",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede First Lady",
+      "name": "La Fede First Lady",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede First Lady",
+      "aliases": [
+        "La Fede First Lady",
+        "Khadlaj La Fede First Lady",
+        "First Lady"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-f0e2b5d1",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Kingsman",
+      "name": "La Fede Kingsman",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Kingsman",
+      "aliases": [
+        "La Fede Kingsman",
+        "Khadlaj La Fede Kingsman",
+        "Kingsman"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-4c16d1da",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Miss Premiere",
+      "name": "La Fede Miss Premiere",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Miss Premiere",
+      "aliases": [
+        "La Fede Miss Premiere",
+        "Khadlaj La Fede Miss Premiere",
+        "Miss Premiere"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-7268a4b4",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Marron Oud",
+      "name": "Code Marron Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Marron Oud",
+      "aliases": [
+        "Code Marron Oud",
+        "Khadlaj Code Marron Oud",
+        "La Fede Code Marron Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-f6373a38",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Rouge Amour",
+      "name": "Code Rouge Amour",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Rouge Amour",
+      "aliases": [
+        "Code Rouge Amour",
+        "Khadlaj Code Rouge Amour",
+        "La Fede Code Rouge Amour"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-cb71b9f6",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Verde Sublime",
+      "name": "Code Verde Sublime",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Verde Sublime",
+      "aliases": [
+        "Code Verde Sublime",
+        "Khadlaj Code Verde Sublime",
+        "La Fede Code Verde Sublime"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-10b532ad",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Viola Nectar",
+      "name": "Code Viola Nectar",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Viola Nectar",
+      "aliases": [
+        "Code Viola Nectar",
+        "Khadlaj Code Viola Nectar",
+        "La Fede Code Viola Nectar"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-c700dd22",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Uno Intimo",
+      "name": "Uno Intimo",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "Uno Intimo",
+      "aliases": [
+        "Uno Intimo",
+        "Khadlaj Uno Intimo",
+        "La Fede Uno Intimo"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-d6344189",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Bleu Glace",
+      "name": "Bleu Glace",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Bleu Glace",
+      "aliases": [
+        "Bleu Glace",
+        "Khadlaj Bleu Glace"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-6e7a9b21",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Gaith",
+      "name": "Gaith",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Gaith",
+      "aliases": [
+        "Gaith",
+        "Khadlaj Gaith"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-25d84944",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Hareem Al Sultan Blue",
+      "name": "Hareem Al Sultan Blue",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Hareem Al Sultan Blue",
+      "aliases": [
+        "Hareem Al Sultan Blue",
+        "Khadlaj Hareem Al Sultan Blue"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-blue-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-blue-35ml",
+      "formats_ml": [
+        35
+      ],
+      "concentration": "Concentrated Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-c3366166",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maya",
+      "name": "Maya",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Maya",
+      "aliases": [
+        "Maya",
+        "Khadlaj Maya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Concentrated Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ce126f78",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Mocha Latte",
+      "name": "Mocha Latte",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Mocha Latte",
+      "aliases": [
+        "Mocha Latte",
+        "Khadlaj Mocha Latte"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-9e6c8867",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rose And Romance",
+      "name": "Rose And Romance",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rose And Romance",
+      "aliases": [
+        "Rose And Romance",
+        "Khadlaj Rose And Romance"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-573938bc",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Uno Durable",
+      "name": "Uno Durable",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "Uno Durable",
+      "aliases": [
+        "Uno Durable",
+        "Khadlaj Uno Durable",
+        "La Fede Uno Durable"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-5559cf95",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Uno Lusso",
+      "name": "Uno Lusso",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "Uno Lusso",
+      "aliases": [
+        "Uno Lusso",
+        "Khadlaj Uno Lusso",
+        "La Fede Uno Lusso"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-cbd2f690",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Uno Sensuale",
+      "name": "Uno Sensuale",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "Uno Sensuale",
+      "aliases": [
+        "Uno Sensuale",
+        "Khadlaj Uno Sensuale",
+        "La Fede Uno Sensuale"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-a686f344",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Wow Oud",
+      "name": "Wow Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Wow Oud",
+      "aliases": [
+        "Wow Oud",
+        "Khadlaj Wow Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ca77c4bb",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Lavish Luna",
+      "name": "La Fede Lavish Luna",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Lavish Luna",
+      "aliases": [
+        "La Fede Lavish Luna",
+        "Khadlaj La Fede Lavish Luna",
+        "Lavish Luna"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-911b5613",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Lavish Rouge",
+      "name": "La Fede Lavish Rouge",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Lavish Rouge",
+      "aliases": [
+        "La Fede Lavish Rouge",
+        "Khadlaj La Fede Lavish Rouge",
+        "Lavish Rouge"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-59eacc5a",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Lavish Blush",
+      "name": "La Fede Lavish Blush",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Lavish Blush",
+      "aliases": [
+        "La Fede Lavish Blush",
+        "Khadlaj La Fede Lavish Blush",
+        "Lavish Blush"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-6b7faf21",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Pure Musk",
+      "name": "Pure Musk",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Pure Musk",
+      "aliases": [
+        "Pure Musk",
+        "Khadlaj Pure Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/discover-more/products/pure-musk-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/discover-more/products/pure-musk-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-a117683d",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Sahra",
+      "name": "Musk Sahra",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Musk Sahra",
+      "aliases": [
+        "Musk Sahra",
+        "Khadlaj Musk Sahra",
+        "Musk Sahara",
+        "Khadlaj Musk Sahara"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/discover-more/products/musk-sahra-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/discover-more/products/musk-sahra-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-0a08e32a",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Wa Ward",
+      "name": "Musk Wa Ward",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Musk Wa Ward",
+      "aliases": [
+        "Musk Wa Ward",
+        "Khadlaj Musk Wa Ward"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/discover-more/products/musk-wa-ward-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/discover-more/products/musk-wa-ward-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-d51a168b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Rasaas",
+      "name": "Musk Rasaas",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Musk Rasaas",
+      "aliases": [
+        "Musk Rasaas",
+        "Khadlaj Musk Rasaas"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/discover-more/products/musk-rasaas-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/discover-more/products/musk-rasaas-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-dd52c839",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Barwaaz Saddle Brown",
+      "name": "Barwaaz Saddle Brown",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Barwaaz Saddle Brown",
+      "aliases": [
+        "Barwaaz Saddle Brown",
+        "Khadlaj Barwaaz Saddle Brown"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://kw.khadlaj-perfumes.com/products/barwaaz-saddle-brown-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://kw.khadlaj-perfumes.com/products/barwaaz-saddle-brown-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-9d09370a",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Nuha",
+      "name": "Nuha",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Nuha",
+      "aliases": [
+        "Nuha",
+        "Khadlaj Nuha"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae/products/nuha-85-ml-edp-spray-perfume-for-women-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae/products/nuha-85-ml-edp-spray-perfume-for-women-dubai-uae",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-4a895b47",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ghadeer Gold",
+      "name": "Ghadeer Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Ghadeer Gold",
+      "aliases": [
+        "Ghadeer Gold",
+        "Khadlaj Ghadeer Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-17ed8d74",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Wa Oud",
+      "name": "Musk Wa Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Musk Wa Oud",
+      "aliases": [
+        "Musk Wa Oud",
+        "Khadlaj Musk Wa Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://kw.khadlaj-perfumes.com/products/musk-wa-oud-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://kw.khadlaj-perfumes.com/products/musk-wa-oud-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-5225f31d",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Private Blend Tobac Extra",
+      "name": "Private Blend Tobac Extra",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Private Blend Tobac Extra",
+      "aliases": [
+        "Private Blend Tobac Extra",
+        "Khadlaj Private Blend Tobac Extra"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-5c2ad300",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rasayel Shagaf",
+      "name": "Rasayel Shagaf",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rasayel Shagaf",
+      "aliases": [
+        "Rasayel Shagaf",
+        "Khadlaj Rasayel Shagaf"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-c825233b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rasayel Vid",
+      "name": "Rasayel Vid",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rasayel Vid",
+      "aliases": [
+        "Rasayel Vid",
+        "Khadlaj Rasayel Vid"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-1c80aefe",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Aura Vanilla Milk",
+      "name": "La Fede Aura Vanilla Milk",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede Aura Vanilla Milk",
+      "aliases": [
+        "La Fede Aura Vanilla Milk",
+        "Khadlaj La Fede Aura Vanilla Milk",
+        "Aura Vanilla Milk",
+        "Khadlaj Aura Vanilla Milk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/la-fede-aura-vanilla-milk-100-ml-edp-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/la-fede-aura-vanilla-milk-100-ml-edp-spray-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-7c18a02b",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Desert Rose",
+      "name": "Desert Rose",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Desert Rose",
+      "aliases": [
+        "Desert Rose",
+        "Khadlaj Desert Rose"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-THESHOWMAGNIFIQUE",
@@ -35642,6 +36925,626 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME-100-EDP",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-b55a977b",
+      "variant_id": "SHV-SH-KHADLAJ-b55a977b-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Edge Intense 100 ml",
+        "Khadlaj La Fede Edge Intense 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-5a157be9",
+      "variant_id": "SHV-SH-KHADLAJ-5a157be9-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Edge Original 100 ml",
+        "Khadlaj La Fede Edge Original 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-7af7285c",
+      "variant_id": "SHV-SH-KHADLAJ-7af7285c-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Symbol of Love 100 ml",
+        "Khadlaj La Fede Symbol of Love 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-8ae50308",
+      "variant_id": "SHV-SH-KHADLAJ-8ae50308-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Symbol of Power 100 ml",
+        "Khadlaj La Fede Symbol of Power 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-3f7ddc1c",
+      "variant_id": "SHV-SH-KHADLAJ-3f7ddc1c-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Choco Brown 100 ml",
+        "Khadlaj La Fede Choco Brown 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-dec7bda1",
+      "variant_id": "SHV-SH-KHADLAJ-dec7bda1-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede White Forest Strawberry 100 ml",
+        "Khadlaj La Fede White Forest Strawberry 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-9c9ec640",
+      "variant_id": "SHV-SH-KHADLAJ-9c9ec640-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Celeste Toffee 100 ml",
+        "Khadlaj La Fede Celeste Toffee 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-efb1449b",
+      "variant_id": "SHV-SH-KHADLAJ-efb1449b-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Celeste Fleur 100 ml",
+        "Khadlaj La Fede Celeste Fleur 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-587ce0fe",
+      "variant_id": "SHV-SH-KHADLAJ-587ce0fe-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Celeste Joice 100 ml",
+        "Khadlaj La Fede Celeste Joice 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-fd495c5c",
+      "variant_id": "SHV-SH-KHADLAJ-fd495c5c-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Celeste Aqua 100 ml",
+        "Khadlaj La Fede Celeste Aqua 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-eb8fcdbf",
+      "variant_id": "SHV-SH-KHADLAJ-eb8fcdbf-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Intoxicate Blue Elixir 100 ml",
+        "Khadlaj La Fede Intoxicate Blue Elixir 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-01e31ce9",
+      "variant_id": "SHV-SH-KHADLAJ-01e31ce9-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Intoxicate 100 ml",
+        "Khadlaj La Fede Intoxicate 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-62cba8aa",
+      "variant_id": "SHV-SH-KHADLAJ-62cba8aa-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Aura Manga Splash 100 ml",
+        "Khadlaj La Fede Aura Manga Splash 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-ce81924e",
+      "variant_id": "SHV-SH-KHADLAJ-ce81924e-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Aura Pista Dessert 100 ml",
+        "Khadlaj La Fede Aura Pista Dessert 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-df852372",
+      "variant_id": "SHV-SH-KHADLAJ-df852372-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Opera Noir L'Or 100 ml",
+        "Khadlaj La Fede Opera Noir L'Or 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-584c1bfa",
+      "variant_id": "SHV-SH-KHADLAJ-584c1bfa-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Opera Rose L'Or 100 ml",
+        "Khadlaj La Fede Opera Rose L'Or 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-a7fd2e6c",
+      "variant_id": "SHV-SH-KHADLAJ-a7fd2e6c-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Crystallia Imperio 100 ml",
+        "Khadlaj La Fede Crystallia Imperio 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-9a968e4a",
+      "variant_id": "SHV-SH-KHADLAJ-9a968e4a-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Crystallia Primaso 100 ml",
+        "Khadlaj La Fede Crystallia Primaso 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-9166c702",
+      "variant_id": "SHV-SH-KHADLAJ-9166c702-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Magnum Extreme Blue 100 ml",
+        "Khadlaj La Fede Magnum Extreme Blue 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-5f03348e",
+      "variant_id": "SHV-SH-KHADLAJ-5f03348e-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Magnum Wild Green 100 ml",
+        "Khadlaj La Fede Magnum Wild Green 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-bd59f7ed",
+      "variant_id": "SHV-SH-KHADLAJ-bd59f7ed-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Magnum Gold Edition 100 ml",
+        "Khadlaj La Fede Magnum Gold Edition 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-3f3c22bd",
+      "variant_id": "SHV-SH-KHADLAJ-3f3c22bd-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Magnum Silver Edition 100 ml",
+        "Khadlaj La Fede Magnum Silver Edition 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-81df5138",
+      "variant_id": "SHV-SH-KHADLAJ-81df5138-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Aura Kiss of Rose 100 ml",
+        "Khadlaj La Fede Aura Kiss of Rose 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-f6c0cb4b",
+      "variant_id": "SHV-SH-KHADLAJ-f6c0cb4b-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Aura Crisp Flower 100 ml",
+        "Khadlaj La Fede Aura Crisp Flower 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-0ab0819e",
+      "variant_id": "SHV-SH-KHADLAJ-0ab0819e-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Belle Reve Segrato Viola 100 ml",
+        "Khadlaj La Fede Belle Reve Segrato Viola 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-7da8d876",
+      "variant_id": "SHV-SH-KHADLAJ-7da8d876-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Bella Reve Dolce Flore 100 ml",
+        "Khadlaj La Fede Bella Reve Dolce Flore 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-4df2dad4",
+      "variant_id": "SHV-SH-KHADLAJ-4df2dad4-75-000",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Statesman 75 ml",
+        "Khadlaj La Fede Statesman 75ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-6c7529bf",
+      "variant_id": "SHV-SH-KHADLAJ-6c7529bf-75-000",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede First Lady 75 ml",
+        "Khadlaj La Fede First Lady 75ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-f0e2b5d1",
+      "variant_id": "SHV-SH-KHADLAJ-f0e2b5d1-75-000",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Kingsman 75 ml",
+        "Khadlaj La Fede Kingsman 75ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-4c16d1da",
+      "variant_id": "SHV-SH-KHADLAJ-4c16d1da-75-000",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Miss Premiere 75 ml",
+        "Khadlaj La Fede Miss Premiere 75ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-7268a4b4",
+      "variant_id": "SHV-SH-KHADLAJ-7268a4b4-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Code Marron Oud 100 ml",
+        "Khadlaj Code Marron Oud 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-f6373a38",
+      "variant_id": "SHV-SH-KHADLAJ-f6373a38-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Code Rouge Amour 100 ml",
+        "Khadlaj Code Rouge Amour 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-cb71b9f6",
+      "variant_id": "SHV-SH-KHADLAJ-cb71b9f6-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Code Verde Sublime 100 ml",
+        "Khadlaj Code Verde Sublime 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-10b532ad",
+      "variant_id": "SHV-SH-KHADLAJ-10b532ad-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Code Viola Nectar 100 ml",
+        "Khadlaj Code Viola Nectar 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-c700dd22",
+      "variant_id": "SHV-SH-KHADLAJ-c700dd22-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uno Intimo 100 ml",
+        "Khadlaj Uno Intimo 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-d6344189",
+      "variant_id": "SHV-SH-KHADLAJ-d6344189-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Bleu Glace 100 ml",
+        "Khadlaj Bleu Glace 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-6e7a9b21",
+      "variant_id": "SHV-SH-KHADLAJ-6e7a9b21-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Gaith 100 ml",
+        "Khadlaj Gaith 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-25d84944",
+      "variant_id": "SHV-SH-KHADLAJ-25d84944-35-000",
+      "size_ml": 35,
+      "concentration": "Concentrated Perfume Oil",
+      "aliases": [
+        "Hareem Al Sultan Blue 35 ml",
+        "Khadlaj Hareem Al Sultan Blue 35ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-c3366166",
+      "variant_id": "SHV-SH-KHADLAJ-c3366166-20-000",
+      "size_ml": 20,
+      "concentration": "Concentrated Perfume Oil",
+      "aliases": [
+        "Maya 20 ml",
+        "Khadlaj Maya 20ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-ce126f78",
+      "variant_id": "SHV-SH-KHADLAJ-ce126f78-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Mocha Latte 100 ml",
+        "Khadlaj Mocha Latte 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-9e6c8867",
+      "variant_id": "SHV-SH-KHADLAJ-9e6c8867-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rose And Romance 100 ml",
+        "Khadlaj Rose And Romance 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-573938bc",
+      "variant_id": "SHV-SH-KHADLAJ-573938bc-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uno Durable 100 ml",
+        "Khadlaj Uno Durable 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-5559cf95",
+      "variant_id": "SHV-SH-KHADLAJ-5559cf95-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uno Lusso 100 ml",
+        "Khadlaj Uno Lusso 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-cbd2f690",
+      "variant_id": "SHV-SH-KHADLAJ-cbd2f690-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Uno Sensuale 100 ml",
+        "Khadlaj Uno Sensuale 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-a686f344",
+      "variant_id": "SHV-SH-KHADLAJ-a686f344-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Wow Oud 100 ml",
+        "Khadlaj Wow Oud 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-ca77c4bb",
+      "variant_id": "SHV-SH-KHADLAJ-ca77c4bb-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Lavish Luna 100 ml",
+        "Khadlaj La Fede Lavish Luna 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-911b5613",
+      "variant_id": "SHV-SH-KHADLAJ-911b5613-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Lavish Rouge 100 ml",
+        "Khadlaj La Fede Lavish Rouge 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-59eacc5a",
+      "variant_id": "SHV-SH-KHADLAJ-59eacc5a-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Lavish Blush 100 ml",
+        "Khadlaj La Fede Lavish Blush 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-6b7faf21",
+      "variant_id": "SHV-SH-KHADLAJ-6b7faf21-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Pure Musk 100 ml",
+        "Khadlaj Pure Musk 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-a117683d",
+      "variant_id": "SHV-SH-KHADLAJ-a117683d-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Sahra 100 ml",
+        "Khadlaj Musk Sahra 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-0a08e32a",
+      "variant_id": "SHV-SH-KHADLAJ-0a08e32a-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Wa Ward 100 ml",
+        "Khadlaj Musk Wa Ward 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-d51a168b",
+      "variant_id": "SHV-SH-KHADLAJ-d51a168b-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Rasaas 100 ml",
+        "Khadlaj Musk Rasaas 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-dd52c839",
+      "variant_id": "SHV-SH-KHADLAJ-dd52c839-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Barwaaz Saddle Brown 100 ml",
+        "Khadlaj Barwaaz Saddle Brown 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-9d09370a",
+      "variant_id": "SHV-SH-KHADLAJ-9d09370a-85-000",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nuha 85 ml",
+        "Khadlaj Nuha 85ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-4a895b47",
+      "variant_id": "SHV-SH-KHADLAJ-4a895b47-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ghadeer Gold 100 ml",
+        "Khadlaj Ghadeer Gold 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-17ed8d74",
+      "variant_id": "SHV-SH-KHADLAJ-17ed8d74-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Musk Wa Oud 100 ml",
+        "Khadlaj Musk Wa Oud 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-5225f31d",
+      "variant_id": "SHV-SH-KHADLAJ-5225f31d-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Private Blend Tobac Extra 100 ml",
+        "Khadlaj Private Blend Tobac Extra 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-5c2ad300",
+      "variant_id": "SHV-SH-KHADLAJ-5c2ad300-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rasayel Shagaf 100 ml",
+        "Khadlaj Rasayel Shagaf 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-c825233b",
+      "variant_id": "SHV-SH-KHADLAJ-c825233b-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rasayel Vid 100 ml",
+        "Khadlaj Rasayel Vid 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-1c80aefe",
+      "variant_id": "SHV-SH-KHADLAJ-1c80aefe-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Fede Aura Vanilla Milk 100 ml",
+        "Khadlaj La Fede Aura Vanilla Milk 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-7c18a02b",
+      "variant_id": "SHV-SH-KHADLAJ-7c18a02b-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Desert Rose 100 ml",
+        "Khadlaj Desert Rose 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-107",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-107-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ghadeer Silver 100 ml",
+        "Khadlaj Ghadeer Silver 100ml"
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-PLOT-TWIST-X002",

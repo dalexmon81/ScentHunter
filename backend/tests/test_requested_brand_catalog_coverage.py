@@ -14,7 +14,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
     "Maison Asrar": 120,
-    "Khadlaj": 116,
+    "Khadlaj": 177,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
@@ -463,6 +463,201 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_khadlaj_lafede_official_collection_missing_names_have_variants(self):
+        expected = {
+            "La Fede Edge Intense": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae", 100),
+            "La Fede Edge Original": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy", 100),
+            "La Fede Symbol of Love": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj", 100),
+            "La Fede Symbol of Power": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj", 100),
+            "La Fede Choco Brown": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent", 100),
+            "La Fede White Forest Strawberry": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online", 100),
+            "La Fede Celeste Toffee": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum", 100),
+            "La Fede Celeste Fleur": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women", 100),
+            "La Fede Celeste Joice": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents", 100),
+            "La Fede Celeste Aqua": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women", 100),
+            "La Fede Intoxicate Blue Elixir": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide", 100),
+            "La Fede Intoxicate": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray", 100),
+            "La Fede Aura Manga Splash": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women", 100),
+            "La Fede Aura Pista Dessert": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy", 100),
+            "La Fede Opera Noir L'Or": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray", 100),
+            "La Fede Opera Rose L'Or": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray", 100),
+            "La Fede Crystallia Imperio": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray", 100),
+            "La Fede Crystallia Primaso": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray", 100),
+            "La Fede Magnum Extreme Blue": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray", 100),
+            "La Fede Magnum Wild Green": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray", 100),
+            "La Fede Magnum Gold Edition": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray", 100),
+            "La Fede Magnum Silver Edition": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray", 100),
+            "La Fede Aura Kiss of Rose": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women", 100),
+            "La Fede Aura Crisp Flower": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women", 100),
+            "La Fede Belle Reve Segrato Viola": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray", 100),
+            "La Fede Bella Reve Dolce Flore": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray", 100),
+            "La Fede Statesman": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae", 75),
+            "La Fede First Lady": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae", 75),
+            "La Fede Kingsman": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae", 75),
+            "La Fede Miss Premiere": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae", 75),
+            "Code Marron Oud": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae", 100),
+            "Code Rouge Amour": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae", 100),
+            "Code Verde Sublime": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae", 100),
+            "Code Viola Nectar": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae", 100),
+            "Uno Intimo": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae", 100),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == size_ml
+                    and v.get("concentration") == "Eau de Parfum"
+                ]
+                self.assertEqual(len(matching), 1)
+
+
+    def test_khadlaj_additional_official_products_and_variants(self):
+        expected = {
+            "Bleu Glace": ("https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae", 100, "Extrait de Parfum"),
+            "Gaith": ("https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae", 100, "Eau de Parfum"),
+            "Hareem Al Sultan Blue": ("https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-blue-35ml", 35, "Concentrated Perfume Oil"),
+            "Maya": ("https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae", 20, "Concentrated Perfume Oil"),
+            "Mocha Latte": ("https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae", 100, "Extrait de Parfum"),
+            "Rose And Romance": ("https://khadlaj-perfumes.com/products/rose-and-romance-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Uno Durable": ("https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Uno Lusso": ("https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Uno Sensuale": ("https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Wow Oud": ("https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray", 100, "Eau de Parfum"),
+            "La Fede Lavish Luna": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml", 100, "Eau de Parfum"),
+            "La Fede Lavish Rouge": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml", 100, "Eau de Parfum"),
+            "La Fede Lavish Blush": ("https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml", 100, "Eau de Parfum"),
+            "Pure Musk": ("https://khadlaj-perfumes.com/collections/discover-more/products/pure-musk-edp-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Musk Sahra": ("https://khadlaj-perfumes.com/collections/discover-more/products/musk-sahra-edp-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Musk Wa Ward": ("https://khadlaj-perfumes.com/collections/discover-more/products/musk-wa-ward-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Musk Rasaas": ("https://khadlaj-perfumes.com/collections/discover-more/products/musk-rasaas-edp-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == size_ml
+                    and v.get("concentration") == concentration
+                ]
+                self.assertEqual(len(matching), 1)
+
+    def test_khadlaj_aliases_do_not_create_duplicate_canonical_products(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        expected = {
+            "Shiyaaka For Men": ["Shiyaaka Men"],
+            "Sueno": ["Sueño"],
+            "Sensuous Night": ["Sensuos Night"],
+            "La Fede Celeste Fleur": ["La Fede Celeste Fluer"],
+        }
+        for canonical, aliases in expected.items():
+            with self.subTest(canonical=canonical):
+                self.assertIn(canonical, products)
+                for alias in aliases:
+                    self.assertIn(alias, products[canonical].get("aliases", []))
+
+    def test_khadlaj_products_have_family_registry_entries(self):
+        registry = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+        family_names = {
+            name
+            for family in registry.get("families", [])
+            if family.get("brand") == "Khadlaj"
+            for product in family.get("products", [])
+            for name in [product.get("canonical_name"), *product.get("aliases", [])]
+            if name
+        }
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        ]
+        missing = [
+            row.get("canonical_name") for row in products
+            if row.get("canonical_name") not in family_names
+        ]
+        self.assertEqual(missing, [])
+
+
+    def test_khadlaj_additional_official_products_and_variants(self):
+        expected = {
+            "Barwaaz Saddle Brown": ("https://kw.khadlaj-perfumes.com/products/barwaaz-saddle-brown-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Nuha": ("https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae/products/nuha-85-ml-edp-spray-perfume-for-women-dubai-uae", 85, "Eau de Parfum"),
+            "Ghadeer Gold": ("https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae", 100, "Eau de Parfum"),
+            "Musk Wa Oud": ("https://kw.khadlaj-perfumes.com/products/musk-wa-oud-spray-shop-online-best-price-in-dubai-uae", 100, "Eau de Parfum"),
+            "Private Blend Tobac Extra": ("https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men", 100, "Extrait de Parfum"),
+            "Rasayel Shagaf": ("https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men", 100, "Eau de Parfum"),
+            "Rasayel Vid": ("https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy", 100, "Eau de Parfum"),
+            "La Fede Aura Vanilla Milk": ("https://khadlaj-perfumes.com/products/la-fede-aura-vanilla-milk-100-ml-edp-spray-for-women", 100, "Eau de Parfum"),
+            "Desert Rose": ("https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae", 100, "Extrait de Parfum"),
+            "Ghadeer Silver": ("https://khadlaj-perfumes.com/collections/perfumes-spray/products/ghadeer-silver-100-ml-edp-spray-for-men-women-best-edp-perfume-dubai-uae", 100, "Eau de Parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == size_ml
+                    and v.get("concentration") == concentration
+                ]
+                self.assertEqual(len(matching), 1)
+
+    def test_khadlaj_official_name_aliases_resolve_without_duplicate_identities(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        expected = {
+            "Shiyaaka Snow": ["Special Edition Shiyaaka Snow"],
+            "Ghadeer Silver": ["Ghadeer Silver Women"],
+            "La Fede Aura Vanilla Milk": ["Aura Vanilla Milk"],
+        }
+        for canonical, aliases in expected.items():
+            with self.subTest(canonical=canonical):
+                self.assertIn(canonical, products)
+                for alias in aliases:
+                    self.assertIn(alias, products[canonical].get("aliases", []))
 
 if __name__ == "__main__":
     unittest.main()

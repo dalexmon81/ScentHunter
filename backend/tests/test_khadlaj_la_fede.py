@@ -31,6 +31,29 @@ EXPECTED = {
 }
 
 
+EXPECTED_NAMES = {
+    "La Fede Aura Crisp Flower", "La Fede Aura Kiss of Rose",
+    "La Fede Aura Manga Splash", "La Fede Aura Pista Dessert",
+    "La Fede Aura Vanilla Milk", "La Fede Bella Reve Dolce Flore",
+    "La Fede Belle Reve Segrato Viola", "La Fede Celebrity Crush",
+    "La Fede Celebrity Fame", "La Fede Celeste Aqua",
+    "La Fede Celeste Fleur", "La Fede Celeste Joice",
+    "La Fede Celeste Toffee", "La Fede Choco Brown",
+    "La Fede Crystallia Imperio", "La Fede Crystallia Primaso",
+    "La Fede Edge Intense", "La Fede Edge Original", "La Fede First Lady",
+    "La Fede Intoxicate", "La Fede Intoxicate Blue Elixir",
+    "La Fede Intoxicate Mystique", "La Fede Kingsman",
+    "La Fede Lavish Blush", "La Fede Lavish Luna", "La Fede Lavish Rouge",
+    "La Fede Magnum Extreme Blue", "La Fede Magnum Gold Edition",
+    "La Fede Magnum Silver Edition", "La Fede Magnum Wild Green",
+    "La Fede Miss Premiere", "La Fede Opera Noir L'Or",
+    "La Fede Opera Rose L'Or", "La Fede Statesman",
+    "La Fede Symbol of Love", "La Fede Symbol of Power",
+    "La Fede White Forest Strawberry", "Uno Durable", "Uno Intimo",
+    "Uno Lusso", "Uno Sensuale",
+}
+
+
 class KhadlajLaFedeTests(unittest.TestCase):
     def setUp(self):
         self.products = [
@@ -42,8 +65,8 @@ class KhadlajLaFedeTests(unittest.TestCase):
         )
 
     def test_individually_verified_la_fede_products_are_canonical(self):
-        self.assertEqual({p["canonical_name"] for p in self.products}, set(EXPECTED))
-        self.assertEqual(len(self.family["products"]), 36)
+        self.assertEqual({p["canonical_name"] for p in self.products}, EXPECTED_NAMES)
+        self.assertEqual(len(self.family["products"]), 41)
 
     def test_each_canonical_la_fede_product_has_official_detail_evidence(self):
         for name, expected in EXPECTED.items():
