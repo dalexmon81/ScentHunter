@@ -1809,6 +1809,76 @@
             "Verve",
             "Mykonos Verve"
           ]
+        },
+        {
+          "canonical_name": "Matcha Latte",
+          "aliases": [
+            "Matcha Latte",
+            "Mykonos Matcha Latte"
+          ]
+        },
+        {
+          "canonical_name": "Imperium",
+          "aliases": [
+            "Imperium",
+            "Mykonos Imperium"
+          ]
+        },
+        {
+          "canonical_name": "Mayfair",
+          "aliases": [
+            "Mayfair",
+            "Mykonos Mayfair"
+          ]
+        },
+        {
+          "canonical_name": "Monaco Royale",
+          "aliases": [
+            "Monaco Royale",
+            "Mykonos Monaco Royale"
+          ]
+        },
+        {
+          "canonical_name": "Satin Blanc",
+          "aliases": [
+            "Satin Blanc",
+            "Mykonos Satin Blanc"
+          ]
+        },
+        {
+          "canonical_name": "Senja",
+          "aliases": [
+            "Senja",
+            "Mykonos Senja"
+          ]
+        },
+        {
+          "canonical_name": "Silent Whisper",
+          "aliases": [
+            "Silent Whisper",
+            "Mykonos Silent Whisper"
+          ]
+        },
+        {
+          "canonical_name": "Stilettos",
+          "aliases": [
+            "Stilettos",
+            "Mykonos Stilettos"
+          ]
+        },
+        {
+          "canonical_name": "MyEgo",
+          "aliases": [
+            "MyEgo",
+            "Mykonos MyEgo"
+          ]
+        },
+        {
+          "canonical_name": "Invade",
+          "aliases": [
+            "Invade",
+            "Mykonos Invade"
+          ]
         }
       ]
     },
@@ -2694,6 +2764,202 @@
           "aliases": [
             "Shiyaaka Snow",
             "Khadlaj Shiyaaka Snow"
+          ]
+        },
+        {
+          "canonical_name": "Island Dreams",
+          "aliases": [
+            "Island Dreams",
+            "Khadlaj Island Dreams"
+          ]
+        },
+        {
+          "canonical_name": "Hareem Al Sultan Gold",
+          "aliases": [
+            "Hareem Al Sultan Gold",
+            "Khadlaj Hareem Al Sultan Gold"
+          ]
+        },
+        {
+          "canonical_name": "Panache Angel Dust",
+          "aliases": [
+            "Panache Angel Dust",
+            "Khadlaj Panache Angel Dust"
+          ]
+        },
+        {
+          "canonical_name": "Island",
+          "aliases": [
+            "Island",
+            "Khadlaj Island"
+          ]
+        },
+        {
+          "canonical_name": "Cream Velvet",
+          "aliases": [
+            "Cream Velvet",
+            "Khadlaj Cream Velvet"
+          ]
+        },
+        {
+          "canonical_name": "Sawaar Vanille Blanc",
+          "aliases": [
+            "Sawaar Vanille Blanc",
+            "Khadlaj Sawaar Vanille Blanc"
+          ]
+        },
+        {
+          "canonical_name": "Fursan White",
+          "aliases": [
+            "Fursan White",
+            "Khadlaj Fursan White"
+          ]
+        },
+        {
+          "canonical_name": "Cloud Candy",
+          "aliases": [
+            "Cloud Candy",
+            "Khadlaj Cloud Candy"
+          ]
+        },
+        {
+          "canonical_name": "Island Vanilla Dunes",
+          "aliases": [
+            "Island Vanilla Dunes",
+            "Khadlaj Island Vanilla Dunes"
+          ]
+        },
+        {
+          "canonical_name": "Musk Pure Musk Blend",
+          "aliases": [
+            "Musk Pure Musk Blend",
+            "Khadlaj Musk Pure Musk Blend"
+          ]
+        },
+        {
+          "canonical_name": "Caffe Latte",
+          "aliases": [
+            "Caffe Latte",
+            "Khadlaj Caffe Latte"
+          ]
+        },
+        {
+          "canonical_name": "Private Blend Musk Ice",
+          "aliases": [
+            "Private Blend Musk Ice",
+            "Khadlaj Private Blend Musk Ice"
+          ]
+        },
+        {
+          "canonical_name": "Empire Victor",
+          "aliases": [
+            "Empire Victor",
+            "Khadlaj Empire Victor"
+          ]
+        },
+        {
+          "canonical_name": "Oud Pour Klassik",
+          "aliases": [
+            "Oud Pour Klassik",
+            "Khadlaj Oud Pour Klassik"
+          ]
+        },
+        {
+          "canonical_name": "Nafais Sharq",
+          "aliases": [
+            "Nafais Sharq",
+            "Khadlaj Nafais Sharq"
+          ]
+        },
+        {
+          "canonical_name": "Karus Gold Absolu",
+          "aliases": [
+            "Karus Gold Absolu",
+            "Khadlaj Karus Gold Absolu"
+          ]
+        },
+        {
+          "canonical_name": "Ria",
+          "aliases": [
+            "Ria",
+            "Khadlaj Ria"
+          ]
+        },
+        {
+          "canonical_name": "Titan",
+          "aliases": [
+            "Titan",
+            "Khadlaj Titan"
+          ]
+        },
+        {
+          "canonical_name": "Biscotti Date Toffee",
+          "aliases": [
+            "Biscotti Date Toffee",
+            "Khadlaj Biscotti Date Toffee"
+          ]
+        },
+        {
+          "canonical_name": "Island Sun",
+          "aliases": [
+            "Island Sun",
+            "Khadlaj Island Sun"
+          ]
+        },
+        {
+          "canonical_name": "Nuha Bon Bon",
+          "aliases": [
+            "Nuha Bon Bon",
+            "Khadlaj Nuha Bon Bon"
+          ]
+        },
+        {
+          "canonical_name": "Nuha Cherry Blush",
+          "aliases": [
+            "Nuha Cherry Blush",
+            "Khadlaj Nuha Cherry Blush"
+          ]
+        },
+        {
+          "canonical_name": "Nuha Vanilla Pearl",
+          "aliases": [
+            "Nuha Vanilla Pearl",
+            "Khadlaj Nuha Vanilla Pearl"
+          ]
+        },
+        {
+          "canonical_name": "Panache Eleganza",
+          "aliases": [
+            "Panache Eleganza",
+            "Khadlaj Panache Eleganza"
+          ]
+        },
+        {
+          "canonical_name": "Onyx Gold",
+          "aliases": [
+            "Onyx Gold",
+            "Khadlaj Onyx Gold"
+          ]
+        },
+        {
+          "canonical_name": "Onyx Silver",
+          "aliases": [
+            "Onyx Silver",
+            "Khadlaj Onyx Silver"
+          ]
+        },
+        {
+          "canonical_name": "Stellar Musk",
+          "aliases": [
+            "Stellar Musk",
+            "Khadlaj Stellar Musk"
+          ]
+        },
+        {
+          "canonical_name": "Stellar Oud",
+          "aliases": [
+            "Stellar Oud",
+            "Khadlaj Stellar Oud"
           ]
         }
       ]
@@ -3950,6 +4216,1063 @@
           "aliases": [
             "Odyssey Wild One Gold Edition",
             "Armaf Odyssey Wild One Gold Edition"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Urban Man Elixir",
+          "aliases": [
+            "Club de Nuit Urban Man Elixir",
+            "Armaf Club de Nuit Urban Man Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Iconic",
+          "aliases": [
+            "Club de Nuit Iconic",
+            "Armaf Club de Nuit Iconic"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Mandarin Sky Elixir",
+          "aliases": [
+            "Odyssey Mandarin Sky Elixir",
+            "Armaf Odyssey Mandarin Sky Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Imperiale",
+          "aliases": [
+            "Club de Nuit Imperiale",
+            "Armaf Club de Nuit Imperiale"
+          ]
+        },
+        {
+          "canonical_name": "Dunescape",
+          "aliases": [
+            "Dunescape",
+            "Armaf Dunescape"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Artisto",
+          "aliases": [
+            "Odyssey Artisto",
+            "Armaf Odyssey Artisto"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Go Mango",
+          "aliases": [
+            "Odyssey Go Mango",
+            "Armaf Odyssey Go Mango"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Ba Ha Mas",
+          "aliases": [
+            "Odyssey Ba Ha Mas",
+            "Armaf Odyssey Ba Ha Mas"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Marshmallow",
+          "aliases": [
+            "Odyssey Marshmallow",
+            "Armaf Odyssey Marshmallow"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Intense Woman",
+          "aliases": [
+            "Club de Nuit Intense Woman",
+            "Armaf Club de Nuit Intense Woman"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Limoni",
+          "aliases": [
+            "Odyssey Limoni",
+            "Armaf Odyssey Limoni"
+          ]
+        },
+        {
+          "canonical_name": "Yum Yum",
+          "aliases": [
+            "Yum Yum",
+            "Armaf Yum Yum"
+          ]
+        },
+        {
+          "canonical_name": "Infinity Silver",
+          "aliases": [
+            "Infinity Silver",
+            "Armaf Infinity Silver"
+          ]
+        },
+        {
+          "canonical_name": "Ombre Oud Intense Man",
+          "aliases": [
+            "Ombre Oud Intense Man",
+            "Armaf Ombre Oud Intense Man"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Nexus",
+          "aliases": [
+            "Odyssey Nexus",
+            "Armaf Odyssey Nexus"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Jalapeach-O",
+          "aliases": [
+            "Odyssey Jalapeach-O",
+            "Armaf Odyssey Jalapeach-O"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Mandarin Sky Vintage Edition",
+          "aliases": [
+            "Odyssey Mandarin Sky Vintage Edition",
+            "Armaf Odyssey Mandarin Sky Vintage Edition"
+          ]
+        },
+        {
+          "canonical_name": "Tres Nuit Man",
+          "aliases": [
+            "Tres Nuit Man",
+            "Armaf Tres Nuit Man"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Candee Special Edition",
+          "aliases": [
+            "Odyssey Candee Special Edition",
+            "Armaf Odyssey Candee Special Edition"
+          ]
+        },
+        {
+          "canonical_name": "Checkmate King",
+          "aliases": [
+            "Checkmate King",
+            "Armaf Checkmate King"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Homme White Edition",
+          "aliases": [
+            "Odyssey Homme White Edition",
+            "Armaf Odyssey Homme White Edition"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Revolution Ultra Edition",
+          "aliases": [
+            "Odyssey Revolution Ultra Edition",
+            "Armaf Odyssey Revolution Ultra Edition"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Li'Chi Lush EDP",
+          "aliases": [
+            "Odyssey Li'Chi Lush EDP",
+            "Armaf Odyssey Li'Chi Lush EDP"
+          ]
+        },
+        {
+          "canonical_name": "Ventana Marine",
+          "aliases": [
+            "Ventana Marine",
+            "Armaf Ventana Marine"
+          ]
+        },
+        {
+          "canonical_name": "Delights Dubai Delicacy Cotton Candy",
+          "aliases": [
+            "Delights Dubai Delicacy Cotton Candy",
+            "Armaf Delights Dubai Delicacy Cotton Candy"
+          ]
+        },
+        {
+          "canonical_name": "Ombre D'Or",
+          "aliases": [
+            "Ombre D'Or",
+            "Armaf Ombre D'Or"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Toffee Coffee",
+          "aliases": [
+            "Odyssey Toffee Coffee",
+            "Armaf Odyssey Toffee Coffee"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Black Forest",
+          "aliases": [
+            "Odyssey Black Forest",
+            "Armaf Odyssey Black Forest"
+          ]
+        },
+        {
+          "canonical_name": "Beach Party",
+          "aliases": [
+            "Beach Party",
+            "Armaf Beach Party"
+          ]
+        },
+        {
+          "canonical_name": "Miss Armaf Chic",
+          "aliases": [
+            "Miss Armaf Chic",
+            "Armaf Miss Armaf Chic"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Spectra",
+          "aliases": [
+            "Odyssey Spectra",
+            "Armaf Odyssey Spectra"
+          ]
+        },
+        {
+          "canonical_name": "Old Money",
+          "aliases": [
+            "Old Money",
+            "Armaf Old Money"
+          ]
+        },
+        {
+          "canonical_name": "Island Bliss",
+          "aliases": [
+            "Island Bliss",
+            "Armaf Island Bliss"
+          ]
+        },
+        {
+          "canonical_name": "Island Breeze",
+          "aliases": [
+            "Island Breeze",
+            "Armaf Island Breeze"
+          ]
+        },
+        {
+          "canonical_name": "Perle D'Or",
+          "aliases": [
+            "Perle D'Or",
+            "Armaf Perle D'Or"
+          ]
+        },
+        {
+          "canonical_name": "Checkmate Black Knight",
+          "aliases": [
+            "Checkmate Black Knight",
+            "Armaf Checkmate Black Knight"
+          ]
+        },
+        {
+          "canonical_name": "Eter Desert Star",
+          "aliases": [
+            "Eter Desert Star",
+            "Armaf Eter Desert Star"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Spectra Blue Edition",
+          "aliases": [
+            "Odyssey Spectra Blue Edition",
+            "Armaf Odyssey Spectra Blue Edition"
+          ]
+        },
+        {
+          "canonical_name": "Uniq Oud Forever",
+          "aliases": [
+            "Uniq Oud Forever",
+            "Armaf Uniq Oud Forever"
+          ]
+        },
+        {
+          "canonical_name": "Miss Armaf Catwalk",
+          "aliases": [
+            "Miss Armaf Catwalk",
+            "Armaf Miss Armaf Catwalk"
+          ]
+        },
+        {
+          "canonical_name": "Tag Him Uomo Rosso",
+          "aliases": [
+            "Tag Him Uomo Rosso",
+            "Armaf Tag Him Uomo Rosso"
+          ]
+        },
+        {
+          "canonical_name": "Delights Bon Bon",
+          "aliases": [
+            "Delights Bon Bon",
+            "Armaf Delights Bon Bon"
+          ]
+        },
+        {
+          "canonical_name": "Scentasy Matcha Magix",
+          "aliases": [
+            "Scentasy Matcha Magix",
+            "Armaf Scentasy Matcha Magix"
+          ]
+        },
+        {
+          "canonical_name": "The Lion's Club Valer",
+          "aliases": [
+            "The Lion's Club Valer",
+            "Armaf The Lion's Club Valer"
+          ]
+        },
+        {
+          "canonical_name": "Italiano Nero Ummo Man",
+          "aliases": [
+            "Italiano Nero Ummo Man",
+            "Armaf Italiano Nero Ummo Man"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 11 Acqua Tua",
+          "aliases": [
+            "Profumi D'Art 11 Acqua Tua",
+            "Armaf Profumi D'Art 11 Acqua Tua"
+          ]
+        },
+        {
+          "canonical_name": "Infusion",
+          "aliases": [
+            "Infusion",
+            "Armaf Infusion"
+          ]
+        },
+        {
+          "canonical_name": "Hunter Intense",
+          "aliases": [
+            "Hunter Intense",
+            "Armaf Hunter Intense"
+          ]
+        },
+        {
+          "canonical_name": "Miss Armaf Mystique",
+          "aliases": [
+            "Miss Armaf Mystique",
+            "Armaf Miss Armaf Mystique"
+          ]
+        },
+        {
+          "canonical_name": "Ventana Pour Homme Parfum",
+          "aliases": [
+            "Ventana Pour Homme Parfum",
+            "Armaf Ventana Pour Homme Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Tres Jour Woman",
+          "aliases": [
+            "Tres Jour Woman",
+            "Armaf Tres Jour Woman"
+          ]
+        },
+        {
+          "canonical_name": "Special Amber Oud Pour Homme",
+          "aliases": [
+            "Special Amber Oud Pour Homme",
+            "Armaf Special Amber Oud Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Intense Man UAE National Day",
+          "aliases": [
+            "Club de Nuit Intense Man UAE National Day",
+            "Armaf Club de Nuit Intense Man UAE National Day"
+          ]
+        },
+        {
+          "canonical_name": "Bucephalus No. XII",
+          "aliases": [
+            "Bucephalus No. XII",
+            "Armaf Bucephalus No. XII"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 12 Per Me Ma",
+          "aliases": [
+            "Profumi D'Art 12 Per Me Ma",
+            "Armaf Profumi D'Art 12 Per Me Ma"
+          ]
+        },
+        {
+          "canonical_name": "The Lion's Club Majestueux",
+          "aliases": [
+            "The Lion's Club Majestueux",
+            "Armaf The Lion's Club Majestueux"
+          ]
+        },
+        {
+          "canonical_name": "Luna",
+          "aliases": [
+            "Luna",
+            "Armaf Luna"
+          ]
+        },
+        {
+          "canonical_name": "Seine Amour Belvico",
+          "aliases": [
+            "Seine Amour Belvico",
+            "Armaf Seine Amour Belvico"
+          ]
+        },
+        {
+          "canonical_name": "Ego Exotic",
+          "aliases": [
+            "Ego Exotic",
+            "Armaf Ego Exotic"
+          ]
+        },
+        {
+          "canonical_name": "Miss Armaf Attitude",
+          "aliases": [
+            "Miss Armaf Attitude",
+            "Armaf Miss Armaf Attitude"
+          ]
+        },
+        {
+          "canonical_name": "Edition One Man",
+          "aliases": [
+            "Edition One Man",
+            "Armaf Edition One Man"
+          ]
+        },
+        {
+          "canonical_name": "L'Homme Parfum Intense",
+          "aliases": [
+            "L'Homme Parfum Intense",
+            "Armaf L'Homme Parfum Intense"
+          ]
+        },
+        {
+          "canonical_name": "The Lion's Club Feroce",
+          "aliases": [
+            "The Lion's Club Feroce",
+            "Armaf The Lion's Club Feroce"
+          ]
+        },
+        {
+          "canonical_name": "Niche Black Onyx",
+          "aliases": [
+            "Niche Black Onyx",
+            "Armaf Niche Black Onyx"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 02 Voglie Di Mare",
+          "aliases": [
+            "Profumi D'Art 02 Voglie Di Mare",
+            "Armaf Profumi D'Art 02 Voglie Di Mare"
+          ]
+        },
+        {
+          "canonical_name": "High Street Woman",
+          "aliases": [
+            "High Street Woman",
+            "Armaf High Street Woman"
+          ]
+        },
+        {
+          "canonical_name": "Tag Him Man",
+          "aliases": [
+            "Tag Him Man",
+            "Armaf Tag Him Man"
+          ]
+        },
+        {
+          "canonical_name": "La Rosa Pour Femme",
+          "aliases": [
+            "La Rosa Pour Femme",
+            "Armaf La Rosa Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "Miss Armaf Voce Viva",
+          "aliases": [
+            "Miss Armaf Voce Viva",
+            "Armaf Miss Armaf Voce Viva"
+          ]
+        },
+        {
+          "canonical_name": "Miss Armaf Grandeur",
+          "aliases": [
+            "Miss Armaf Grandeur",
+            "Armaf Miss Armaf Grandeur"
+          ]
+        },
+        {
+          "canonical_name": "The Pride of Armaf Rose Oud",
+          "aliases": [
+            "The Pride of Armaf Rose Oud",
+            "Armaf The Pride of Armaf Rose Oud"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 04 The One and Only Oud",
+          "aliases": [
+            "Profumi D'Art 04 The One and Only Oud",
+            "Armaf Profumi D'Art 04 The One and Only Oud"
+          ]
+        },
+        {
+          "canonical_name": "Christian Provenzano IV",
+          "aliases": [
+            "Christian Provenzano IV",
+            "Armaf Christian Provenzano IV"
+          ]
+        },
+        {
+          "canonical_name": "SHK I by Saoud Alkaabi",
+          "aliases": [
+            "SHK I by Saoud Alkaabi",
+            "Armaf SHK I by Saoud Alkaabi"
+          ]
+        },
+        {
+          "canonical_name": "Nomad",
+          "aliases": [
+            "Nomad",
+            "Armaf Nomad"
+          ]
+        },
+        {
+          "canonical_name": "Voyage Bleu Man",
+          "aliases": [
+            "Voyage Bleu Man",
+            "Armaf Voyage Bleu Man"
+          ]
+        },
+        {
+          "canonical_name": "Momento Lace Woman",
+          "aliases": [
+            "Momento Lace Woman",
+            "Armaf Momento Lace Woman"
+          ]
+        },
+        {
+          "canonical_name": "Niche Pink Coral",
+          "aliases": [
+            "Niche Pink Coral",
+            "Armaf Niche Pink Coral"
+          ]
+        },
+        {
+          "canonical_name": "Tag Him Uomo Nero",
+          "aliases": [
+            "Tag Him Uomo Nero",
+            "Armaf Tag Him Uomo Nero"
+          ]
+        },
+        {
+          "canonical_name": "Tag Her",
+          "aliases": [
+            "Tag Her",
+            "Armaf Tag Her"
+          ]
+        },
+        {
+          "canonical_name": "Le Parfait Pour Femme",
+          "aliases": [
+            "Le Parfait Pour Femme",
+            "Armaf Le Parfait Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "Venice Noir Woman",
+          "aliases": [
+            "Venice Noir Woman",
+            "Armaf Venice Noir Woman"
+          ]
+        },
+        {
+          "canonical_name": "Le Parfait Panache",
+          "aliases": [
+            "Le Parfait Panache",
+            "Armaf Le Parfait Panache"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 07 Rosa Del Deserto",
+          "aliases": [
+            "Profumi D'Art 07 Rosa Del Deserto",
+            "Armaf Profumi D'Art 07 Rosa Del Deserto"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 10 Belin Ché Cana",
+          "aliases": [
+            "Profumi D'Art 10 Belin Ché Cana",
+            "Armaf Profumi D'Art 10 Belin Ché Cana"
+          ]
+        },
+        {
+          "canonical_name": "Orchestra Legato Lux",
+          "aliases": [
+            "Orchestra Legato Lux",
+            "Armaf Orchestra Legato Lux"
+          ]
+        },
+        {
+          "canonical_name": "Oros",
+          "aliases": [
+            "Oros",
+            "Armaf Oros"
+          ]
+        },
+        {
+          "canonical_name": "Aura",
+          "aliases": [
+            "Aura",
+            "Armaf Aura"
+          ]
+        },
+        {
+          "canonical_name": "The Pride of Armaf Pour Homme",
+          "aliases": [
+            "The Pride of Armaf Pour Homme",
+            "Armaf The Pride of Armaf Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Tag Her Donna Colorata",
+          "aliases": [
+            "Tag Her Donna Colorata",
+            "Armaf Tag Her Donna Colorata"
+          ]
+        },
+        {
+          "canonical_name": "Tag Her Donna Di Terra",
+          "aliases": [
+            "Tag Her Donna Di Terra",
+            "Armaf Tag Her Donna Di Terra"
+          ]
+        },
+        {
+          "canonical_name": "Bucephalus No. XI",
+          "aliases": [
+            "Bucephalus No. XI",
+            "Armaf Bucephalus No. XI"
+          ]
+        },
+        {
+          "canonical_name": "Shades Blue",
+          "aliases": [
+            "Shades Blue",
+            "Armaf Shades Blue"
+          ]
+        },
+        {
+          "canonical_name": "Cloud 9",
+          "aliases": [
+            "Cloud 9",
+            "Armaf Cloud 9"
+          ]
+        },
+        {
+          "canonical_name": "Mosaic Topaz Malaky",
+          "aliases": [
+            "Mosaic Topaz Malaky",
+            "Armaf Mosaic Topaz Malaky"
+          ]
+        },
+        {
+          "canonical_name": "The Pride of Armaf Pour Femme",
+          "aliases": [
+            "The Pride of Armaf Pour Femme",
+            "Armaf The Pride of Armaf Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "Le Parfait Pour Homme",
+          "aliases": [
+            "Le Parfait Pour Homme",
+            "Armaf Le Parfait Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Fraiche Intense",
+          "aliases": [
+            "Fraiche Intense",
+            "Armaf Fraiche Intense"
+          ]
+        },
+        {
+          "canonical_name": "Hunter Jungle Man",
+          "aliases": [
+            "Hunter Jungle Man",
+            "Armaf Hunter Jungle Man"
+          ]
+        },
+        {
+          "canonical_name": "Christian Provenzano III",
+          "aliases": [
+            "Christian Provenzano III",
+            "Armaf Christian Provenzano III"
+          ]
+        },
+        {
+          "canonical_name": "Niche Purple Amethyst",
+          "aliases": [
+            "Niche Purple Amethyst",
+            "Armaf Niche Purple Amethyst"
+          ]
+        },
+        {
+          "canonical_name": "Beau Star Men",
+          "aliases": [
+            "Beau Star Men",
+            "Armaf Beau Star Men"
+          ]
+        },
+        {
+          "canonical_name": "Seduction Pour Homme",
+          "aliases": [
+            "Seduction Pour Homme",
+            "Armaf Seduction Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Radical Brown Man",
+          "aliases": [
+            "Radical Brown Man",
+            "Armaf Radical Brown Man"
+          ]
+        },
+        {
+          "canonical_name": "Skye Pour Femme Woman",
+          "aliases": [
+            "Skye Pour Femme Woman",
+            "Armaf Skye Pour Femme Woman"
+          ]
+        },
+        {
+          "canonical_name": "Venetian Girl Edition Rouge Red",
+          "aliases": [
+            "Venetian Girl Edition Rouge Red",
+            "Armaf Venetian Girl Edition Rouge Red"
+          ]
+        },
+        {
+          "canonical_name": "The Pride of Armaf Admiral",
+          "aliases": [
+            "The Pride of Armaf Admiral",
+            "Armaf The Pride of Armaf Admiral"
+          ]
+        },
+        {
+          "canonical_name": "Let's Move Salsa",
+          "aliases": [
+            "Let's Move Salsa",
+            "Armaf Let's Move Salsa"
+          ]
+        },
+        {
+          "canonical_name": "Match Point",
+          "aliases": [
+            "Match Point",
+            "Armaf Match Point"
+          ]
+        },
+        {
+          "canonical_name": "Red Sky 3.4 EDP SPR",
+          "aliases": [
+            "Red Sky 3.4 EDP SPR",
+            "Armaf Red Sky 3.4 EDP SPR"
+          ]
+        },
+        {
+          "canonical_name": "Excellus Woman",
+          "aliases": [
+            "Excellus Woman",
+            "Armaf Excellus Woman"
+          ]
+        },
+        {
+          "canonical_name": "Sauville Pour Homme",
+          "aliases": [
+            "Sauville Pour Homme",
+            "Armaf Sauville Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Derby Club House Man",
+          "aliases": [
+            "Derby Club House Man",
+            "Armaf Derby Club House Man"
+          ]
+        },
+        {
+          "canonical_name": "Tres Nuit Lyric Man",
+          "aliases": [
+            "Tres Nuit Lyric Man",
+            "Armaf Tres Nuit Lyric Man"
+          ]
+        },
+        {
+          "canonical_name": "Caballo Pour Homme",
+          "aliases": [
+            "Caballo Pour Homme",
+            "Armaf Caballo Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Black Saffron",
+          "aliases": [
+            "Black Saffron",
+            "Armaf Black Saffron"
+          ]
+        },
+        {
+          "canonical_name": "SHK III by Saoud Alkaabi",
+          "aliases": [
+            "SHK III by Saoud Alkaabi",
+            "Armaf SHK III by Saoud Alkaabi"
+          ]
+        },
+        {
+          "canonical_name": "Le Parfait Adika",
+          "aliases": [
+            "Le Parfait Adika",
+            "Armaf Le Parfait Adika"
+          ]
+        },
+        {
+          "canonical_name": "Orchestra Tempo Tune",
+          "aliases": [
+            "Orchestra Tempo Tune",
+            "Armaf Orchestra Tempo Tune"
+          ]
+        },
+        {
+          "canonical_name": "Niche White Diamond",
+          "aliases": [
+            "Niche White Diamond",
+            "Armaf Niche White Diamond"
+          ]
+        },
+        {
+          "canonical_name": "Bucephalus No. XV",
+          "aliases": [
+            "Bucephalus No. XV",
+            "Armaf Bucephalus No. XV"
+          ]
+        },
+        {
+          "canonical_name": "Excellus Man",
+          "aliases": [
+            "Excellus Man",
+            "Armaf Excellus Man"
+          ]
+        },
+        {
+          "canonical_name": "Art D'Amour Pour Femme",
+          "aliases": [
+            "Art D'Amour Pour Femme",
+            "Armaf Art D'Amour Pour Femme"
+          ]
+        },
+        {
+          "canonical_name": "Venetian Girl From Venice With Love",
+          "aliases": [
+            "Venetian Girl From Venice With Love",
+            "Armaf Venetian Girl From Venice With Love"
+          ]
+        },
+        {
+          "canonical_name": "Beau Star Women",
+          "aliases": [
+            "Beau Star Women",
+            "Armaf Beau Star Women"
+          ]
+        },
+        {
+          "canonical_name": "Voyage Titan Pour Homme",
+          "aliases": [
+            "Voyage Titan Pour Homme",
+            "Armaf Voyage Titan Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Sehr Aleuyun Zarqaa",
+          "aliases": [
+            "Sehr Aleuyun Zarqaa",
+            "Armaf Sehr Aleuyun Zarqaa"
+          ]
+        },
+        {
+          "canonical_name": "Sehr Aleuyun Sawdaa",
+          "aliases": [
+            "Sehr Aleuyun Sawdaa",
+            "Armaf Sehr Aleuyun Sawdaa"
+          ]
+        },
+        {
+          "canonical_name": "Mosaic Opal Malaky",
+          "aliases": [
+            "Mosaic Opal Malaky",
+            "Armaf Mosaic Opal Malaky"
+          ]
+        },
+        {
+          "canonical_name": "Cool Ace",
+          "aliases": [
+            "Cool Ace",
+            "Armaf Cool Ace"
+          ]
+        },
+        {
+          "canonical_name": "Venetian Ambre Edition Man",
+          "aliases": [
+            "Venetian Ambre Edition Man",
+            "Armaf Venetian Ambre Edition Man"
+          ]
+        },
+        {
+          "canonical_name": "Passion Woman",
+          "aliases": [
+            "Passion Woman",
+            "Armaf Passion Woman"
+          ]
+        },
+        {
+          "canonical_name": "Just For You Femme Woman",
+          "aliases": [
+            "Just For You Femme Woman",
+            "Armaf Just For You Femme Woman"
+          ]
+        },
+        {
+          "canonical_name": "Bucephalus No. IX",
+          "aliases": [
+            "Bucephalus No. IX",
+            "Armaf Bucephalus No. IX"
+          ]
+        },
+        {
+          "canonical_name": "Niche Red Ruby",
+          "aliases": [
+            "Niche Red Ruby",
+            "Armaf Niche Red Ruby"
+          ]
+        },
+        {
+          "canonical_name": "Victory Man",
+          "aliases": [
+            "Victory Man",
+            "Armaf Victory Man"
+          ]
+        },
+        {
+          "canonical_name": "Q Uomo Perfume Man",
+          "aliases": [
+            "Q Uomo Perfume Man",
+            "Armaf Q Uomo Perfume Man"
+          ]
+        },
+        {
+          "canonical_name": "Future La Home Man",
+          "aliases": [
+            "Future La Home Man",
+            "Armaf Future La Home Man"
+          ]
+        },
+        {
+          "canonical_name": "Hunter",
+          "aliases": [
+            "Hunter",
+            "Armaf Hunter"
+          ]
+        },
+        {
+          "canonical_name": "Le Parfait Opus",
+          "aliases": [
+            "Le Parfait Opus",
+            "Armaf Le Parfait Opus"
+          ]
+        },
+        {
+          "canonical_name": "Oros Limited Edition",
+          "aliases": [
+            "Oros Limited Edition",
+            "Armaf Oros Limited Edition"
+          ]
+        },
+        {
+          "canonical_name": "Oros Pure Evening Rose",
+          "aliases": [
+            "Oros Pure Evening Rose",
+            "Armaf Oros Pure Evening Rose"
+          ]
+        },
+        {
+          "canonical_name": "Falcon",
+          "aliases": [
+            "Falcon",
+            "Armaf Falcon"
+          ]
+        },
+        {
+          "canonical_name": "Legasi Man",
+          "aliases": [
+            "Legasi Man",
+            "Armaf Legasi Man"
+          ]
+        },
+        {
+          "canonical_name": "Futura La Femme Woman",
+          "aliases": [
+            "Futura La Femme Woman",
+            "Armaf Futura La Femme Woman"
+          ]
+        },
+        {
+          "canonical_name": "Q Essence Woman",
+          "aliases": [
+            "Q Essence Woman",
+            "Armaf Q Essence Woman"
+          ]
+        },
+        {
+          "canonical_name": "Beau Acute Men",
+          "aliases": [
+            "Beau Acute Men",
+            "Armaf Beau Acute Men"
+          ]
+        },
+        {
+          "canonical_name": "The Warrior Man",
+          "aliases": [
+            "The Warrior Man",
+            "Armaf The Warrior Man"
+          ]
+        },
+        {
+          "canonical_name": "Q Intense Perfume Man",
+          "aliases": [
+            "Q Intense Perfume Man",
+            "Armaf Q Intense Perfume Man"
+          ]
+        },
+        {
+          "canonical_name": "Magnificent Blue Pour Homme",
+          "aliases": [
+            "Magnificent Blue Pour Homme",
+            "Armaf Magnificent Blue Pour Homme"
+          ]
+        },
+        {
+          "canonical_name": "Futura La Homme",
+          "aliases": [
+            "Futura La Homme",
+            "Armaf Futura La Homme"
           ]
         }
       ]
@@ -6286,6 +7609,90 @@
             "Niche Royal Vert",
             "Maison Alhambra Niche Royal Vert"
           ]
+        },
+        {
+          "canonical_name": "Philos Rosso",
+          "aliases": [
+            "Philos Rosso",
+            "Maison Alhambra Philos Rosso"
+          ]
+        },
+        {
+          "canonical_name": "Sceptre Malachite",
+          "aliases": [
+            "Sceptre Malachite",
+            "Maison Alhambra Sceptre Malachite"
+          ]
+        },
+        {
+          "canonical_name": "Your Touch",
+          "aliases": [
+            "Your Touch",
+            "Maison Alhambra Your Touch"
+          ]
+        },
+        {
+          "canonical_name": "Smoky",
+          "aliases": [
+            "Smoky",
+            "Maison Alhambra Smoky"
+          ]
+        },
+        {
+          "canonical_name": "Victorioso Nero",
+          "aliases": [
+            "Victorioso Nero",
+            "Maison Alhambra Victorioso Nero"
+          ]
+        },
+        {
+          "canonical_name": "Victorioso Myth",
+          "aliases": [
+            "Victorioso Myth",
+            "Maison Alhambra Victorioso Myth"
+          ]
+        },
+        {
+          "canonical_name": "Sceptre Amazonite",
+          "aliases": [
+            "Sceptre Amazonite",
+            "Maison Alhambra Sceptre Amazonite"
+          ]
+        },
+        {
+          "canonical_name": "Philos Centro",
+          "aliases": [
+            "Philos Centro",
+            "Maison Alhambra Philos Centro"
+          ]
+        },
+        {
+          "canonical_name": "Salvo Intense",
+          "aliases": [
+            "Salvo Intense",
+            "Maison Alhambra Salvo Intense"
+          ]
+        },
+        {
+          "canonical_name": "Sceptre Bronzite",
+          "aliases": [
+            "Sceptre Bronzite",
+            "Maison Alhambra Sceptre Bronzite"
+          ]
+        },
+        {
+          "canonical_name": "Sceptre Desert",
+          "aliases": [
+            "Sceptre Desert",
+            "Maison Alhambra Sceptre Desert"
+          ]
+        },
+        {
+          "canonical_name": "Perseus",
+          "aliases": [
+            "Perseus",
+            "Maison Alhambra Perseus"
+          ]
         }
       ]
     },
@@ -7076,6 +8483,31 @@
           "aliases": [
             "Cecil",
             "Al Ambra Cecil"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "giorgio_armani_catalog",
+      "brand": "Giorgio Armani",
+      "query_aliases": [
+        "Giorgio Armani"
+      ],
+      "products": [
+        {
+          "canonical_name": "Acqua di Gio Profondo",
+          "aliases": [
+            "Acqua di Gio Profondo",
+            "Acqua di Giò Profondo",
+            "Giorgio Armani Acqua di Gio Profondo"
+          ]
+        },
+        {
+          "canonical_name": "Acqua di Giò Profondo",
+          "aliases": [
+            "Acqua di Giò Profondo",
+            "Acqua di Gio Profondo",
+            "Giorgio Armani Acqua di Gio Profondo"
           ]
         }
       ]
