@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - catalog/brand-expansion-2026-11
+      - catalog/complete-brand-expansion-2026-11
+      - catalog/assaf-range-harvest-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -13,6 +15,7 @@ on:
     branches:
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
+      - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
 
 permissions:
   contents: read
@@ -53,4 +56,5 @@ jobs:
           backend.tests.test_arabiyat_prestige_extrait
           backend.tests.test_arabiyat_prestige_marwa_extrait
           backend.tests.test_assaf_range_harvest
+          backend.tests.test_al_haramain_gulf_orchid_store_harvest
           -v

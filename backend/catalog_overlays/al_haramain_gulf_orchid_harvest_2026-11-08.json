@@ -1,0 +1,485 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "official_store_range_harvest",
+  "created_at": "2026-11-08",
+  "status": "source_listed_names_added",
+  "description": "Product identity names harvested from Al Haramain's official perfume collection and Gulf Orchid's official Gulf Orchid Perfume collection. Only named fragrance products are included; gift sets and non-perfume categories are excluded.",
+  "policy": {
+    "identity_status": "source_listed_name",
+    "no_inferred_variants": true,
+    "no_offers_or_prices": true,
+    "product_names_only": true
+  },
+  "sources": [
+    {
+      "brand": "Al Haramain",
+      "url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "source_type": "official brand store collection",
+      "listing_total": 104,
+      "scope": "Perfumes collection page; duplicate sizes/listings deduplicated; gift sets and travel packs excluded"
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume",
+      "source_type": "official brand store collection",
+      "scope": "Gulf Orchid perfume collection; gift sets excluded"
+    }
+  ],
+  "summary": {
+    "al_haramain_candidates": 61,
+    "al_haramain_new": 40,
+    "gulf_orchid_candidates": 3,
+    "gulf_orchid_new": 3,
+    "variants_added": 0
+  },
+  "products": [
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Haramain Musk Orchid",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Haramain Xplore Sapphire",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Azlan Oud Bleu Edition",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Amber Oud Ultra Violet",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Azlan Oud Saffron Edition",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Amber Oud Tobacco Edition",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "L'Aventure Grapefruit",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "L'Aventure Fraiche",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "L'Aventure Ciel",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Azlan Oud Amber Edition",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Portfolio Cupid's Rose",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Portfolio Portrait Sandal",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Portfolio Oriental Forest",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Mystique Musk Spray",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Amber Oud Gold Edition",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Portfolio Euphoric Roots",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Azlan Oud Charcoal Edition",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Detour Noir Exclusif",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Junoon Noir",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Oud Cambodi",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Maryam",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Urbanist Femme",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Mystique Femme",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Mystique Homme",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Detour Nasr",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Musk",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Detour Noir Intense",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "L'Aventure Rose",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "L'Aventure Blanche",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Solitaire Musk",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Musk Collection",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Rawaa",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Night Dreams",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Khulasat Al Oud",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Fall In Love Orange",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Fall In Love Pink",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Junoon Rose",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Maze",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Opposite Pink",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Manege Blanche",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Rafia Gold",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Amber Musk",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Opulent Sapphire",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Royal Musk",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Etoiles Silver",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Madinah",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Portfolio Floral Sculpture",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Manege Rouge",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Jameela",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Musk Maliki",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Oyuny",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Chateau De La Haramain Argent",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Das Ziel",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Mystique",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Treasure",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": false
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Oudh Patchouli",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Farasha",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Asrar Khafiya",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Urbanist Prive Silver",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Mena",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Al Haramain",
+      "canonical_name": "Areej Al Oud",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Gulf Orchid",
+      "canonical_name": "Sweet Like Candy",
+      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Gulf Orchid",
+      "canonical_name": "Sweet Heaven Extreme 20ML",
+      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    },
+    {
+      "brand": "Gulf Orchid",
+      "canonical_name": "Piña Colada Musk",
+      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume",
+      "evidence_status": "official_store_collection_listing",
+      "new_identity": true
+    }
+  ]
+}
