@@ -18,9 +18,9 @@ The working catalog snapshot contains:
 - 120 Maison Asrar canonical identities.
 - 12 identities already supported by official individual product pages before this change.
 - 108 identities whose current evidence is collection-level or independent-reseller evidence.
-- 3 records currently attributed to Maison Asrar but sourced to Gulf Orchid shop pages: Plot Twist, Love Key and Unsolved Mystery. These are flagged for separate brand/provenance verification; this audit does not silently reassign or delete them.
+- 3 additional Maison Asrar records — Plot Twist, Love Key and Unsolved Mystery — are listed on Gulf Orchid's own storefront. Their individual product pages explicitly label the brand as Maison Asrar and state 100 ml EDP. They are retained as Maison Asrar identities, and their existing variants now carry the corresponding page-level evidence URL. Gulf Orchid is the storefront/source for these Lock & Key releases; the records are not reassigned to Gulf Orchid as the fragrance brand.
 
-The 120 identities should not be described as a verified, complete current range. The 74 official fragrance collection count is a current storefront snapshot; it does not establish that older or discontinued identities are invalid.
+The 120 identities should not be described as a verified, complete current range. Gulf Orchid's storefront independently confirms the three Lock & Key records above, but those are not counted among the twelve Maison Asrar-owned product-page upgrades in this change. The 74 official fragrance collection count is a current storefront snapshot; it does not establish that older or discontinued identities are invalid.
 
 ## Official detail-page upgrades in this change
 
