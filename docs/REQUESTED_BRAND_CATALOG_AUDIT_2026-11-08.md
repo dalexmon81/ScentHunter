@@ -408,3 +408,25 @@ Concentration is intentionally blank where the detail page did not state it expl
 Paris Corner now has 246 canonical identities: 26 individually detail-verified and 220 listing-level. The full seed now has 2,061 canonical identities and 266 explicit variants. Across the 20 requested brands, the count is 2,058 identities: 176 individually verified and 1,882 listing-level.
 
 Official collection context: https://www.pariscornerperfumes.com/collections/new-arrivals-offer
+
+
+### North Stag: six individual product-page checks (8 November 2026)
+
+The official North Stag collection exposes nine fragrance identities plus a three-piece set. The set is not counted as a new fragrance. Six existing identities were checked against their individual product pages:
+
+| Identity | Official product page | Size confirmed |
+|---|---|---:|
+| Quatre IV Expressions North Stag | https://www.pariscornerperfumes.com/products/quatre-iv-expressions-north-stag | Not stated on detail page |
+| Trois III Expressions North Stag | https://www.pariscornerperfumes.com/products/trois-iii-expressions-north-stag | Not stated on detail page |
+| Deux II Expressions North Stag | https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml | 100 ml in product title |
+| Un I Expressions North Stag | https://www.pariscornerperfumes.com/products/un-i-expressions-north-stag | Not stated on detail page |
+| North Stag Phenomenal Quatorze XIV | https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv | 100 ml |
+| North Stag Hypnotic Oud Quinze XV | https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv | 100 ml |
+
+The three pages without an explicit size were upgraded to individual-page identity evidence only; no size or variant was invented. Deux II, Phenomenal Quatorze and Hypnotic Oud each have one 100 ml variant. No concentration was populated from this pass because the individual pages did not clearly state one for these specific products. The collection page also lists a North Stag Set of Three; it remains excluded as a separate canonical fragrance because it is a bundle of existing perfumes.
+
+The North Stag collection lists 10 sellable items including the three-piece set, and describes the range as nine fragrances. The catalog continues to represent the fragrance identities separately from the bundle.
+
+After this pass Paris Corner has 246 identities: 31 individually detail-verified and 215 listing-level. The full seed has 2,061 canonical identities and 268 explicit variants. Across the 20 requested brands the subtotal is 2,058 identities: 181 individually verified and 1,877 listing-level.
+
+Official collection: https://www.pariscornerperfumes.com/collections/north-stag-1
