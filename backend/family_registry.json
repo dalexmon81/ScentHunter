@@ -6592,28 +6592,44 @@
           "aliases": [
             "Kayaan Classic",
             "Al Wataniah Kayaan Classic"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Kayaan Terra",
           "aliases": [
             "Kayaan Terra",
             "Al Wataniah Kayaan Terra"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Kayaan Gold",
           "aliases": [
             "Kayaan Gold",
             "Al Wataniah Kayaan Gold"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Kayaan Midnight",
           "aliases": [
             "Kayaan Midnight",
             "Al Wataniah Kayaan Midnight"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Lemon Souffle",
@@ -6668,14 +6684,22 @@
           "aliases": [
             "Al Daiem",
             "Al Wataniah Al Daiem"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Al Daiem Elixir",
           "aliases": [
             "Al Daiem Elixir",
             "Al Wataniah Al Daiem Elixir"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Al Layl",
@@ -6731,7 +6755,11 @@
           "aliases": [
             "Arya Peony Rose",
             "Al Wataniah Arya Peony Rose"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Attar Al Wesal",
@@ -7040,14 +7068,22 @@
           "aliases": [
             "Royal Oak I",
             "Al Wataniah Royal Oak I"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Royal Oak II",
           "aliases": [
             "Royal Oak II",
             "Al Wataniah Royal Oak II"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Sabah Al Ward",
@@ -17047,4 +17083,4 @@
       ]
     }
   ]
-}
+}\n
