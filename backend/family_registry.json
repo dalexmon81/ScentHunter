@@ -10269,10 +10269,73 @@
           ]
         },
         {
+          "canonical_name": "Amour",
+          "aliases": [
+            "Amour",
+            "Gulf Orchid Amour"
+          ]
+        },
+        {
           "canonical_name": "Asala",
           "aliases": [
             "Asala",
             "Gulf Orchid Asala"
+          ]
+        },
+        {
+          "canonical_name": "Belle",
+          "aliases": [
+            "Belle",
+            "Gulf Orchid Belle"
+          ]
+        },
+        {
+          "canonical_name": "Chic",
+          "aliases": [
+            "Chic",
+            "Gulf Orchid Chic"
+          ]
+        },
+        {
+          "canonical_name": "Cloud 9",
+          "aliases": [
+            "Cloud 9",
+            "Gulf Orchid Cloud 9"
+          ]
+        },
+        {
+          "canonical_name": "Coco Blanco",
+          "aliases": [
+            "Coco Blanco",
+            "Gulf Orchid Coco Blanco"
+          ]
+        },
+        {
+          "canonical_name": "Cookie Bite",
+          "aliases": [
+            "Cookie Bite",
+            "Gulf Orchid Cookie Bite"
+          ]
+        },
+        {
+          "canonical_name": "Cotton Candy Musk",
+          "aliases": [
+            "Cotton Candy Musk",
+            "Gulf Orchid Cotton Candy Musk"
+          ]
+        },
+        {
+          "canonical_name": "Exotic Oud",
+          "aliases": [
+            "Exotic Oud",
+            "Gulf Orchid Exotic Oud"
+          ]
+        },
+        {
+          "canonical_name": "Flamma",
+          "aliases": [
+            "Flamma",
+            "Gulf Orchid Flamma"
           ]
         },
         {
@@ -10304,38 +10367,10 @@
           ]
         },
         {
-          "canonical_name": "Riwaya",
+          "canonical_name": "Maestro",
           "aliases": [
-            "Riwaya",
-            "Gulf Orchid Riwaya"
-          ]
-        },
-        {
-          "canonical_name": "Turath",
-          "aliases": [
-            "Turath",
-            "Gulf Orchid Turath"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Aura",
-          "aliases": [
-            "Vanilla Aura",
-            "Gulf Orchid Vanilla Aura"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Voyage",
-          "aliases": [
-            "Vanilla Voyage",
-            "Gulf Orchid Vanilla Voyage"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Addiction",
-          "aliases": [
-            "Vanilla Addiction",
-            "Gulf Orchid Vanilla Addiction"
+            "Maestro",
+            "Gulf Orchid Maestro"
           ]
         },
         {
@@ -10346,24 +10381,17 @@
           ]
         },
         {
-          "canonical_name": "Cotton Candy Musk",
+          "canonical_name": "Phantom",
           "aliases": [
-            "Cotton Candy Musk",
-            "Gulf Orchid Cotton Candy Musk"
+            "Phantom",
+            "Gulf Orchid Phantom"
           ]
         },
         {
-          "canonical_name": "Tahara Vanilla Musk",
+          "canonical_name": "Piña Colada Musk",
           "aliases": [
-            "Tahara Vanilla Musk",
-            "Gulf Orchid Tahara Vanilla Musk"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Heaven 20ML",
-          "aliases": [
-            "Sweet Heaven 20ML",
-            "Gulf Orchid Sweet Heaven 20ML"
+            "Piña Colada Musk",
+            "Gulf Orchid Piña Colada Musk"
           ]
         },
         {
@@ -10374,38 +10402,24 @@
           ]
         },
         {
-          "canonical_name": "Coco Blanco",
+          "canonical_name": "Riwaya",
           "aliases": [
-            "Coco Blanco",
-            "Gulf Orchid Coco Blanco"
+            "Riwaya",
+            "Gulf Orchid Riwaya"
           ]
         },
         {
-          "canonical_name": "Exotic Oud",
+          "canonical_name": "Rosalia",
           "aliases": [
-            "Exotic Oud",
-            "Gulf Orchid Exotic Oud"
+            "Rosalia",
+            "Gulf Orchid Rosalia"
           ]
         },
         {
-          "canonical_name": "Vanilla Latte",
+          "canonical_name": "Sweet Heaven 20ML",
           "aliases": [
-            "Vanilla Latte",
-            "Gulf Orchid Vanilla Latte"
-          ]
-        },
-        {
-          "canonical_name": "Cookie Bite",
-          "aliases": [
-            "Cookie Bite",
-            "Gulf Orchid Cookie Bite"
-          ]
-        },
-        {
-          "canonical_name": "Sweet Like Candy",
-          "aliases": [
-            "Sweet Like Candy",
-            "Gulf Orchid Sweet Like Candy"
+            "Sweet Heaven 20ML",
+            "Gulf Orchid Sweet Heaven 20ML"
           ]
         },
         {
@@ -10416,10 +10430,59 @@
           ]
         },
         {
-          "canonical_name": "Piña Colada Musk",
+          "canonical_name": "Sweet Like Candy",
           "aliases": [
-            "Piña Colada Musk",
-            "Gulf Orchid Piña Colada Musk"
+            "Sweet Like Candy",
+            "Gulf Orchid Sweet Like Candy"
+          ]
+        },
+        {
+          "canonical_name": "Tahara Vanilla Musk",
+          "aliases": [
+            "Tahara Vanilla Musk",
+            "Gulf Orchid Tahara Vanilla Musk"
+          ]
+        },
+        {
+          "canonical_name": "Turath",
+          "aliases": [
+            "Turath",
+            "Gulf Orchid Turath"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Addiction",
+          "aliases": [
+            "Vanilla Addiction",
+            "Gulf Orchid Vanilla Addiction"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Aura",
+          "aliases": [
+            "Vanilla Aura",
+            "Gulf Orchid Vanilla Aura"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Latte",
+          "aliases": [
+            "Vanilla Latte",
+            "Gulf Orchid Vanilla Latte"
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Voyage",
+          "aliases": [
+            "Vanilla Voyage",
+            "Gulf Orchid Vanilla Voyage"
+          ]
+        },
+        {
+          "canonical_name": "Vortex",
+          "aliases": [
+            "Vortex",
+            "Gulf Orchid Vortex"
           ]
         }
       ]
