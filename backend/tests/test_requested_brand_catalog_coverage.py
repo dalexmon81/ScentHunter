@@ -365,6 +365,40 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(row.get("concentration"), concentration)
                     self.assertEqual(matching[0].get("concentration"), concentration)
 
+
+    def test_north_stag_collection_individual_pages_and_variants_are_verified(self):
+        expected = {
+            "Quatre IV Expressions North Stag": ("https://www.pariscornerperfumes.com/products/quatre-iv-expressions-north-stag", None),
+            "Trois III Expressions North Stag": ("https://www.pariscornerperfumes.com/products/trois-iii-expressions-north-stag", None),
+            "Deux II Expressions North Stag": ("https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml", 100),
+            "Un I Expressions North Stag": ("https://www.pariscornerperfumes.com/products/un-i-expressions-north-stag", None),
+            "North Stag Phenomenal Quatorze XIV": ("https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv", 100),
+            "North Stag Hypnotic Oud Quinze XV": ("https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv", 100),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                if size_ml is None:
+                    self.assertNotIn("formats_ml", row)
+                    self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+                else:
+                    self.assertIn(size_ml, row.get("formats_ml", []))
+                    matching = [
+                        v for v in variants
+                        if v.get("product_id") == row["product_id"] and v.get("size_ml") == size_ml
+                    ]
+                    self.assertEqual(len(matching), 1)
+                self.assertNotIn("concentration", row)
+
     def test_aromatix_signature_collection_is_present(self):
         names = {
             str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
