@@ -5,13 +5,13 @@
 This review compares the existing ScentHunter Mykonos seed with:
 - Fragrantica designer page: https://www.fragrantica.com/designers/Mykonos.html (84 listed fragrance records at the time of review).
 - Mykonos official Indonesian storefront: https://officialmykonos.com/collections/all and product detail pages.
-- Mykonos EU's catalogue explorer: https://mykonosperfumes.eu/pages/explore. This retailer explicitly states that it is **not** the official Mykonos website, but an authorized European retailer. Its explorer currently labels the range as 90 fragrances and provides individual pages for current and announced products.
+- Mykonos EU's catalogue explorer: https://mykonosperfumes.eu/pages/explore. This retailer explicitly states that it is **not** the official Mykonos website, but an authorized European retailer. Its explorer currently labels the range as 89 fragrances and provides individual pages for current and announced products.
 
 The counts are not directly interchangeable. Fragrantica has collection groupings and a separate Body Mists category. The EU retailer includes announced/coming-soon products and its list does not include every legacy/other-market item (notably Imperium, which is present on Mykonos's Indonesian storefront and Fragrantica). Do not claim that one number is the definitive worldwide active range.
 
 ## Seed reconciliation
 
-Before this update, the Mykonos seed had 76 canonical identities. The EU retailer's 90-name explorer contains 15 names absent from the seed; the seed also contains Imperium, which is absent from that current EU list but is independently listed by the brand's Indonesian storefront. The merged catalog therefore retains Imperium and adds the 15 distinct names below. The resulting 91 identities represent a cross-source union, not a claim that 91 are simultaneously available for purchase.
+Before this update, the Mykonos seed had 76 canonical identities. The EU retailer's 89-name current A–Z list contains 14 names absent from the seed; the seed also contains Imperium, which is absent from that current EU list but is independently listed by the brand's Indonesian storefront. The merged catalog therefore retains Imperium and adds the 15 distinct identities below (including Soft Hour x NCT Haechan from the retailer's new-release explorer, not the current A–Z list). The resulting 98 identities represent a cross-source union, not a claim that 91 are simultaneously available for purchase.
 
 ## Added identities
 
@@ -52,7 +52,7 @@ Before this update, the Mykonos seed had 76 canonical identities. The EU retaile
 
 ## Fragrantica-only legacy / additional names
 
-The indexed Fragrantica designer page's All Fragrances and collection sections include additional perfume names not present in the 90-item EU retailer explorer or the current official Indonesian 54-product collection. These have been added as name-only records with Fragrantica as the evidence URL; no sizes, concentrations or variants are inferred:
+The indexed Fragrantica designer page's All Fragrances and collection sections include additional perfume names not present in the current 89-item EU retailer A–Z perfume list or the current official Indonesian 54-product collection. These have been added as name-only records with Fragrantica as the evidence URL; no sizes, concentrations or variants are inferred:
 - Adelina
 - Bloody Mary
 - Crystals
@@ -62,7 +62,7 @@ The indexed Fragrantica designer page's All Fragrances and collection sections i
 - Zeus
 - It's Not Ella
 
-This brings the cross-source union in ScentHunter to 99 Mykonos perfume identities. It is intentionally not called “84 Fragrantica perfumes”: Fragrantica's designer count includes overlapping collection groupings, while the union also includes EU retailer announcements and the Indonesian official catalog's Imperium.
+This brings the cross-source union in ScentHunter to 98 Mykonos perfume identities. It is intentionally not called “84 Fragrantica perfumes”: Fragrantica's designer count includes overlapping collection groupings, while the union also includes EU retailer announcements and the Indonesian official catalog's Imperium.
 
 ### Alias reconciliation
 
