@@ -730,5 +730,118 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "https://mykonosperfumes.eu/products/mykonos-california",
         )
 
+
+    def test_mykonos_fragrantica_fine_fragrance_listing_is_covered(self):
+        # Fragrantica's 84 count includes three Body Mists. The 81 fine
+        # fragrance names below are matched against canonical names and aliases.
+        expected = [
+          "Adelina",
+          "Affair",
+          "Avra Kehdabra",
+          "Baby Love",
+          "Berry Caramel Pancake",
+          "Black Opera",
+          "Blaze",
+          "Bloody Mary",
+          "Blossom",
+          "Bonfire Vanilla",
+          "Cafe Drops",
+          "Chai Crema Latte",
+          "Coconut Dreams",
+          "Conquer",
+          "Constantine",
+          "Crimson",
+          "Crystals",
+          "Dolce Cherry",
+          "Down to Earth",
+          "Eclipse",
+          "Empire",
+          "Enchanted",
+          "Glitch",
+          "Imperium",
+          "Inception",
+          "Inferno",
+          "Invade",
+          "Ivory",
+          "Jinx",
+          "Luminos",
+          "Marbella",
+          "Matcha Latte",
+          "Mayfair",
+          "Memoir of Meri",
+          "Milk Drops",
+          "Monaco Royale",
+          "Moroccan Vanilla",
+          "Nashi Pear Garden",
+          "Nautilius",
+          "On The Rocks",
+          "Once upon Don",
+          "Pandan Sticky Rice",
+          "Penthouse",
+          "Pink Beach",
+          "Pink Drops",
+          "Reflection",
+          "Reflection Elixir",
+          "Rouge",
+          "Roulette",
+          "Royal Ispahan",
+          "Seven Roses",
+          "Slow Living",
+          "Sorrento",
+          "Stilettos",
+          "Untamed",
+          "Utopia",
+          "Verve",
+          "Violette",
+          "When in Paris",
+          "Zeus",
+          "Dreamscape",
+          "Silent Whisper",
+          "Hawaiian Crush",
+          "Tea Poetry",
+          "California",
+          "California Blue",
+          "California Club",
+          "California Signature",
+          "Vanilla Clouds",
+          "It's Not Ella",
+          "Musk Aura",
+          "Paradise",
+          "Caramel Fudge Cookie",
+          "XoXo, Rosy",
+          "Aphrodite",
+          "Sansa",
+          "Senja",
+          "Zora",
+          "Dark Secret",
+          "Satin Blanc",
+          "Sparkling Rosé"
+]
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        ]
+        def normalize(value):
+            import unicodedata
+            value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+            return "".join(ch.lower() for ch in value if ch.isalnum())
+        known = {
+            normalize(name)
+            for row in products
+            for name in [row.get("canonical_name", "")] + row.get("aliases", [])
+        }
+        missing = [name for name in expected if normalize(name) not in known]
+        self.assertEqual(missing, [])
+
+    def test_mykonos_jinx_and_nautilius_are_aliases_not_duplicate_products(self):
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        ]
+        jynx = next(row for row in products if row.get("canonical_name") == "Jynx")
+        nautilus = next(row for row in products if row.get("canonical_name") == "Nautilus")
+        self.assertIn("Jinx", jynx.get("aliases", []))
+        self.assertIn("Nautilius", nautilus.get("aliases", []))
+
 if __name__ == "__main__":
     unittest.main()
