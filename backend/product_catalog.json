@@ -4021,8 +4021,11 @@
         "Wild Colt Elixir",
         "Assaf Wild Colt Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/edp-wild-colt-elixer-200ml",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-ec7f49a9",
@@ -28534,8 +28537,11 @@
         "Arrogate Pink",
         "Assaf Arrogate Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-pink-200ml",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-013",
@@ -28549,8 +28555,11 @@
         "Arrogate Pink Diva",
         "Assaf Arrogate Pink Diva"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-pink-diva",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-014",
@@ -28834,8 +28843,11 @@
         "Dangerous Arrogate",
         "Assaf Dangerous Arrogate"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/dangerous-arrogate-200ml",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-033",
@@ -29269,8 +29281,12 @@
         "Gris Erik",
         "Assaf Gris Erik"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/gris-erik",
+      "formats_ml": [
+        100,
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-062",
@@ -29524,8 +29540,11 @@
         "Miss Arrogate",
         "Assaf Miss Arrogate"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/miss-arrogate",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-079",
@@ -29899,8 +29918,11 @@
         "Rebel Enable",
         "Assaf Rebel Enable"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/edp-rebel-enable-150ml",
+      "formats_ml": [
+        150
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-104",
@@ -36022,6 +36044,78 @@
       ],
       "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-100-000",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-012",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Pink 200 ml",
+        "Assaf Arrogate Pink 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-012-200-000"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-013",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Pink Diva 200 ml",
+        "Assaf Arrogate Pink Diva 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-013-200-000"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-032",
+      "size_ml": 200,
+      "aliases": [
+        "Dangerous Arrogate 200 ml",
+        "Assaf Dangerous Arrogate 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-032-200-000"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-061",
+      "size_ml": 200,
+      "aliases": [
+        "Gris Erik 200 ml",
+        "Assaf Gris Erik 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-061-200-000"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-061",
+      "size_ml": 100,
+      "aliases": [
+        "Gris Erik 100 ml",
+        "Assaf Gris Erik 100ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-061-100-000"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-078",
+      "size_ml": 200,
+      "aliases": [
+        "Miss Arrogate 200 ml",
+        "Assaf Miss Arrogate 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-078-200-000"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-103",
+      "size_ml": 150,
+      "aliases": [
+        "Rebel Enable 150 ml",
+        "Assaf Rebel Enable 150ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-103-150-000"
+    },
+    {
+      "product_id": "SH-ASSAF-dd5cfa1c",
+      "size_ml": 200,
+      "aliases": [
+        "Wild Colt Elixir 200 ml",
+        "Assaf Wild Colt Elixir 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-dd5cfa1c-200-000"
     }
   ]
 }
