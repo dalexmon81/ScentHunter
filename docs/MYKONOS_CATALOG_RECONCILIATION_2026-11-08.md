@@ -1,0 +1,51 @@
+# Mykonos catalogue reconciliation — 2026-11-08
+
+## Scope and source hierarchy
+
+This review compares the existing ScentHunter Mykonos seed with:
+- Fragrantica designer page: https://www.fragrantica.com/designers/Mykonos.html (84 listed fragrance records at the time of review).
+- Mykonos official Indonesian storefront: https://officialmykonos.com/collections/all and product detail pages.
+- Mykonos EU's catalogue explorer: https://mykonosperfumes.eu/pages/explore. This retailer explicitly states that it is **not** the official Mykonos website, but an authorized European retailer. Its explorer currently labels the range as 90 fragrances and provides individual pages for current and announced products.
+
+The counts are not directly interchangeable. Fragrantica has collection groupings and a separate Body Mists category. The EU retailer includes announced/coming-soon products and its list does not include every legacy/other-market item (notably Imperium, which is present on Mykonos's Indonesian storefront and Fragrantica). Do not claim that one number is the definitive worldwide active range.
+
+## Seed reconciliation
+
+Before this update, the Mykonos seed had 76 canonical identities. The EU retailer's 90-name explorer contains 15 names absent from the seed; the seed also contains Imperium, which is absent from that current EU list but is independently listed by the brand's Indonesian storefront. The merged catalog therefore retains Imperium and adds the 15 distinct names below. The resulting 91 identities represent a cross-source union, not a claim that 91 are simultaneously available for purchase.
+
+## Added identities
+
+| Name | Source page | Variant treatment |
+|---|---|---|
+| Forever Musc | https://mykonosperfumes.eu/products/mykonos-forever-musc | 100 ml Eau de Parfum confirmed |
+| Inspire Perfume | https://mykonosperfumes.eu/products/mykonos-inspire | Name and 100 ml bottle listed; concentration not stated, no variant created |
+| Daydream | https://mykonosperfumes.eu/products/mykonos-daydream | 100 ml Extrait de Parfum; coming soon |
+| Inception Reimagined | https://mykonosperfumes.eu/products/mykonos-inception-reimagined | 100 ml Extrait de Parfum; coming soon |
+| Monaco Royale Black | https://mykonosperfumes.eu/products/mykonos-monaco-royale-black | 50 ml and 100 ml Extrait de Parfum; coming soon |
+| Shape Shift | https://mykonosperfumes.eu/products/mykonos-shape-shift | 100 ml Extrait de Parfum; coming soon |
+| Kingsman | https://mykonosperfumes.eu/products/mykonos-kingsman | Name listed; size/concentration not confirmed at launch, no variant created |
+| Wallflower | https://mykonosperfumes.eu/products/mykonos-wallflower | Name listed; size/concentration not confirmed at launch, no variant created |
+| Elysian | https://mykonosperfumes.eu/products/mykonos-elysian | Name listed; size/concentration not confirmed at launch, no variant created |
+| Undercover | https://mykonosperfumes.eu/products/mykonos-undercover | Name listed; size/concentration not confirmed at launch, no variant created |
+| Celestial | https://mykonosperfumes.eu/products/mykonos-celestial | Name listed; size/concentration not confirmed at launch, no variant created |
+| Café Lyon | https://mykonosperfumes.eu/products/mykonos-cafe-lyon | Name listed; size/concentration not confirmed at launch, no variant created |
+| President | https://mykonosperfumes.eu/products/mykonos-president | Name listed; size/concentration not confirmed at launch, no variant created |
+| Déjà Vu | https://mykonosperfumes.eu/products/mykonos-deja-vu | Name listed; size/concentration not confirmed at launch, no variant created |
+| Soft Hour x NCT Haechan | https://mykonosperfumes.eu/products/mykonos-x-nct-haechan-soft-hour | 100 ml Extrait de Parfum confirmed; coming soon |
+
+## Reconciliation flags — do not create duplicate products
+
+- Fragrantica spells Jynx as “Jinx”; the retailer's product page confirms “Jynx”. Treat as a spelling alias pending official confirmation, not a second fragrance.
+- Fragrantica spells Nautilus as “Nautilius” in one result listing. The official Indonesian storefront and EU retailer use “Nautilus”. Treat “Nautilius” as a source spelling alias, not a second product.
+- Fragrantica has both “California” and “California Signature”; the Indonesian official product page uses the product title “California” but the description calls it “California Signature”. ScentHunter's existing California record points to that product page. Keep one record for now and flag the naming/identity for manual confirmation rather than duplicating it.
+- Fragrantica's “Empire” appears to correspond to the collaboration product “Empire x RRQ”; preserve the collaboration identity and add an alias only if the official product page supports it.
+- Fragrantica's “Shades Parfum”/“Shades Perfume” wording should be normalized as an alias after checking the official product page.
+- The separate Body Mists collection on Fragrantica must not be imported into the perfume product set as Extrait/EDP variants. Body mists, hair mists, and similar formats need their own product-type handling if ScentHunter chooses to cover them.
+
+## Validation and limits
+
+- The catalog and family registry are updated with 15 new canonical identities.
+- Variants are created only where the retailer page states concentration and size: Daydream, Inception Reimagined, Monaco Royale Black (50/100 ml), Shape Shift, Forever Musc, and Soft Hour x NCT Haechan.
+- No size/concentration variants are created for Inspire Perfume or the announced names whose page says the final concentration/size is not confirmed.
+- Fragrantica currently reports 84 records; its page could not be opened directly by the crawler (403), so its indexed designer listing is used for name-level cross-check only.
+- This is a cross-source reconciliation snapshot, not a guarantee of worldwide historical completeness or current stock availability.
