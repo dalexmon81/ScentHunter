@@ -21839,6 +21839,502 @@
       "identity_status": "source_listed_name",
       "source_url": "https://afnan.com/collections/all?page=2",
       "source_evidence_url": "https://afnan.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-LATTAFA-MOHRA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mohra",
+      "name": "Mohra",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mohra",
+      "aliases": [
+        "Mohra",
+        "Lattafa Mohra"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah",
+      "name": "Khamrah",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khamrah",
+      "aliases": [
+        "Khamrah",
+        "Lattafa Khamrah"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-SUQARAAT",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Suqaraat",
+      "name": "Suqaraat",
+      "family_id": "lattafa_catalog",
+      "family_name": "Suqaraat",
+      "aliases": [
+        "Suqaraat",
+        "Lattafa Suqaraat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NOBLE-SAFEER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Noble Safeer",
+      "name": "Al Noble Safeer",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Noble Safeer",
+      "aliases": [
+        "Al Noble Safeer",
+        "Lattafa Al Noble Safeer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NOBLE-WAZEER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Noble Wazeer",
+      "name": "Al Noble Wazeer",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Noble Wazeer",
+      "aliases": [
+        "Al Noble Wazeer",
+        "Lattafa Al Noble Wazeer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NOBLE-AMEER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Noble Ameer",
+      "name": "Al Noble Ameer",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Noble Ameer",
+      "aliases": [
+        "Al Noble Ameer",
+        "Lattafa Al Noble Ameer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-CONFIDENTIAL-PRIVATE-GOLD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Confidential Private Gold",
+      "name": "Confidential Private Gold",
+      "family_id": "lattafa_catalog",
+      "family_name": "Confidential Private Gold",
+      "aliases": [
+        "Confidential Private Gold",
+        "Lattafa Confidential Private Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHBA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raghba",
+      "name": "Raghba",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raghba",
+      "aliases": [
+        "Raghba",
+        "Lattafa Raghba"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-VELVET-ROSE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Velvet Rose",
+      "name": "Velvet Rose",
+      "family_id": "lattafa_catalog",
+      "family_name": "Velvet Rose",
+      "aliases": [
+        "Velvet Rose",
+        "Lattafa Velvet Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QAED-AL-FURSAN-UNLIMITED",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Qaed Al Fursan Unlimited",
+      "name": "Qaed Al Fursan Unlimited",
+      "family_id": "lattafa_catalog",
+      "family_name": "Qaed Al Fursan Unlimited",
+      "aliases": [
+        "Qaed Al Fursan Unlimited",
+        "Lattafa Qaed Al Fursan Unlimited"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HAYAATI-FLORENCE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Hayaati Florence",
+      "name": "Hayaati Florence",
+      "family_id": "lattafa_catalog",
+      "family_name": "Hayaati Florence",
+      "aliases": [
+        "Hayaati Florence",
+        "Lattafa Hayaati Florence"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-SUBLIME",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee AL Oud Sublime",
+      "name": "Badee AL Oud Sublime",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee AL Oud Sublime",
+      "aliases": [
+        "Badee AL Oud Sublime",
+        "Lattafa Badee AL Oud Sublime"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAAHIR-BLACK-EDITION",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Maahir Black Edition",
+      "name": "Maahir Black Edition",
+      "family_id": "lattafa_catalog",
+      "family_name": "Maahir Black Edition",
+      "aliases": [
+        "Maahir Black Edition",
+        "Lattafa Maahir Black Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAAHIR",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Maahir",
+      "name": "Maahir",
+      "family_id": "lattafa_catalog",
+      "family_name": "Maahir",
+      "aliases": [
+        "Maahir",
+        "Lattafa Maahir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-OPULENT-MUSK",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Opulent Musk",
+      "name": "Opulent Musk",
+      "family_id": "lattafa_catalog",
+      "family_name": "Opulent Musk",
+      "aliases": [
+        "Opulent Musk",
+        "Lattafa Opulent Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QAAED",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Qaaed",
+      "name": "Qaaed",
+      "family_id": "lattafa_catalog",
+      "family_name": "Qaaed",
+      "aliases": [
+        "Qaaed",
+        "Lattafa Qaaed"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAED-LUXE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raed Luxe",
+      "name": "Raed Luxe",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raed Luxe",
+      "aliases": [
+        "Raed Luxe",
+        "Lattafa Raed Luxe"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QIMMAH-FOR-WOMEN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Qimmah For Women",
+      "name": "Qimmah For Women",
+      "family_id": "lattafa_catalog",
+      "family_name": "Qimmah For Women",
+      "aliases": [
+        "Qimmah For Women",
+        "Lattafa Qimmah For Women"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QAED-AL-FURSAN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Qaed Al Fursan",
+      "name": "Qaed Al Fursan",
+      "family_id": "lattafa_catalog",
+      "family_name": "Qaed Al Fursan",
+      "aliases": [
+        "Qaed Al Fursan",
+        "Lattafa Qaed Al Fursan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAMZ-LATTAFA-GOLD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ramz Lattafa Gold",
+      "name": "Ramz Lattafa Gold",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ramz Lattafa Gold",
+      "aliases": [
+        "Ramz Lattafa Gold",
+        "Lattafa Ramz Lattafa Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAMZ-LATTAFA-SILVER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ramz Lattafa Silver",
+      "name": "Ramz Lattafa Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ramz Lattafa Silver",
+      "aliases": [
+        "Ramz Lattafa Silver",
+        "Lattafa Ramz Lattafa Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-VELVET-OUD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Velvet Oud",
+      "name": "Velvet Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Velvet Oud",
+      "aliases": [
+        "Velvet Oud",
+        "Lattafa Velvet Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-LATTAFA-OUD-MOOD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Oud Mood",
+      "name": "Oud Mood",
+      "family_id": "lattafa_catalog",
+      "family_name": "Oud Mood",
+      "aliases": [
+        "Oud Mood",
+        "Lattafa Oud Mood"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/13/"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-NOT-ONLY-INTENSE-LUXURY-COLLECTION",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "SUPREMACY NOT ONLY INTENSE - LUXURY COLLECTION",
+      "name": "SUPREMACY NOT ONLY INTENSE - LUXURY COLLECTION",
+      "family_id": "afnan_catalog",
+      "family_name": "SUPREMACY NOT ONLY INTENSE - LUXURY COLLECTION",
+      "aliases": [
+        "SUPREMACY NOT ONLY INTENSE - LUXURY COLLECTION",
+        "Afnan SUPREMACY NOT ONLY INTENSE - LUXURY COLLECTION"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-TAPIS-ROUGE-LUXURY-COLLECTION",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
+      "name": "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
+      "family_id": "afnan_catalog",
+      "family_name": "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
+      "aliases": [
+        "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
+        "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-TASNEEM",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "TASNEEM",
+      "name": "TASNEEM",
+      "family_id": "afnan_catalog",
+      "family_name": "TASNEEM",
+      "aliases": [
+        "TASNEEM",
+        "Afnan TASNEEM"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-TOBACCO-RUSH",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "TOBACCO RUSH",
+      "name": "TOBACCO RUSH",
+      "family_id": "afnan_catalog",
+      "family_name": "TOBACCO RUSH",
+      "aliases": [
+        "TOBACCO RUSH",
+        "Afnan TOBACCO RUSH"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-TURATHI-RED",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "TURATHI RED",
+      "name": "TURATHI RED",
+      "family_id": "afnan_catalog",
+      "family_name": "TURATHI RED",
+      "aliases": [
+        "TURATHI RED",
+        "Afnan TURATHI RED"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-VIOLET-BOUQUET",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "VIOLET BOUQUET",
+      "name": "VIOLET BOUQUET",
+      "family_id": "afnan_catalog",
+      "family_name": "VIOLET BOUQUET",
+      "aliases": [
+        "VIOLET BOUQUET",
+        "Afnan VIOLET BOUQUET"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-WARD-AL-USSHAQ",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "WARD AL USSHAQ",
+      "name": "WARD AL USSHAQ",
+      "family_id": "afnan_catalog",
+      "family_name": "WARD AL USSHAQ",
+      "aliases": [
+        "WARD AL USSHAQ",
+        "Afnan WARD AL USSHAQ"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-AFNAN-ZABARJAD",
+      "brand": "Afnan",
+      "brand_name": "Afnan",
+      "canonical_name": "ZABARJAD",
+      "name": "ZABARJAD",
+      "family_id": "afnan_catalog",
+      "family_name": "ZABARJAD",
+      "aliases": [
+        "ZABARJAD",
+        "Afnan ZABARJAD"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://afnan.com/collections/all?page=3",
+      "source_evidence_url": "https://afnan.com/collections/all?page=3"
     }
   ],
   "variants": [
