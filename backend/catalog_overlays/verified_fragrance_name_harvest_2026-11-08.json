@@ -13,14 +13,15 @@
     "no_variant_inference": true,
     "deduplicate_by_normalized_brand_and_name": true,
     "canonical_import_requires_variant_review": true,
-    "brand_listing_is_not_proof_of_exclusive_or_complete_catalog": true
+    "brand_listing_is_not_proof_of_exclusive_or_complete_catalog": true,
+    "games_of_spades_hierarchy": "Games of Spades is the fragrance collection/brand label used in ScentHunter; Jo Milano Paris is the manufacturer. Gift sets/coffrets are excluded as separate canonical fragrances. Concentration variants such as Rouge Extrait are not separate canonical fragrance identities unless product model requires it."
   },
   "summary": {
-    "product_name_candidates": 172,
+    "product_name_candidates": 174,
     "maison_asrar": 116,
     "maison_asrar_royal_collection": 9,
     "aromatix_x_french_avenue": 10,
-    "games_of_spades": 28,
+    "games_of_spades": 30,
     "other_requested_brands": 18,
     "other_requested_brand_candidates": 18,
     "other_requested_brands_represented": 8,
@@ -33,7 +34,8 @@
       "Maison Alhambra",
       "Armaf",
       "Swiss Arabian"
-    ]
+    ],
+    "games_of_spades_manufacturer": "Jo Milano Paris"
   },
   "sources": [
     {
@@ -52,11 +54,6 @@
       "supports": "Ten Aromatix X French Avenue fragrance names; EDP 100 ml stated for the listed bottles."
     },
     {
-      "name": "Jo Milano Paris - Game of Spades Coffret Set II",
-      "url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "supports": "Official product page names nine Game of Spades fragrances in a 9 x 10 ml coffret; it is not evidence of 100 ml variants."
-    },
-    {
       "name": "Azmara all products",
       "url": "https://azmara-perfumes.com/collections/alle-produkte",
       "supports": "Retailer listing with brand facets and named products; used for selected examples."
@@ -65,6 +62,21 @@
       "name": "Essência Árabe full bottles collection",
       "url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
       "supports": "Retailer product list with brand and named fragrance listings."
+    },
+    {
+      "name": "Jo Milano Paris official all-products collection page 1",
+      "url": "https://jomilanoparis.com/collections/all?page=1",
+      "supports": "Official product listing including Game of Spades All In, Bid, Black Sapphire, Blind Bid, Bluff, Bonus, Boston, Diamond and Double Bonus."
+    },
+    {
+      "name": "Jo Milano Paris official all-products collection page 2",
+      "url": "https://jomilanoparis.com/collections/all?page=2",
+      "supports": "Official product listing including Emerald, Full House Refresh, Gold, High Roller, Jackpot, Moon, No Limit, Opal, Platinum, Queen, Rouge, Royale, Ruby, Topaz, Trick, Wildcard, Win and Yellow Sapphire."
+    },
+    {
+      "name": "Jo Milano Paris official product pages",
+      "url": "https://jomilanoparis.com/products/",
+      "supports": "Individual official product detail pages confirm named products and, where shown, product attributes. Coffret and gift-set records are excluded from standalone fragrance identities."
     }
   ],
   "product_candidates": [
@@ -1223,258 +1235,6 @@
       "size_ml": 100
     },
     {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Wildcard",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Full-House",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Royale",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Double Bonus",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades No Limit",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Black Sapphire",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Emerald",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades King",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Bonus",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Blind-Bid",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Moon",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades All In",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Boston",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Diamond",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Gold",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Ruby",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Yellow Sapphire",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Blue Sapphire",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Bluff",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades High Roller",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Opal",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Win",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Topaz",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Ace",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Bid",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Queen",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Rouge",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
-      "brand": "Jo Milano Paris",
-      "fragrance_name": "Game of Spades Trick",
-      "collection": "Games of Spades",
-      "evidence_source": "Jo Milano product catalogue and specialist collection guide",
-      "source_url": "https://jomilanoparis.com/products/game-of-spades-9-pcs-coffret-set-ii",
-      "evidence_level": "named_fragrance_listed",
-      "variant_details": "do not infer full-size variant from sample/coffret records"
-    },
-    {
       "brand": "Lattafa",
       "fragrance_name": "Khamrah",
       "evidence_source": "Azmara",
@@ -1617,6 +1377,306 @@
       "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
       "evidence_level": "named_fragrance_listed",
       "variant_details": "not_inferred"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "King",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-king",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Queen",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-queen",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Jack",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Ace",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Wildcard",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-wildcard",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "All In",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-all-in",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Bid",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Black Sapphire",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Blind Bid",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-blind-bid",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Bluff",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Bonus",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Boston",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Diamond",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Double Bonus",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Emerald",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Full House Refresh",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Gold",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-gold",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "High Roller",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Jackpot",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-jackpot",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Moon",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "No Limit",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Opal",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Platinum",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Rouge",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Royale",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-royale",
+      "evidence_source": "Jo Milano Paris official product page",
+      "evidence_level": "official_product_detail",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Ruby",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Topaz",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Trick",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Win",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
+    },
+    {
+      "brand": "Games of Spades",
+      "manufacturer": "Jo Milano Paris",
+      "fragrance_name": "Yellow Sapphire",
+      "collection": "Games of Spades",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2",
+      "evidence_source": "Jo Milano Paris official all-products collection",
+      "evidence_level": "official_collection_listing",
+      "variant_details": "not_inferred; size/concentration are not promoted into canonical variant rows without separate product-level review"
     }
   ],
   "remaining_harvest": {
