@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
-    "Bujairami": 181,
+    "Bujairami": 191,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -594,6 +594,41 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     and variant.get("size_ml") == 100
                 ]
                 self.assertEqual(len(matches), 1)
+
+
+
+    def test_bujairami_fifth_batch_air_and_amber_names(self):
+        expected_sizes = {
+            "Air Affair": 100,
+            "Airborne": 100,
+            "Airy Oud": 100,
+            "Alpha": 100,
+            "Altitude": 100,
+            "Amaretto": 100,
+            "Amazing": 100,
+            "Amazing Night": 100,
+            "Amber Floweret": 100,
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, size_ml in expected_sizes.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                self.assertEqual(
+                    sum(v.get("product_id") == row["product_id"] and v.get("size_ml") == size_ml for v in variants),
+                    1,
+                )
+        al_waad = products["Al Waad"]
+        self.assertEqual(al_waad.get("concentration"), "Eau de Parfum")
+        self.assertNotIn("formats_ml", al_waad)
+        self.assertFalse(any(v.get("product_id") == al_waad["product_id"] for v in variants))
 
 
 if __name__ == "__main__":
