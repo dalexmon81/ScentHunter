@@ -32,10 +32,10 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Aromatix | 12 | 0 | 12 |
 | Maison Alhambra | 207 | 6 | 201 |
 | Zimaya | 77 | 15 | 62 |
-| Al Haramain | 101 | 0 | 101 |
-| **Total requested brands** | **2,058** | **142** | **1,916** |
+| Al Haramain | 101 | 8 | 93 |
+| **Total requested brands** | **2,057** | **150** | **1,907** |
 
-The full seed contains 2,061 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
+The full seed contains 2,060 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
 ## Recorded source hosts
 
@@ -313,3 +313,24 @@ Official sources:
 - Paris Corner UAE New Launches: https://ae.pariscorner.com/
 - Maison Alhambra USA New In: https://maisonalhambra-usa.com/collections/new-in
 - Individual Maison Alhambra product pages in the tables above.
+
+
+### Al Haramain: individual official product-page verification (8 November 2026)
+
+Eight existing canonical identities were checked against individual Al Haramain EU storefront product pages. No new canonical identities were created. The catalog rows were upgraded from `source_listed_name` to `source_verified_name`, their source URLs now point to the official product details, and explicit size/concentration variants were recorded:
+
+| Canonical identity | Official product detail | Concentration | Verified size(s) |
+|---|---|---|---:|
+| Amber Oud Ruby Edition | https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ruby-edition-100-ml.html | Eau de Parfum | 100 ml |
+| Amber Oud Ruby Edition | https://shop.alharamainperfumes.com/eu/amber-oud-ruby-edition-120ml.html | Eau de Parfum | 120 ml |
+| Amber Oud Gold Edition Extreme | https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-edition-extreme-100ml.html | Extrait de Parfum | 100 ml |
+| Azlan Oud Bleu Edition | https://shop.alharamainperfumes.com/eu/azlan-oud-bleu-edition-100ml-spray.html | Extrait de Parfum | 100 ml |
+| Azlan Oud Saffron Edition | https://shop.alharamainperfumes.com/eu/haramain-azlan-oud-saffron-edition-100ml-spray.html | Extrait de Parfum | 100 ml |
+| L'Aventure Grapefruit | https://shop.alharamainperfumes.com/eu/haramain-l-aventure-grapefruit-spray.html | Extrait de Parfum | 100 ml |
+| L'Aventure Iris | https://shop.alharamainperfumes.com/eu/haramain-l-aventure-iris-spray.html | Extrait de Parfum | 100 ml |
+| L'Aventure Ciel | https://shop.alharamainperfumes.com/eu/haramain-l-aventure-ciel-spray.html | Extrait de Parfum | 100 ml |
+| Amber Oud Aqua Dubai | https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-aqua-dubai-100ml-extrait-de-parfum.html | Extrait de Parfum | 100 ml |
+
+Amber Oud Ruby Edition is one canonical identity with two verified sizes, not two products. Collection pages also display other sizes for some fragrances, but those sizes were not added unless supported by the inspected individual detail pages. Gift sets, deodorants, oils and other non-spray formats remain outside the canonical spray-fragrance variant model.
+
+The requested-brand subtotal remains 2,057 identities after the previously removed Zimaya duplicate. Evidence status is now 150 individual-page verified identities and 1,907 listing-level identities. The full catalog remains 2,060 identities.
