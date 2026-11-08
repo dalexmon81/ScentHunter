@@ -50,6 +50,7 @@ def build_report(rows: list[dict]) -> dict:
     no_variants: list[dict] = []
     incomplete: list[dict] = []
     total_variants = 0
+    variants_needing_research = 0
     variants_with_size = 0
     variants_with_concentration = 0
     variants_with_gtin = 0
@@ -68,13 +69,14 @@ def build_report(rows: list[dict]) -> dict:
             "fragrances": 0,
             "fragrances_with_variants": 0,
             "fragrances_without_variants": 0,
-            "fragrances_with_complete_variants": 0,
+            "fragrances_with_at_least_one_complete_variant": 0,
             "fragrances_needing_variant_research": 0,
             "variant_rows": 0,
             "variants_with_size": 0,
             "variants_with_concentration": 0,
             "variants_with_gtin": 0,
             "complete_variant_rows": 0,
+            "variant_rows_needing_research": 0,
         })
         item["fragrances"] += 1
         item["variant_rows"] += count
@@ -82,8 +84,10 @@ def build_report(rows: list[dict]) -> dict:
         item["variants_with_concentration"] += with_concentration
         item["variants_with_gtin"] += with_gtin
         item["complete_variant_rows"] += complete
+        item["variant_rows_needing_research"] += count - complete
 
         total_variants += count
+        variants_needing_research += count - complete
         variants_with_size += with_size
         variants_with_concentration += with_concentration
         variants_with_gtin += with_gtin
@@ -96,13 +100,15 @@ def build_report(rows: list[dict]) -> dict:
             no_variants.append({"brand": brand, "fragrance": name})
 
         if complete:
-            item["fragrances_with_complete_variants"] += 1
-        else:
+            item["fragrances_with_at_least_one_complete_variant"] += 1
+        if count == 0 or complete < count:
             item["fragrances_needing_variant_research"] += 1
             incomplete.append({
                 "brand": brand,
                 "fragrance": name,
                 "variant_count": count,
+                "complete_variant_count": complete,
+                "variants_needing_research": count - complete,
                 "variants_missing_size": count - with_size,
                 "variants_missing_concentration": count - with_concentration,
                 "variants_missing_gtin": count - with_gtin,
@@ -117,16 +123,20 @@ def build_report(rows: list[dict]) -> dict:
         "fragrances": total_fragrances,
         "fragrances_with_variants": fragrances_with_variants,
         "fragrances_without_variants": len(no_variants),
-        "fragrances_with_complete_variants": fragrances_with_complete,
+        "fragrances_with_at_least_one_complete_variant": fragrances_with_complete,
         "fragrances_needing_variant_research": len(incomplete),
         "variant_rows": total_variants,
         "variants_with_size": variants_with_size,
         "variants_with_concentration": variants_with_concentration,
         "variants_with_gtin": variants_with_gtin,
         "complete_variant_rows": complete_variants,
-        "coverage_percent": round(
-            fragrances_with_complete * 100 / total_fragrances, 2
+        "variant_rows_needing_research": variants_needing_research,
+        "fragrance_coverage_percent": round(
+            fragrances_with_variants * 100 / total_fragrances, 2
         ) if total_fragrances else 0.0,
+        "variant_completeness_percent": round(
+            complete_variants * 100 / total_variants, 2
+        ) if total_variants else 0.0,
         "gtin_coverage_percent": round(
             variants_with_gtin * 100 / total_variants, 2
         ) if total_variants else 0.0,
