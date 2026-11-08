@@ -18,6 +18,7 @@ on:
       - catalog/paris-corner-ministry-oud-official-harvest-2026-11-08
       - catalog/al-wataniah-official-detail-variants-2026-11-08
       - catalog/al-wataniah-classic-official-variants-2026-11-08
+      - catalog/al-wataniah-classic-second-pass-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -39,6 +40,7 @@ on:
       - catalog/paris-corner-ministry-oud-official-harvest-2026-11-08
       - catalog/al-wataniah-official-detail-variants-2026-11-08
       - catalog/al-wataniah-classic-official-variants-2026-11-08
+      - catalog/al-wataniah-classic-second-pass-2026-11-08
 
 permissions:
   contents: read
