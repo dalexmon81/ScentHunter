@@ -462,9 +462,10 @@
         "Belgravia",
         "Maison Asrar Belgravia"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/belgravia",
+      "source_evidence_url": "https://maisonasrar.com/products/belgravia",
+      "collection_name": "Royal Collection"
     },
     {
       "product_id": "SH-MAISON-ASRAR-a81d6d27",
@@ -478,9 +479,10 @@
         "Legacy",
         "Maison Asrar Legacy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/legacy",
+      "source_evidence_url": "https://maisonasrar.com/products/legacy",
+      "collection_name": "Royal Collection"
     },
     {
       "product_id": "SH-MAISON-ASRAR-d0746986",
@@ -494,9 +496,10 @@
         "Vanguard",
         "Maison Asrar Vanguard"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/vanguard",
+      "source_evidence_url": "https://maisonasrar.com/products/vanguard",
+      "collection_name": "Royal Collection"
     },
     {
       "product_id": "SH-MAISON-ASRAR-2775af2f",
@@ -510,9 +513,10 @@
         "Regent",
         "Maison Asrar Regent"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/regent",
+      "source_evidence_url": "https://maisonasrar.com/products/regent",
+      "collection_name": "Royal Collection"
     },
     {
       "product_id": "SH-MAISON-ASRAR-37ff8816",
@@ -542,9 +546,10 @@
         "Majesty",
         "Maison Asrar Majesty"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/majesty",
+      "source_evidence_url": "https://maisonasrar.com/products/majesty",
+      "collection_name": "Royal Collection"
     },
     {
       "product_id": "SH-MAISON-ASRAR-dfc4ec41",
@@ -718,9 +723,11 @@
         "Treasure",
         "Maison Asrar Treasure"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex",
+      "collection_name": "Royal Collection",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-066e4606",
@@ -750,9 +757,11 @@
         "Imperial",
         "Maison Asrar Imperial"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-imperial-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-imperial-eau-de-parfum",
+      "collection_name": "Royal Collection",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-a50292d2",
@@ -766,9 +775,11 @@
         "Monarch",
         "Maison Asrar Monarch"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-monarch-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-monarch-eau-de-parfum",
+      "collection_name": "Royal Collection",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-100281b5",
@@ -782,9 +793,11 @@
         "Heritage",
         "Maison Asrar Heritage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex",
+      "collection_name": "Royal Collection",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-16266aa9",
