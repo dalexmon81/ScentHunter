@@ -27,6 +27,14 @@ EXPECTED = {
         "Daiman Eclipse": ("https://us.zimayaperfumes.com/products/daiman-eclipse-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/daiman-eclipse-perfume"),
         "Daiman Eden": ("https://us.zimayaperfumes.com/products/daiman-eden-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/daiman-eden-perfume"),
         "Sharaf Divine": ("https://us.zimayaperfumes.com/products/sharaf-divine-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/sharaf-divine-perfume"),
+        "Modhesh Aura": ("https://us.zimayaperfumes.com/products/modhesh-aura-edp-100ml-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/modhesh-aura-edp-100ml-perfume"),
+        "Ramsh Diva": ("https://us.zimayaperfumes.com/products/ramsh-pour-femme-edp-100ml-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/ramsh-pour-femme-edp-100ml-perfume"),
+        "Ramsh Imperium": ("https://us.zimayaperfumes.com/products/ramsh-imperium-edp-100ml-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/ramsh-imperium-edp-100ml-perfume"),
+        "Sawalif Helwa": ("https://us.zimayaperfumes.com/products/sawalif-helwa-100ml-edp", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/sawalif-helwa-100ml-edp"),
+        "Royal Paragon": ("https://us.zimayaperfumes.com/products/royal-paragon-edp-100ml-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/royal-paragon-edp-100ml-perfume"),
+        "Roses Are White": ("https://us.zimayaperfumes.com/products/roses-are-white-edp-100ml-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/roses-are-white-edp-100ml-perfume"),
+        "Rose Of Dreams": ("https://us.zimayaperfumes.com/products/rose-of-dreams-edp-100ml", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/rose-of-dreams-edp-100ml"),
+        "Reflect": ("https://us.zimayaperfumes.com/products/reflect-edp-100ml-perfume", 100, "Eau de Parfum", "https://us.zimayaperfumes.com/products/reflect-edp-100ml-perfume"),
     },
 }
 
