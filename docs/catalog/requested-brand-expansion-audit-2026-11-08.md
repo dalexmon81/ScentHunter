@@ -371,3 +371,13 @@ Aggiunte 6 identità non ancora presenti nel catalogo: **La Nuit Pendora**, **La
 ## Paris Corner — pagina ufficiale 5 (2026-11-08)
 
 Aggiunte **16 identità** mancanti dalla pagina 5 della collezione ufficiale: Misty Dawn Musk Collection, Nada Blumingle, Nada Whimsical, Nada Wink, North Stag Huit VIII, North Stag Hypnotic Oud Quinze XV, North Stag Neuf IX, North Stag Phenomenal Quatorze XIV, North Stag Sept VII, Nouf, Ophidian Black Cherry, Ophidian Mango Bliss, Ophidian Sweet Surrender, Opulentia Empyreal Emir, Opulentia Flame Emir, Opulentia Inverno Emir. Fonte: https://www.pariscornerperfumes.com/collections/all?page=5 . La pagina contiene anche prodotti Ministry of Oud e set multiprodotto: Ministry of Oud è stato escluso dall'attribuzione Paris Corner perché il sito lo espone come marchio separato; i set sono stati esclusi. Le identità North Stag sono incluse perché la scheda ufficiale definisce North Stag una linea di profumi di Paris Corner. Nessun formato o concentrazione è stato inventato.
+
+
+## Paris Corner — pagine ufficiali 6 e 7 (2026-11-08)
+
+Aggiunte **29 identità** mancanti dalle pagine 6 e 7 della collezione ufficiale.
+
+- **Pagina 6:** Oud Wahaaj, Papillon des Vents, Perseviron, Perseviron Fig Hug, Pinkling, Plum Liquor, Prodigy, Prodigy Noir, Qawafi, Quatre IV Expressions North Stag, Rawq, Reham Rose Petals, Reham Vanilla Mood, Reham Wild Mineral, Resurrection, Rich Santal Emir Factory Edition, Rifaaqat.
+- **Pagina 7:** Rua Radiant Roses, Soothing Zephyr, Toxic Heart, Tranquil Night Musk Collection, Trois III Expressions North Stag, Twilight Shadow Musk Collection, Ultra Citrus Emir Factory Edition, Un I Expressions North Stag, Valar Series A Chaos in the Ocean, Valar Series A Walk on Dirt, Valar Series Smoky Leather, Vanilla and Roses Emir.
+
+Fonti: https://www.pariscornerperfumes.com/collections/all?page=6 e https://www.pariscornerperfumes.com/collections/all?page=7 . I nomi già presenti non sono stati duplicati; set multiprodotto e prodotti già assegnati a un'altra identità non sono stati reinseriti. Le identità delle linee North Stag ed Emir restano attribuite alla casa Paris Corner in base alle collezioni ufficiali del produttore. Nessuna concentrazione, volume o dato commerciale è stato inferito.
