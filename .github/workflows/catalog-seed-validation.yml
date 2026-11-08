@@ -1,3 +1,4 @@
+# Expanded Maison Asrar manufacturer-page variant coverage is part of this suite.
 # This workflow validates the catalog seed and its source-evidence regression tests.
 name: Catalog seed validation
 
