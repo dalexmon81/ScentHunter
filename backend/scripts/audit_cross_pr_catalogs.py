@@ -42,6 +42,7 @@ CANDIDATE_REFS = (
 )
 
 CATALOG_PATH = "backend/product_catalog.json"
+FAMILY_REGISTRY_PATH = "backend/family_registry.json"
 
 
 def normalize(value: Any) -> str:
@@ -79,6 +80,56 @@ def variant_identity(row: dict[str, Any]) -> tuple[str, Any, str]:
     )
 
 
+def git_is_ancestor(older: str, newer: str) -> bool:
+    result = subprocess.run(
+        [
+            "git",
+            "merge-base",
+            "--is-ancestor",
+            f"refs/remotes/origin/{older}",
+            f"refs/remotes/origin/{newer}",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode not in (0, 1):
+        raise RuntimeError(
+            f"Could not compare branch ancestry: {older} -> {newer}: {result.stderr}"
+        )
+    return result.returncode == 0
+
+
+def maximal_candidate_refs() -> tuple[str, ...]:
+    """Keep only branch tips that are not ancestors of another candidate tip."""
+    refs = list(CANDIDATE_REFS)
+    drop: set[str] = set()
+    for older in refs:
+        for newer in refs:
+            if older == newer or older in drop:
+                continue
+            if git_is_ancestor(older, newer):
+                # Equal tips are not a parent/child relationship in practice;
+                # keep the first listed ref to avoid double-counting aliases.
+                if not git_is_ancestor(newer, older) or refs.index(older) > refs.index(newer):
+                    drop.add(older)
+                    break
+    return tuple(ref for ref in refs if ref not in drop)
+
+
+def registry_entries(registry: dict[str, Any]) -> set[tuple[str, str]]:
+    entries: set[tuple[str, str]] = set()
+    for family in registry.get("families", []):
+        family_id = str(family.get("family_id") or "")
+        if not family_id:
+            continue
+        for product in family.get("products", []):
+            name = normalize(product.get("canonical_name"))
+            if name:
+                entries.add((family_id, name))
+    return entries
+
+
 def index_baseline(catalog: dict[str, Any]) -> tuple[set, set]:
     product_pairs = {
         (str(row.get("product_id") or ""), product_identity(row))
@@ -93,7 +144,10 @@ def index_baseline(catalog: dict[str, Any]) -> tuple[set, set]:
 
 def audit() -> int:
     baseline = git_json(BASE_REF, CATALOG_PATH)
+    base_registry = git_json(BASE_REF, FAMILY_REGISTRY_PATH)
     base_product_pairs, base_variant_pairs = index_baseline(baseline)
+    base_registry_entries = registry_entries(base_registry)
+    active_refs = maximal_candidate_refs()
 
     products_by_identity: dict[tuple[str, str], dict[str, set[str]]] = defaultdict(
         lambda: defaultdict(set)
@@ -107,6 +161,9 @@ def audit() -> int:
     variant_id_to_tuple: dict[str, dict[tuple[str, Any], set[str]]] = defaultdict(
         lambda: defaultdict(set)
     )
+    product_pair_to_refs: dict[tuple[str, tuple[str, str]], set[str]] = defaultdict(set)
+    variant_pair_to_refs: dict[tuple[str, tuple[str, Any, str]], set[str]] = defaultdict(set)
+    registry_entry_to_refs: dict[tuple[str, str], set[str]] = defaultdict(set)
 
     # Seed the comparison with the baseline itself. This catches a candidate
     # that reuses an existing identity/tuple with a different ID, not only
@@ -119,9 +176,15 @@ def audit() -> int:
         if variant_id and key[0] and key[1] is not None:
             variants_by_tuple[key][variant_id].add("BASELINE")
             variant_id_to_tuple[variant_id][(key[0], key[1])].add("BASELINE")
+    for pair in base_product_pairs:
+        product_pair_to_refs[pair].add("BASELINE")
+    for pair in base_variant_pairs:
+        variant_pair_to_refs[pair].add("BASELINE")
+    for entry in base_registry_entries:
+        registry_entry_to_refs[entry].add("BASELINE")
 
     loaded = 0
-    for ref in CANDIDATE_REFS:
+    for ref in active_refs:
         catalog = git_json(ref, CATALOG_PATH)
         loaded += 1
         for row in catalog.get("products", []):
@@ -133,6 +196,7 @@ def audit() -> int:
                 continue
             products_by_identity[identity][product_id].add(ref)
             product_id_to_identity[product_id][identity].add(ref)
+            product_pair_to_refs[(product_id, identity)].add(ref)
 
         for row in catalog.get("variants", []):
             variant_id = str(row.get("variant_id") or "")
@@ -143,6 +207,12 @@ def audit() -> int:
                 continue
             variants_by_tuple[key][variant_id].add(ref)
             variant_id_to_tuple[variant_id][(key[0], key[1])].add(ref)
+            variant_pair_to_refs[(variant_id, key)].add(ref)
+
+        registry = git_json(ref, FAMILY_REGISTRY_PATH)
+        for entry in registry_entries(registry):
+            if entry not in base_registry_entries:
+                registry_entry_to_refs[entry].add(ref)
 
     findings: list[str] = []
     for identity, ids_to_refs in sorted(products_by_identity.items()):
@@ -175,7 +245,31 @@ def audit() -> int:
                 f"VARIANT ID REUSED FOR DIFFERENT PRODUCT/SIZE {variant_id}: keys={list(tuples_to_refs)}; branches={refs}"
             )
 
-    print(f"Cross-PR catalog audit: baseline={BASE_REF}; candidate_branches={loaded}")
+    for pair, refs_set in sorted(product_pair_to_refs.items(), key=lambda item: str(item[0])):
+        refs = sorted(refs_set - {"BASELINE"})
+        if len(refs) > 1:
+            findings.append(
+                f"IDENTICAL PRODUCT ADDITION SHARED BY BRANCHES {pair}: branches={refs}"
+            )
+
+    for pair, refs_set in sorted(variant_pair_to_refs.items(), key=lambda item: str(item[0])):
+        refs = sorted(refs_set - {"BASELINE"})
+        if len(refs) > 1:
+            findings.append(
+                f"IDENTICAL VARIANT ADDITION SHARED BY BRANCHES {pair}: branches={refs}"
+            )
+
+    for entry, refs_set in sorted(registry_entry_to_refs.items()):
+        refs = sorted(refs_set - {"BASELINE"})
+        if len(refs) > 1:
+            findings.append(
+                f"FAMILY REGISTRY ENTRY SHARED BY BRANCHES {entry}: branches={refs}"
+            )
+
+    print(
+        f"Cross-PR catalog audit: baseline={BASE_REF}; "
+        f"candidate_branches={loaded}; active_tips={list(active_refs)}"
+    )
     print(
         "Baseline sizes: "
         f"products={len(baseline.get('products', []))}, "
