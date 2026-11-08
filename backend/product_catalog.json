@@ -19921,12 +19921,14 @@
       "family_name": "Gelato Black Currant Lolly",
       "aliases": [
         "Gelato Black Currant Lolly",
-        "Arabiyat Prestige Gelato Black Currant Lolly"
+        "Arabiyat Prestige Gelato Black Currant Lolly",
+        "Gelato Black Current Lolly",
+        "Arabiyat Prestige Gelato Black Current Lolly"
       ],
       "concentration": null,
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.orientfragance.com/en/collections/arabiyat-prestige-distribuidor-oficial-perfumes-arabes",
-      "source_evidence_url": "https://www.orientfragance.com/en/collections/arabiyat-prestige-distribuidor-oficial-perfumes-arabes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
+      "source_evidence_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-OUD-MALAKI-SRC001",
@@ -32750,21 +32752,6 @@
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/raspberry-ripple"
     },
     {
-      "product_id": "SH-ARABIYAT-PRESTIGE-GELATO-BLACK-CURRENT-LOLLY",
-      "brand": "Arabiyat Prestige",
-      "brand_name": "Arabiyat Prestige",
-      "canonical_name": "Gelato Black Current Lolly",
-      "name": "Gelato Black Current Lolly",
-      "family_id": "arabiyat_prestige_catalog",
-      "family_name": "Gelato Black Current Lolly",
-      "aliases": [
-        "Gelato Black Current Lolly",
-        "Arabiyat Prestige Gelato Black Current Lolly"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly"
-    },
-    {
       "product_id": "SH-ARABIYAT-PRESTIGE-LA-DI-DA-FOR-HER",
       "brand": "Arabiyat Prestige",
       "brand_name": "Arabiyat Prestige",
@@ -35361,12 +35348,14 @@
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-GELATO-RASPBERRY-RIPPLE-100-EDP"
     },
     {
-      "product_id": "SH-ARABIYAT-PRESTIGE-GELATO-BLACK-CURRENT-LOLLY",
+      "product_id": "SH-ARABIYAT-PRESTIGE-GELATO-BLACK-CURRANT-LOLLY-SRC034",
       "size_ml": 100,
       "concentration": "Eau de Parfum",
       "aliases": [
         "Gelato Black Current Lolly 100 ml",
-        "Arabiyat Prestige Gelato Black Current Lolly 100ml"
+        "Arabiyat Prestige Gelato Black Current Lolly 100ml",
+        "Gelato Black Currant Lolly 100 ml",
+        "Arabiyat Prestige Gelato Black Currant Lolly 100ml"
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-GELATO-BLACK-CURRENT-LOLLY-100-EDP"
     },
