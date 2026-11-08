@@ -1,73 +1,43 @@
-# Khadlaj catalog and family-registry reconciliation — 2026-11-08
+# Khadlaj catalog reconciliation — 2026-11-08
 
-## Official source scope
+## Base and scope
 
-The official Khadlaj collections index currently reports 308 items in "All Products".
-It also exposes separate product-type collections, including perfume sprays,
-concentrated perfume oils, bakhoor, air fresheners, home and ambiance, and gift
-sets. Current displayed collection counts include 88 perfume sprays, 43
-concentrated perfume oils, 29 bakhoor, 25 air fresheners, 55 home/ambiance and
-21 gift sets. These are collection listing counts, not a disjoint inventory:
-the same item may appear in best-seller, new-launch, gender, line and product
-type collections. They must not be summed to infer unique fragrances.
+This branch carries the Khadlaj reconciliation on top of `catalog/mykonos-reconciled-current-base-2026-11-08`. It preserves the Mykonos 99-identity / 102-variant catalog and all non-Khadlaj products from that base. It does not alter `main` or production.
 
-Official references:
-- https://khadlaj-perfumes.com/collections
-- https://khadlaj-perfumes.com/collections/la-fede
-- https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes?page=1
-- https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents
-- https://khadlaj-perfumes.com/collections/concentrated-perfume-oils
-- https://khadlaj-perfumes.com/collections/perfumes-spray
+## Final candidate counts
 
-## Branch reconciliation
+- 219 canonical Khadlaj identities.
+- 218 explicit variants.
+- 96 of 101 visible official Perfume Sprays names represented.
+- 36 of 43 visible official Concentrated Perfume Oils names represented.
+- All 42 products in the official La Fede EDP collection represented; three additional La Fede line products remain catalogued.
+- Eight Shiyaaka identities retained as a distinct line.
+- The 147-name Fragrantica designer listing is covered by canonical names or aliases; Fragrantica is not used to prove size or concentration.
 
-The branch already contained 162 Khadlaj canonical product identities. The
-registry had only eight records, all Shiyaaka entries duplicated in the
-Khadlaj top-level family. The family registry has now been reconciled against
-the existing product catalog by exact family ID and canonical name:
+## Reconciliation choices
 
-| Catalog family ID | Canonical products |
-|---|---:|
-| khadlaj_catalog | 85 |
-| khadlaj_official_perfume_sprays_2026_11 | 69 |
-| khadlaj_shiyaaka | 8 |
-| **Total** | **162** |
+- The broader Khadlaj identity/oil/La Fede harvest is retained, while overlapping official-variant work is used to improve individual product-page evidence.
+- Thirty-eight overlapping variant records were upgraded from collection evidence to an exact official product page where one was available.
+- Six additional retailer-supported variants were added for Ana Wa Anta, D'Love, Rasha, Safari Gold, Barwaaz Pure Navy and Vanilla Kiss. The retailer origin is documented in the audit; Vanilla Kiss concentration remains blank.
+- The existing Riah-backed Opulence Bleu variant remains retailer-sourced.
+- The generic “Private Blend” line label was removed as a canonical fragrance. Private Blend Tobac Extra and Private Blend Musk Ice remain separate products.
+- Musk Pure Musk Blend Creation of Iqbal remains an alias of Musk Pure Musk Blend.
+- Rasayel Vid is confirmed as 100 ml EDP by the official product page heading despite the stale “extrait” token in its URL.
+- Shiyaaka Rose Gold is confirmed as 100 ml EDP by its individual official Kuwait page.
+- Alf Wardaat is 30 ml Perfume Oil; the official product page title confirms 30 ml despite the legacy URL slug.
+- Perfume oils remain distinct from alcohol-based spray products.
 
-The Shiyaaka line remains a distinct family. The 69 products sourced from the
-official perfume-spray collection remain grouped separately. Maya remains
-classified by its official concentrated-perfume-oil collection and its 20 ml
-format; it has not been recast as a spray. No new canonical identities or
-unverified variants were fabricated in this registry-only reconciliation.
+## Data integrity
 
-## Variant coverage and limits
+- No duplicate product IDs or variant IDs.
+- No orphan variants.
+- No duplicate product-size-concentration combinations.
+- Every variant has a source evidence URL.
+- Product sizes agree with their parent product's `formats_ml`.
+- The family registry is synchronized across the five Khadlaj families.
 
-The branch currently has 81 Khadlaj variant records for 162 canonical
-products. The other 81 product identities do not yet have explicit size and
-concentration data in their catalog records, so this pass intentionally does
-not invent variants for them. The official La Fede storefront shows 35 items
-in its main collection, while its new-launch and best-seller pages are
-separate overlapping collections. The existing 37 La Fede identities therefore
-need a name-by-name reconciliation; collection totals alone are not enough to
-delete or add products.
+## Known gaps
 
-A product page for Musk Pure Musk Blend confirms the existing 60 ml EDP
-variant and SKU 6291107978154. The "65 ml" text in the URL slug is not the
-product's selected size: the page body, size selector and additional
-information all state 60 ml. The existing 60 ml variant was deliberately
-preserved.
+The official store snapshot still exposes five spray collection entries and seven concentrated-oil entries that were not individually reconciled in the inspected pages. They remain out of the canonical seed until names and product types can be verified. This is not a claim of worldwide historical completeness or current stock.
 
-## Verification
-
-Added six regression tests at
-`backend/tests/test_khadlaj_catalog_parity.py` covering:
-- catalog family IDs against registry family IDs;
-- exact canonical-name parity for each family;
-- unique product IDs and canonical names;
-- preservation of the separate Shiyaaka line;
-- the 69-entry official perfume-spray family;
-- correct classification of Maya as a concentrated perfume oil.
-
-Whole branch totals remain 1,940 canonical products and 270 variants.
-This is registry reconciliation, not proof that every historical, regional or
-currently listed Khadlaj fragrance has been imported. No retailer offers,
-prices, stock or shipping data were added.
+See [KHADLAJ_CATALOG_AUDIT_2026-11-08.md](KHADLAJ_CATALOG_AUDIT_2026-11-08.md) for the detailed source and variant audit.

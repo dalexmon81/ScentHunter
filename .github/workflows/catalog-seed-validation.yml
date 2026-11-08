@@ -27,6 +27,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-reconciled-current-base-2026-11-08
+      - catalog/khadlaj-reconciled-on-mykonos-99-102-2026-11-08
 
 permissions:
   contents: read
