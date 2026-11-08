@@ -19,7 +19,9 @@ The official collection index reports 26 items in the 100 ml collection and 37 i
 
 The existing seed contains many names displayed by these official collections, including Utopia, Sparkling Rosé, Satin Blanc, On The Rocks, Moroccan Vanilla, Musk Aura, Invade, Xoxo Rosy, Verve, Vanilla Clouds, Stilettos, Senja and Reflection Elixir. Multi-size listings include Glitch, Empire, MyEgo, Sorrento, Silent Whisper, Royal Ispahan, Reflection, Penthouse and Monaco Royale.
 
-The 50 ml / 100 ml listings are useful for a parity pass, but do not establish missing canonical identities by themselves. Inspect individual product pages to check whether existing size and concentration claims match the detail page. Do not infer concentration from a collection title or retailer text.
+A full pass of the official `/collections/all` pagination (4 pages, 54 listings) shows 53 named fragrance identities plus one generic `Travel Size 15ML` listing. All 53 named fragrances are already represented among the 72 Mykonos canonical identities in this seed snapshot. The generic travel-size listing is not a separate fragrance identity and should not be added as a product. The 50 ml / 100 ml collections overlap and are not additive counts.
+
+The 19 seed identities not present in the current 53-name official all-products view should remain in the catalog as existing source-listed records for now; absence from the current live assortment does not prove that they are invalid or historically nonexistent. This pass therefore found no missing Mykonos canonical identity to add. Individual detail pages are still needed to promote listing-level records or correct any concentration/size claims. Do not infer concentration from a collection title or retailer text.
 
 ## Gulf Orchid
 
