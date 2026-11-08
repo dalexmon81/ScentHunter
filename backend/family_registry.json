@@ -1082,9 +1082,7 @@
             "Empire (Mykonos x RRQ)",
             "Mykonos Empire (Mykonos x RRQ)",
             "Empire",
-            "Mykonos Empire",
-            "Imperium",
-            "Mykonos Imperium"
+            "Mykonos Empire"
           ],
           "formats_ml": [
             50,
@@ -1133,6 +1131,16 @@
           ],
           "formats_ml": [
             50
+          ]
+        },
+        {
+          "canonical_name": "Imperium",
+          "aliases": [
+            "Imperium",
+            "Mykonos Imperium"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
