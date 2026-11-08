@@ -11,6 +11,12 @@ EXPECTED = {
     "Last Swim": "https://maisonasrar.com/products/last-swim",
     "Silent Surge": "https://maisonasrar.com/products/silent-surge",
     "DXB Jumeirah": "https://maisonasrar.com/products/dxb-jumeirah",
+    "Vanilla Aura": "https://maisonasrar.com/products/vanilla-aura",
+    "Faris Al Arab": "https://maisonasrar.com/products/faris-al-arab",
+    "III Thriller": "https://maisonasrar.com/products/iii-thriller",
+    "Muharib": "https://maisonasrar.com/products/muharib",
+    "Hunter": "https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml",
+    "1963": "https://maisonasrar.com/products/1963-eau-de-perfum-100ml",
 }
 
 
