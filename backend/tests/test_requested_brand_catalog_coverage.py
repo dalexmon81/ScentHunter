@@ -646,9 +646,10 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertTrue(excluded.isdisjoint(names))
 
     def test_mykonos_complete_eu_perfume_index_is_present_and_body_mists_are_excluded(self):
-        # 90 perfume identities in the authorized EU retailer's A-Z index.
+        # 89 perfume identities in the authorized EU retailer's current A-Z index.
         # The 12 separately named Fragrance Mist products are intentionally
-        # excluded from the perfume catalog.
+        # excluded from the perfume catalog. Soft Hour x NCT Haechan is tracked
+        # separately as an announced new-release listing.
         expected_perfumes = {
             "Affair", "Aphrodite", "Baby Love", "Berry Caramel Pancake",
             "Black Opera", "Blaze", "Blossom", "Bonfire Vanilla", "Cafe Drops",
@@ -665,7 +666,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Pistachio Cream Cake", "President", "Reflection Elixir", "Reflection",
             "Royal Ispahan", "Sansa", "Satin Blanc", "Senja", "Seven Roses",
             "Shades Perfume", "Shape Shift", "Silent Whisper", "Slow Living",
-            "Soft Hour x NCT Haechan", "Sorrento", "Sparkling Rosé", "Stilettos",
+            "Sorrento", "Sparkling Rosé", "Stilettos",
             "Tea Poetry", "Undercover", "Untamed", "Utopia", "Vanilla Clouds",
             "Verve", "Wallflower", "When in Paris", "MyEgo", "Once Upon Don",
             "Avra Kehdabra", "Jynx", "Chai Crema Latte", "Dolce Cherry", "Rouge",
@@ -681,9 +682,13 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             for row in CATALOG.get("products", [])
             if row.get("brand_name") == "Mykonos"
         }
-        self.assertEqual(len(expected_perfumes), 90)
+        self.assertEqual(len(expected_perfumes), 89)
         self.assertTrue(expected_perfumes.issubset(products.keys()))
         self.assertTrue(body_mists.isdisjoint(products.keys()))
+        self.assertIn("Soft Hour x NCT Haechan", products)
+        soft_hour = products["Soft Hour x NCT Haechan"]
+        self.assertEqual(soft_hour.get("formats_ml"), [100])
+        self.assertEqual(soft_hour.get("concentration"), "Extrait de Parfum")
 
 if __name__ == "__main__":
     unittest.main()
