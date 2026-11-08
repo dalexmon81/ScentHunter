@@ -14,6 +14,7 @@ on:
       - catalog/mykonos-verified-variants-2026-11-08
       - catalog/maison-asrar-official-page-reconciliation-2026-11-08
       - catalog/khadlaj-new-launch-detail-variants-2026-11-08
+      - catalog/paris-corner-official-size-variants-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -86,3 +87,6 @@ jobs:
           backend.tests.test_paris_corner_europe_official_variants
           backend.tests.test_paris_corner_official_size_variants
           -v
+      - name: Validate Maison Asrar official blog variants
+        if: github.head_ref == 'catalog/maison-asrar-official-blog-variants-2026-11-08'
+        run: python -m unittest backend.tests.test_maison_asrar_official_blog_variants -v
