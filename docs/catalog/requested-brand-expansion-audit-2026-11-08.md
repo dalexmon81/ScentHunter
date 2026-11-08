@@ -396,3 +396,8 @@ Aggiunte 11 identità della collezione ufficiale Genesis: Genesis Scorpio, Genes
 ## French Avenue — elenco ufficiale all fragrances for sale (2026-11-08)
 
 Aggiunte 8 identità elencate nella collezione ufficiale: 8TH Wonder, Affogato, Amber Saffron, An Equestrian Series Della, An Equestrian Series Haydan, An Equestrian Series Olena, An Equestrian Series Pierce, Arabian Incense. Fonte: https://frenchavenue.com/collections/all-fragrances-for-sale . La pagina indica 141 prodotti totali, ma il catalogo è ancora parziale: la pagina usa caricamento progressivo e include anche duo/combo, da escludere come identità autonome quando sono set di profumi già esistenti.
+
+
+## French Avenue — ulteriori prodotti da collezioni ufficiali (2026-11-08)
+
+Aggiunte 13 identità singole viste nelle collezioni ufficiali all / Eau de Parfum / Artisan Perfumery: Royal Blend Nero, Vulcan Sable, Veneno, Veneno Bianco, Double Espresso, Crème of Clouds, Nabatieh, Obsidian, Brown Sugar, Hibiscus Magic, Feroce Pour Homme, Aquarius, Aries. Fonti: https://frenchavenue.com/collections/all ; https://frenchavenue.com/collections/eau-de-parfum ; https://frenchavenue.com/collections/artisan-perfumery-collection . Le pagine contengono caricamento progressivo e l'elenco completo non è ancora stato esaminato; i set/combo restano esclusi.
