@@ -1701,3 +1701,8 @@ The harvest overlay now records these cross-checks and the reason for holding bo
 - Kept the pre-existing canonical product ID/name, added the official-store spelling as aliases, moved the verified 100 ml EDP variant onto that canonical ID, and removed the duplicate canonical row. The variant ID itself is preserved.
 - Updated the harvest overlay and regression test to enforce one identity for both spellings.
 - Corrected catalog totals after deduplication: **1,942 canonical identities; 266 explicit variants**. No commercial offer data was added.
+
+
+### Registry parity correction after Arabiyat spelling merge (2026-11-08)
+- A post-write integrity check detected a duplicate family-registry entry for Gelato Black Currant Lolly, created when the official spelling alias was merged. Consolidated it into one registry entry, preserving both Current/Currant aliases and the 100 ml format.
+- Arabiyat Prestige registry parity is now expected to be **52 canonical products**, matching the 52 canonical product rows in the catalog after the duplicate row was removed.
