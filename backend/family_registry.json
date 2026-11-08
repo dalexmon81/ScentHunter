@@ -9183,17 +9183,59 @@
       ],
       "products": [
         {
-          "canonical_name": "Junoon",
+          "canonical_name": "Amber Oud Aqua Dubai",
           "aliases": [
-            "Junoon",
-            "Al Haramain Junoon"
+            "Amber Oud Aqua Dubai",
+            "Al Haramain Amber Oud Aqua Dubai"
           ]
         },
         {
-          "canonical_name": "Amber Oud Ruby Edition",
+          "canonical_name": "Amber Oud Black Edition",
           "aliases": [
-            "Amber Oud Ruby Edition",
-            "Al Haramain Amber Oud Ruby Edition"
+            "Amber Oud Black Edition",
+            "Al Haramain Amber Oud Black Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Bleu Edition",
+          "aliases": [
+            "Amber Oud Bleu Edition",
+            "Al Haramain Amber Oud Bleu Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Carbon Edition",
+          "aliases": [
+            "Amber Oud Carbon Edition",
+            "Al Haramain Amber Oud Carbon Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Dubai Night",
+          "aliases": [
+            "Amber Oud Dubai Night",
+            "Al Haramain Amber Oud Dubai Night"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Extreme Gold Edition",
+          "aliases": [
+            "Amber Oud Extreme Gold Edition",
+            "Al Haramain Amber Oud Extreme Gold Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Gold 999.9 Dubai Edition",
+          "aliases": [
+            "Amber Oud Gold 999.9 Dubai Edition",
+            "Al Haramain Amber Oud Gold 999.9 Dubai Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Gold Edition",
+          "aliases": [
+            "Amber Oud Gold Edition",
+            "Al Haramain Amber Oud Gold Edition"
           ]
         },
         {
@@ -9204,17 +9246,24 @@
           ]
         },
         {
-          "canonical_name": "Junoon Oud",
+          "canonical_name": "Amber Oud Private Edition",
           "aliases": [
-            "Junoon Oud",
-            "Al Haramain Junoon Oud"
+            "Amber Oud Private Edition",
+            "Al Haramain Amber Oud Private Edition"
           ]
         },
         {
-          "canonical_name": "Azlan Oud Bleu Edition",
+          "canonical_name": "Amber Oud Ruby Edition",
           "aliases": [
-            "Azlan Oud Bleu Edition",
-            "Al Haramain Azlan Oud Bleu Edition"
+            "Amber Oud Ruby Edition",
+            "Al Haramain Amber Oud Ruby Edition"
+          ]
+        },
+        {
+          "canonical_name": "Amber Oud Tobacco Edition",
+          "aliases": [
+            "Amber Oud Tobacco Edition",
+            "Al Haramain Amber Oud Tobacco Edition"
           ]
         },
         {
@@ -9225,6 +9274,34 @@
           ]
         },
         {
+          "canonical_name": "Amber Oud White Edition",
+          "aliases": [
+            "Amber Oud White Edition",
+            "Al Haramain Amber Oud White Edition"
+          ]
+        },
+        {
+          "canonical_name": "Azlan Oud Amber Edition",
+          "aliases": [
+            "Azlan Oud Amber Edition",
+            "Al Haramain Azlan Oud Amber Edition"
+          ]
+        },
+        {
+          "canonical_name": "Azlan Oud Bleu Edition",
+          "aliases": [
+            "Azlan Oud Bleu Edition",
+            "Al Haramain Azlan Oud Bleu Edition"
+          ]
+        },
+        {
+          "canonical_name": "Azlan Oud Charcoal Edition",
+          "aliases": [
+            "Azlan Oud Charcoal Edition",
+            "Al Haramain Azlan Oud Charcoal Edition"
+          ]
+        },
+        {
           "canonical_name": "Azlan Oud Saffron Edition",
           "aliases": [
             "Azlan Oud Saffron Edition",
@@ -9232,10 +9309,115 @@
           ]
         },
         {
-          "canonical_name": "Amber Oud Tobacco Edition",
+          "canonical_name": "Black Oud",
           "aliases": [
-            "Amber Oud Tobacco Edition",
-            "Al Haramain Amber Oud Tobacco Edition"
+            "Black Oud",
+            "Al Haramain Black Oud"
+          ]
+        },
+        {
+          "canonical_name": "Golden Oud",
+          "aliases": [
+            "Golden Oud",
+            "Al Haramain Golden Oud"
+          ]
+        },
+        {
+          "canonical_name": "Junoon",
+          "aliases": [
+            "Junoon",
+            "Al Haramain Junoon"
+          ]
+        },
+        {
+          "canonical_name": "Junoon Oud",
+          "aliases": [
+            "Junoon Oud",
+            "Al Haramain Junoon Oud"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure",
+          "aliases": [
+            "L'Aventure",
+            "Al Haramain L'Aventure"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Blanche",
+          "aliases": [
+            "L'Aventure Blanche",
+            "Al Haramain L'Aventure Blanche"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Ciel",
+          "aliases": [
+            "L'Aventure Ciel",
+            "Al Haramain L'Aventure Ciel"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Femme",
+          "aliases": [
+            "L'Aventure Femme",
+            "Al Haramain L'Aventure Femme"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Fraiche",
+          "aliases": [
+            "L'Aventure Fraiche",
+            "Al Haramain L'Aventure Fraiche"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Gold",
+          "aliases": [
+            "L'Aventure Gold",
+            "Al Haramain L'Aventure Gold"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Grapefruit",
+          "aliases": [
+            "L'Aventure Grapefruit",
+            "Al Haramain L'Aventure Grapefruit"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Intense",
+          "aliases": [
+            "L'Aventure Intense",
+            "Al Haramain L'Aventure Intense"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Iris",
+          "aliases": [
+            "L'Aventure Iris",
+            "Al Haramain L'Aventure Iris"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Knight",
+          "aliases": [
+            "L'Aventure Knight",
+            "Al Haramain L'Aventure Knight"
+          ]
+        },
+        {
+          "canonical_name": "L'Aventure Rose",
+          "aliases": [
+            "L'Aventure Rose",
+            "Al Haramain L'Aventure Rose"
+          ]
+        },
+        {
+          "canonical_name": "Sheikh Knight",
+          "aliases": [
+            "Sheikh Knight",
+            "Al Haramain Sheikh Knight"
           ]
         },
         {
@@ -9257,181 +9439,6 @@
           "aliases": [
             "Sheikh Warrior",
             "Al Haramain Sheikh Warrior"
-          ]
-        },
-        {
-          "canonical_name": "Sheikh Knight",
-          "aliases": [
-            "Sheikh Knight",
-            "Al Haramain Sheikh Knight"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Aqua Dubai",
-          "aliases": [
-            "Amber Oud Aqua Dubai",
-            "Al Haramain Amber Oud Aqua Dubai"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Dubai Night",
-          "aliases": [
-            "Amber Oud Dubai Night",
-            "Al Haramain Amber Oud Dubai Night"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Black Edition",
-          "aliases": [
-            "Amber Oud Black Edition",
-            "Al Haramain Amber Oud Black Edition"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Gold 999.9 Dubai Edition",
-          "aliases": [
-            "Amber Oud Gold 999.9 Dubai Edition",
-            "Al Haramain Amber Oud Gold 999.9 Dubai Edition"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Private Edition",
-          "aliases": [
-            "Amber Oud Private Edition",
-            "Al Haramain Amber Oud Private Edition"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Extreme Gold Edition",
-          "aliases": [
-            "Amber Oud Extreme Gold Edition",
-            "Al Haramain Amber Oud Extreme Gold Edition"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Bleu Edition",
-          "aliases": [
-            "Amber Oud Bleu Edition",
-            "Al Haramain Amber Oud Bleu Edition"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud White Edition",
-          "aliases": [
-            "Amber Oud White Edition",
-            "Al Haramain Amber Oud White Edition"
-          ]
-        },
-        {
-          "canonical_name": "Amber Oud Carbon Edition",
-          "aliases": [
-            "Amber Oud Carbon Edition",
-            "Al Haramain Amber Oud Carbon Edition"
-          ]
-        },
-        {
-          "canonical_name": "Azlan Oud Amber Edition",
-          "aliases": [
-            "Azlan Oud Amber Edition",
-            "Al Haramain Azlan Oud Amber Edition"
-          ]
-        },
-        {
-          "canonical_name": "Azlan Oud Charcoal Edition",
-          "aliases": [
-            "Azlan Oud Charcoal Edition",
-            "Al Haramain Azlan Oud Charcoal Edition"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Iris",
-          "aliases": [
-            "L'Aventure Iris",
-            "Al Haramain L'Aventure Iris"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Ciel",
-          "aliases": [
-            "L'Aventure Ciel",
-            "Al Haramain L'Aventure Ciel"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Gold",
-          "aliases": [
-            "L'Aventure Gold",
-            "Al Haramain L'Aventure Gold"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Fraiche",
-          "aliases": [
-            "L'Aventure Fraiche",
-            "Al Haramain L'Aventure Fraiche"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Grapefruit",
-          "aliases": [
-            "L'Aventure Grapefruit",
-            "Al Haramain L'Aventure Grapefruit"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Femme",
-          "aliases": [
-            "L'Aventure Femme",
-            "Al Haramain L'Aventure Femme"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure",
-          "aliases": [
-            "L'Aventure",
-            "Al Haramain L'Aventure"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Rose",
-          "aliases": [
-            "L'Aventure Rose",
-            "Al Haramain L'Aventure Rose"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Blanche",
-          "aliases": [
-            "L'Aventure Blanche",
-            "Al Haramain L'Aventure Blanche"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Intense",
-          "aliases": [
-            "L'Aventure Intense",
-            "Al Haramain L'Aventure Intense"
-          ]
-        },
-        {
-          "canonical_name": "L'Aventure Knight",
-          "aliases": [
-            "L'Aventure Knight",
-            "Al Haramain L'Aventure Knight"
-          ]
-        },
-        {
-          "canonical_name": "Black Oud",
-          "aliases": [
-            "Black Oud",
-            "Al Haramain Black Oud"
-          ]
-        },
-        {
-          "canonical_name": "Golden Oud",
-          "aliases": [
-            "Golden Oud",
-            "Al Haramain Golden Oud"
           ]
         }
       ]
