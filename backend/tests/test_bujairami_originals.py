@@ -24,12 +24,11 @@ class BujairamiOriginalsTests(unittest.TestCase):
 
     def test_detail_page_and_collection_evidence_are_not_conflated(self):
         products = {p["canonical_name"]: p for p in CATALOG["products"] if p.get("brand") == "Bujairami"}
-        for name in EXPECTED - {"The F*ck Up"}:
+        for name in EXPECTED:
             self.assertEqual(products[name]["identity_status"], "source_verified_name")
             self.assertIn("/products/", products[name]["source_url"])
-        listed = products["The F*ck Up"]
-        self.assertEqual(listed["identity_status"], "source_listed_name")
-        self.assertIn("/collections/originals", listed["source_url"])
+        the_fuck_up = products["The F*ck Up"]
+        self.assertEqual(the_fuck_up["formats_ml"], [50])
 
     def test_love_spell_sizes_are_explicit_variants(self):
         product_id = "SH-BUJAIRAMI-LOVE-SPELL"
