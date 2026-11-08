@@ -2,15 +2,11 @@
 
 ## Result
 
-The Mykonos seed on this branch contains **99 canonical product identities and 84 explicit variants**.
+The Mykonos seed on this branch contains **98 canonical product identities and 83 explicit variants**.
 
-The authorized EU retailer's A–Z index lists 102 named items. Its list includes 12 products explicitly labelled *Fragrance Mist*, which are body mists rather than perfume products and are intentionally not imported into the perfume catalog. The remaining **90 perfume identities are all present** in ScentHunter.
+The authorized EU retailer's current A–Z index lists 101 named items. Its list includes 12 products explicitly labelled *Fragrance Mist*, which are body mists rather than perfume products and are intentionally not imported into the perfume catalog. The remaining **89 perfume identities are all present** in ScentHunter.
 
-The catalog also retains nine additional identities outside that 90-name EU A–Z list:
-- Imperium, listed in Mykonos' Indonesian official-store collection.
-- Adelina, Bloody Mary, Crystals, Eclipse, Nashi Pear Garden, Roulette, Zeus and It's Not Ella, retained as legacy/historical fragrance names listed by Fragrantica.
-
-These eight legacy entries remain source_listed_name and have no guessed size or concentration variants. They are not treated as currently available stock.
+The catalog also retains nine identities beyond the current 89-name EU A–Z list: eight legacy/historical fragrance names listed by Fragrantica (Adelina, Bloody Mary, Crystals, Eclipse, Nashi Pear Garden, Roulette, Zeus and It's Not Ella), plus Soft Hour x NCT Haechan, which is listed by the EU retailer's new-release explorer but is not yet in its current A–Z list. The eight legacy entries remain source_listed_name and have no guessed size or concentration variants. Soft Hour has a separately documented 100 ml Extrait de Parfum listing. None of these entries is treated as confirmation of current stock.
 
 ## Matching and naming rules
 
@@ -27,14 +23,14 @@ The California Signature product page itself identifies the product as Californi
 
 ## Validation
 
-- 99 Mykonos products in product_catalog.json.
-- 99 Mykonos identities in family_registry.json.
-- 84 Mykonos variants.
+- 98 Mykonos products in product_catalog.json.
+- 98 Mykonos identities in family_registry.json.
+- 83 Mykonos variants.
 - No duplicate product IDs.
 - No duplicate variant IDs.
 - No orphan variants.
 - Every Mykonos identity has a source URL and identity status.
-- Regression test asserts all 90 EU A–Z perfume identities are present and the 12 body mists are excluded.
+- Regression test asserts all 89 current EU A–Z perfume identities are present and the 12 body mists are excluded.
 - Legacy entries are checked to ensure no unsupported variants are inferred.
 
 ## Sources reviewed
