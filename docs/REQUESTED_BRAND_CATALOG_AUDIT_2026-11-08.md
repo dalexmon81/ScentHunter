@@ -458,3 +458,12 @@ One 100 ml variant was added for each existing canonical identity. The official 
 Paris Corner now has 246 canonical identities: 36 individually detail-verified and 210 listing-level. The full seed has 2,061 canonical identities and 273 explicit variants. Across the 20 requested brands: 2,058 identities, 186 individually verified and 1,872 listing-level.
 
 Official collection context: https://www.pariscornerperfumes.com/collections/paris-corner
+
+
+
+## CI follow-up — 8 November 2026
+
+- Added `catalog/requested-brand-harvest-2026-11-08` to the `pull_request.branches` trigger in `.github/workflows/catalog-seed-validation.yml`.
+- This ensures updates to the requested-brand harvest branch can trigger the catalog validation workflow when catalog, registry, tests or workflow files change.
+- The catalog seed validation run previously recorded for commit `bf8a819a698a0c04f6a5194533ed9edd8749f83b` completed successfully: job `validate-catalog-seed`, 116 tests.
+- The workflow trigger correction is commit `e10eef22210df859b45654dbef47a4aa56fd99c5`. A new workflow run was not returned by the GitHub Actions connector at the time of this update; do not treat the trigger fix itself as proof of a new successful run.
