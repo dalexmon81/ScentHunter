@@ -8598,6 +8598,57 @@
             "Futura La Homme",
             "Armaf Futura La Homme"
           ]
+        },
+        {
+          "canonical_name": "Check Mate White - Knight",
+          "aliases": [
+            "Check Mate White - Knight",
+            "Armaf Check Mate White - Knight"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey French Kiss",
+          "aliases": [
+            "Odyssey French Kiss",
+            "Armaf Odyssey French Kiss"
+          ],
+          "formats_ml": [
+            60
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Tyrant Special Edition",
+          "aliases": [
+            "Odyssey Tyrant Special Edition",
+            "Armaf Odyssey Tyrant Special Edition"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Eau de Montagne Mountain Edition",
+          "aliases": [
+            "Odyssey Eau de Montagne Mountain Edition",
+            "Armaf Odyssey Eau de Montagne Mountain Edition"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Dubai Delicacy Kunafa Chocolate",
+          "aliases": [
+            "Dubai Delicacy Kunafa Chocolate",
+            "Armaf Dubai Delicacy Kunafa Chocolate"
+          ],
+          "formats_ml": [
+            70
+          ]
         }
       ]
     },
