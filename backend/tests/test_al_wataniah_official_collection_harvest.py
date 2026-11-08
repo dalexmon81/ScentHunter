@@ -351,7 +351,19 @@ EXPECTED = {
     "Sugar Rush": [
         "Munchies",
         "https://www.alwataniah.com/collections/munchies"
-    ]
+    ],
+    "The Crest": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Onyx": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Polo Estate Navy Gold": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Kayaan Extrait": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Everest": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Emerald Plume": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Emerald Ascot": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Attar Al Wesal Ice Blue": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Sabah Al Ward Pearl": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Attar Al Wesal Intense": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Blush Papillon": ["Launching Soon", "https://www.alwataniah.com/"],
+    "Cashmere Ivory": ["Launching Soon", "https://www.alwataniah.com/"]
 }
 
 
@@ -361,7 +373,7 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             p["canonical_name"]: p for p in CATALOG["products"]
             if p.get("brand") == "Al Wataniah"
         }
-        self.assertEqual(len(products), 86)
+        self.assertEqual(len(products), 98)
         self.assertEqual(set(products), set(EXPECTED))
         for name, (collection, listing_url) in EXPECTED.items():
             with self.subTest(product=name):
