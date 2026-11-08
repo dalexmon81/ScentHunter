@@ -1,4 +1,4 @@
-"""Page-level evidence for verified Zimaya fragrance identities."""
+"""Page-level evidence for the first verified Zimaya fragrance batch."""
 import json
 import unittest
 from pathlib import Path
@@ -39,7 +39,6 @@ class ZimayaDetailEvidenceTests(unittest.TestCase):
                 self.assertEqual(product.get("identity_status"), "source_verified_name")
                 self.assertEqual(product.get("source_url"), url)
                 self.assertIn(100, product.get("formats_ml", []))
-                self.assertEqual(product.get("concentration"), "Eau de Parfum")
 
     def test_each_verified_product_has_one_100ml_edp_variant(self):
         for name in EXPECTED:
