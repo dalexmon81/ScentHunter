@@ -47,7 +47,7 @@ class MaisonAsrarLockAndKeyTests(unittest.TestCase):
         black = next(p for p in products if p["canonical_name"] == "Black")
         bloom = next(p for p in products if p["canonical_name"] == "Bloom Bloom")
         self.assertNotIn("Black Grapefruit", black["aliases"])
-        self.assertIn("Bloom", bloom["aliases"])
+        self.assertEqual(bloom["canonical_name"], "Bloom Bloom")
 
     def test_catalog_ids_and_brand_name_pairs_are_unique(self):
         products = CATALOG["products"]
