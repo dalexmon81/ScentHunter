@@ -8054,6 +8054,13 @@
           ]
         },
         {
+          "canonical_name": "Odyssey French Kiss",
+          "aliases": [
+            "Odyssey French Kiss",
+            "Armaf Odyssey French Kiss"
+          ]
+        },
+        {
           "canonical_name": "Odyssey Go Mango",
           "aliases": [
             "Odyssey Go Mango",
@@ -8145,10 +8152,27 @@
           ]
         },
         {
+          "canonical_name": "Odyssey Pink Pop",
+          "aliases": [
+            "Odyssey Pink Pop",
+            "Armaf Odyssey Pink Pop"
+          ]
+        },
+        {
           "canonical_name": "Odyssey Revolution Ultra Edition",
           "aliases": [
             "Odyssey Revolution Ultra Edition",
             "Armaf Odyssey Revolution Ultra Edition"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Soda Pop",
+          "aliases": [
+            "Odyssey Soda Pop",
+            "Armaf Odyssey Soda Pop"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
