@@ -5326,9 +5326,9 @@
         "Mishlah",
         "Lattafa Mishlah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lattafa-mishlah/",
+      "source_evidence_url": "https://lattafa.com/product/lattafa-mishlah/"
     },
     {
       "product_id": "SH-LATTAFA-486f7f23",
@@ -36654,6 +36654,15 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-7eca557a",
+      "size_ml": 100,
+      "aliases": [
+        "Mishlah 100 ml",
+        "Lattafa Mishlah 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-7eca557a-100-000"
     }
   ]
 }
