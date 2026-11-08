@@ -2,7 +2,7 @@
 
 ## Exact revision inspected
 - Branch: `catalog/complete-brand-expansion-2026-11`
-- Commit: `0c2896cca589671003f57ec84e6f1ba77dc602b6`
+- Commit: `36f140d51c7a4ce38166cf0318e6a51b62f6a4bb`
 - Pull request: #426 (draft, open, unmerged)
 - This is a structural audit of the exact branch files. It is not a CI result and not a production import.
 
@@ -59,9 +59,10 @@ These are counts in this branch snapshot, not a claim that every historical, reg
 ## CI status
 - GitHub Actions run: [Catalog seed validation #51](https://github.com/dalexmon81/ScentHunter/actions/runs/42454300386)
 - Exact tested commit: `7bea4c4f8702a3fe52c806f04cdac388aa78b93e`
-- Result: **success** — 73 tests passed.
+- Result on that commit: **success — 73 tests passed**.
+- The inspected PR head above is newer (`36f140d51c7a4ce38166cf0318e6a51b62f6a4bb`). The available PR-run and commit-status endpoints returned no run/status for this exact head, so the latest head is **not CI-verified**.
 
-The CI suite now checks seed integrity, provenance labels, canonical-to-family-registry coverage, selected brand regressions, and variant safety. It deliberately does not claim that all listing-backed identities are product-page verified.
+The workflow currently lists 18 test modules. Five additional brand-specific modules remain deferred because their assertions expect identities or product-level evidence not present in the canonical seed; these are documented below. The passing result on the older commit must not be described as a pass for the current head.
 
 ## Deferred source-level checks
 The following older regression modules are not part of this CI gate because their assertions currently expect product rows or product-level evidence that is not present in the canonical seed. They remain visible in the repository for follow-up; no missing product sizes or sources were invented to make them pass:
