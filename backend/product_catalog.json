@@ -5762,8 +5762,8 @@
         "Amber Is Great",
         "Zimaya Amber Is Great"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/amber-is-great-100ml"
     },
     {
       "product_id": "SH-ZIMAYA-f0c3841b",
@@ -5837,8 +5837,8 @@
         "Bahjah",
         "Zimaya Bahjah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/bahja"
     },
     {
       "product_id": "SH-ZIMAYA-06a5e5b6",
@@ -5912,8 +5912,8 @@
         "Crysta Oud",
         "Zimaya Crysta Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/crysta-oud-100ml"
     },
     {
       "product_id": "SH-ZIMAYA-df1d1a4c",
@@ -5927,8 +5927,8 @@
         "Cult",
         "Zimaya Cult"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/cult"
     },
     {
       "product_id": "SH-ZIMAYA-fdec30af",
@@ -6017,8 +6017,8 @@
         "Exquisite",
         "Zimaya Exquisite"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/exquisite"
     },
     {
       "product_id": "SH-ZIMAYA-926533d0",
@@ -6032,8 +6032,8 @@
         "Farah",
         "Zimaya Farah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/farah"
     },
     {
       "product_id": "SH-ZIMAYA-d8ad5e64",
@@ -6122,8 +6122,8 @@
         "Grandeur",
         "Zimaya Grandeur"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/grandeur-100ml"
     },
     {
       "product_id": "SH-ZIMAYA-8d10253c",
@@ -6392,8 +6392,8 @@
         "Sharaf Blend",
         "Zimaya Sharaf Blend"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/sharaf-blend-100ml"
     },
     {
       "product_id": "SH-ZIMAYA-a0de1e54",
@@ -29689,6 +29689,86 @@
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-ff1782d3-100-000",
       "source_url": "https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv"
+    },
+    {
+      "product_id": "SH-ZIMAYA-df1d1a4c",
+      "size_ml": 100,
+      "aliases": [
+        "Cult 100 ml",
+        "Zimaya Cult 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-df1d1a4c-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-aa30016d",
+      "size_ml": 100,
+      "aliases": [
+        "Exquisite 100 ml",
+        "Zimaya Exquisite 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-aa30016d-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-20523aac",
+      "size_ml": 100,
+      "aliases": [
+        "Sharaf Blend 100 ml",
+        "Zimaya Sharaf Blend 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-20523aac-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-2669529a",
+      "size_ml": 100,
+      "aliases": [
+        "Grandeur 100 ml",
+        "Zimaya Grandeur 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-2669529a-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-751b1f9a",
+      "size_ml": 100,
+      "aliases": [
+        "Crysta Oud 100 ml",
+        "Zimaya Crysta Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-751b1f9a-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-926533d0",
+      "size_ml": 100,
+      "aliases": [
+        "Farah 100 ml",
+        "Zimaya Farah 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-926533d0-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-fb37c12c",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Is Great 100 ml",
+        "Zimaya Amber Is Great 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-fb37c12c-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ZIMAYA-3e4052d6",
+      "size_ml": 100,
+      "aliases": [
+        "Bahjah 100 ml",
+        "Zimaya Bahjah 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-3e4052d6-100-000",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
