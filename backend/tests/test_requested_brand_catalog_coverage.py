@@ -13,7 +13,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 98,
-    "Maison Asrar": 120,
+    "Maison Asrar": 119,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -909,6 +909,162 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             if row.get("brand_name") == "Velixir"
         }
         self.assertTrue({"Discovery Set", "The Sacred Four Bundle", "JTC Bundle"}.isdisjoint(products))
+
+
+    def test_maison_asrar_all_116_reference_fragrances_and_three_retailer_additions_are_present(self):
+        expected = [
+                  "Belgravia",
+                  "Legacy",
+                  "Vanguard",
+                  "Regent",
+                  "Ameer",
+                  "Majesty",
+                  "Veyra",
+                  "Vanilla Aura",
+                  "Faris Al Arab",
+                  "Vanilla Voyage",
+                  "III Thriller",
+                  "Last Swim",
+                  "Pomme Rouge",
+                  "Haven",
+                  "Muharib",
+                  "Silent Surge",
+                  "Treasure",
+                  "Hunter",
+                  "Imperial",
+                  "Monarch",
+                  "1963",
+                  "Adorable",
+                  "Alonoud",
+                  "Aseel",
+                  "Basma",
+                  "Black",
+                  "Bloom Bloom",
+                  "Bonita",
+                  "Casablanca",
+                  "Cascade",
+                  "Coffee Blend",
+                  "Daham",
+                  "Date Night",
+                  "Dear Jasmine",
+                  "Desire",
+                  "Dubai London",
+                  "Dubai Miami",
+                  "Dubai Milano",
+                  "DXB",
+                  "DXB Jumeirah",
+                  "Emerald",
+                  "Emessa",
+                  "Fairy Tale",
+                  "Fairyland",
+                  "Fakhama",
+                  "Flair",
+                  "Fresh Iris",
+                  "Gentle Oud",
+                  "Gold Noir",
+                  "Hamsat Gharam",
+                  "Hamsat Ghazal",
+                  "Hamsat Hob",
+                  "Hamsat Ishq",
+                  "Harmony",
+                  "Heritage",
+                  "Hikaya",
+                  "Hilm",
+                  "Icon",
+                  "Infina",
+                  "Italian Leather",
+                  "Jawhara Black",
+                  "Jawhara Rouge",
+                  "Joy",
+                  "Khateer",
+                  "Khayal",
+                  "Khayyal",
+                  "Kiss My Lips",
+                  "Larimar",
+                  "Leo",
+                  "Librae",
+                  "Lily",
+                  "Lolita",
+                  "Lumiere",
+                  "Luna",
+                  "Magic Night",
+                  "Masterpiece",
+                  "Milky Way",
+                  "Mohra",
+                  "Nada",
+                  "Never Forget Me",
+                  "Night in Paris",
+                  "Oh Honey!",
+                  "Omniya",
+                  "Oscar",
+                  "Patchouli with Love",
+                  "Petra",
+                  "Pink Crush",
+                  "Qamar",
+                  "Red Velvet",
+                  "Rey",
+                  "Rose",
+                  "Rose Honey",
+                  "Rose Musk",
+                  "Rose Oud",
+                  "Rose Vanilla",
+                  "Rosé Absolute",
+                  "Rosé Bouquet",
+                  "Rubellite",
+                  "Silver Elixer",
+                  "Soirée",
+                  "Soudfa",
+                  "Sunset in Capri",
+                  "Throne",
+                  "Throne Eclipse",
+                  "Timeless",
+                  "Tornado",
+                  "Trophy",
+                  "Turath",
+                  "Turath Malaki",
+                  "Vanilla Rouge",
+                  "Vanilla Seduction",
+                  "Vision",
+                  "Wadi",
+                  "Whisper",
+                  "Wood Intense",
+                  "Zenobia"
+        ]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        self.assertEqual(len(expected), 116)
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+        self.assertEqual(len(products), 119)
+        for name in ("Love Key", "Plot Twist", "Unsolved Mystery"):
+            with self.subTest(name=name):
+                product = products[name]
+                self.assertEqual(product.get("formats_ml"), [100])
+                variant = next(
+                    row for row in CATALOG.get("variants", [])
+                    if row.get("product_id") == product["product_id"]
+                )
+                self.assertEqual(variant.get("size_ml"), 100)
+                self.assertEqual(variant.get("concentration"), "Eau de Parfum")
+
+    def test_maison_asrar_black_grapefruit_is_a_display_alias_of_black(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        self.assertNotIn("Black Grapefruit", products)
+        self.assertIn("Black Grapefruit", products["Black"].get("aliases", []))
+        variant = next(
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == products["Black"]["product_id"]
+        )
+        self.assertEqual(variant.get("size_ml"), 100)
+        self.assertIn("Black Grapefruit 100 ml", variant.get("aliases", []))
 
 if __name__ == "__main__":
     unittest.main()
