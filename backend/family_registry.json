@@ -538,6 +538,18 @@
           "gtins": [
             "6298042001831"
           ]
+        },
+        {
+          "canonical_name": "Eclipse",
+          "aliases": [
+            "Eclipse"
+          ]
+        },
+        {
+          "canonical_name": "Eclipse Nova",
+          "aliases": [
+            "Eclipse Nova"
+          ]
         }
       ]
     },
@@ -14521,6 +14533,30 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Kibria Supremo",
+          "aliases": [
+            "Kibria Supremo"
+          ]
+        },
+        {
+          "canonical_name": "Oscar Platinum",
+          "aliases": [
+            "Oscar Platinum"
+          ]
+        },
+        {
+          "canonical_name": "Zukhruf Peach Please",
+          "aliases": [
+            "Zukhruf Peach Please"
+          ]
+        },
+        {
+          "canonical_name": "Mazaaj Rhythm",
+          "aliases": [
+            "Mazaaj Rhythm"
           ]
         }
       ]
