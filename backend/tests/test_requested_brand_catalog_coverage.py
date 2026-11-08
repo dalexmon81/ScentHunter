@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
-    "Bujairami": 142,
+    "Bujairami": 151,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -463,6 +463,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_bujairami_official_collection_batch_one_has_verified_product_pages(self):
+        expected = {
+            "Glorious": ("https://bujairami.com.au/products/glorious", None),
+            "Ripper": ("https://bujairami.com.au/products/ripper-inspired-by-creed-avendus", 100),
+            "Madness Extreme": ("https://bujairami.com.au/products/madness-extreme-inspired-by-ombre-nomade-louis-vuitton", None),
+            "Woody Oud": ("https://bujairami.com.au/products/fair-dinkum-inspired-by-tom-ford-oud-wood", 100),
+            "Shortcake": ("https://bujairami.com.au/products/rise-up-inspired-vanilla-28-kayali", None),
+            "Lavish": ("https://bujairami.com.au/products/lavish-inspired-by-mfk-baccarat-rouge-540", 100),
+            "The Hype": ("https://bujairami.com.au/products/the-hype-inspired-by-side-effect-initio-parfums-prives", None),
+            "Lavish Life": ("https://bujairami.com.au/products/lavish-life-inspired-by-baccarat-rouge-540-extrait", None),
+            "Vanacco": ("https://bujairami.com.au/products/vanacco-inspired-by-tobacco-vanille-tom-ford", None),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                if size_ml is None:
+                    self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+                else:
+                    self.assertEqual(row.get("formats_ml"), [size_ml])
+                    matching = [
+                        v for v in variants
+                        if v.get("product_id") == row["product_id"] and v.get("size_ml") == size_ml
+                    ]
+                    self.assertEqual(len(matching), 1)
+                    self.assertNotIn("concentration", matching[0])
 
 if __name__ == "__main__":
     unittest.main()
