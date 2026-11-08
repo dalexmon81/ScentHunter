@@ -44,8 +44,11 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
             with self.subTest(product=product["canonical_name"]):
                 expected_status = "source_verified_name" if product["canonical_name"] == "Ghadeer Silver" else "source_listed_name"
                 self.assertEqual(product["identity_status"], expected_status)
-                if product["canonical_name"] in {"Saqr Al Badiya", "Sensuous Night", "Ghadeer Silver"}:
+                if product["canonical_name"] in {"Saqr Al Badiya", "Ghadeer Silver"}:
                     self.assertIn("/products/", product["source_url"])
+                elif product["canonical_name"] == "Sensuous Night":
+                    self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
+                    self.assertIn("/products/", product.get("source_evidence_url", ""))
                 else:
                     self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
                 variants = [
