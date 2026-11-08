@@ -12,6 +12,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from .models import RetailerOffer, decimal_or_none
+from .product_form import detect_product_form, normalize_product_form
 
 
 _NAME_FIELDS = ("raw_name", "name", "title", "product_name", "productName", "description")
@@ -23,6 +24,7 @@ _ID_FIELDS = ("retailer_product_id", "product_id", "productId", "sku", "id", "ea
 _AVAILABILITY_FIELDS = ("availability", "stock_status", "stockStatus", "in_stock", "inStock", "available")
 _IMAGE_FIELDS = ("retailer_image_url", "image_url", "imageUrl", "image", "image_link", "imageLink")
 _CURRENCY_FIELDS = ("currency", "currency_code", "currencyCode")
+_PRODUCT_FORM_FIELDS = ("product_form", "productForm", "product_type", "productType", "form", "product_category", "productCategory")
 
 
 def _first_value(record: Mapping[str, Any], fields: tuple[str, ...]) -> Any:
@@ -109,6 +111,9 @@ def normalize_offer(
     retailer_product_id = _text(_first_value(record, _ID_FIELDS))
     availability = _availability(_first_value(record, _AVAILABILITY_FIELDS))
     retailer_image_url = _http_url(_first_value(record, _IMAGE_FIELDS))
+    product_form = normalize_product_form(_first_value(record, _PRODUCT_FORM_FIELDS))
+    if product_form is None:
+        product_form = detect_product_form(raw_name)
 
     currency_value = _text(_first_value(record, _CURRENCY_FIELDS)) or currency_default
     currency = currency_value.upper()
@@ -129,6 +134,7 @@ def normalize_offer(
         availability=availability,
         retailer_image_url=retailer_image_url,
         raw_payload=dict(record),
+        product_form=product_form,
     )
 
 
