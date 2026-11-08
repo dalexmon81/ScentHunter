@@ -33740,7 +33740,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
-      "source_evidence_url": "https://lattafa.com/product/new-york-the-city-of-dreams/"
+      "source_evidence_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-025",
@@ -33756,7 +33759,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/love-in-paris/",
-      "source_evidence_url": "https://lattafa.com/product/love-in-paris/"
+      "source_evidence_url": "https://lattafa.com/product/love-in-paris/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-026",
@@ -33772,7 +33778,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/raghad/",
-      "source_evidence_url": "https://lattafa.com/product/raghad/"
+      "source_evidence_url": "https://lattafa.com/product/raghad/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-027",
@@ -33788,7 +33797,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
-      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/"
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
