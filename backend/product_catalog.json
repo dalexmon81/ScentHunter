@@ -4134,10 +4134,14 @@
         "Kayaan Classic",
         "Al Wataniah Kayaan Classic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-classic",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-classic",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-72f22b5d",
@@ -4151,10 +4155,14 @@
         "Kayaan Terra",
         "Al Wataniah Kayaan Terra"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-terra",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-terra",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-aa339eab",
@@ -4168,10 +4176,14 @@
         "Kayaan Gold",
         "Al Wataniah Kayaan Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-gold",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-gold",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-22a0e569",
@@ -4185,10 +4197,14 @@
         "Kayaan Midnight",
         "Al Wataniah Kayaan Midnight"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-midnight",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-midnight",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-ccc7d2db",
@@ -33418,10 +33434,14 @@
         "Arya Peony Rose",
         "Al Wataniah Arya Peony Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/arya-peony-rose",
+      "source_evidence_url": "https://www.alwataniah.com/products/arya-peony-rose",
+      "collection_name": "Niche",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-ROYAL-OAK-I",
@@ -33435,10 +33455,14 @@
         "Royal Oak I",
         "Al Wataniah Royal Oak I"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/royal-oak-i",
+      "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-i",
+      "collection_name": "Niche",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-ROYAL-OAK-II",
@@ -33452,10 +33476,14 @@
         "Royal Oak II",
         "Al Wataniah Royal Oak II"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/royal-oak-ii",
+      "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-ii",
+      "collection_name": "Niche",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-DAIEM",
@@ -33469,10 +33497,14 @@
         "Al Daiem",
         "Al Wataniah Al Daiem"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/al-daiem",
+      "source_evidence_url": "https://www.alwataniah.com/products/al-daiem",
+      "collection_name": "Niche",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-DAIEM-ELIXIR",
@@ -33486,10 +33518,14 @@
         "Al Daiem Elixir",
         "Al Wataniah Al Daiem Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/al-daiem-elixir",
+      "source_evidence_url": "https://www.alwataniah.com/products/al-daiem-elixir",
+      "collection_name": "Niche",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-MASSAD-ROYALE",
@@ -37435,6 +37471,105 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-89eb9e9b",
+      "variant_id": "SHV-SH-AL-WATANIAH-89eb9e9b-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Kayaan Classic 100 ml",
+        "Al Wataniah Kayaan Classic 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/kayaan-classic"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-72f22b5d",
+      "variant_id": "SHV-SH-AL-WATANIAH-72f22b5d-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Kayaan Terra 100 ml",
+        "Al Wataniah Kayaan Terra 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/kayaan-terra"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-aa339eab",
+      "variant_id": "SHV-SH-AL-WATANIAH-aa339eab-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Kayaan Gold 100 ml",
+        "Al Wataniah Kayaan Gold 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/kayaan-gold"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-22a0e569",
+      "variant_id": "SHV-SH-AL-WATANIAH-22a0e569-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Kayaan Midnight 100 ml",
+        "Al Wataniah Kayaan Midnight 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/kayaan-midnight"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-DAIEM",
+      "variant_id": "SHV-SH-AL-WATANIAH-AL-DAIEM-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Al Daiem 100 ml",
+        "Al Wataniah Al Daiem 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/al-daiem"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-DAIEM-ELIXIR",
+      "variant_id": "SHV-SH-AL-WATANIAH-AL-DAIEM-ELIXIR-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Al Daiem Elixir 100 ml",
+        "Al Wataniah Al Daiem Elixir 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/al-daiem-elixir"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ARYA-PEONY-ROSE",
+      "variant_id": "SHV-SH-AL-WATANIAH-ARYA-PEONY-ROSE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Arya Peony Rose 100 ml",
+        "Al Wataniah Arya Peony Rose 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/arya-peony-rose"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROYAL-OAK-I",
+      "variant_id": "SHV-SH-AL-WATANIAH-ROYAL-OAK-I-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Royal Oak I 100 ml",
+        "Al Wataniah Royal Oak I 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/royal-oak-i"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROYAL-OAK-II",
+      "variant_id": "SHV-SH-AL-WATANIAH-ROYAL-OAK-II-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Royal Oak II 100 ml",
+        "Al Wataniah Royal Oak II 100 ml"
+      ],
+      "source_url": "https://www.alwataniah.com/products/royal-oak-ii"
     }
   ]
 }
