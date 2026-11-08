@@ -243,6 +243,12 @@ class KhadlajLaFedeTests(unittest.TestCase):
             names = {p["canonical_name"].casefold() for p in family.get("products", [])}
             self.assertFalse(names & canonical_names)
 
+    def test_celeste_fleur_official_spelling_is_an_alias(self):
+        product = next(p for p in self.products if p["canonical_name"] == "La Fede Celeste Fluer")
+        self.assertIn("La Fede Celeste Fleur", product["aliases"])
+        row = next(p for p in self.family["products"] if p["canonical_name"] == "La Fede Celeste Fluer")
+        self.assertIn("La Fede Celeste Fleur", row["aliases"])
+
     def test_product_and_variant_ids_are_unique(self):
         product_ids = [p["product_id"] for p in CATALOG["products"]]
         variant_ids = [v["variant_id"] for v in CATALOG["variants"]]
