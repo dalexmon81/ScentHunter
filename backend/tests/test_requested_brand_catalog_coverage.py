@@ -449,6 +449,15 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             if row.get("brand_name") == "Paris Corner"
         }
         variants = CATALOG.get("variants", [])
+        gulf_orchid_rows = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Gulf Orchid"
+        ]
+        gulf_orchid_names = [row.get("canonical_name") for row in gulf_orchid_rows]
+        self.assertEqual(len(gulf_orchid_names), len(set(gulf_orchid_names)))
+        self.assertNotIn("Vanilla Aura", gulf_orchid_names)
+        self.assertNotIn("Vanilla Voyage", gulf_orchid_names)
+
         for name, source_url in expected.items():
             with self.subTest(name=name):
                 self.assertIn(name, products)
@@ -492,6 +501,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertEqual(matching[0].get("source_evidence_url"), travel_url)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_gulf_orchid_nine_new_arrivals_have_official_100ml_edp_variants(self):
+        expected = {
+            "Belle": "https://shop-gulforchid.com/products/belle",
+            "Amour": "https://shop-gulforchid.com/products/amour",
+            "Chic": "https://shop-gulforchid.com/products/chic",
+            "Cloud 9": "https://shop-gulforchid.com/products/cloud-9",
+            "Phantom": "https://shop-gulforchid.com/products/phantom",
+            "Flamma": "https://shop-gulforchid.com/products/flamma",
+            "Vortex": "https://shop-gulforchid.com/products/vortex",
+            "Rosalia": "https://shop-gulforchid.com/products/rosalia",
+            "Maestro": "https://shop-gulforchid.com/products/maestro",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Gulf Orchid"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [100])
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"]
+                    and v.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+
 
 
 if __name__ == "__main__":
