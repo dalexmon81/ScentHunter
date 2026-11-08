@@ -1,0 +1,30 @@
+name: Catalog seed validation
+
+on:
+  pull_request:
+    branches:
+      - catalog/brand-expansion-2026-11
+    paths:
+      - "backend/product_catalog.json"
+      - "backend/family_registry.json"
+      - "backend/tests/test_catalog_seed_recovery.py"
+      - ".github/workflows/catalog-seed-validation.yml"
+  push:
+    branches:
+      - catalog/complete-brand-expansion-2026-11
+
+permissions:
+  contents: read
+
+jobs:
+  validate-catalog-seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate recovered catalog seed
+        run: python -m unittest backend/tests/test_catalog_seed_recovery.py -v
