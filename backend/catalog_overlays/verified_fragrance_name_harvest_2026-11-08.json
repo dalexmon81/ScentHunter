@@ -18,7 +18,8 @@
     "brand_line_hierarchy": "Where the requested catalog line is distinct from the manufacturer, keep the requested line as brand/collection and store the parent house separately as manufacturer. Aromatix is cataloged as Aromatix, with French Avenue as manufacturer.",
     "games_of_spades_unverified_registry_entry": "Jack remains in the family registry as a discovery-only/historical candidate, but is not imported into the canonical product seed because no current official Jo Milano Paris listing or product detail page was verified in this pass.",
     "pending_candidates": "Bujairami Hectic and Arabiyat Prestige Mahd Al Dhahab Extrait remain discovery candidates only. Their retailer evidence is recorded, but neither was imported into the canonical seed because official brand-level identity evidence and/or concentration modeling is unresolved.",
-    "bujairami_hectic": "Hectic is now admitted as a source-verified canonical name from the official Bujairami product page. Concentration, volume and GTIN are not imported because the official detail page omits them and retailer sources conflict."
+    "bujairami_hectic": "Hectic is now admitted as a source-verified canonical name from the official Bujairami product page. Concentration, volume and GTIN are not imported because the official detail page omits them and retailer sources conflict.",
+    "mahd_al_dhahab_extrait": "Kept pending primary brand/distributor product detail. Retailer evidence and independent database are strong corroboration but are not substituted for brand-level confirmation."
   },
   "summary": {
     "product_name_candidates": 173,
@@ -1382,8 +1383,8 @@
       "fragrance_name": "Mahd Al Dhahab Extrait",
       "evidence_source": "Essência Árabe",
       "source_url": "https://www.essenciaarabe.com/en/collections/frascos-completos-descontos",
-      "evidence_level": "retailer_and_independent_cross_check_pending_brand_source",
-      "variant_details": "keep distinct from the EDP if the brand confirms this is a separate Extrait release; do not create a variant row from retailer-only evidence.",
+      "evidence_level": "multiple_retailer_and_independent_database_cross_check_pending_brand_source",
+      "variant_details": "Retailers and independent perfume database distinguish this 2026 Extrait release from Mahd Al Dhahab EDP. Do not add as canonical identity until official brand/distributor primary source is confirmed; do not model as an EDP variant.",
       "cross_check_sources": [
         {
           "url": "https://fenicethebrand.pt/collections/arabiyat-prestige",
