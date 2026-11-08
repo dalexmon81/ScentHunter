@@ -1,0 +1,40 @@
+# Zimaya product-detail verification — 2026-11-08
+
+Official source: https://zimayaperfumes.com/collections/all
+
+The canonical seed already contained 70 Zimaya collection-listed identities. This update verified ten existing names against individual official product-detail pages and created 100 ml Eau de Parfum variant rows for them. Two missing names were added as new canonical identities and synchronized into `backend/family_registry.json`.
+
+## Product-detail evidence
+
+| Canonical name | Official page | Explicit detail |
+|---|---|---|
+| Cult | https://zimayaperfumes.com/products/cult | 100 ml, EDP, Unisex |
+| Exquisite | https://zimayaperfumes.com/products/exquisite | 100 ml, EDP, Pour Femme |
+| Sharaf Blend | https://zimayaperfumes.com/products/sharaf-blend-100ml | 100 ml, EDP, Unisex |
+| Grandeur | https://zimayaperfumes.com/products/grandeur-100ml | 100 ml, EDP, Unisex |
+| Crysta Oud | https://zimayaperfumes.com/products/crysta-oud-100ml | 100 ml, EDP, Unisex |
+| Farah | https://zimayaperfumes.com/products/farah | 100 ml, EDP, Pour Femme |
+| Amber Is Great | https://zimayaperfumes.com/products/amber-is-great-100ml | 100 ml, EDP, Pour Homme |
+| Bahjah | https://zimayaperfumes.com/products/bahja | 100 ml, EDP, Pour Femme |
+| Wujood | https://zimayaperfumes.com/products/wujood-100ml | 100 ml, EDP, Pour Homme |
+| Luxor | https://zimayaperfumes.com/products/luxor-100ml | 100 ml, EDP, Pour Femme |
+
+## Changes
+
+- 8 existing identities promoted to `source_verified_name`, with explicit EDP concentration and official product URLs.
+- Added Wujood and Luxor as canonical identities (the names were absent from the prior 70-record Zimaya set).
+- Added 10 corresponding 100 ml EDP variant rows.
+- Added Wujood and Luxor to the Zimaya family registry.
+- No prices, stock, retailer offers, GTINs, MPNs, shipping values or image URLs were invented.
+
+## Structural audit after update
+
+- 1,721 canonical identities.
+- 180 explicit variant rows.
+- 72 Zimaya identities in the current seed.
+- 10 Zimaya 100 ml EDP variant rows from product-detail evidence.
+- 0 duplicate product IDs.
+- 0 duplicate variant IDs.
+- 0 orphan variant references.
+
+The catalogue remains a discovery/canonical identity seed. This verification does not claim that all 104 products in the official Zimaya collection have been imported or that every other requested brand is exhaustive. The change is on the draft catalog-expansion PR branch only; `main` and production remain unchanged.

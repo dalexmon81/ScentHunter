@@ -33726,6 +33726,26 @@
       ]
     },
     {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cloud 9",
+      "name": "Cloud 9",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Cloud 9",
+      "aliases": [
+        "Cloud 9",
+        "Gulf Orchid Cloud 9"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/cloud-9",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
       "product_id": "SH-GULF-ORCHID-CANDY-BITE",
       "brand": "Gulf Orchid",
       "brand_name": "Gulf Orchid",
@@ -33740,6 +33760,26 @@
       "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/candy-bite",
       "source_evidence_url": "https://shop-gulforchid.com/products/candy-bite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MATCHA-LATTE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Matcha Latte",
+      "name": "Matcha Latte",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Matcha Latte",
+      "aliases": [
+        "Matcha Latte",
+        "Gulf Orchid Matcha Latte"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/matcha-latte",
+      "source_evidence_url": "https://shop-gulforchid.com/products/matcha-latte",
       "concentration": "Eau de Parfum",
       "formats_ml": [
         100
@@ -33903,6 +33943,46 @@
       "concentration": "Eau de Parfum",
       "formats_ml": [
         100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ANGHAM",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Angham",
+      "name": "Angham",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Angham",
+      "aliases": [
+        "Angham",
+        "Gulf Orchid Angham"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/angham-by-gulf-orchid-eau-de-parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/angham-by-gulf-orchid-eau-de-parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        110
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-LEGEND",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Legend",
+      "name": "Legend",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Legend",
+      "aliases": [
+        "Legend",
+        "Gulf Orchid Legend"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/legend-gulf-orchid-eau-de-parfum-100-ml",
+      "source_evidence_url": "https://shop-gulforchid.com/products/legend-gulf-orchid-eau-de-parfum-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        110
       ]
     }
   ],
@@ -36838,6 +36918,17 @@
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
     },
     {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud 9 100 ml",
+        "Gulf Orchid Cloud 9 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-CLOUD-9-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9"
+    },
+    {
       "product_id": "SH-GULF-ORCHID-CANDY-BITE",
       "size_ml": 100,
       "aliases": [
@@ -36847,6 +36938,17 @@
       "variant_id": "SHV-SH-GULF-ORCHID-CANDY-BITE-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/candy-bite"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MATCHA-LATTE",
+      "size_ml": 100,
+      "aliases": [
+        "Matcha Latte 100 ml",
+        "Gulf Orchid Matcha Latte 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-MATCHA-LATTE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/matcha-latte"
     },
     {
       "product_id": "SH-GULF-ORCHID-MAESTRO",
@@ -37023,6 +37125,28 @@
       "variant_id": "SHV-SH-GULF-ORCHID-AWHAM-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/awham_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ANGHAM",
+      "size_ml": 110,
+      "aliases": [
+        "Angham 110 ml",
+        "Gulf Orchid Angham 110ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-ANGHAM-110-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/angham-by-gulf-orchid-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-LEGEND",
+      "size_ml": 110,
+      "aliases": [
+        "Legend 110 ml",
+        "Gulf Orchid Legend 110ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-LEGEND-110-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/legend-gulf-orchid-eau-de-parfum-100-ml"
     }
   ]
 }

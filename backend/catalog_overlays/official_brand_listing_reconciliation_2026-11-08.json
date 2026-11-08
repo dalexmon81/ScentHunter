@@ -1,0 +1,998 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "official_brand_listing_reconciliation",
+  "created_at": "2026-11-08",
+  "status": "source_listed_candidates_pending_catalog_diff",
+  "summary": {
+    "candidate_pairs": 81,
+    "velixir": 28,
+    "mykonos": 53,
+    "mykonos_shop_collection_total": 54,
+    "mykonos_travel_size_listing_excluded": 1,
+    "mykonos_fragrance_name_candidates": 53
+  },
+  "source_notes": [
+    {
+      "name": "Velixir official website",
+      "url": "https://velixirparfums.com/",
+      "note": "Official site shows the current range; an independent full-range index reports 28 perfumes, 24 EDP and four Extrait, with size options and names. Product detail pages should be rechecked before canonical variants are created."
+    },
+    {
+      "name": "Velixir full-range independent index",
+      "url": "https://velixirperfumes.eu/perfumes/",
+      "note": "Independent reseller/index; states 28 perfumes and transcribes names, concentrations, sizes, notes. Not an official brand site."
+    },
+    {
+      "name": "Mykonos official all-products collection page 1",
+      "url": "https://officialmykonos.com/collections/all?page=1",
+      "note": "Shopify collection reports 54 products. Page 1 of 4."
+    },
+    {
+      "name": "Mykonos official all-products collection page 2",
+      "url": "https://officialmykonos.com/collections/all?page=2",
+      "note": "Page 2 of 4."
+    },
+    {
+      "name": "Mykonos official all-products collection page 3",
+      "url": "https://officialmykonos.com/collections/all?page=3",
+      "note": "Page 3 of 4; Travel Size 15ML excluded as a presentation rather than a separate fragrance identity."
+    },
+    {
+      "name": "Mykonos official all-products collection page 4",
+      "url": "https://officialmykonos.com/collections/all?page=4",
+      "note": "Page 4 of 4; includes collaborations retained with their collaboration label."
+    }
+  ],
+  "policy": {
+    "offers_imported": 0,
+    "prices_imported": 0,
+    "availability_imported": 0,
+    "gtin_inferred": false,
+    "canonical_catalog_modified": false,
+    "candidate_identity_not_verified_sku": true,
+    "exact_variant_creation_requires_product_detail_evidence": true,
+    "duplicate_check_against_large_catalog_not_yet_completed": true
+  },
+  "product_candidates": [
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Adonis",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Aphrodite",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Apollo",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Ares",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Artemis",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Asteria",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Athena",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Comus",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Concordia",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Demeter",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Ether",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Galatea",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Harmonia",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Helios",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Hera",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Himeros",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Icarus",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Morpheus",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Narcisus",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Nyx",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Orion",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Orpheus",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Paladin",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Panacea",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Persephone",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Poseidon",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Selene",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Velixir",
+      "fragrance_name": "Uranus",
+      "concentration": "EDP",
+      "size_ml_options": [
+        35,
+        100
+      ],
+      "source_url": "https://velixirparfums.com/",
+      "source_name": "Velixir official product collection",
+      "evidence_note": "The product names are independently cross-listed in a full-range index; sizes/concentration are from the brand range description. Product-level page check still required before creating variant rows."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Aphrodite",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Baby Love",
+      "concentration": "EDP",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Black Opera",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Bonfire Vanilla",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Cafe Drops",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "California Blue",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "California Club",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "California",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Caramel Fudge Cookie",
+      "concentration": "EDP",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Coconut Dreams",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Conquer",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Constantine",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Crimson",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Dark Secret",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Dreamscape",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Enchanted",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Hawaiian Crush",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Imperium",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Inception",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Inferno",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Luminos",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Marbella",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Matcha Latte",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Mayfair",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Milk Drops",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Monaco Royale",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Moroccan Vanilla",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Musk Aura",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Nautilus",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "On The Rocks",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Paradise",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Penthouse",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Pink Beach",
+      "concentration": "EDP",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Pink Drops",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Reflection Elixir",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Reflection",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Royal Ispahan",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Satin Blanc",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Senja",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Silent Whisper",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Slow Living",
+      "concentration": "EDP / Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Sorrento",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Sparkling Rosé",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Stilettos",
+      "concentration": "EDP",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Untamed",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Utopia",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Vanilla Clouds",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Verve",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Xoxo Rosy",
+      "concentration": "EDP",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "MyEgo (Mykonos x AlterEgo)",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Empire (Mykonos x RRQ)",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Glitch (Mykonos x SetiawanAde)",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50,
+        100
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance_name": "Invade (Mykonos x SetiawanAde)",
+      "concentration": "Extrait",
+      "size_ml_options": [
+        50
+      ],
+      "source_url": "https://officialmykonos.com/collections/all",
+      "source_name": "Mykonos official all-products collection",
+      "evidence_note": "Product title/format/size read from paginated official collection listing; sizes are presentation options, not proof of currently purchasable stock."
+    }
+  ],
+  "reconciliation_findings": [
+    "The current official Mykonos shop collection reports 54 products, while an independent fragrance database lists 84 Mykonos perfumes. These are different scopes and should not be forced to match.",
+    "The Mykonos branch snapshot in PR #426 reports 72 canonical identity records. This exceeds the current official shop collection count, so each of the 72 needs reconciliation for discontinued items, new releases, collaborations, duplicates and non-fragrance formats.",
+    "The Velixir range is listed as 28 perfumes by an independent index, while the official brand website is the primary reference. The PR #426 snapshot reports 28 Velixir identities; compare names and aliases before adding anything."
+  ]
+}

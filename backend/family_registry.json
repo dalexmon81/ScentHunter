@@ -10433,10 +10433,30 @@
           ]
         },
         {
+          "canonical_name": "Cloud 9",
+          "aliases": [
+            "Cloud 9",
+            "Gulf Orchid Cloud 9"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Candy Bite",
           "aliases": [
             "Candy Bite",
             "Gulf Orchid Candy Bite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Matcha Latte",
+          "aliases": [
+            "Matcha Latte",
+            "Gulf Orchid Matcha Latte"
           ],
           "formats_ml": [
             100
@@ -10520,6 +10540,26 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Angham",
+          "aliases": [
+            "Angham",
+            "Gulf Orchid Angham"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Legend",
+          "aliases": [
+            "Legend",
+            "Gulf Orchid Legend"
+          ],
+          "formats_ml": [
+            110
           ]
         }
       ]
