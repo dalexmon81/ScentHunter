@@ -2955,7 +2955,8 @@
       "family_name": "Confidential",
       "aliases": [
         "Confidential",
-        "Paris Corner Confidential"
+        "Paris Corner Confidential",
+        "Confidential 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all"
@@ -17293,7 +17294,8 @@
       "family_name": "Khayal",
       "aliases": [
         "Khayal",
-        "Paris Corner Khayal"
+        "Paris Corner Khayal",
+        "Khayal 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
@@ -17389,7 +17391,8 @@
       "family_name": "Minya",
       "aliases": [
         "Minya",
-        "Paris Corner Minya"
+        "Paris Corner Minya",
+        "Minya 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
@@ -22353,7 +22356,8 @@
       "family_name": "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
       "aliases": [
         "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
-        "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION"
+        "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
+        "Supremacy Tapis Rouge"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://afnan.com/collections/all?page=3",
@@ -23461,7 +23465,8 @@
       "family_name": "Ophidian Black Cherry",
       "aliases": [
         "Ophidian Black Cherry",
-        "Paris Corner Ophidian Black Cherry"
+        "Paris Corner Ophidian Black Cherry",
+        "Ophidian Black Cherry 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
@@ -23685,7 +23690,8 @@
       "family_name": "Qawafi",
       "aliases": [
         "Qawafi",
-        "Paris Corner Qawafi"
+        "Paris Corner Qawafi",
+        "Qawafi 100ML"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
@@ -25446,9 +25452,12 @@
         "Aristo",
         "Arabiyat Prestige Aristo"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/aristo",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-a5849e1a",
@@ -25630,17 +25639,22 @@
       "product_id": "SH-ARABIYAT-PRESTIGE-c19b90f0",
       "brand": "Arabiyat Prestige",
       "brand_name": "Arabiyat Prestige",
-      "canonical_name": "Bois Blanc",
-      "name": "Bois Blanc",
+      "canonical_name": "Bóis Blanc",
+      "name": "Bóis Blanc",
       "family_id": "arabiyat_prestige_catalog",
       "family_name": "Arabiyat Prestige",
       "aliases": [
         "Bois Blanc",
-        "Arabiyat Prestige Bois Blanc"
+        "Arabiyat Prestige Bois Blanc",
+        "Bóis Blanc",
+        "Arabiyat Prestige Bóis Blanc"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/bois-blanc",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-5483c0e0",
@@ -25654,9 +25668,12 @@
         "Cherry Musk",
         "Arabiyat Prestige Cherry Musk"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cherry-musk",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-799a9e7f",
@@ -25686,9 +25703,12 @@
         "Cursed",
         "Arabiyat Prestige Cursed"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/cursed",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-b36edff1",
@@ -25782,9 +25802,12 @@
         "Fahad Regal",
         "Arabiyat Prestige Fahad Regal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/fahad-regal",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-0a75bee0",
@@ -26054,9 +26077,12 @@
         "Kohl Luminous",
         "Arabiyat Prestige Kohl Luminous"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-luminous",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-38ce2920",
@@ -26086,9 +26112,12 @@
         "Kohl Opulence",
         "Arabiyat Prestige Kohl Opulence"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-opulence",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-e688d8ec",
@@ -26102,9 +26131,12 @@
         "La Di Da For Her",
         "Arabiyat Prestige La Di Da For Her"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-her",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-fda57f35",
@@ -26118,9 +26150,12 @@
         "La Di Da For Him",
         "Arabiyat Prestige La Di Da For Him"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/la-di-da-for-him",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-06d15983",
@@ -26182,9 +26217,12 @@
         "Mahd Al Dhahab",
         "Arabiyat Prestige Mahd Al Dhahab"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/mahd-al-dhahab",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-aac6aa05",
@@ -26218,9 +26256,12 @@
         "Marasi For Her",
         "Arabiyat Prestige Marasi For Her"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-her",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-eda09b07",
@@ -26234,9 +26275,12 @@
         "Marasi For Him",
         "Arabiyat Prestige Marasi For Him"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marasi-for-him",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-73a8f798",
@@ -26558,9 +26602,12 @@
         "Nyla Sherbet",
         "Arabiyat Prestige Nyla Sherbet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/nyla-sherbet",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-b943ed47",
@@ -26878,9 +26925,12 @@
         "Ramad Oriental",
         "Arabiyat Prestige Ramad Oriental"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/ramad-oriental",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-28aef49e",
@@ -26958,9 +27008,12 @@
         "Safa",
         "Arabiyat Prestige Safa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/safa",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-435dcc0b",
@@ -26990,9 +27043,12 @@
         "Swar D'Amour",
         "Arabiyat Prestige Swar D'Amour"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-damour",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-da4e045b",
@@ -27022,9 +27078,12 @@
         "Swar Serpentine",
         "Arabiyat Prestige Swar Serpentine"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/swar-serpentine",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-a17b3f3e",
@@ -27054,9 +27113,12 @@
         "Uhud",
         "Arabiyat Prestige Uhud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/uhud",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-61c0576d",
@@ -27699,7 +27761,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/raspberry-ripple",
       "source_evidence_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/raspberry-ripple",
-      "collection": "Arabiyat Prestige"
+      "collection": "Arabiyat Prestige",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-GELATO-BLACK-CURRANT-LOLLY",
@@ -27711,12 +27776,16 @@
       "family_name": "Gelato Black Currant Lolly",
       "aliases": [
         "Gelato Black Currant Lolly",
-        "Arabiyat Prestige Gelato Black Currant Lolly"
+        "Arabiyat Prestige Gelato Black Currant Lolly",
+        "Gelato Black Current Lolly"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
       "source_evidence_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/black-current-lolly",
-      "collection": "Arabiyat Prestige"
+      "collection": "Arabiyat Prestige",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-AUSTRALIAN-WATERMELON",
@@ -28224,6 +28293,3729 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-001",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Addict Elixir",
+      "name": "Arrogate Addict Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Addict Elixir",
+      "aliases": [
+        "Arrogate Addict Elixir",
+        "Assaf Arrogate Addict Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-002",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Bakhur",
+      "name": "Arrogate Bakhur",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Bakhur",
+      "aliases": [
+        "Arrogate Bakhur",
+        "Assaf Arrogate Bakhur"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-003",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Blue",
+      "name": "Arrogate Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Blue",
+      "aliases": [
+        "Arrogate Blue",
+        "Assaf Arrogate Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-004",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Blue de Elixir",
+      "name": "Arrogate Blue de Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Blue de Elixir",
+      "aliases": [
+        "Arrogate Blue de Elixir",
+        "Assaf Arrogate Blue de Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-005",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Blue Exclusive",
+      "name": "Arrogate Blue Exclusive",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Blue Exclusive",
+      "aliases": [
+        "Arrogate Blue Exclusive",
+        "Assaf Arrogate Blue Exclusive"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-006",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Colt",
+      "name": "Arrogate Colt",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Colt",
+      "aliases": [
+        "Arrogate Colt",
+        "Assaf Arrogate Colt"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-007",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Comete",
+      "name": "Arrogate Comete",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Comete",
+      "aliases": [
+        "Arrogate Comete",
+        "Assaf Arrogate Comete"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-008",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Euphoria",
+      "name": "Arrogate Euphoria",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Euphoria",
+      "aliases": [
+        "Arrogate Euphoria",
+        "Assaf Arrogate Euphoria"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-009",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Girl",
+      "name": "Arrogate Girl",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Girl",
+      "aliases": [
+        "Arrogate Girl",
+        "Assaf Arrogate Girl"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-010",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Million Celebration",
+      "name": "Arrogate Million Celebration",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Million Celebration",
+      "aliases": [
+        "Arrogate Million Celebration",
+        "Assaf Arrogate Million Celebration"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-011",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Oud Bakhur",
+      "name": "Arrogate Oud Bakhur",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Oud Bakhur",
+      "aliases": [
+        "Arrogate Oud Bakhur",
+        "Assaf Arrogate Oud Bakhur"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-012",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Pink",
+      "name": "Arrogate Pink",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Pink",
+      "aliases": [
+        "Arrogate Pink",
+        "Assaf Arrogate Pink"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-013",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Pink Diva",
+      "name": "Arrogate Pink Diva",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Pink Diva",
+      "aliases": [
+        "Arrogate Pink Diva",
+        "Assaf Arrogate Pink Diva"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-014",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Arrogate Pink Rose",
+      "name": "Arrogate Pink Rose",
+      "family_id": "assaf_catalog",
+      "family_name": "Arrogate Pink Rose",
+      "aliases": [
+        "Arrogate Pink Rose",
+        "Assaf Arrogate Pink Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-015",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Attacks",
+      "name": "Attacks",
+      "family_id": "assaf_catalog",
+      "family_name": "Attacks",
+      "aliases": [
+        "Attacks",
+        "Assaf Attacks"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-016",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Attacks Blue",
+      "name": "Attacks Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Attacks Blue",
+      "aliases": [
+        "Attacks Blue",
+        "Assaf Attacks Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-017",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Attacks X",
+      "name": "Attacks X",
+      "family_id": "assaf_catalog",
+      "family_name": "Attacks X",
+      "aliases": [
+        "Attacks X",
+        "Assaf Attacks X"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-018",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Aura",
+      "name": "Aura",
+      "family_id": "assaf_catalog",
+      "family_name": "Aura",
+      "aliases": [
+        "Aura",
+        "Assaf Aura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-019",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Aura 30",
+      "name": "Aura 30",
+      "family_id": "assaf_catalog",
+      "family_name": "Aura 30",
+      "aliases": [
+        "Aura 30",
+        "Assaf Aura 30"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-020",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Aura Black",
+      "name": "Aura Black",
+      "family_id": "assaf_catalog",
+      "family_name": "Aura Black",
+      "aliases": [
+        "Aura Black",
+        "Assaf Aura Black"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-021",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Baby Girl",
+      "name": "Baby Girl",
+      "family_id": "assaf_catalog",
+      "family_name": "Baby Girl",
+      "aliases": [
+        "Baby Girl",
+        "Assaf Baby Girl"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-022",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Bakhur Pegasus",
+      "name": "Bakhur Pegasus",
+      "family_id": "assaf_catalog",
+      "family_name": "Bakhur Pegasus",
+      "aliases": [
+        "Bakhur Pegasus",
+        "Assaf Bakhur Pegasus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-023",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Black Lady",
+      "name": "Black Lady",
+      "family_id": "assaf_catalog",
+      "family_name": "Black Lady",
+      "aliases": [
+        "Black Lady",
+        "Assaf Black Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-024",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Black Wild",
+      "name": "Black Wild",
+      "family_id": "assaf_catalog",
+      "family_name": "Black Wild",
+      "aliases": [
+        "Black Wild",
+        "Assaf Black Wild"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-025",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Bonjour",
+      "name": "Bonjour",
+      "family_id": "assaf_catalog",
+      "family_name": "Bonjour",
+      "aliases": [
+        "Bonjour",
+        "Assaf Bonjour"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-026",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Boom Blue",
+      "name": "Boom Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Boom Blue",
+      "aliases": [
+        "Boom Blue",
+        "Assaf Boom Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-027",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Challenge",
+      "name": "Challenge",
+      "family_id": "assaf_catalog",
+      "family_name": "Challenge",
+      "aliases": [
+        "Challenge",
+        "Assaf Challenge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-028",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Charisma",
+      "name": "Charisma",
+      "family_id": "assaf_catalog",
+      "family_name": "Charisma",
+      "aliases": [
+        "Charisma",
+        "Assaf Charisma"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-029",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Charlotte",
+      "name": "Charlotte",
+      "family_id": "assaf_catalog",
+      "family_name": "Charlotte",
+      "aliases": [
+        "Charlotte",
+        "Assaf Charlotte"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-030",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Copacapana",
+      "name": "Copacapana",
+      "family_id": "assaf_catalog",
+      "family_name": "Copacapana",
+      "aliases": [
+        "Copacapana",
+        "Assaf Copacapana"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-031",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Crown Spirit",
+      "name": "Crown Spirit",
+      "family_id": "assaf_catalog",
+      "family_name": "Crown Spirit",
+      "aliases": [
+        "Crown Spirit",
+        "Assaf Crown Spirit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-032",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Dangerous Arrogate",
+      "name": "Dangerous Arrogate",
+      "family_id": "assaf_catalog",
+      "family_name": "Dangerous Arrogate",
+      "aliases": [
+        "Dangerous Arrogate",
+        "Assaf Dangerous Arrogate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-033",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Deep Amber",
+      "name": "Deep Amber",
+      "family_id": "assaf_catalog",
+      "family_name": "Deep Amber",
+      "aliases": [
+        "Deep Amber",
+        "Assaf Deep Amber"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-034",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Elizabeth",
+      "name": "Elizabeth",
+      "family_id": "assaf_catalog",
+      "family_name": "Elizabeth",
+      "aliases": [
+        "Elizabeth",
+        "Assaf Elizabeth"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-035",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Error 404",
+      "name": "Error 404",
+      "family_id": "assaf_catalog",
+      "family_name": "Error 404",
+      "aliases": [
+        "Error 404",
+        "Assaf Error 404"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-036",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Feeling",
+      "name": "Feeling",
+      "family_id": "assaf_catalog",
+      "family_name": "Feeling",
+      "aliases": [
+        "Feeling",
+        "Assaf Feeling"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-037",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "First Night",
+      "name": "First Night",
+      "family_id": "assaf_catalog",
+      "family_name": "First Night",
+      "aliases": [
+        "First Night",
+        "Assaf First Night"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-038",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Forever Here",
+      "name": "Forever Here",
+      "family_id": "assaf_catalog",
+      "family_name": "Forever Here",
+      "aliases": [
+        "Forever Here",
+        "Assaf Forever Here"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-039",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Afternoon",
+      "name": "Frankel Afternoon",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Afternoon",
+      "aliases": [
+        "Frankel Afternoon",
+        "Assaf Frankel Afternoon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-040",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Ascot",
+      "name": "Frankel Ascot",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Ascot",
+      "aliases": [
+        "Frankel Ascot",
+        "Assaf Frankel Ascot"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-041",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Aventus",
+      "name": "Frankel Aventus",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Aventus",
+      "aliases": [
+        "Frankel Aventus",
+        "Assaf Frankel Aventus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-042",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Aventus Black Elixir",
+      "name": "Frankel Aventus Black Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Aventus Black Elixir",
+      "aliases": [
+        "Frankel Aventus Black Elixir",
+        "Assaf Frankel Aventus Black Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-043",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Aventus Intense",
+      "name": "Frankel Aventus Intense",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Aventus Intense",
+      "aliases": [
+        "Frankel Aventus Intense",
+        "Assaf Frankel Aventus Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-044",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Aventus Strike",
+      "name": "Frankel Aventus Strike",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Aventus Strike",
+      "aliases": [
+        "Frankel Aventus Strike",
+        "Assaf Frankel Aventus Strike"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-045",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Battle",
+      "name": "Frankel Battle",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Battle",
+      "aliases": [
+        "Frankel Battle",
+        "Assaf Frankel Battle"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-046",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Beach Afternoon",
+      "name": "Frankel Beach Afternoon",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Beach Afternoon",
+      "aliases": [
+        "Frankel Beach Afternoon",
+        "Assaf Frankel Beach Afternoon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-047",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Black Elixir",
+      "name": "Frankel Black Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Black Elixir",
+      "aliases": [
+        "Frankel Black Elixir",
+        "Assaf Frankel Black Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-048",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Blackout",
+      "name": "Frankel Blackout",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Blackout",
+      "aliases": [
+        "Frankel Blackout",
+        "Assaf Frankel Blackout"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-049",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Blue Elixir",
+      "name": "Frankel Blue Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Blue Elixir",
+      "aliases": [
+        "Frankel Blue Elixir",
+        "Assaf Frankel Blue Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-050",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Chill",
+      "name": "Frankel Chill",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Chill",
+      "aliases": [
+        "Frankel Chill",
+        "Assaf Frankel Chill"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-051",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Elysium",
+      "name": "Frankel Elysium",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Elysium",
+      "aliases": [
+        "Frankel Elysium",
+        "Assaf Frankel Elysium"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-052",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Green Irish",
+      "name": "Frankel Green Irish",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Green Irish",
+      "aliases": [
+        "Frankel Green Irish",
+        "Assaf Frankel Green Irish"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-053",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Imagination",
+      "name": "Frankel Imagination",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Imagination",
+      "aliases": [
+        "Frankel Imagination",
+        "Assaf Frankel Imagination"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-054",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Silver",
+      "name": "Frankel Silver",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Silver",
+      "aliases": [
+        "Frankel Silver",
+        "Assaf Frankel Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-055",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Silver Elixir",
+      "name": "Frankel Silver Elixir",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Silver Elixir",
+      "aliases": [
+        "Frankel Silver Elixir",
+        "Assaf Frankel Silver Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-056",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Frankel Storm",
+      "name": "Frankel Storm",
+      "family_id": "assaf_catalog",
+      "family_name": "Frankel Storm",
+      "aliases": [
+        "Frankel Storm",
+        "Assaf Frankel Storm"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-057",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Garden Rose",
+      "name": "Garden Rose",
+      "family_id": "assaf_catalog",
+      "family_name": "Garden Rose",
+      "aliases": [
+        "Garden Rose",
+        "Assaf Garden Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-058",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Glitch",
+      "name": "Glitch",
+      "family_id": "assaf_catalog",
+      "family_name": "Glitch",
+      "aliases": [
+        "Glitch",
+        "Assaf Glitch"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-059",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Greatness",
+      "name": "Greatness",
+      "family_id": "assaf_catalog",
+      "family_name": "Greatness",
+      "aliases": [
+        "Greatness",
+        "Assaf Greatness"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-060",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Green Iris",
+      "name": "Green Iris",
+      "family_id": "assaf_catalog",
+      "family_name": "Green Iris",
+      "aliases": [
+        "Green Iris",
+        "Assaf Green Iris"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-061",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Gris Erik",
+      "name": "Gris Erik",
+      "family_id": "assaf_catalog",
+      "family_name": "Gris Erik",
+      "aliases": [
+        "Gris Erik",
+        "Assaf Gris Erik"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-062",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Gris Flora",
+      "name": "Gris Flora",
+      "family_id": "assaf_catalog",
+      "family_name": "Gris Flora",
+      "aliases": [
+        "Gris Flora",
+        "Assaf Gris Flora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-063",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Happy Moment",
+      "name": "Happy Moment",
+      "family_id": "assaf_catalog",
+      "family_name": "Happy Moment",
+      "aliases": [
+        "Happy Moment",
+        "Assaf Happy Moment"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-064",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Harmony",
+      "name": "Harmony",
+      "family_id": "assaf_catalog",
+      "family_name": "Harmony",
+      "aliases": [
+        "Harmony",
+        "Assaf Harmony"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-065",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Homme Pegasus",
+      "name": "Homme Pegasus",
+      "family_id": "assaf_catalog",
+      "family_name": "Homme Pegasus",
+      "aliases": [
+        "Homme Pegasus",
+        "Assaf Homme Pegasus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-066",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Hook Blue",
+      "name": "Hook Blue",
+      "family_id": "assaf_catalog",
+      "family_name": "Hook Blue",
+      "aliases": [
+        "Hook Blue",
+        "Assaf Hook Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-067",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "I Am Here",
+      "name": "I Am Here",
+      "family_id": "assaf_catalog",
+      "family_name": "I Am Here",
+      "aliases": [
+        "I Am Here",
+        "Assaf I Am Here"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-068",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "I'm Here Enable",
+      "name": "I'm Here Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "I'm Here Enable",
+      "aliases": [
+        "I'm Here Enable",
+        "Assaf I'm Here Enable"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-069",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Juliet",
+      "name": "Juliet",
+      "family_id": "assaf_catalog",
+      "family_name": "Juliet",
+      "aliases": [
+        "Juliet",
+        "Assaf Juliet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-070",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "King Enable",
+      "name": "King Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "King Enable",
+      "aliases": [
+        "King Enable",
+        "Assaf King Enable"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-071",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lady",
+      "name": "Lady",
+      "family_id": "assaf_catalog",
+      "family_name": "Lady",
+      "aliases": [
+        "Lady",
+        "Assaf Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-072",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lady Supreme",
+      "name": "Lady Supreme",
+      "family_id": "assaf_catalog",
+      "family_name": "Lady Supreme",
+      "aliases": [
+        "Lady Supreme",
+        "Assaf Lady Supreme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-073",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Legend",
+      "name": "Legend",
+      "family_id": "assaf_catalog",
+      "family_name": "Legend",
+      "aliases": [
+        "Legend",
+        "Assaf Legend"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-074",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lip Stick",
+      "name": "Lip Stick",
+      "family_id": "assaf_catalog",
+      "family_name": "Lip Stick",
+      "aliases": [
+        "Lip Stick",
+        "Assaf Lip Stick"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-075",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Lord",
+      "name": "Lord",
+      "family_id": "assaf_catalog",
+      "family_name": "Lord",
+      "aliases": [
+        "Lord",
+        "Assaf Lord"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-076",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Martha",
+      "name": "Martha",
+      "family_id": "assaf_catalog",
+      "family_name": "Martha",
+      "aliases": [
+        "Martha",
+        "Assaf Martha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-077",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Millionaire Enable",
+      "name": "Millionaire Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "Millionaire Enable",
+      "aliases": [
+        "Millionaire Enable",
+        "Assaf Millionaire Enable"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-078",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Arrogate",
+      "name": "Miss Arrogate",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Arrogate",
+      "aliases": [
+        "Miss Arrogate",
+        "Assaf Miss Arrogate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-079",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Arrogate Diva",
+      "name": "Miss Arrogate Diva",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Arrogate Diva",
+      "aliases": [
+        "Miss Arrogate Diva",
+        "Assaf Miss Arrogate Diva"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-080",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Flora",
+      "name": "Miss Flora",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Flora",
+      "aliases": [
+        "Miss Flora",
+        "Assaf Miss Flora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-081",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Grace Dance Arrogate",
+      "name": "Miss Grace Dance Arrogate",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Grace Dance Arrogate",
+      "aliases": [
+        "Miss Grace Dance Arrogate",
+        "Assaf Miss Grace Dance Arrogate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-082",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Gris",
+      "name": "Miss Gris",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Gris",
+      "aliases": [
+        "Miss Gris",
+        "Assaf Miss Gris"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-083",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Gris Dance",
+      "name": "Miss Gris Dance",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Gris Dance",
+      "aliases": [
+        "Miss Gris Dance",
+        "Assaf Miss Gris Dance"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-084",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Gris Intense",
+      "name": "Miss Gris Intense",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Gris Intense",
+      "aliases": [
+        "Miss Gris Intense",
+        "Assaf Miss Gris Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-085",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Noble",
+      "name": "Miss Noble",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Noble",
+      "aliases": [
+        "Miss Noble",
+        "Assaf Miss Noble"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-086",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Miss Sakura",
+      "name": "Miss Sakura",
+      "family_id": "assaf_catalog",
+      "family_name": "Miss Sakura",
+      "aliases": [
+        "Miss Sakura",
+        "Assaf Miss Sakura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-087",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Morning Girl",
+      "name": "Morning Girl",
+      "family_id": "assaf_catalog",
+      "family_name": "Morning Girl",
+      "aliases": [
+        "Morning Girl",
+        "Assaf Morning Girl"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-088",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "No Chance",
+      "name": "No Chance",
+      "family_id": "assaf_catalog",
+      "family_name": "No Chance",
+      "aliases": [
+        "No Chance",
+        "Assaf No Chance"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-089",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "No Comment",
+      "name": "No Comment",
+      "family_id": "assaf_catalog",
+      "family_name": "No Comment",
+      "aliases": [
+        "No Comment",
+        "Assaf No Comment"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-090",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Noble",
+      "name": "Noble",
+      "family_id": "assaf_catalog",
+      "family_name": "Noble",
+      "aliases": [
+        "Noble",
+        "Assaf Noble"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-091",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Noble Cavale",
+      "name": "Noble Cavale",
+      "family_id": "assaf_catalog",
+      "family_name": "Noble Cavale",
+      "aliases": [
+        "Noble Cavale",
+        "Assaf Noble Cavale"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-092",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Nomad",
+      "name": "Nomad",
+      "family_id": "assaf_catalog",
+      "family_name": "Nomad",
+      "aliases": [
+        "Nomad",
+        "Assaf Nomad"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-093",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Onset",
+      "name": "Onset",
+      "family_id": "assaf_catalog",
+      "family_name": "Onset",
+      "aliases": [
+        "Onset",
+        "Assaf Onset"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-094",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pegasus Oud",
+      "name": "Pegasus Oud",
+      "family_id": "assaf_catalog",
+      "family_name": "Pegasus Oud",
+      "aliases": [
+        "Pegasus Oud",
+        "Assaf Pegasus Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-095",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pegasus Reflection",
+      "name": "Pegasus Reflection",
+      "family_id": "assaf_catalog",
+      "family_name": "Pegasus Reflection",
+      "aliases": [
+        "Pegasus Reflection",
+        "Assaf Pegasus Reflection"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-096",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pink Lady",
+      "name": "Pink Lady",
+      "family_id": "assaf_catalog",
+      "family_name": "Pink Lady",
+      "aliases": [
+        "Pink Lady",
+        "Assaf Pink Lady"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-097",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pink Queen",
+      "name": "Pink Queen",
+      "family_id": "assaf_catalog",
+      "family_name": "Pink Queen",
+      "aliases": [
+        "Pink Queen",
+        "Assaf Pink Queen"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-098",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Pink Queen Exclusive",
+      "name": "Pink Queen Exclusive",
+      "family_id": "assaf_catalog",
+      "family_name": "Pink Queen Exclusive",
+      "aliases": [
+        "Pink Queen Exclusive",
+        "Assaf Pink Queen Exclusive"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-099",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Private Purple",
+      "name": "Private Purple",
+      "family_id": "assaf_catalog",
+      "family_name": "Private Purple",
+      "aliases": [
+        "Private Purple",
+        "Assaf Private Purple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-100",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Proino Pegasus",
+      "name": "Proino Pegasus",
+      "family_id": "assaf_catalog",
+      "family_name": "Proino Pegasus",
+      "aliases": [
+        "Proino Pegasus",
+        "Assaf Proino Pegasus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-101",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Promise",
+      "name": "Promise",
+      "family_id": "assaf_catalog",
+      "family_name": "Promise",
+      "aliases": [
+        "Promise",
+        "Assaf Promise"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-102",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Queen of Seduction",
+      "name": "Queen of Seduction",
+      "family_id": "assaf_catalog",
+      "family_name": "Queen of Seduction",
+      "aliases": [
+        "Queen of Seduction",
+        "Assaf Queen of Seduction"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-103",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Rebel Enable",
+      "name": "Rebel Enable",
+      "family_id": "assaf_catalog",
+      "family_name": "Rebel Enable",
+      "aliases": [
+        "Rebel Enable",
+        "Assaf Rebel Enable"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-104",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Risk Comete",
+      "name": "Risk Comete",
+      "family_id": "assaf_catalog",
+      "family_name": "Risk Comete",
+      "aliases": [
+        "Risk Comete",
+        "Assaf Risk Comete"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-105",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Risk X",
+      "name": "Risk X",
+      "family_id": "assaf_catalog",
+      "family_name": "Risk X",
+      "aliases": [
+        "Risk X",
+        "Assaf Risk X"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-106",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Rouge",
+      "name": "Rouge",
+      "family_id": "assaf_catalog",
+      "family_name": "Rouge",
+      "aliases": [
+        "Rouge",
+        "Assaf Rouge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-107",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Rouge Thunder",
+      "name": "Rouge Thunder",
+      "family_id": "assaf_catalog",
+      "family_name": "Rouge Thunder",
+      "aliases": [
+        "Rouge Thunder",
+        "Assaf Rouge Thunder"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-108",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Ruffian Red",
+      "name": "Ruffian Red",
+      "family_id": "assaf_catalog",
+      "family_name": "Ruffian Red",
+      "aliases": [
+        "Ruffian Red",
+        "Assaf Ruffian Red"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-109",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Savage",
+      "name": "Savage",
+      "family_id": "assaf_catalog",
+      "family_name": "Savage",
+      "aliases": [
+        "Savage",
+        "Assaf Savage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-110",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Search",
+      "name": "Search",
+      "family_id": "assaf_catalog",
+      "family_name": "Search",
+      "aliases": [
+        "Search",
+        "Assaf Search"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-111",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Sherlock",
+      "name": "Sherlock",
+      "family_id": "assaf_catalog",
+      "family_name": "Sherlock",
+      "aliases": [
+        "Sherlock",
+        "Assaf Sherlock"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-112",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Shift",
+      "name": "Shift",
+      "family_id": "assaf_catalog",
+      "family_name": "Shift",
+      "aliases": [
+        "Shift",
+        "Assaf Shift"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-113",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Stand By",
+      "name": "Stand By",
+      "family_id": "assaf_catalog",
+      "family_name": "Stand By",
+      "aliases": [
+        "Stand By",
+        "Assaf Stand By"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-114",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Strike Black",
+      "name": "Strike Black",
+      "family_id": "assaf_catalog",
+      "family_name": "Strike Black",
+      "aliases": [
+        "Strike Black",
+        "Assaf Strike Black"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-115",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Swimming in Summer",
+      "name": "Swimming in Summer",
+      "family_id": "assaf_catalog",
+      "family_name": "Swimming in Summer",
+      "aliases": [
+        "Swimming in Summer",
+        "Assaf Swimming in Summer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-116",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Swimming In Summer Intense",
+      "name": "Swimming In Summer Intense",
+      "family_id": "assaf_catalog",
+      "family_name": "Swimming In Summer Intense",
+      "aliases": [
+        "Swimming In Summer Intense",
+        "Assaf Swimming In Summer Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-117",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Take Off",
+      "name": "Take Off",
+      "family_id": "assaf_catalog",
+      "family_name": "Take Off",
+      "aliases": [
+        "Take Off",
+        "Assaf Take Off"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-118",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Tobacco Black 40",
+      "name": "Tobacco Black 40",
+      "family_id": "assaf_catalog",
+      "family_name": "Tobacco Black 40",
+      "aliases": [
+        "Tobacco Black 40",
+        "Assaf Tobacco Black 40"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-119",
+      "brand": "Assaf",
+      "brand_name": "Assaf",
+      "canonical_name": "Tobacco Jam 50",
+      "name": "Tobacco Jam 50",
+      "family_id": "assaf_catalog",
+      "family_name": "Tobacco Jam 50",
+      "aliases": [
+        "Tobacco Jam 50",
+        "Assaf Tobacco Jam 50"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://assafperfumes.eu/perfumes/"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-001",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Musk Orchid",
+      "name": "Haramain Musk Orchid",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Musk Orchid",
+      "aliases": [
+        "Haramain Musk Orchid",
+        "Al Haramain Haramain Musk Orchid"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-002",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Xplore Sapphire",
+      "name": "Haramain Xplore Sapphire",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Xplore Sapphire",
+      "aliases": [
+        "Haramain Xplore Sapphire",
+        "Al Haramain Haramain Xplore Sapphire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-003",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Portfolio Cupid's Rose",
+      "name": "Portfolio Cupid's Rose",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Portfolio Cupid's Rose",
+      "aliases": [
+        "Portfolio Cupid's Rose",
+        "Al Haramain Portfolio Cupid's Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-004",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Portfolio Portrait Sandal",
+      "name": "Portfolio Portrait Sandal",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Portfolio Portrait Sandal",
+      "aliases": [
+        "Portfolio Portrait Sandal",
+        "Al Haramain Portfolio Portrait Sandal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-005",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Portfolio Oriental Forest",
+      "name": "Portfolio Oriental Forest",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Portfolio Oriental Forest",
+      "aliases": [
+        "Portfolio Oriental Forest",
+        "Al Haramain Portfolio Oriental Forest"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-006",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Gold Edition",
+      "name": "Amber Oud Gold Edition",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Gold Edition",
+      "aliases": [
+        "Amber Oud Gold Edition",
+        "Al Haramain Amber Oud Gold Edition"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-007",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Detour Noir Exclusif",
+      "name": "Detour Noir Exclusif",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Detour Noir Exclusif",
+      "aliases": [
+        "Detour Noir Exclusif",
+        "Al Haramain Detour Noir Exclusif"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-008",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Junoon Noir",
+      "name": "Junoon Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Junoon Noir",
+      "aliases": [
+        "Junoon Noir",
+        "Al Haramain Junoon Noir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-009",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Oud Cambodi",
+      "name": "Oud Cambodi",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Oud Cambodi",
+      "aliases": [
+        "Oud Cambodi",
+        "Al Haramain Oud Cambodi"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-010",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Maryam",
+      "name": "Maryam",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Maryam",
+      "aliases": [
+        "Maryam",
+        "Al Haramain Maryam"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-011",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Urbanist Femme",
+      "name": "Urbanist Femme",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Urbanist Femme",
+      "aliases": [
+        "Urbanist Femme",
+        "Al Haramain Urbanist Femme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-012",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Mystique Femme",
+      "name": "Mystique Femme",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Mystique Femme",
+      "aliases": [
+        "Mystique Femme",
+        "Al Haramain Mystique Femme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-013",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Mystique Homme",
+      "name": "Mystique Homme",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Mystique Homme",
+      "aliases": [
+        "Mystique Homme",
+        "Al Haramain Mystique Homme"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-014",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Detour Nasr",
+      "name": "Detour Nasr",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Detour Nasr",
+      "aliases": [
+        "Detour Nasr",
+        "Al Haramain Detour Nasr"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-015",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Musk",
+      "name": "Musk",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Musk",
+      "aliases": [
+        "Musk",
+        "Al Haramain Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-016",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Detour Noir Intense",
+      "name": "Detour Noir Intense",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Detour Noir Intense",
+      "aliases": [
+        "Detour Noir Intense",
+        "Al Haramain Detour Noir Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-017",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Solitaire Musk",
+      "name": "Solitaire Musk",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Solitaire Musk",
+      "aliases": [
+        "Solitaire Musk",
+        "Al Haramain Solitaire Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-018",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Musk Collection",
+      "name": "Musk Collection",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Musk Collection",
+      "aliases": [
+        "Musk Collection",
+        "Al Haramain Musk Collection"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-019",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Night Dreams",
+      "name": "Night Dreams",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Night Dreams",
+      "aliases": [
+        "Night Dreams",
+        "Al Haramain Night Dreams"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-020",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Khulasat Al Oud",
+      "name": "Khulasat Al Oud",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Khulasat Al Oud",
+      "aliases": [
+        "Khulasat Al Oud",
+        "Al Haramain Khulasat Al Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-021",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Fall In Love Orange",
+      "name": "Fall In Love Orange",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Fall In Love Orange",
+      "aliases": [
+        "Fall In Love Orange",
+        "Al Haramain Fall In Love Orange"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-022",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Fall In Love Pink",
+      "name": "Fall In Love Pink",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Fall In Love Pink",
+      "aliases": [
+        "Fall In Love Pink",
+        "Al Haramain Fall In Love Pink"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-023",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Junoon Rose",
+      "name": "Junoon Rose",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Junoon Rose",
+      "aliases": [
+        "Junoon Rose",
+        "Al Haramain Junoon Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-024",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Maze",
+      "name": "Maze",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Maze",
+      "aliases": [
+        "Maze",
+        "Al Haramain Maze"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-025",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Opposite Pink",
+      "name": "Opposite Pink",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Opposite Pink",
+      "aliases": [
+        "Opposite Pink",
+        "Al Haramain Opposite Pink"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-026",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Manege Blanche",
+      "name": "Manege Blanche",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Manege Blanche",
+      "aliases": [
+        "Manege Blanche",
+        "Al Haramain Manege Blanche"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-027",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Rafia Gold",
+      "name": "Rafia Gold",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Rafia Gold",
+      "aliases": [
+        "Rafia Gold",
+        "Al Haramain Rafia Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-028",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Etoiles Silver",
+      "name": "Etoiles Silver",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Etoiles Silver",
+      "aliases": [
+        "Etoiles Silver",
+        "Al Haramain Etoiles Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-029",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Madinah",
+      "name": "Madinah",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Madinah",
+      "aliases": [
+        "Madinah",
+        "Al Haramain Madinah"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-030",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Jameela",
+      "name": "Jameela",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Jameela",
+      "aliases": [
+        "Jameela",
+        "Al Haramain Jameela"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-031",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Musk Maliki",
+      "name": "Musk Maliki",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Musk Maliki",
+      "aliases": [
+        "Musk Maliki",
+        "Al Haramain Musk Maliki"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-032",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Chateau De La Haramain Argent",
+      "name": "Chateau De La Haramain Argent",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Chateau De La Haramain Argent",
+      "aliases": [
+        "Chateau De La Haramain Argent",
+        "Al Haramain Chateau De La Haramain Argent"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-033",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Das Ziel",
+      "name": "Das Ziel",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Das Ziel",
+      "aliases": [
+        "Das Ziel",
+        "Al Haramain Das Ziel"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-034",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Mystique",
+      "name": "Mystique",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Mystique",
+      "aliases": [
+        "Mystique",
+        "Al Haramain Mystique"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-035",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Oudh Patchouli",
+      "name": "Oudh Patchouli",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Oudh Patchouli",
+      "aliases": [
+        "Oudh Patchouli",
+        "Al Haramain Oudh Patchouli"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-036",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Farasha",
+      "name": "Farasha",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Farasha",
+      "aliases": [
+        "Farasha",
+        "Al Haramain Farasha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-037",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Asrar Khafiya",
+      "name": "Asrar Khafiya",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Asrar Khafiya",
+      "aliases": [
+        "Asrar Khafiya",
+        "Al Haramain Asrar Khafiya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-038",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Urbanist Prive Silver",
+      "name": "Urbanist Prive Silver",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Urbanist Prive Silver",
+      "aliases": [
+        "Urbanist Prive Silver",
+        "Al Haramain Urbanist Prive Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-039",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Mena",
+      "name": "Mena",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Mena",
+      "aliases": [
+        "Mena",
+        "Al Haramain Mena"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-040",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Areej Al Oud",
+      "name": "Areej Al Oud",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Areej Al Oud",
+      "aliases": [
+        "Areej Al Oud",
+        "Al Haramain Areej Al Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-STORE-001",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Sweet Like Candy",
+      "name": "Sweet Like Candy",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Sweet Like Candy",
+      "aliases": [
+        "Sweet Like Candy",
+        "Gulf Orchid Sweet Like Candy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-STORE-002",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Sweet Heaven Extreme 20ML",
+      "name": "Sweet Heaven Extreme 20ML",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Sweet Heaven Extreme 20ML",
+      "aliases": [
+        "Sweet Heaven Extreme 20ML",
+        "Gulf Orchid Sweet Heaven Extreme 20ML"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-STORE-003",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Piña Colada Musk",
+      "name": "Piña Colada Musk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Piña Colada Musk",
+      "aliases": [
+        "Piña Colada Musk",
+        "Gulf Orchid Piña Colada Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-001",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Eclaire",
+      "name": "Eclaire",
+      "family_id": "lattafa_catalog",
+      "family_name": "Eclaire",
+      "aliases": [
+        "Eclaire",
+        "Lattafa Eclaire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-002",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Black Exposed",
+      "name": "Badee Al Oud Black Exposed",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud Black Exposed",
+      "aliases": [
+        "Badee Al Oud Black Exposed",
+        "Lattafa Badee Al Oud Black Exposed"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-003",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah Qahwa",
+      "name": "Khamrah Qahwa",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khamrah Qahwa",
+      "aliases": [
+        "Khamrah Qahwa",
+        "Lattafa Khamrah Qahwa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-004",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "His Confession",
+      "name": "His Confession",
+      "family_id": "lattafa_catalog",
+      "family_name": "His Confession",
+      "aliases": [
+        "His Confession",
+        "Lattafa His Confession"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-005",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Her Confession",
+      "name": "Her Confession",
+      "family_id": "lattafa_catalog",
+      "family_name": "Her Confession",
+      "aliases": [
+        "Her Confession",
+        "Lattafa Her Confession"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-006",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Pride Eternal Vanille",
+      "name": "Pride Eternal Vanille",
+      "family_id": "lattafa_catalog",
+      "family_name": "Pride Eternal Vanille",
+      "aliases": [
+        "Pride Eternal Vanille",
+        "Lattafa Pride Eternal Vanille"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-007",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Honor & Glory",
+      "name": "Badee Al Oud Honor & Glory",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud Honor & Glory",
+      "aliases": [
+        "Badee Al Oud Honor & Glory",
+        "Lattafa Badee Al Oud Honor & Glory"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-008",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Fakhar Men",
+      "name": "Fakhar Men",
+      "family_id": "lattafa_catalog",
+      "family_name": "Fakhar Men",
+      "aliases": [
+        "Fakhar Men",
+        "Lattafa Fakhar Men"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-009",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud",
+      "name": "Badee Al Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud",
+      "aliases": [
+        "Badee Al Oud",
+        "Lattafa Badee Al Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-010",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Yara",
+      "name": "Yara",
+      "family_id": "lattafa_catalog",
+      "family_name": "Yara",
+      "aliases": [
+        "Yara",
+        "Lattafa Yara"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-011",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "The Kingdom Men",
+      "name": "The Kingdom Men",
+      "family_id": "lattafa_catalog",
+      "family_name": "The Kingdom Men",
+      "aliases": [
+        "The Kingdom Men",
+        "Lattafa The Kingdom Men"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-012",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah Dukhan",
+      "name": "Khamrah Dukhan",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khamrah Dukhan",
+      "aliases": [
+        "Khamrah Dukhan",
+        "Lattafa Khamrah Dukhan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-013",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas",
+      "name": "Atlas",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas",
+      "aliases": [
+        "Atlas",
+        "Lattafa Atlas"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-014",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Amethyst",
+      "name": "Badee Al Oud Amethyst",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud Amethyst",
+      "aliases": [
+        "Badee Al Oud Amethyst",
+        "Lattafa Badee Al Oud Amethyst"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-015",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ana Abiyedh",
+      "name": "Ana Abiyedh",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ana Abiyedh",
+      "aliases": [
+        "Ana Abiyedh",
+        "Lattafa Ana Abiyedh"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-016",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Pride Art of Arabia I",
+      "name": "Pride Art of Arabia I",
+      "family_id": "lattafa_catalog",
+      "family_name": "Pride Art of Arabia I",
+      "aliases": [
+        "Pride Art of Arabia I",
+        "Lattafa Pride Art of Arabia I"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-017",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Pride Nebras",
+      "name": "Pride Nebras",
+      "family_id": "lattafa_catalog",
+      "family_name": "Pride Nebras",
+      "aliases": [
+        "Pride Nebras",
+        "Lattafa Pride Nebras"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-018",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Opulent Oud",
+      "name": "Opulent Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Opulent Oud",
+      "aliases": [
+        "Opulent Oud",
+        "Lattafa Opulent Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-019",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "The Kingdom Women",
+      "name": "The Kingdom Women",
+      "family_id": "lattafa_catalog",
+      "family_name": "The Kingdom Women",
+      "aliases": [
+        "The Kingdom Women",
+        "Lattafa The Kingdom Women"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-020",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Pride Vintage Radio",
+      "name": "Pride Vintage Radio",
+      "family_id": "lattafa_catalog",
+      "family_name": "Pride Vintage Radio",
+      "aliases": [
+        "Pride Vintage Radio",
+        "Lattafa Pride Vintage Radio"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-021",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Pride Art Of Universe",
+      "name": "Pride Art Of Universe",
+      "family_id": "lattafa_catalog",
+      "family_name": "Pride Art Of Universe",
+      "aliases": [
+        "Pride Art Of Universe",
+        "Lattafa Pride Art Of Universe"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-022",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ajwad Pink to Pink Creamy Elixir",
+      "name": "Ajwad Pink to Pink Creamy Elixir",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ajwad Pink to Pink Creamy Elixir",
+      "aliases": [
+        "Ajwad Pink to Pink Creamy Elixir",
+        "Lattafa Ajwad Pink to Pink Creamy Elixir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-023",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Fakhar Women",
+      "name": "Fakhar Women",
+      "family_id": "lattafa_catalog",
+      "family_name": "Fakhar Women",
+      "aliases": [
+        "Fakhar Women",
+        "Lattafa Fakhar Women"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-056",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Pure Oud Barakat",
+      "name": "Oud Pure Oud Barakat",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Pure Oud Barakat",
+      "aliases": [
+        "Oud Pure Oud Barakat",
+        "Khadlaj Oud Pure Oud Barakat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-057",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Pure Oud Galazaid",
+      "name": "Oud Pure Oud Galazaid",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Pure Oud Galazaid",
+      "aliases": [
+        "Oud Pure Oud Galazaid",
+        "Khadlaj Oud Pure Oud Galazaid"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-058",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Pure Oud Jumeirah",
+      "name": "Oud Pure Oud Jumeirah",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Pure Oud Jumeirah",
+      "aliases": [
+        "Oud Pure Oud Jumeirah",
+        "Khadlaj Oud Pure Oud Jumeirah"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-059",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Hareem Al Sultan",
+      "name": "Hareem Al Sultan",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Hareem Al Sultan",
+      "aliases": [
+        "Hareem Al Sultan",
+        "Khadlaj Hareem Al Sultan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-060",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Azure Velvet",
+      "name": "Azure Velvet",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Azure Velvet",
+      "aliases": [
+        "Azure Velvet",
+        "Khadlaj Azure Velvet"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-061",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maison L'Imaginaire",
+      "name": "Maison L'Imaginaire",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Maison L'Imaginaire",
+      "aliases": [
+        "Maison L'Imaginaire",
+        "Khadlaj Maison L'Imaginaire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-062",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Saqr Al Badiya",
+      "name": "Saqr Al Badiya",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Saqr Al Badiya",
+      "aliases": [
+        "Saqr Al Badiya",
+        "Khadlaj Saqr Al Badiya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-063",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Opus Reborn",
+      "name": "Opus Reborn",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Opus Reborn",
+      "aliases": [
+        "Opus Reborn",
+        "Khadlaj Opus Reborn"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-064",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Pour Amber",
+      "name": "Musk Pour Amber",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Musk Pour Amber",
+      "aliases": [
+        "Musk Pour Amber",
+        "Khadlaj Musk Pour Amber"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-065",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Fursan Brown",
+      "name": "Fursan Brown",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Fursan Brown",
+      "aliases": [
+        "Fursan Brown",
+        "Khadlaj Fursan Brown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-066",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Sara",
+      "name": "Sara",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Sara",
+      "aliases": [
+        "Sara",
+        "Khadlaj Sara"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "name": "Musk Pure Musk Blend Creation of Iqbal",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Musk Pure Musk Blend Creation of Iqbal",
+      "aliases": [
+        "Musk Pure Musk Blend Creation of Iqbal",
+        "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-068",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Le Prestige King",
+      "name": "Le Prestige King",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Le Prestige King",
+      "aliases": [
+        "Le Prestige King",
+        "Khadlaj Le Prestige King"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-069",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "The Proposal Date Night",
+      "name": "The Proposal Date Night",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "The Proposal Date Night",
+      "aliases": [
+        "The Proposal Date Night",
+        "Khadlaj The Proposal Date Night"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-070",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Le Prestige Royal",
+      "name": "Le Prestige Royal",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Le Prestige Royal",
+      "aliases": [
+        "Le Prestige Royal",
+        "Khadlaj Le Prestige Royal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-071",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Le Prestige Empress",
+      "name": "Le Prestige Empress",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Le Prestige Empress",
+      "aliases": [
+        "Le Prestige Empress",
+        "Khadlaj Le Prestige Empress"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-072",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Le Prestige Bold",
+      "name": "Le Prestige Bold",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Le Prestige Bold",
+      "aliases": [
+        "Le Prestige Bold",
+        "Khadlaj Le Prestige Bold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-073",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "The Proposal Special Occasion",
+      "name": "The Proposal Special Occasion",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "The Proposal Special Occasion",
+      "aliases": [
+        "The Proposal Special Occasion",
+        "Khadlaj The Proposal Special Occasion"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-074",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "25 Experience",
+      "name": "25 Experience",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "25 Experience",
+      "aliases": [
+        "25 Experience",
+        "Khadlaj 25 Experience"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-075",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "25 Trust",
+      "name": "25 Trust",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "25 Trust",
+      "aliases": [
+        "25 Trust",
+        "Khadlaj 25 Trust"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-076",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "25 Loyalty",
+      "name": "25 Loyalty",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "25 Loyalty",
+      "aliases": [
+        "25 Loyalty",
+        "Khadlaj 25 Loyalty"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-077",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "25 Heritage",
+      "name": "25 Heritage",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "25 Heritage",
+      "aliases": [
+        "25 Heritage",
+        "Khadlaj 25 Heritage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-078",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "25 Integrity",
+      "name": "25 Integrity",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "25 Integrity",
+      "aliases": [
+        "25 Integrity",
+        "Khadlaj 25 Integrity"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-079",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Valor Mystique",
+      "name": "Valor Mystique",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Valor Mystique",
+      "aliases": [
+        "Valor Mystique",
+        "Khadlaj Valor Mystique"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-080",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Valor Honor",
+      "name": "Valor Honor",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Valor Honor",
+      "aliases": [
+        "Valor Honor",
+        "Khadlaj Valor Honor"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-081",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Valor Chivalry",
+      "name": "Valor Chivalry",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Valor Chivalry",
+      "aliases": [
+        "Valor Chivalry",
+        "Khadlaj Valor Chivalry"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-082",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Valor Enigma",
+      "name": "Valor Enigma",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Valor Enigma",
+      "aliases": [
+        "Valor Enigma",
+        "Khadlaj Valor Enigma"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-083",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Empire Empress",
+      "name": "Empire Empress",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Empire Empress",
+      "aliases": [
+        "Empire Empress",
+        "Khadlaj Empire Empress"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-084",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Empire Crown",
+      "name": "Empire Crown",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Empire Crown",
+      "aliases": [
+        "Empire Crown",
+        "Khadlaj Empire Crown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-085",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Empire Regent",
+      "name": "Empire Regent",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Empire Regent",
+      "aliases": [
+        "Empire Regent",
+        "Khadlaj Empire Regent"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-086",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Karus Blu Spice",
+      "name": "Karus Blu Spice",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Karus Blu Spice",
+      "aliases": [
+        "Karus Blu Spice",
+        "Khadlaj Karus Blu Spice"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-087",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Karus Secret Musk",
+      "name": "Karus Secret Musk",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Karus Secret Musk",
+      "aliases": [
+        "Karus Secret Musk",
+        "Khadlaj Karus Secret Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-088",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Karus Oud Fire",
+      "name": "Karus Oud Fire",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Karus Oud Fire",
+      "aliases": [
+        "Karus Oud Fire",
+        "Khadlaj Karus Oud Fire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-089",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Karus Amber Gold",
+      "name": "Karus Amber Gold",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Karus Amber Gold",
+      "aliases": [
+        "Karus Amber Gold",
+        "Khadlaj Karus Amber Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-090",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maison Creation De Reve",
+      "name": "Maison Creation De Reve",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Maison Creation De Reve",
+      "aliases": [
+        "Maison Creation De Reve",
+        "Maison Creation de Reve",
+        "Khadlaj Maison Creation De Reve"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-091",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maison Epoque Artistique",
+      "name": "Maison Epoque Artistique",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Maison Epoque Artistique",
+      "aliases": [
+        "Maison Epoque Artistique",
+        "Khadlaj Maison Epoque Artistique"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-092",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maison L'Or Noir",
+      "name": "Maison L'Or Noir",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Maison L'Or Noir",
+      "aliases": [
+        "Maison L'Or Noir",
+        "Khadlaj Maison L'Or Noir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-093",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maison Flor Oud",
+      "name": "Maison Flor Oud",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Maison Flor Oud",
+      "aliases": [
+        "Maison Flor Oud",
+        "Khadlaj Maison Flor Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-094",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Wild Indonesian Oud",
+      "name": "Wild Indonesian Oud",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Wild Indonesian Oud",
+      "aliases": [
+        "Wild Indonesian Oud",
+        "Wild Indonesian Oud Pure",
+        "Khadlaj Wild Indonesian Oud",
+        "Khadlaj Wild Indonesian Oud Pure"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-095",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Mystical Indian Oud Pure",
+      "name": "Mystical Indian Oud Pure",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Mystical Indian Oud Pure",
+      "aliases": [
+        "Mystical Indian Oud Pure",
+        "Khadlaj Mystical Indian Oud Pure"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-096",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Pour Noble",
+      "name": "Oud Pour Noble",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Pour Noble",
+      "aliases": [
+        "Oud Pour Noble",
+        "Khadlaj Oud Pour Noble"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-097",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Pour Narcis",
+      "name": "Musk Pour Narcis",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Musk Pour Narcis",
+      "aliases": [
+        "Musk Pour Narcis",
+        "Khadlaj Musk Pour Narcis"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-098",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Pour Shaikh",
+      "name": "Oud Pour Shaikh",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Pour Shaikh",
+      "aliases": [
+        "Oud Pour Shaikh",
+        "Khadlaj Oud Pour Shaikh"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-099",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Pour Rouge",
+      "name": "Oud Pour Rouge",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Pour Rouge",
+      "aliases": [
+        "Oud Pour Rouge",
+        "Khadlaj Oud Pour Rouge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-100",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Pour Blueberry",
+      "name": "Oud Pour Blueberry",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Pour Blueberry",
+      "aliases": [
+        "Oud Pour Blueberry",
+        "Khadlaj Oud Pour Blueberry"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-101",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Infini Absolute",
+      "name": "Infini Absolute",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Infini Absolute",
+      "aliases": [
+        "Infini Absolute",
+        "Khadlaj Infini Absolute"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-102",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Cashmere Warm Oud",
+      "name": "Cashmere Warm Oud",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Cashmere Warm Oud",
+      "aliases": [
+        "Cashmere Warm Oud",
+        "Khadlaj Cashmere Warm Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-103",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Cashmere Sunshine Musk",
+      "name": "Cashmere Sunshine Musk",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Cashmere Sunshine Musk",
+      "aliases": [
+        "Cashmere Sunshine Musk",
+        "Khadlaj Cashmere Sunshine Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-104",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Noir",
+      "name": "Oud Noir",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Noir",
+      "aliases": [
+        "Oud Noir",
+        "Khadlaj Oud Noir"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-105",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Sensuous Night",
+      "name": "Sensuous Night",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Sensuous Night",
+      "aliases": [
+        "Sensuous Night",
+        "Khadlaj Sensuous Night"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-106",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ombre Notes",
+      "name": "Ombre Notes",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Ombre Notes",
+      "aliases": [
+        "Ombre Notes",
+        "Khadlaj Ombre Notes"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-107",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ghadeer Silver",
+      "name": "Ghadeer Silver",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Ghadeer Silver",
+      "aliases": [
+        "Ghadeer Silver",
+        "Khadlaj Ghadeer Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-108",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Al Sabah",
+      "name": "Musk Al Sabah",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Musk Al Sabah",
+      "aliases": [
+        "Musk Al Sabah",
+        "Khadlaj Musk Al Sabah"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-109",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud Al Sabah",
+      "name": "Oud Al Sabah",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Oud Al Sabah",
+      "aliases": [
+        "Oud Al Sabah",
+        "Khadlaj Oud Al Sabah"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-110",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Magnate Noble",
+      "name": "Magnate Noble",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Magnate Noble",
+      "aliases": [
+        "Magnate Noble",
+        "Khadlaj Magnate Noble"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-111",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Magnate Premier",
+      "name": "Magnate Premier",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Magnate Premier",
+      "aliases": [
+        "Magnate Premier",
+        "Khadlaj Magnate Premier"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-112",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Infini",
+      "name": "Infini",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Infini",
+      "aliases": [
+        "Infini",
+        "Khadlaj Infini"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-113",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Shahi Oud",
+      "name": "Shahi Oud",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Shahi Oud",
+      "aliases": [
+        "Shahi Oud",
+        "Khadlaj Shahi Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-114",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Barwaaz Solid Grey",
+      "name": "Barwaaz Solid Grey",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Barwaaz Solid Grey",
+      "aliases": [
+        "Barwaaz Solid Grey",
+        "Khadlaj Barwaaz Solid Grey"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-115",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rose Couture",
+      "name": "Rose Couture",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Rose Couture",
+      "aliases": [
+        "Rose Couture",
+        "Khadlaj Rose Couture"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-116",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Musk Couture",
+      "name": "Musk Couture",
+      "family_id": "khadlaj_official_perfume_sprays_2026_11",
+      "family_name": "Musk Couture",
+      "aliases": [
+        "Musk Couture",
+        "Khadlaj Musk Couture"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-THESHOWMAGNIFIQUE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "The Show Magnifique",
+      "name": "The Show Magnifique",
+      "family_id": "paris_corner_catalog",
+      "family_name": "The Show Magnifique",
+      "aliases": [
+        "The Show Magnifique",
+        "Paris Corner The Show Magnifique"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ZARIYA",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Zariya",
+      "name": "Zariya",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Zariya",
+      "aliases": [
+        "Zariya",
+        "Paris Corner Zariya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
     }
   ],
   "variants": [
@@ -30189,6 +33981,206 @@
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103-60-000",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-b648108e",
+      "size_ml": 100,
+      "aliases": [
+        "Mahd Al Dhahab 100 ml",
+        "Arabiyat Prestige Mahd Al Dhahab 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-b648108e-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-d6a74b9c",
+      "size_ml": 80,
+      "aliases": [
+        "Nyla Sherbet 80 ml",
+        "Arabiyat Prestige Nyla Sherbet 80 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-d6a74b9c-80-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-f169ae3a",
+      "size_ml": 100,
+      "aliases": [
+        "Fahad Regal 100 ml",
+        "Arabiyat Prestige Fahad Regal 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-f169ae3a-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-408f6f7f",
+      "size_ml": 100,
+      "aliases": [
+        "Aristo 100 ml",
+        "Arabiyat Prestige Aristo 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-408f6f7f-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-c19b90f0",
+      "size_ml": 100,
+      "aliases": [
+        "Bois Blanc 100 ml",
+        "Arabiyat Prestige Bois Blanc 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-c19b90f0-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-5483c0e0",
+      "size_ml": 100,
+      "aliases": [
+        "Cherry Musk 100 ml",
+        "Arabiyat Prestige Cherry Musk 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-5483c0e0-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-dabe9232",
+      "size_ml": 100,
+      "aliases": [
+        "Marasi For Her 100 ml",
+        "Arabiyat Prestige Marasi For Her 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-dabe9232-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-eda09b07",
+      "size_ml": 100,
+      "aliases": [
+        "Marasi For Him 100 ml",
+        "Arabiyat Prestige Marasi For Him 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-eda09b07-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-d6a3e5b3",
+      "size_ml": 100,
+      "aliases": [
+        "Swar Serpentine 100 ml",
+        "Arabiyat Prestige Swar Serpentine 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-d6a3e5b3-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-830b73b3",
+      "size_ml": 100,
+      "aliases": [
+        "Swar D'Amour 100 ml",
+        "Arabiyat Prestige Swar D'Amour 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-830b73b3-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-9e0cb597",
+      "size_ml": 100,
+      "aliases": [
+        "Cursed 100 ml",
+        "Arabiyat Prestige Cursed 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-9e0cb597-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-e1de0d16",
+      "size_ml": 100,
+      "aliases": [
+        "Ramad Oriental 100 ml",
+        "Arabiyat Prestige Ramad Oriental 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-e1de0d16-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-113b2420",
+      "size_ml": 100,
+      "aliases": [
+        "Kohl Opulence 100 ml",
+        "Arabiyat Prestige Kohl Opulence 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-113b2420-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-adfcef73",
+      "size_ml": 100,
+      "aliases": [
+        "Kohl Luminous 100 ml",
+        "Arabiyat Prestige Kohl Luminous 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-adfcef73-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-GELATO-RASPBERRY-RIPPLE",
+      "size_ml": 100,
+      "aliases": [
+        "Gelato Raspberry Ripple 100 ml",
+        "Arabiyat Prestige Gelato Raspberry Ripple 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-GELATO-RASPBERRY-RIPPLE-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-GELATO-BLACK-CURRANT-LOLLY",
+      "size_ml": 100,
+      "aliases": [
+        "Gelato Black Currant Lolly 100 ml",
+        "Arabiyat Prestige Gelato Black Currant Lolly 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-GELATO-BLACK-CURRANT-LOLLY-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-e688d8ec",
+      "size_ml": 100,
+      "aliases": [
+        "La Di Da For Her 100 ml",
+        "Arabiyat Prestige La Di Da For Her 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-e688d8ec-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-fda57f35",
+      "size_ml": 100,
+      "aliases": [
+        "La Di Da For Him 100 ml",
+        "Arabiyat Prestige La Di Da For Him 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-fda57f35-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-9702623d",
+      "size_ml": 100,
+      "aliases": [
+        "Uhud 100 ml",
+        "Arabiyat Prestige Uhud 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-9702623d-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-26fd5518",
+      "size_ml": 100,
+      "aliases": [
+        "Safa 100 ml",
+        "Arabiyat Prestige Safa 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-26fd5518-100-EDP",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
