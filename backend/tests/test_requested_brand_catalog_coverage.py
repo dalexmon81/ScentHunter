@@ -472,6 +472,9 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             if row.get("brand_name") == "Khadlaj"
         ]
         self.assertEqual(len(products), 165)
+        def normalize_name(value):
+            return "".join(char.casefold() for char in str(value) if char.isalnum())
+
         names = set()
         for row in products:
             names.add(normalize_name(row.get("canonical_name")))
