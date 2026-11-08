@@ -28,12 +28,12 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Swiss Arabian | 32 | 4 | 28 |
 | Games of Spades | 29 | 6 | 23 |
 | Lattafa | 114 | 4 | 110 |
-| Afnan | 87 | 0 | 87 |
+| Afnan | 87 | 1 | 86 |
 | Aromatix | 12 | 0 | 12 |
 | Maison Alhambra | 203 | 0 | 203 |
 | Zimaya | 72 | 10 | 62 |
 | Al Haramain | 101 | 0 | 101 |
-| **Total requested brands** | **2,049** | **231** | **1,818** |
+| **Total requested brands** | **2,049** | **232** | **1,817** |
 
 The full seed contains 2,052 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
@@ -56,7 +56,7 @@ The full seed contains 2,052 identities. The remaining three belong to other bra
 | Swiss Arabian | swissarabian.ma (27); us.swissarabian.com (3); de.swissarabian.com (1); www.essenciaarabe.com (1) |
 | Games of Spades | jomilanoparis.com (29) |
 | Lattafa | lattafa.com (90); lattafaparfum.eu (23); www.essenciaarabe.com (1) |
-| Afnan | afnan.com (83); www.afnaneurope.com (4) |
+| Afnan | afnan.com (83); de.afnan.com (1); www.afnaneurope.com (3) |
 | Aromatix | www.notino.be (12) |
 | Maison Alhambra | maisonalhambra-usa.com (203) |
 | Zimaya | zimayaperfumes.com (72) |
@@ -65,7 +65,7 @@ The full seed contains 2,052 identities. The remaining three belong to other bra
 ## Priority evidence gaps
 
 1. **Independent / retailer-heavy discovery:** Assaf is entirely listing-backed in this snapshot; the PR #437 notes that its 119-name harvest uses an independent range index. French Avenue includes 43 Fragrantica-sourced names. Arabiyat Prestige includes 93 Fragrantica-sourced names. Aromatix's 12 rows currently point to Notino.
-2. **Listing-level evidence dominates:** Paris Corner, Maison Alhambra, Afnan, Al Haramain, Mykonos, Gulf Orchid and several other brands have no `source_verified_name` rows in this snapshot. This is not proof that the names are wrong; it means individual product-page verification is the next quality step.
+2. **Listing-level evidence dominates:** Paris Corner, Maison Alhambra, Al Haramain, Mykonos, Gulf Orchid and several other brands have no `source_verified_name` rows in this snapshot. This is not proof that the names are wrong; it means individual product-page verification is the next quality step.
 3. **Regional/source reconciliation:** Bujairami, Swiss Arabian, Lattafa and Maison Asrar use multiple regional or retailer domains. Reconcile regional naming, retired products and aliases before treating these as a single globally exhaustive range.
 
 ## Collection-specific verification
@@ -222,3 +222,19 @@ Sources consulted for this follow-up include:
 - Secondary discovery indexes: https://www.fragrantica.com/designers/French-Avenue.html and https://basenotes.com/brands/french-avenue.26275552
 
 The key rule remains unchanged: discovery databases may reveal candidate names, but catalog concentration and size should be entered only when the underlying product evidence supports them.
+
+
+### Afnan official-page verification: 9 PM Night Out
+
+The existing Afnan identity **9 PM Night Out** was cross-checked against Afnan's official regional product page:
+- Product page: https://de.afnan.com/en/products/9pm-night-out
+- Official specifications: Extrait de Parfum, 100 ml, unisex
+- Official launch announcement: https://afnan.com/blogs/news/afnan-perfumes-unveils-9pm-night-out-on-the-global-stage (17 February 2026)
+- Catalog action: updated `source_url`, changed evidence status to `source_verified_name`, set concentration to `Extrait de Parfum`, and added an explicit 100 ml variant.
+- No new canonical identity was created; the existing Afnan row was upgraded.
+
+Afnan now has 87 identities: 1 `source_verified_name` and 86 `source_listed_name`. The requested 20-brand subtotal remains 2,049 identities; the evidence-status subtotal is now 232 verified and 1,817 listed. The full seed remains 2,052 products and now contains 219 explicit variants.
+
+Sources:
+- https://de.afnan.com/en/products/9pm-night-out
+- https://afnan.com/blogs/news/afnan-perfumes-unveils-9pm-night-out-on-the-global-stage
