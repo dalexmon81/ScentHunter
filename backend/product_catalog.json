@@ -34275,6 +34275,206 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADDICTION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Addiction",
+      "name": "Addiction",
+      "family_id": "bujairami_catalog",
+      "family_name": "Addiction",
+      "aliases": [
+        "Addiction",
+        "Bujairami Addiction"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/addiction/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/addiction/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADORE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Adore",
+      "name": "Adore",
+      "family_id": "bujairami_catalog",
+      "family_name": "Adore",
+      "aliases": [
+        "Adore",
+        "Bujairami Adore"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adore/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/adore/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADVERSARY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Adversary",
+      "name": "Adversary",
+      "family_id": "bujairami_catalog",
+      "family_name": "Adversary",
+      "aliases": [
+        "Adversary",
+        "Bujairami Adversary"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adversary/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/adversary/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AETHERA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aethera",
+      "name": "Aethera",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aethera",
+      "aliases": [
+        "Aethera",
+        "Bujairami Aethera"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aethera/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aethera/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFECTIONATE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Affectionate",
+      "name": "Affectionate",
+      "family_id": "bujairami_catalog",
+      "family_name": "Affectionate",
+      "aliases": [
+        "Affectionate",
+        "Bujairami Affectionate"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affectionate/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/affectionate/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFINITY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Affinity",
+      "name": "Affinity",
+      "family_id": "bujairami_catalog",
+      "family_name": "Affinity",
+      "aliases": [
+        "Affinity",
+        "Bujairami Affinity"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affinity/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/affinity/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTER-DARK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "After Dark",
+      "name": "After Dark",
+      "family_id": "bujairami_catalog",
+      "family_name": "After Dark",
+      "aliases": [
+        "After Dark",
+        "Bujairami After Dark"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/after-dark/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/after-dark/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERGLOW",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Afterglow",
+      "name": "Afterglow",
+      "family_id": "bujairami_catalog",
+      "family_name": "Afterglow",
+      "aliases": [
+        "Afterglow",
+        "Bujairami Afterglow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afterglow/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/afterglow/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERNOON-BLISS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Afternoon Bliss",
+      "name": "Afternoon Bliss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Afternoon Bliss",
+      "aliases": [
+        "Afternoon Bliss",
+        "Bujairami Afternoon Bliss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afternoon-bliss/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/afternoon-bliss/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERSHOCK",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aftershock",
+      "name": "Aftershock",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aftershock",
+      "aliases": [
+        "Aftershock",
+        "Bujairami Aftershock"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aftershock/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aftershock/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37254,6 +37454,106 @@
         "Bujairami Abyss 100ml"
       ],
       "source_url": "https://bujairamiperfumes.eu/perfumes/abyss/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADDICTION",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-ADDICTION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Addiction 100 ml",
+        "Bujairami Addiction 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/addiction/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADORE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-ADORE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Adore 100 ml",
+        "Bujairami Adore 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adore/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-ADVERSARY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-ADVERSARY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Adversary 100 ml",
+        "Bujairami Adversary 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/adversary/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AETHERA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AETHERA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aethera 100 ml",
+        "Bujairami Aethera 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aethera/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFECTIONATE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFFECTIONATE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Affectionate 100 ml",
+        "Bujairami Affectionate 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affectionate/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFFINITY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFFINITY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Affinity 100 ml",
+        "Bujairami Affinity 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/affinity/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTER-DARK",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTER-DARK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "After Dark 100 ml",
+        "Bujairami After Dark 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/after-dark/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERGLOW",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTERGLOW-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Afterglow 100 ml",
+        "Bujairami Afterglow 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afterglow/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERNOON-BLISS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTERNOON-BLISS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Afternoon Bliss 100 ml",
+        "Bujairami Afternoon Bliss 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/afternoon-bliss/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH4-AFTERSHOCK",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH4-AFTERSHOCK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aftershock 100 ml",
+        "Bujairami Aftershock 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aftershock/"
     }
   ]
 }
