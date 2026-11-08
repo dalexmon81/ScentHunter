@@ -28097,6 +28097,69 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Intoxicate Mystique",
+      "name": "La Fede Intoxicate Mystique",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede",
+      "aliases": [
+        "La Fede Intoxicate Mystique",
+        "Khadlaj La Fede Intoxicate Mystique",
+        "INTOXICATE MYSTIQUE"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-intoxicate-blue-elixir-100-ml-eau-de-parfume-spray-for-men-copy",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-CRUSH",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celebrity Crush",
+      "name": "La Fede Celebrity Crush",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede",
+      "aliases": [
+        "La Fede Celebrity Crush",
+        "Khadlaj La Fede Celebrity Crush",
+        "LA FEDE CELEBRITY CRUSH"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-crush-100ml-eau-de-parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "La Fede Celebrity Fame",
+      "name": "La Fede Celebrity Fame",
+      "family_id": "khadlaj_la_fede",
+      "family_name": "La Fede",
+      "aliases": [
+        "La Fede Celebrity Fame",
+        "Khadlaj La Fede Celebrity Fame",
+        "LA FEDE CELEBRITY FAME"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/new-launch-la-fede-eau-de-parfum-collection-by-khadlaj-perfumes/products/la-fede-celebrity-fame-100ml-eau-de-parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -29992,6 +30055,36 @@
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-aac6aa05-60-EXTRAIT",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Intoxicate Mystique 100 ml",
+        "Khadlaj La Fede Intoxicate Mystique 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-INTOXICATE-MYSTIQUE-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-CRUSH",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Celebrity Crush 100 ml",
+        "Khadlaj La Fede Celebrity Crush 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-CRUSH-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME",
+      "size_ml": 100,
+      "aliases": [
+        "La Fede Celebrity Fame 100 ml",
+        "Khadlaj La Fede Celebrity Fame 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-LA-FEDE-CELEBRITY-FAME-100-EDP",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
