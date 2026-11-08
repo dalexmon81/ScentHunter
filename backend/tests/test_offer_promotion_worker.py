@@ -260,6 +260,7 @@ def test_repromotion_refreshes_valid_until_from_new_source_capture_time():
     }
     with factory() as session:
         offer = session.scalar(select(Offer))
+        raw = session.get(IngestionRaw, raw_id)
         assert offer.price == Decimal("88.00")
         expected_capture = datetime.fromisoformat(raw.raw_payload["capturedAt"]).astimezone(timezone.utc)
         assert offer.captured_at.replace(tzinfo=timezone.utc) == expected_capture
