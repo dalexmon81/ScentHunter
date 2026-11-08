@@ -464,5 +464,27 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+    def test_paris_corner_official_uae_additions_and_variants(self):
+        expected = [["A Chaos In The Ocean","https://ae.pariscorner.com/products/a-chaos-in-the-ocean-valar-series-100ml",100,"Valar Series"],["A Walk on Dirt","https://ae.pariscorner.com/products/a-walk-on-dirt-valar-series-100ml",100,"Valar Series"],["Amber Oud","https://ae.pariscorner.com/products/amber-oud-100ml",100,"Paris Corner"],["Arabian Oryx Intense Oud","https://ae.pariscorner.com/products/intense-oud-arabian-oryx-100ml",100,"Arabian Oryx"],["Arabian Oryx Intense Oud Saffron","https://ae.pariscorner.com/products/intense-oud-saffron-100ml",100,"Arabian Oryx"],["Aseerah","https://ae.pariscorner.com/products/aseerah-eau-de-parfum-100ml",100,"Paris Corner"],["Autobiography Citron Vanille","https://ae.pariscorner.com/products/citron-vanille-65-ml",65,"Autobiography"],["Autobiography Oh Boy","https://ae.pariscorner.com/products/oh-boy-65ml",65,"Autobiography"],["Autobiography Salty Breeze","https://ae.pariscorner.com/products/salty-breeze-autobiography-65ml",65,"Autobiography"],["Autobiography Supreme Gold","https://ae.pariscorner.com/products/supreme-gold-65-ml",65,"Autobiography"],["Cedrat Essence","https://ae.pariscorner.com/products/cedrat-essence-75ml",75,"Paris Corner"],["Celestial","https://ae.pariscorner.com/products/celestial-100ml",100,"Paris Corner"],["Cloud Born","https://ae.pariscorner.com/products/cloud-born-eau-de-parfum-100ml",100,"Paris Corner"],["Corazon Bourbon","https://ae.pariscorner.com/products/corazon-bourbon-100ml",100,"Pendora Scents"],["Corazon Le Parfum","https://ae.pariscorner.com/products/corazon-le-parfum-100ml",100,"Pendora Scents"],["Factory Edition Camp Fire","https://ae.pariscorner.com/products/factory-edition-camp-fire-100ml",100,"Factory Edition"],["Factory Edition Just Bergamot","https://ae.pariscorner.com/products/factory-edition-just-bergamot-100ml",100,"Factory Edition"],["Factory Edition Rich Santal","https://ae.pariscorner.com/products/factory-edition-rich-santal-100ml",100,"Factory Edition"],["Factory Edition Ultra Citrus","https://ae.pariscorner.com/products/factory-edition-ultra-citrus-100ml",100,"Factory Edition"],["Factory Edition Warm Leather","https://ae.pariscorner.com/products/factory-edition-warm-leather-100ml",100,"Factory Edition"],["Fascination","https://ae.pariscorner.com/products/fascination-100ml",100,"Paris Corner"],["Fire Your Desire","https://ae.pariscorner.com/products/fire-your-desire-100ml",100,"Paris Corner"],["Forbidden Sugar","https://ae.pariscorner.com/products/forbidden-sugar-100ml",100,"Emir"],["Hurriya Gingerique","https://ae.pariscorner.com/products/hurriya-gingerique-100ml",100,"Paris Corner"],["Magic Oud in Dark Roses","https://ae.pariscorner.com/products/magic-oud-in-dark-roses-100ml",100,"Magic Oud"],["Magic Oud in Kalimath","https://ae.pariscorner.com/products/magic-oud-in-kalimath-100ml",100,"Magic Oud"],["Magic Oud in Sandal Wood","https://ae.pariscorner.com/products/magic-oud-in-sandal-wood-100ml",100,"Magic Oud"]]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url, size, collection in expected:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("collection_name"), collection)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size])
+                matching = [v for v in variants if v.get("product_id") == row["product_id"]]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), size)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+
 if __name__ == "__main__":
     unittest.main()
