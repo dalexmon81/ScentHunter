@@ -21,3 +21,37 @@ First-party references:
 - Main assortment page 4: https://officialmykonos.com/collections/all?page=4
 - 50 ml collection: https://officialmykonos.com/collections/50ml-colection
 - 100 ml collection: https://officialmykonos.com/collections/100ml-collection
+
+
+### Mykonos: official 15 ml travel-size variants (8 November 2026)
+
+The official Mykonos product page **Mykonos - Travel Size 15ML** exposes a selector listing 18 named fragrance options. These are travel-size variants of existing canonical fragrances, not 18 new perfume identities. The 18 options were reconciled against the existing Mykonos product IDs and one 15 ml variant was added to each matching identity:
+
+- Dark Secret — 15 ml
+- Musk Aura — 15 ml
+- Sansa — 15 ml
+- Satin Blanc — 15 ml
+- Sparkling Rosé — 15 ml
+- Black Opera — 15 ml
+- Moroccan Vanilla — 15 ml
+- Affair — 15 ml
+- Utopia — 15 ml
+- Tea Poetry — 15 ml
+- Hawaiian Crush — 15 ml
+- On The Rocks — 15 ml
+- Royal Ispahan — 15 ml
+- Crimson — 15 ml
+- California — 15 ml
+- California Blue — 15 ml
+- Penthouse — 15 ml
+- Monaco Royale — 15 ml
+
+- Evidence page: https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml
+- Each new variant records the same evidence URL and the 15 ml size.
+- Concentration is carried onto the 15 ml variant only where the canonical identity already has an explicitly sourced concentration. Sansa, Affair and Tea Poetry remain without a concentration; none was inferred from the generic travel-size page.
+- No new canonical identities were created and no existing variant was duplicated.
+- Mykonos now has 72 canonical identities and **91 explicit variants** (18 new 15 ml variants).
+- The count of Mykonos identities without any explicit variant is now 16 (down from 19). This is not a claim that the Mykonos catalog is complete: all remaining no-variant identities and the full size/concentration matrix still require individual product-page verification.
+- Regression test added to `backend/tests/test_requested_brand_catalog_coverage.py` to check all 18 named 15 ml variants, source evidence, and concentration handling.
+
+The travel-size listing is a product-detail page with selectable scent options; it provides strong official evidence for the 15 ml option names and size, but it does not independently establish a concentration for every scent. Source: https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml
