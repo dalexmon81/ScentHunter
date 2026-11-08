@@ -41,7 +41,15 @@
     "https://maisondisfragrances.com/fr/collections/maison-asrar",
     "https://maisondisfragrances.com/fr/collections/bujairami",
     "https://www.alvanetti.com/brands/french-avenue?collection=all",
-    "https://arabiyatprestige.com/"
+    "https://arabiyatprestige.com/",
+    "https://www.alwataniah.com/products/emiran",
+    "https://www.alwataniah.com/products/layali",
+    "https://www.alwataniah.com/products/sabah-al-ward",
+    "https://www.alwataniah.com/products/special-oud",
+    "https://www.alwataniah.com/products/castilla",
+    "https://www.alwataniah.com/products/kayaan-midnight",
+    "https://www.alwataniah.com/products/fayroz",
+    "https://www.alwataniah.com/products/turquois"
   ],
   "checked_at": "2026-11-07",
   "data_kind": "candidate_fragrance_identities_only_no_variants_no_offers",
@@ -895,7 +903,12 @@
         "Arya",
         "Arya Peony Rose",
         "Royal Oak I",
-        "Royal Oak II"
+        "Royal Oak II",
+        "Emiran",
+        "Layali",
+        "Kayaan Midnight",
+        "Fayroz",
+        "Turquois"
       ]
     },
     {
