@@ -1704,6 +1704,49 @@
             "Verve",
             "Mykonos Verve"
           ]
+        },
+        {
+          "canonical_name": "MyEgo (Mykonos x AlterEgo)",
+          "aliases": [
+            "MyEgo (Mykonos x AlterEgo)",
+            "Mykonos MyEgo (Mykonos x AlterEgo)"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Empire (Mykonos x RRQ)",
+          "aliases": [
+            "Empire (Mykonos x RRQ)",
+            "Mykonos Empire (Mykonos x RRQ)"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Glitch (Mykonos x SetiawanAde)",
+          "aliases": [
+            "Glitch (Mykonos x SetiawanAde)",
+            "Mykonos Glitch (Mykonos x SetiawanAde)"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Invade (Mykonos x SetiawanAde)",
+          "aliases": [
+            "Invade (Mykonos x SetiawanAde)",
+            "Mykonos Invade (Mykonos x SetiawanAde)"
+          ],
+          "formats_ml": [
+            50
+          ]
         }
       ]
     },
@@ -6552,6 +6595,13 @@
             "Jasmine and Vanilla",
             "Swiss Arabian Jasmine and Vanilla"
           ]
+        },
+        {
+          "canonical_name": "Incense 01",
+          "aliases": [
+            "Incense 01",
+            "Swiss Arabian Incense 01"
+          ]
         }
       ]
     },
@@ -6888,6 +6938,20 @@
           "aliases": [
             "Asad Elixir",
             "Lattafa Asad Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Queen of Arabia",
+          "aliases": [
+            "Queen of Arabia",
+            "Lattafa Queen of Arabia"
+          ]
+        },
+        {
+          "canonical_name": "Musamam White Intense",
+          "aliases": [
+            "Musamam White Intense",
+            "Lattafa Musamam White Intense"
           ]
         }
       ]
