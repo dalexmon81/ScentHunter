@@ -32017,6 +32017,422 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.alwataniah.com/collections/all?page=4",
       "source_evidence_url": "https://www.alwataniah.com/collections/all?page=4"
+    },
+    {
+      "product_id": "SH-GOS-JACK",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Jack",
+      "name": "Jack",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Jack",
+      "aliases": [
+        "Jack",
+        "Games of Spades Jack",
+        "Game of Spades Jack"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-ALL-IN",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "All In",
+      "name": "All In",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "All In",
+      "aliases": [
+        "All In",
+        "Games of Spades All In",
+        "Game of Spades All In"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-BID",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Bid",
+      "name": "Bid",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Bid",
+      "aliases": [
+        "Bid",
+        "Games of Spades Bid",
+        "Game of Spades Bid"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-BLACK-SAPPHIRE",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Black Sapphire",
+      "name": "Black Sapphire",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Black Sapphire",
+      "aliases": [
+        "Black Sapphire",
+        "Games of Spades Black Sapphire",
+        "Game of Spades Black Sapphire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-BLIND-BID",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Blind Bid",
+      "name": "Blind Bid",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Blind Bid",
+      "aliases": [
+        "Blind Bid",
+        "Games of Spades Blind Bid",
+        "Game of Spades Blind Bid"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-BLUFF",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Bluff",
+      "name": "Bluff",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Bluff",
+      "aliases": [
+        "Bluff",
+        "Games of Spades Bluff",
+        "Game of Spades Bluff"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-BONUS",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Bonus",
+      "name": "Bonus",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Bonus",
+      "aliases": [
+        "Bonus",
+        "Games of Spades Bonus",
+        "Game of Spades Bonus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-BOSTON",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Boston",
+      "name": "Boston",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Boston",
+      "aliases": [
+        "Boston",
+        "Games of Spades Boston",
+        "Game of Spades Boston"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-DIAMOND",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Diamond",
+      "name": "Diamond",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Diamond",
+      "aliases": [
+        "Diamond",
+        "Games of Spades Diamond",
+        "Game of Spades Diamond"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-DOUBLE-BONUS",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Double Bonus",
+      "name": "Double Bonus",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Double Bonus",
+      "aliases": [
+        "Double Bonus",
+        "Games of Spades Double Bonus",
+        "Game of Spades Double Bonus"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=1"
+    },
+    {
+      "product_id": "SH-GOS-EMERALD",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Emerald",
+      "name": "Emerald",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Emerald",
+      "aliases": [
+        "Emerald",
+        "Games of Spades Emerald",
+        "Game of Spades Emerald"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-FULL-HOUSE-REFRESH",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Full House Refresh",
+      "name": "Full House Refresh",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Full House Refresh",
+      "aliases": [
+        "Full House Refresh",
+        "Games of Spades Full House Refresh",
+        "Game of Spades Full House Refresh"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-GOLD",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Gold",
+      "name": "Gold",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Gold",
+      "aliases": [
+        "Gold",
+        "Games of Spades Gold",
+        "Game of Spades Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-HIGH-ROLLER",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "High Roller",
+      "name": "High Roller",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "High Roller",
+      "aliases": [
+        "High Roller",
+        "Games of Spades High Roller",
+        "Game of Spades High Roller"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-JACKPOT",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Jackpot",
+      "name": "Jackpot",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Jackpot",
+      "aliases": [
+        "Jackpot",
+        "Games of Spades Jackpot",
+        "Game of Spades Jackpot"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-MOON",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Moon",
+      "name": "Moon",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Moon",
+      "aliases": [
+        "Moon",
+        "Games of Spades Moon",
+        "Game of Spades Moon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-NO-LIMIT",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "No Limit",
+      "name": "No Limit",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "No Limit",
+      "aliases": [
+        "No Limit",
+        "Games of Spades No Limit",
+        "Game of Spades No Limit"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-OPAL",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Opal",
+      "name": "Opal",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Opal",
+      "aliases": [
+        "Opal",
+        "Games of Spades Opal",
+        "Game of Spades Opal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-PLATINUM",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Platinum",
+      "name": "Platinum",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Platinum",
+      "aliases": [
+        "Platinum",
+        "Games of Spades Platinum",
+        "Game of Spades Platinum"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-ROUGE",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Rouge",
+      "name": "Rouge",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Rouge",
+      "aliases": [
+        "Rouge",
+        "Games of Spades Rouge",
+        "Game of Spades Rouge"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-ROYALE",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Royale",
+      "name": "Royale",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Royale",
+      "aliases": [
+        "Royale",
+        "Games of Spades Royale",
+        "Game of Spades Royale"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-RUBY",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Ruby",
+      "name": "Ruby",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Ruby",
+      "aliases": [
+        "Ruby",
+        "Games of Spades Ruby",
+        "Game of Spades Ruby"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-TOPAZ",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Topaz",
+      "name": "Topaz",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Topaz",
+      "aliases": [
+        "Topaz",
+        "Games of Spades Topaz",
+        "Game of Spades Topaz"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-TRICK",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Trick",
+      "name": "Trick",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Trick",
+      "aliases": [
+        "Trick",
+        "Games of Spades Trick",
+        "Game of Spades Trick"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-WIN",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Win",
+      "name": "Win",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Win",
+      "aliases": [
+        "Win",
+        "Games of Spades Win",
+        "Game of Spades Win"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
+    },
+    {
+      "product_id": "SH-GOS-YELLOW-SAPPHIRE",
+      "brand": "Games of Spades",
+      "brand_name": "Games of Spades",
+      "canonical_name": "Yellow Sapphire",
+      "name": "Yellow Sapphire",
+      "family_id": "games_of_spades_catalog",
+      "family_name": "Yellow Sapphire",
+      "aliases": [
+        "Yellow Sapphire",
+        "Games of Spades Yellow Sapphire",
+        "Game of Spades Yellow Sapphire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://jomilanoparis.com/collections/all?page=2"
     }
   ],
   "variants": [
