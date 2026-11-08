@@ -435,5 +435,34 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertIn(name.casefold(), names)
 
 
+
+    def test_paris_corner_four_more_official_pages_and_100ml_variants_are_verified(self):
+        expected = {
+            "Aira": "https://www.pariscornerperfumes.com/products/aira",
+            "Ciao Citrus": "https://www.pariscornerperfumes.com/products/ciao-citrus",
+            "Fatal Embrace": "https://www.pariscornerperfumes.com/products/fatal-embrace",
+            "Wayfarer Infusion": "https://www.pariscornerperfumes.com/products/wayfarer-infusion",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertIn(100, row.get("formats_ml", []))
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"] and v.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertNotIn("concentration", row)
+                self.assertNotIn("concentration", matching[0])
+
 if __name__ == "__main__":
     unittest.main()
