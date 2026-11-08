@@ -9645,6 +9645,9 @@
           "aliases": [
             "Attar Al Youm Black",
             "Arabiyat Prestige Attar Al Youm Black"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9652,6 +9655,9 @@
           "aliases": [
             "Musk Al Youm",
             "Arabiyat Prestige Musk Al Youm"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9659,6 +9665,9 @@
           "aliases": [
             "Oud Al Youm",
             "Arabiyat Prestige Oud Al Youm"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9687,6 +9696,9 @@
           "aliases": [
             "Red Oud",
             "Arabiyat Prestige Red Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9701,6 +9713,9 @@
           "aliases": [
             "Al Shujae",
             "Arabiyat Prestige Al Shujae"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
