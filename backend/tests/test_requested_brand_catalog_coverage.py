@@ -945,5 +945,18 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         )
         self.assertEqual(products["Imperium"].get("formats_ml"), [100])
 
+    def test_mykonos_reconciled_identity_and_variant_totals(self):
+        products = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Mykonos"
+        ]
+        product_ids = {p["product_id"] for p in products}
+        variants = [
+            v for v in CATALOG.get("variants", [])
+            if v.get("product_id") in product_ids
+        ]
+        self.assertEqual(len(products), 76)
+        self.assertEqual(len(variants), 77)
+
 if __name__ == "__main__":
     unittest.main()
