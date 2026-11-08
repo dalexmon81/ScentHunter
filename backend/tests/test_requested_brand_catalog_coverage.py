@@ -464,5 +464,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+
+    def test_maison_asrar_authorized_catalog_116_names_are_covered(self):
+        expected = ["Belgravia","Legacy","Vanguard","Regent","Ameer","Majesty","Veyra","Vanilla Aura","Faris Al Arab","Vanilla Voyage","III Thriller","Last Swim","Pomme Rouge","Haven","Muharib","Silent Surge","Treasure","Hunter","Imperial","Monarch","1963","Adorable","Alonoud","Aseel","Basma","Black","Bloom Bloom","Bonita","Casablanca","Cascade","Coffee Blend","Daham","Date Night","Dear Jasmine","Desire","Dubai London","Dubai Miami","Dubai Milano","DXB","DXB Jumeirah","Emerald","Emessa","Fairy Tale","Fairyland","Fakhama","Flair","Fresh Iris","Gentle Oud","Gold Noir","Hamsat Gharam","Hamsat Ghazal","Hamsat Hob","Hamsat Ishq","Harmony","Heritage","Hikaya","Hilm","Icon","Infina","Italian Leather","Jawhara Black","Jawhara Rouge","Joy","Khateer","Khayal","Khayyal","Kiss My Lips","Larimar","Leo","Librae","Lily","Lolita","Lumiere","Luna","Magic Night","Masterpiece","Milky Way","Mohra","Nada","Never Forget Me","Night in Paris","Oh Honey!","Omniya","Oscar","Patchouli with Love","Petra","Pink Crush","Qamar","Red Velvet","Rey","Rose","Rose Honey","Rose Musk","Rose Oud","Rose Vanilla","Rosé Absolute","Rosé Bouquet","Rubellite","Silver Elixer","Soirée","Soudfa","Sunset in Capri","Throne","Throne Eclipse","Timeless","Tornado","Trophy","Turath","Turath Malaki","Vanilla Rouge","Vanilla Seduction","Vision","Wadi","Whisper","Wood Intense","Zenobia"]
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        ]
+        def normalize(value):
+            import unicodedata
+            value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+            return "".join(ch.lower() for ch in value if ch.isalnum())
+        known = {
+            normalize(name)
+            for row in products
+            for name in [row.get("canonical_name", "")] + row.get("aliases", [])
+        }
+        self.assertEqual([name for name in expected if normalize(name) not in known], [])
+        self.assertGreaterEqual(len(products), 120)
+
+    def test_maison_asrar_four_additional_source_backed_products_are_present(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        expected_sources = {
+            "Black Grapefruit": "https://maisonasrar.com/collections/all",
+            "Love Key": "https://shop-gulforchid.com/products/love-key",
+            "Plot Twist": "https://shop-gulforchid.com/products/plot-twist",
+            "Unsolved Mystery": "https://shop-gulforchid.com/products/unsolved-mystery",
+        }
+        for name, source in expected_sources.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                self.assertEqual(products[name].get("source_url"), source
+                )
+
 if __name__ == "__main__":
     unittest.main()
