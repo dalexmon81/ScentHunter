@@ -123,6 +123,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     )
                 )
 
+    def test_french_avenue_official_product_pages_and_variants_are_verified(self):
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "French Avenue"
+        }
+        expected = {
+            "Le Falcon": (
+                "https://frenchavenue.com/products/le-falcon",
+                "Eau de Parfum",
+            ),
+            "Le Falcon Dubai": (
+                "https://frenchavenue.com/products/le-falcon-dubai",
+                "Eau de Parfum",
+            ),
+            "Spirito Ignite": (
+                "https://frenchavenue.com/products/spirito-ignite",
+                "Extrait de Parfum",
+            ),
+        }
+        for name, (source_url, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertTrue(
+                    any(
+                        variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == 100
+                        and variant.get("concentration") == concentration
+                        for variant in CATALOG.get("variants", [])
+                    )
+                )
+
     def test_aromatix_signature_collection_is_present(self):
         names = {
             str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
