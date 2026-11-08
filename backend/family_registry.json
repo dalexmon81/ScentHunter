@@ -15327,47 +15327,6 @@
           ]
         },
         {
-          "canonical_name": "Code Marron Oud",
-          "aliases": [
-            "Code Marron Oud",
-            "Khadlaj Code Marron Oud"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Code Rouge Amour",
-          "aliases": [
-            "Code Rouge Amour",
-            "Khadlaj Code Rouge Amour"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Code Verde Sublime",
-          "aliases": [
-            "Code Verde Sublime",
-            "Khadlaj Code Verde Sublime"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Code Viola Nectar",
-          "aliases": [
-            "Code Viola Nectar",
-            "Khadlaj Code Viola Nectar",
-            "Code Viola Necter"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
           "canonical_name": "Cream Velvet",
           "aliases": [
             "Cream Velvet",
@@ -15686,17 +15645,6 @@
             "Uno Durable",
             "Khadlaj Uno Durable",
             "La Fede Uno Durable"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Uno Intimo",
-          "aliases": [
-            "Uno Intimo",
-            "Khadlaj Uno Intimo",
-            "La Fede Uno Intimo"
           ],
           "formats_ml": [
             100
@@ -16470,6 +16418,46 @@
       ],
       "products": [
         {
+          "canonical_name": "Code Marron Oud",
+          "aliases": [
+            "Code Marron Oud",
+            "Khadlaj Code Marron Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Code Rouge Amour",
+          "aliases": [
+            "Code Rouge Amour",
+            "Khadlaj Code Rouge Amour"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Code Verde Sublime",
+          "aliases": [
+            "Code Verde Sublime",
+            "Khadlaj Code Verde Sublime"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Code Viola Nectar",
+          "aliases": [
+            "Code Viola Nectar",
+            "Khadlaj Code Viola Nectar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "La Fede Aura Crisp Flower",
           "aliases": [
             "La Fede Aura Crisp Flower",
@@ -16560,10 +16548,12 @@
           ]
         },
         {
-          "canonical_name": "La Fede Celeste Fluer",
+          "canonical_name": "La Fede Celeste Fleur",
           "aliases": [
             "La Fede Celeste Fluer",
-            "Khadlaj La Fede Celeste Fluer"
+            "Khadlaj La Fede Celeste Fluer",
+            "La Fede Celeste Fleur",
+            "Khadlaj La Fede Celeste Fleur"
           ],
           "formats_ml": [
             100
@@ -16820,10 +16810,50 @@
           ]
         },
         {
+          "canonical_name": "La Fede Uno Durable",
+          "aliases": [
+            "La Fede Uno Durable",
+            "Khadlaj La Fede Uno Durable"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "La Fede Uno Lusso",
+          "aliases": [
+            "La Fede Uno Lusso",
+            "Khadlaj La Fede Uno Lusso"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "La Fede Uno Sensuale",
+          "aliases": [
+            "La Fede Uno Sensuale",
+            "Khadlaj La Fede Uno Sensuale"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "La Fede White Forest Strawberry",
           "aliases": [
             "La Fede White Forest Strawberry",
             "Khadlaj La Fede White Forest Strawberry"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Uno Intimo",
+          "aliases": [
+            "Uno Intimo",
+            "Khadlaj Uno Intimo"
           ],
           "formats_ml": [
             100

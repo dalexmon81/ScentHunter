@@ -6,6 +6,7 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
 # Lower bounds from the reconciled 2026-11-08 catalog snapshot. These are
 # canonical fragrance identities, not SKU/variant counts or claims of
@@ -463,6 +464,78 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+    def test_khadlaj_la_fede_and_uno_official_products_and_variants(self):
+        expected = [["La Fede Edge Intense","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-intense-100-ml-eau-de-parfum-for-unisex-scents-dubai-uae",100],["La Fede Edge Original","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-edge-original-eau-de-parfum-for-women-copy",100],["La Fede Symbol of Love","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-love-100-ml-eau-de-parfum-for-women-scents-by-khadlaj",100],["La Fede Symbol of Power","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-symbol-of-power-100-ml-eau-de-parfum-unisex-scents-by-khadlaj",100],["La Fede Choco Brown","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-choco-brown-100-ml-eau-de-parfum-for-women-dubai-kunafa-chocolate-inspired-scent",100],["La Fede White Forest Strawberry","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-white-forest-strawberry-edp-for-women-best-gourmand-fragrance-dubai-online",100],["La Fede Celeste Toffee","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-toffee-100-ml-eau-de-parfum",100],["La Fede Celeste Fleur","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-fluer-100-ml-eau-de-parfum-for-women",100],["La Fede Celeste Joice","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-joice-100-ml-eau-de-parfum-women-scents",100],["La Fede Celeste Aqua","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-celeste-aqua-100-ml-eau-de-parfum-for-men-and-women",100],["La Fede Intoxicate Blue Elixir","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-blue-elixir-100-ml-edp-spray-for-men-best-perfumes-dubai-uae-usa-uk-worldwide",100],["La Fede Intoxicate","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-intoxicate-100-ml-edp-spray",100],["La Fede Aura Manga Splash","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women",100],["La Fede Aura Pista Dessert","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-manga-splash-100-ml-edp-spray-for-women-copy",100],["La Fede Opera Noir L'Or","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-noir-lor-100-ml-edp-spray",100],["La Fede Opera Rose L'Or","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-opera-rose-lor-100-ml-edp-spray",100],["La Fede Crystallia Imperio","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-imperio-100-ml-edp-spray",100],["La Fede Crystallia Primaso","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-crystallia-primaso-100-ml-edp-spray",100],["La Fede Magnum Extreme Blue","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-extreme-blue-100-ml-edp-spray",100],["La Fede Magnum Wild Green","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-wild-green-100ml-edp-spray",100],["La Fede Magnum Gold Edition","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-gold-edition-100-ml-edp-spray",100],["La Fede Magnum Silver Edition","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-magnum-silver-edition-100-ml-edp-spray",100],["La Fede Aura Kiss of Rose","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-kiss-of-rose-100-ml-edp-spray-for-women",100],["La Fede Aura Crisp Flower","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-aura-crisp-flower-100-ml-edp-sproay-for-women",100],["La Fede Belle Reve Segrato Viola","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-belle-reve-segrato-viola-100-ml-edp-spray",100],["La Fede Bella Reve Dolce Flore","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-bella-reev-dolce-flore-100-ml-edp-spray",100],["La Fede Statesman","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-statesman-spray-shop-online-best-price-in-dubai-uae",75],["La Fede First Lady","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-first-spray-shop-online-best-price-in-dubai-uae",75],["La Fede Kingsman","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-kingsman-spray-shop-online-best-price-in-dubai-uae",75],["La Fede Miss Premiere","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae",75],["Code Marron Oud","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",100],["Code Rouge Amour","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",100],["Code Verde Sublime","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",100],["Code Viola Nectar","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",100],["Uno Intimo","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",100],["La Fede Lavish Blush","https://kw.khadlaj-perfumes.com/products/la-fede-lavish-blush-edp-spray-100-ml",100],["La Fede Lavish Luna","https://khadlaj-perfumes.com/products/la-fede-lavish-edp-spray-100-ml",100],["La Fede Lavish Rouge","https://khadlaj-perfumes.com/products/la-fede-lavish-rouge-edp-spray-100-ml",100],["La Fede Uno Lusso","https://khadlaj-perfumes.com/collections/all/products/uno-lusso-edp-spray-shop-online-best-price-in-dubai-uae",100],["La Fede Uno Sensuale","https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",100],["La Fede Uno Durable","https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-durable-edp-spray-shop-online-best-price-in-dubai-uae",100]]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url, size in expected:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size])
+                matching = [v for v in variants if v.get("product_id") == row["product_id"]]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), size)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+
+    def test_khadlaj_la_fede_family_registry_has_all_44_names(self):
+        expected = {
+            "La Fede Celebrity Crush", "La Fede Celebrity Fame",
+            "La Fede Intoxicate Mystique", "La Fede Lavish Blush",
+            "La Fede Lavish Luna", "La Fede Lavish Rouge",
+            "La Fede Edge Intense",
+            "La Fede Edge Original",
+            "La Fede Symbol of Love",
+            "La Fede Symbol of Power",
+            "La Fede Choco Brown",
+            "La Fede White Forest Strawberry",
+            "La Fede Celeste Toffee",
+            "La Fede Celeste Fleur",
+            "La Fede Celeste Joice",
+            "La Fede Celeste Aqua",
+            "La Fede Intoxicate Blue Elixir",
+            "La Fede Intoxicate",
+            "La Fede Aura Manga Splash",
+            "La Fede Aura Pista Dessert",
+            "La Fede Opera Noir L'Or",
+            "La Fede Opera Rose L'Or",
+            "La Fede Crystallia Imperio",
+            "La Fede Crystallia Primaso",
+            "La Fede Magnum Extreme Blue",
+            "La Fede Magnum Wild Green",
+            "La Fede Magnum Gold Edition",
+            "La Fede Magnum Silver Edition",
+            "La Fede Aura Kiss of Rose",
+            "La Fede Aura Crisp Flower",
+            "La Fede Belle Reve Segrato Viola",
+            "La Fede Bella Reve Dolce Flore",
+            "La Fede Statesman",
+            "La Fede First Lady",
+            "La Fede Kingsman",
+            "La Fede Miss Premiere",
+            "Code Marron Oud",
+            "Code Rouge Amour",
+            "Code Verde Sublime",
+            "Code Viola Nectar",
+            "Uno Intimo",
+            "La Fede Lavish Blush",
+            "La Fede Lavish Luna",
+            "La Fede Lavish Rouge",
+            "La Fede Uno Lusso",
+            "La Fede Uno Sensuale",
+            "La Fede Uno Durable",
+        }
+        family = next(f for f in REGISTRY["families"] if f["family_id"] == "khadlaj_la_fede")
+        names = {p["canonical_name"] for p in family["products"]}
+        self.assertEqual(expected, names)
 
 if __name__ == "__main__":
     unittest.main()
