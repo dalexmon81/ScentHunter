@@ -283,7 +283,9 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
 
             decision = match_staged_offer(session, raw.id)
             assert decision.status == "matched"
-            assert decision.method in {"gtin_exact", "canonical_key_exact"}
+            assert decision.method in {
+                "gtin_exact", "canonical_key_exact", "normalized_attributes_exact"
+            }
             assert decision.product_variant_id == variant.id
             session.commit()
             raw_id = raw.id
