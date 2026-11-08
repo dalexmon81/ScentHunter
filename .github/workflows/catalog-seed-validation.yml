@@ -32,6 +32,7 @@ on:
       - catalog/maison-asrar-official-page-reconciliation-2026-11-08
       - catalog/khadlaj-new-launch-detail-variants-2026-11-08
       - catalog/paris-corner-eu-product-variants-2026-11-08
+      - catalog/paris-corner-official-size-variants-2026-11-08
 
 permissions:
   contents: read
@@ -83,4 +84,5 @@ jobs:
           backend.tests.test_maison_asrar_official_product_pages
           backend.tests.test_khadlaj_official_new_launch_variants
           backend.tests.test_paris_corner_europe_official_variants
+          backend.tests.test_paris_corner_official_size_variants
           -v
