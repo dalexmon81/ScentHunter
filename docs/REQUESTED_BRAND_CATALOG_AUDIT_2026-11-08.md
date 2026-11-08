@@ -1,35 +1,43 @@
 
 
-### Mykonos: authorized EU product-page audit of the 19 variant gaps (8 November 2026)
+### Mykonos: additional identities found in the authorized EU range (8 November 2026)
 
-The authorized EU retailer's individual product pages were checked for all 19 Mykonos identities that had no variant row and no `formats_ml` in the current seed. The pages explicitly expose the following EU retail concentrations and sizes:
+A comparison of the current 72-identity seed with the authorized EU retailer's catalogue and new-release pages found the following names absent from the seed. These are discovery candidates only; they are not automatically approved catalog additions.
 
-| Existing identity | Authorized EU product detail | Concentration stated | EU sizes stated |
+| Candidate | Authorized EU product page | Retailer-stated concentration | Retailer size / release status |
 |---|---|---|---|
-| Sansa | https://mykonosperfumes.eu/products/mykonos-sansa | Extrait de Parfum | 15 ml, 100 ml |
-| Tea Poetry | https://mykonosperfumes.eu/products/mykonos-tea-poetry | Extrait de Parfum | 15 ml, 100 ml |
-| Affair | https://mykonosperfumes.eu/products/mykonos-affair | Extrait de Parfum | 15 ml, 100 ml |
-| Only You | https://mykonosperfumes.eu/products/mykonos-only-you | Eau de Parfum | 100 ml |
-| Shades Perfume | https://mykonosperfumes.eu/products/mykonos-shades | Not explicitly stated | 100 ml |
-| Chai Crema Latte | https://mykonosperfumes.eu/products/mykonos-x-sapeyeeee-chai-crema-latte | Extrait de Parfum | 50 ml |
-| Jynx | https://mykonosperfumes.eu/products/mykonos-x-paola-serena-jynx | Eau de Parfum | 100 ml |
-| Rouge | https://mykonosperfumes.eu/products/mykonos-x-sapeyeeee-rouge | Eau de Parfum | 50 ml |
-| Seven Roses | https://mykonosperfumes.eu/products/mykonos-seven-roses | Eau de Parfum | 50 ml |
-| Ivory | https://mykonosperfumes.eu/products/mykonos-ivory | Eau de Parfum | 50 ml |
-| Blossom | https://mykonosperfumes.eu/products/mykonos-blossom | Eau de Parfum | 50 ml |
-| Zora | https://mykonosperfumes.eu/products/mykonos-zora | Eau de Parfum | 50 ml, 100 ml |
-| Down to Earth | https://mykonosperfumes.eu/products/mykonos-down-to-earth | Extrait de Parfum | 50 ml |
-| When in Paris | https://mykonosperfumes.eu/products/mykonos-when-in-paris | Extrait de Parfum | 50 ml |
-| Pandan Sticky Rice | https://mykonosperfumes.eu/products/mykonos-pandan-sticky-rice | Eau de Parfum | 50 ml |
-| Pistachio Cream Cake | https://mykonosperfumes.eu/products/mykonos-pistachio-cream-cake | Eau de Parfum | 50 ml |
-| Blaze | https://mykonosperfumes.eu/products/mykonos-blaze | Eau de Parfum | 50 ml |
-| Memoir of Meri | https://mykonosperfumes.eu/products/mykonos-x-jumbo-memoir-of-meri | Extrait de Parfum | 50 ml |
-| Once Upon Don | https://mykonosperfumes.eu/products/mykonos-x-jumbo-once-upon-don | Extrait de Parfum | 50 ml |
+| Berry Caramel Pancake | https://mykonosperfumes.eu/products/mykonos-berry-caramel-pancake | Eau de Parfum | 50 ml; listed product |
+| Forever Musc | https://mykonosperfumes.eu/products/mykonos-forever-musc | Eau de Parfum | 100 ml; listed product |
+| Inspire Perfume | https://mykonosperfumes.eu/products/mykonos-inspire | Not stated | 100 ml; listed product |
+| Avra Kehdabra (Paola Serena) | https://mykonosperfumes.eu/products/mykonos-x-paola-serena-avra-kehdabra | Eau de Parfum | 100 ml; listed product |
+| Violette (Violenzia) | https://mykonosperfumes.eu/products/mykonos-x-violenzia-violette | Eau de Parfum | 100 ml; listed product |
+| Dolce Cherry (Sapeyeeee) | https://mykonosperfumes.eu/products/mykonos-x-sapeyeeee-dolce-cherry | Extrait de Parfum | 50 ml; listed product |
+| Daydream | https://mykonosperfumes.eu/products/mykonos-daydream | Extrait de Parfum | 100 ml shown; coming soon |
+| Inception Reimagined | https://mykonosperfumes.eu/products/mykonos-inception-reimagined | Extrait de Parfum | 100 ml shown; coming soon |
+| Monaco Royale Black | https://mykonosperfumes.eu/products/mykonos-monaco-royale-black | Extrait de Parfum | 50 ml and 100 ml shown; coming soon |
+| Shape Shift | https://mykonosperfumes.eu/products/mykonos-shape-shift | Extrait de Parfum | 100 ml shown; coming soon |
+| Kingsman | https://mykonosperfumes.eu/products/mykonos-kingsman | Not yet published | 100 ml shown as expected; coming soon |
+| Wallflower | https://mykonosperfumes.eu/products/mykonos-wallflower | Not yet published | 100 ml shown as expected; coming soon |
+| Elysian | https://mykonosperfumes.eu/products/mykonos-elysian | Not yet published | 100 ml shown as expected; coming soon |
+| Undercover | https://mykonosperfumes.eu/products/mykonos-undercover | Not yet published | 100 ml shown as expected; coming soon |
+| Celestial | https://mykonosperfumes.eu/products/mykonos-celestial | Not yet published | 100 ml shown as expected; coming soon |
+| Café Lyon | https://mykonosperfumes.eu/products/mykonos-cafe-lyon | Not yet published | 100 ml shown as expected; coming soon |
+| President | https://mykonosperfumes.eu/products/mykonos-president | Not yet published | 100 ml shown as expected; coming soon |
+| Soft Hour x NCT Haechan | https://mykonosperfumes.eu/products/mykonos-x-nct-haechan-soft-hour | Extrait de Parfum | Size not confirmed by MYKONOS; retailer page says coming soon |
+| Déjà Vu | https://mykonosperfumes.eu/products/mykonos-deja-vu | Not yet published | 100 ml shown as expected; coming soon |
 
-**Important provenance boundary:** these are product-detail pages from a retailer that explicitly identifies itself as an authorized MYKONOS retailer for Europe and says the fragrances are crafted in Indonesia by MYKONOS. They are not pages on the brand-owned `officialmykonos.com` domain. The table therefore records authorized-retailer evidence, not first-party official-source verification.
+The retailer explicitly says for Kingsman, Wallflower, Elysian, Undercover, Celestial, Café Lyon and President that MYKONOS has not yet published concentration/notes/details and that the displayed 100 ml is an expected size to be confirmed at launch. Its Soft Hour page likewise says the bottle size has not been published by the brand, notwithstanding a provisional retailer display. Déjà Vu is also described as a new release with details not yet published. Do not convert these provisional display sizes into confirmed catalog variants.
 
-**Catalog decision:** no canonical identity or variant was added from this retailer-only pass. In particular, the three 15 ml options (Sansa, Tea Poetry and Affair) are EU retail variants and must not be silently generalized to the Indonesian brand catalog. The 19 records remain unmodified in the seed until first-party brand evidence or an explicit policy decision permits authorized-retailer detail evidence to populate catalog variants. Shades Perfume concentration remains blank because the inspected detail page does not state EDP or Extrait.
+The retailer reports that Kingsman, Wallflower, Elysian, Undercover, Celestial, Café Lyon, President and Déjà Vu were shown/announced around the MYKONOS Première Privée event in Dubai in October 2026. Soft Hour x NCT Haechan was presented at a sniffing-only event in Jakarta on 6–8 November 2026; the retailer reports Indonesian online launch on 11 November and in-store launch on 15 November 2026. Those dates and announcements remain retailer-reported until matched to a brand-owned announcement.
 
-The retailer marks several of these items sold out; sold-out status is not evidence of discontinuation. The retailer's own pages also distinguish 15 ml travel sizes from 50 ml and 100 ml bottles.
+**Catalog decision:** no candidate was added to `product_catalog.json`. The product pages are on an authorized reseller domain, not the brand-owned domain. The pages are useful for discovery and EU assortment tracking, but brand-owned product pages or announcements are still needed before these candidates are promoted under the current first-party evidence policy. In particular, do not infer concentration for Inspire Perfume, Kingsman, Wallflower, Elysian, Undercover, Celestial, Café Lyon, President or Déjà Vu. Do not assume that provisional coming-soon sizes are final.
 
-Source scope: https://mykonosperfumes.eu/pages/explore (90-fragrance catalogue); individual detail URLs are listed above. The catalogue page explicitly labels the site as not the official Mykonos site and as an authorized EU retailer.
+The authorized retailer's search also exposes fragrance mists such as Bacca Rouge, Beauty, Blue Love, Blue Peony, British Pear, Juicy Me, Magnifique and Malika. These are body/fragrance mists, not perfume identities, and remain excluded from the perfume catalog.
+
+Source context:
+- Catalogue: https://mykonosperfumes.eu/pages/explore (90 fragrance entries)
+- Search: https://mykonosperfumes.eu/search
+- New-release context: https://mykonosperfumes.eu/
+- Retailer authorization statement: https://mykonosperfumes.eu/pages/where-to-buy
+
+The current seed remains at 72 Mykonos identities and 73 variants. The retailer-only audit has not changed catalog counts.
