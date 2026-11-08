@@ -75,5 +75,18 @@ class CatalogFamilyRegistryCoverageTests(unittest.TestCase):
         self.assertEqual(sizes, {75, 100, 125})
 
 
+    def test_french_avenue_genesis_archetypes_use_one_storefront_identity_each(self):
+        family = self.families_by_id["french_avenue_genesis"]
+        entries = {
+            normalized(item["canonical_name"]): item
+            for item in family["products"]
+        }
+        for name, old_label in (("Aries", "Genesis Aries"), ("Aquarius", "Genesis Aquarius")):
+            with self.subTest(name=name):
+                self.assertIn(normalized(name), entries)
+                self.assertIn(old_label, entries[normalized(name)]["aliases"])
+                self.assertNotIn(normalized(old_label), entries)
+
+
 if __name__ == "__main__":
     unittest.main()
