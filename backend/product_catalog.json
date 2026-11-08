@@ -34075,6 +34075,206 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-10-10",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "10/10",
+      "name": "10/10",
+      "family_id": "bujairami_catalog",
+      "family_name": "10/10",
+      "aliases": [
+        "10/10",
+        "Bujairami 10/10"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/10-10/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/10-10/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-22",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "22",
+      "name": "22",
+      "family_id": "bujairami_catalog",
+      "family_name": "22",
+      "aliases": [
+        "22",
+        "Bujairami 22"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/22/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/22/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-25",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "25",
+      "name": "25",
+      "family_id": "bujairami_catalog",
+      "family_name": "25",
+      "aliases": [
+        "25",
+        "Bujairami 25"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/25/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/25/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-26",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "26",
+      "name": "26",
+      "family_id": "bujairami_catalog",
+      "family_name": "26",
+      "aliases": [
+        "26",
+        "Bujairami 26"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/26/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/26/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-29",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "29",
+      "name": "29",
+      "family_id": "bujairami_catalog",
+      "family_name": "29",
+      "aliases": [
+        "29",
+        "Bujairami 29"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/29/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/29/",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-33",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "33",
+      "name": "33",
+      "family_id": "bujairami_catalog",
+      "family_name": "33",
+      "aliases": [
+        "33",
+        "Bujairami 33"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/33/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/33/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-50-SHADES",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "50 Shades",
+      "name": "50 Shades",
+      "family_id": "bujairami_catalog",
+      "family_name": "50 Shades",
+      "aliases": [
+        "50 Shades",
+        "Bujairami 50 Shades"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/50-shades/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/50-shades/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-A-LA-CARTE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "A La Carte",
+      "name": "A La Carte",
+      "family_id": "bujairami_catalog",
+      "family_name": "A La Carte",
+      "aliases": [
+        "A La Carte",
+        "Bujairami A La Carte"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/a-la-carte/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/a-la-carte/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABOVE-THE-CLOUDS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Above The Clouds",
+      "name": "Above The Clouds",
+      "family_id": "bujairami_catalog",
+      "family_name": "Above The Clouds",
+      "aliases": [
+        "Above The Clouds",
+        "Bujairami Above The Clouds"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/above-the-clouds/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/above-the-clouds/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABYSS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Abyss",
+      "name": "Abyss",
+      "family_id": "bujairami_catalog",
+      "family_name": "Abyss",
+      "aliases": [
+        "Abyss",
+        "Bujairami Abyss"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/abyss/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/abyss/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36954,6 +37154,106 @@
         "Bujairami Downtown 100ml"
       ],
       "source_url": "https://bujairamiperfumes.eu/perfumes/downtown/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-10-10",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-10-10-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "10/10 100 ml",
+        "Bujairami 10/10 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/10-10/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-22",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-22-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "22 100 ml",
+        "Bujairami 22 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/22/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-25",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-25-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "25 100 ml",
+        "Bujairami 25 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/25/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-26",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-26-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "26 100 ml",
+        "Bujairami 26 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/26/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-29",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-29-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "29 100 ml",
+        "Bujairami 29 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/29/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-33",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-33-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "33 100 ml",
+        "Bujairami 33 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/33/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-50-SHADES",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-50-SHADES-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "50 Shades 100 ml",
+        "Bujairami 50 Shades 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/50-shades/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-A-LA-CARTE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-A-LA-CARTE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "A La Carte 100 ml",
+        "Bujairami A La Carte 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/a-la-carte/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABOVE-THE-CLOUDS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-ABOVE-THE-CLOUDS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Above The Clouds 100 ml",
+        "Bujairami Above The Clouds 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/above-the-clouds/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH3-ABYSS",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH3-ABYSS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Abyss 100 ml",
+        "Bujairami Abyss 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/abyss/"
     }
   ]
 }
