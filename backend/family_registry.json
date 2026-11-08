@@ -3259,13 +3259,6 @@
           "formats_ml": [
             100
           ]
-        },
-        {
-          "canonical_name": "Black Grapefruit",
-          "aliases": [
-            "Black Grapefruit",
-            "Maison Asrar Black Grapefruit"
-          ]
         }
       ]
     },
@@ -15300,41 +15293,6 @@
       ],
       "products": [
         {
-          "canonical_name": "25 Experience",
-          "aliases": [
-            "25 Experience",
-            "Khadlaj 25 Experience"
-          ]
-        },
-        {
-          "canonical_name": "25 Heritage",
-          "aliases": [
-            "25 Heritage",
-            "Khadlaj 25 Heritage"
-          ]
-        },
-        {
-          "canonical_name": "25 Integrity",
-          "aliases": [
-            "25 Integrity",
-            "Khadlaj 25 Integrity"
-          ]
-        },
-        {
-          "canonical_name": "25 Loyalty",
-          "aliases": [
-            "25 Loyalty",
-            "Khadlaj 25 Loyalty"
-          ]
-        },
-        {
-          "canonical_name": "25 Trust",
-          "aliases": [
-            "25 Trust",
-            "Khadlaj 25 Trust"
-          ]
-        },
-        {
           "canonical_name": "Aaliya",
           "aliases": [
             "Aaliya",
@@ -15431,13 +15389,6 @@
           "concentration": "Perfume Oil"
         },
         {
-          "canonical_name": "Azure Velvet",
-          "aliases": [
-            "Azure Velvet",
-            "Khadlaj Azure Velvet"
-          ]
-        },
-        {
           "canonical_name": "Barwaaz Pure Navy",
           "aliases": [
             "Barwaaz Pure Navy",
@@ -15454,13 +15405,6 @@
             100
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Barwaaz Solid Grey",
-          "aliases": [
-            "Barwaaz Solid Grey",
-            "Khadlaj Barwaaz Solid Grey"
-          ]
         },
         {
           "canonical_name": "Biscotti Caramel Pop",
@@ -15519,20 +15463,6 @@
           "concentration": "Extrait de Parfum"
         },
         {
-          "canonical_name": "Cashmere Sunshine Musk",
-          "aliases": [
-            "Cashmere Sunshine Musk",
-            "Khadlaj Cashmere Sunshine Musk"
-          ]
-        },
-        {
-          "canonical_name": "Cashmere Warm Oud",
-          "aliases": [
-            "Cashmere Warm Oud",
-            "Khadlaj Cashmere Warm Oud"
-          ]
-        },
-        {
           "canonical_name": "Cloud Candy",
           "aliases": [
             "Cloud Candy",
@@ -15573,27 +15503,6 @@
           "concentration": "Extrait de Parfum"
         },
         {
-          "canonical_name": "Empire Crown",
-          "aliases": [
-            "Empire Crown",
-            "Khadlaj Empire Crown"
-          ]
-        },
-        {
-          "canonical_name": "Empire Empress",
-          "aliases": [
-            "Empire Empress",
-            "Khadlaj Empire Empress"
-          ]
-        },
-        {
-          "canonical_name": "Empire Regent",
-          "aliases": [
-            "Empire Regent",
-            "Khadlaj Empire Regent"
-          ]
-        },
-        {
           "canonical_name": "Empire Victor",
           "aliases": [
             "Empire Victor",
@@ -15603,13 +15512,6 @@
             100
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Fursan Brown",
-          "aliases": [
-            "Fursan Brown",
-            "Khadlaj Fursan Brown"
-          ]
         },
         {
           "canonical_name": "Fursan White",
@@ -15644,13 +15546,6 @@
           ]
         },
         {
-          "canonical_name": "Ghadeer Silver",
-          "aliases": [
-            "Ghadeer Silver",
-            "Khadlaj Ghadeer Silver"
-          ]
-        },
-        {
           "canonical_name": "Ghazlaan",
           "aliases": [
             "Ghazlaan",
@@ -15682,13 +15577,6 @@
             20
           ],
           "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Hareem Al Sultan",
-          "aliases": [
-            "Hareem Al Sultan",
-            "Khadlaj Hareem Al Sultan"
-          ]
         },
         {
           "canonical_name": "Hareem Al Sultan Blue",
@@ -15755,20 +15643,6 @@
             60
           ],
           "concentration": "Extrait de Parfum"
-        },
-        {
-          "canonical_name": "Infini",
-          "aliases": [
-            "Infini",
-            "Khadlaj Infini"
-          ]
-        },
-        {
-          "canonical_name": "Infini Absolute",
-          "aliases": [
-            "Infini Absolute",
-            "Khadlaj Infini Absolute"
-          ]
         },
         {
           "canonical_name": "Island",
@@ -15848,20 +15722,6 @@
           "concentration": "Perfume Oil"
         },
         {
-          "canonical_name": "Karus Amber Gold",
-          "aliases": [
-            "Karus Amber Gold",
-            "Khadlaj Karus Amber Gold"
-          ]
-        },
-        {
-          "canonical_name": "Karus Blu Spice",
-          "aliases": [
-            "Karus Blu Spice",
-            "Khadlaj Karus Blu Spice"
-          ]
-        },
-        {
           "canonical_name": "Karus Gold Absolu",
           "aliases": [
             "Karus Gold Absolu",
@@ -15871,23 +15731,6 @@
             100
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Karus Oud Fire",
-          "aliases": [
-            "Karus Oud Fire",
-            "Khadlaj Karus Oud Fire"
-          ]
-        },
-        {
-          "canonical_name": "Karus Secret Musk",
-          "aliases": [
-            "Karus Secret Musk",
-            "Khadlaj Karus Secret Musk"
-          ],
-          "formats_ml": [
-            100
-          ]
         },
         {
           "canonical_name": "Kayaan Gold",
@@ -15912,93 +15755,10 @@
           "concentration": "Perfume Oil"
         },
         {
-          "canonical_name": "Le Prestige Bold",
-          "aliases": [
-            "Le Prestige Bold",
-            "Khadlaj Le Prestige Bold"
-          ]
-        },
-        {
-          "canonical_name": "Le Prestige Empress",
-          "aliases": [
-            "Le Prestige Empress",
-            "Khadlaj Le Prestige Empress"
-          ]
-        },
-        {
-          "canonical_name": "Le Prestige King",
-          "aliases": [
-            "Le Prestige King",
-            "Khadlaj Le Prestige King"
-          ]
-        },
-        {
-          "canonical_name": "Le Prestige Royal",
-          "aliases": [
-            "Le Prestige Royal",
-            "Khadlaj Le Prestige Royal"
-          ]
-        },
-        {
           "canonical_name": "Lulu Al Khaleej",
           "aliases": [
             "Lulu Al Khaleej",
             "Khadlaj Lulu Al Khaleej"
-          ]
-        },
-        {
-          "canonical_name": "Magnate Noble",
-          "aliases": [
-            "Magnate Noble",
-            "Khadlaj Magnate Noble"
-          ]
-        },
-        {
-          "canonical_name": "Magnate Premier",
-          "aliases": [
-            "Magnate Premier",
-            "Khadlaj Magnate Premier"
-          ]
-        },
-        {
-          "canonical_name": "Maison Creation De Reve",
-          "aliases": [
-            "Maison Creation De Reve",
-            "Maison Creation de Reve",
-            "Khadlaj Maison Creation De Reve",
-            "Creation De Reve"
-          ]
-        },
-        {
-          "canonical_name": "Maison Epoque Artistique",
-          "aliases": [
-            "Maison Epoque Artistique",
-            "Khadlaj Maison Epoque Artistique",
-            "Epoque Artistique"
-          ]
-        },
-        {
-          "canonical_name": "Maison Flor Oud",
-          "aliases": [
-            "Maison Flor Oud",
-            "Khadlaj Maison Flor Oud",
-            "Flor Oud"
-          ]
-        },
-        {
-          "canonical_name": "Maison L'Imaginaire",
-          "aliases": [
-            "Maison L'Imaginaire",
-            "Khadlaj Maison L'Imaginaire",
-            "L'Imaginaire"
-          ]
-        },
-        {
-          "canonical_name": "Maison L'Or Noir",
-          "aliases": [
-            "Maison L'Or Noir",
-            "Khadlaj Maison L'Or Noir",
-            "L'Or Noir"
           ]
         },
         {
@@ -16090,46 +15850,6 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Musk Al Sabah",
-          "aliases": [
-            "Musk Al Sabah",
-            "Khadlaj Musk Al Sabah"
-          ]
-        },
-        {
-          "canonical_name": "Musk Couture",
-          "aliases": [
-            "Musk Couture",
-            "Khadlaj Musk Couture"
-          ]
-        },
-        {
-          "canonical_name": "Musk Pour Amber",
-          "aliases": [
-            "Musk Pour Amber",
-            "Khadlaj Musk Pour Amber"
-          ]
-        },
-        {
-          "canonical_name": "Musk Pour Narcis",
-          "aliases": [
-            "Musk Pour Narcis",
-            "Khadlaj Musk Pour Narcis"
-          ]
-        },
-        {
-          "canonical_name": "Musk Pure Musk Blend",
-          "aliases": [
-            "Musk Pure Musk Blend",
-            "Khadlaj Musk Pure Musk Blend",
-            "Musk Pure Musk Blend Creation of Iqbal",
-            "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
-          ],
-          "formats_ml": [
-            60
-          ]
-        },
-        {
           "canonical_name": "Musk Rasaas",
           "aliases": [
             "Musk Rasaas",
@@ -16174,13 +15894,6 @@
             100
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Mystical Indian Oud Pure",
-          "aliases": [
-            "Mystical Indian Oud Pure",
-            "Khadlaj Mystical Indian Oud Pure"
-          ]
         },
         {
           "canonical_name": "Nafais Magrib",
@@ -16256,13 +15969,6 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Ombre Notes",
-          "aliases": [
-            "Ombre Notes",
-            "Khadlaj Ombre Notes"
-          ]
-        },
-        {
           "canonical_name": "Onyx Galaxy",
           "aliases": [
             "Onyx Galaxy",
@@ -16307,13 +16013,6 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Opus Reborn",
-          "aliases": [
-            "Opus Reborn",
-            "Khadlaj Opus Reborn"
-          ]
-        },
-        {
           "canonical_name": "Oud & Musk",
           "aliases": [
             "Oud & Musk",
@@ -16323,27 +16022,6 @@
             20
           ],
           "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Oud Al Sabah",
-          "aliases": [
-            "Oud Al Sabah",
-            "Khadlaj Oud Al Sabah"
-          ]
-        },
-        {
-          "canonical_name": "Oud Noir",
-          "aliases": [
-            "Oud Noir",
-            "Khadlaj Oud Noir"
-          ]
-        },
-        {
-          "canonical_name": "Oud Pour Blueberry",
-          "aliases": [
-            "Oud Pour Blueberry",
-            "Khadlaj Oud Pour Blueberry"
-          ]
         },
         {
           "canonical_name": "Oud Pour Klassik",
@@ -16366,48 +16044,6 @@
             100
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Oud Pour Noble",
-          "aliases": [
-            "Oud Pour Noble",
-            "Khadlaj Oud Pour Noble"
-          ]
-        },
-        {
-          "canonical_name": "Oud Pour Rouge",
-          "aliases": [
-            "Oud Pour Rouge",
-            "Khadlaj Oud Pour Rouge"
-          ]
-        },
-        {
-          "canonical_name": "Oud Pour Shaikh",
-          "aliases": [
-            "Oud Pour Shaikh",
-            "Khadlaj Oud Pour Shaikh"
-          ]
-        },
-        {
-          "canonical_name": "Oud Pure Oud Barakat",
-          "aliases": [
-            "Oud Pure Oud Barakat",
-            "Khadlaj Oud Pure Oud Barakat"
-          ]
-        },
-        {
-          "canonical_name": "Oud Pure Oud Galazaid",
-          "aliases": [
-            "Oud Pure Oud Galazaid",
-            "Khadlaj Oud Pure Oud Galazaid"
-          ]
-        },
-        {
-          "canonical_name": "Oud Pure Oud Jumeirah",
-          "aliases": [
-            "Oud Pure Oud Jumeirah",
-            "Khadlaj Oud Pure Oud Jumeirah"
-          ]
         },
         {
           "canonical_name": "Panache Angel Dust",
@@ -16637,31 +16273,10 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Rose Couture",
-          "aliases": [
-            "Rose Couture",
-            "Khadlaj Rose Couture"
-          ]
-        },
-        {
           "canonical_name": "Safari Gold",
           "aliases": [
             "Safari Gold",
             "Khadlaj Safari Gold"
-          ]
-        },
-        {
-          "canonical_name": "Saqr Al Badiya",
-          "aliases": [
-            "Saqr Al Badiya",
-            "Khadlaj Saqr Al Badiya"
-          ]
-        },
-        {
-          "canonical_name": "Sara",
-          "aliases": [
-            "Sara",
-            "Khadlaj Sara"
           ]
         },
         {
@@ -16687,20 +16302,6 @@
           "concentration": "Extrait de Parfum"
         },
         {
-          "canonical_name": "Sensuous Night",
-          "aliases": [
-            "Sensuous Night",
-            "Khadlaj Sensuous Night"
-          ]
-        },
-        {
-          "canonical_name": "Shahi Oud",
-          "aliases": [
-            "Shahi Oud",
-            "Khadlaj Shahi Oud"
-          ]
-        },
-        {
           "canonical_name": "Shamookh Gold",
           "aliases": [
             "Shamookh Gold",
@@ -16723,90 +16324,10 @@
           "concentration": "Perfume Oil"
         },
         {
-          "canonical_name": "Shiyaaka Blue",
-          "aliases": [
-            "Shiyaaka Blue",
-            "Khadlaj Shiyaaka Blue"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Shiyaaka For Men",
-          "aliases": [
-            "Shiyaaka For Men",
-            "Khadlaj Shiyaaka For Men"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Shiyaaka Gold",
-          "aliases": [
-            "Shiyaaka Gold",
-            "Khadlaj Shiyaaka Gold"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
           "canonical_name": "Shiyaaka Men",
           "aliases": [
             "Shiyaaka Men",
             "Khadlaj Shiyaaka Men"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Shiyaaka Rose Gold",
-          "aliases": [
-            "Shiyaaka Rose Gold",
-            "Khadlaj Shiyaaka Rose Gold"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Shiyaaka Shadow",
-          "aliases": [
-            "Shiyaaka Shadow",
-            "Khadlaj Shiyaaka Shadow"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Shiyaaka Sky",
-          "aliases": [
-            "Shiyaaka Sky",
-            "Khadlaj Shiyaaka Sky"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Shiyaaka Snow",
-          "aliases": [
-            "Shiyaaka Snow",
-            "Khadlaj Shiyaaka Snow"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Shiyaaka White",
-          "aliases": [
-            "Shiyaaka White",
-            "Khadlaj Shiyaaka White"
           ],
           "formats_ml": [
             100
@@ -16871,20 +16392,6 @@
           ]
         },
         {
-          "canonical_name": "The Proposal Date Night",
-          "aliases": [
-            "The Proposal Date Night",
-            "Khadlaj The Proposal Date Night"
-          ]
-        },
-        {
-          "canonical_name": "The Proposal Special Occasion",
-          "aliases": [
-            "The Proposal Special Occasion",
-            "Khadlaj The Proposal Special Occasion"
-          ]
-        },
-        {
           "canonical_name": "Titan",
           "aliases": [
             "Titan",
@@ -16896,47 +16403,10 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Valor Chivalry",
-          "aliases": [
-            "Valor Chivalry",
-            "Khadlaj Valor Chivalry"
-          ]
-        },
-        {
-          "canonical_name": "Valor Enigma",
-          "aliases": [
-            "Valor Enigma",
-            "Khadlaj Valor Enigma"
-          ]
-        },
-        {
-          "canonical_name": "Valor Honor",
-          "aliases": [
-            "Valor Honor",
-            "Khadlaj Valor Honor"
-          ]
-        },
-        {
-          "canonical_name": "Valor Mystique",
-          "aliases": [
-            "Valor Mystique",
-            "Khadlaj Valor Mystique"
-          ]
-        },
-        {
           "canonical_name": "Vanilla Kiss",
           "aliases": [
             "Vanilla Kiss",
             "Khadlaj Vanilla Kiss"
-          ]
-        },
-        {
-          "canonical_name": "Wild Indonesian Oud",
-          "aliases": [
-            "Wild Indonesian Oud",
-            "Wild Indonesian Oud Pure",
-            "Khadlaj Wild Indonesian Oud",
-            "Khadlaj Wild Indonesian Oud Pure"
           ]
         },
         {
@@ -17164,13 +16634,6 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Biscotti Caramel Pop",
-          "aliases": [
-            "Biscotti Caramel Pop",
-            "Khadlaj Biscotti Caramel Pop"
-          ]
-        },
-        {
           "canonical_name": "Cashmere Sunshine Musk",
           "aliases": [
             "Cashmere Sunshine Musk",
@@ -17260,20 +16723,6 @@
             75
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Icon",
-          "aliases": [
-            "Icon",
-            "Khadlaj Icon"
-          ]
-        },
-        {
-          "canonical_name": "Ihthiraam",
-          "aliases": [
-            "Ihthiraam",
-            "Khadlaj Ihthiraam"
-          ]
         },
         {
           "canonical_name": "Infini",
@@ -17474,13 +16923,6 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Mansion",
-          "aliases": [
-            "Mansion",
-            "Khadlaj Mansion"
-          ]
-        },
-        {
           "canonical_name": "Musk Al Sabah",
           "aliases": [
             "Musk Al Sabah",
@@ -17604,13 +17046,6 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Oud Pour Leather",
-          "aliases": [
-            "Oud Pour Leather",
-            "Khadlaj Oud Pour Leather"
-          ]
-        },
-        {
           "canonical_name": "Oud Pour Noble",
           "aliases": [
             "Oud Pour Noble",
@@ -17677,30 +17112,6 @@
           "concentration": "Eau de Parfum"
         },
         {
-          "canonical_name": "Peach Velvet",
-          "aliases": [
-            "Peach Velvet",
-            "Khadlaj Peach Velvet"
-          ]
-        },
-        {
-          "canonical_name": "Private Blend",
-          "aliases": [
-            "Private Blend",
-            "Khadlaj Private Blend"
-          ]
-        },
-        {
-          "canonical_name": "Private Blend Tobac Extra",
-          "aliases": [
-            "Private Blend Tobac Extra"
-          ],
-          "formats_ml": [
-            100
-          ],
-          "concentration": "Extrait de Parfum"
-        },
-        {
           "canonical_name": "Rose Couture",
           "aliases": [
             "Rose Couture",
@@ -17762,13 +17173,6 @@
             100
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Strawberry Shake",
-          "aliases": [
-            "Strawberry Shake",
-            "Khadlaj Strawberry Shake"
-          ]
         },
         {
           "canonical_name": "The Proposal Date Night",
@@ -17848,13 +17252,6 @@
             60
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
-          "aliases": [
-            "Musk Pure Musk Blend Creation of Iqbal",
-            "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
-          ]
         }
       ]
     },
@@ -17989,20 +17386,6 @@
         "La Fede collection"
       ],
       "products": [
-        {
-          "canonical_name": "Code Viola Nectar",
-          "aliases": [
-            "Code Viola Nectar",
-            "La Fede Code Viola Nectar",
-            "Khadlaj La Fede Code Viola Nectar",
-            "Khadlaj Code Viola Nectar",
-            "Code Viola Necter"
-          ],
-          "formats_ml": [
-            100
-          ],
-          "concentration": "Eau de Parfum"
-        },
         {
           "canonical_name": "La Fede Aura Crisp Flower",
           "aliases": [
@@ -18501,42 +17884,6 @@
             100
           ],
           "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Uno Durable",
-          "aliases": [
-            "Uno Durable",
-            "Khadlaj Uno Durable",
-            "La Fede Uno Durable"
-          ],
-          "formats_ml": [
-            100
-          ],
-          "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Uno Lusso",
-          "aliases": [
-            "Uno Lusso",
-            "Khadlaj Uno Lusso",
-            "La Fede Uno Lusso"
-          ],
-          "formats_ml": [
-            100
-          ],
-          "concentration": "Eau de Parfum"
-        },
-        {
-          "canonical_name": "Uno Sensuale",
-          "aliases": [
-            "Uno Sensuale",
-            "Khadlaj Uno Sensuale",
-            "La Fede Uno Sensuale"
-          ],
-          "formats_ml": [
-            100
-          ],
-          "concentration": "Eau de Parfum"
         }
       ]
     },
@@ -18548,422 +17895,7 @@
         "Khadlaj concentrated perfume oils",
         "Khadlaj oil perfumes"
       ],
-      "products": [
-        {
-          "canonical_name": "Aaliya",
-          "aliases": [
-            "Aaliya",
-            "Khadlaj Aaliya"
-          ],
-          "formats_ml": [
-            27
-          ]
-        },
-        {
-          "canonical_name": "Al Riyan",
-          "aliases": [
-            "Al Riyan",
-            "Khadlaj Al Riyan"
-          ],
-          "formats_ml": [
-            17
-          ]
-        },
-        {
-          "canonical_name": "Alf Wardaat",
-          "aliases": [
-            "Alf Wardaat",
-            "Khadlaj Alf Wardaat",
-            "Alf Wardat"
-          ],
-          "formats_ml": [
-            30
-          ],
-          "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Amber Pure",
-          "aliases": [
-            "Amber Pure",
-            "Khadlaj Amber Pure"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Ana Wa Anta",
-          "aliases": [
-            "Ana Wa Anta",
-            "Khadlaj Ana Wa Anta"
-          ]
-        },
-        {
-          "canonical_name": "Anabia Blue",
-          "aliases": [
-            "Anabia Blue",
-            "Khadlaj Anabia Blue"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Anabia Red",
-          "aliases": [
-            "Anabia Red",
-            "Khadlaj Anabia Red"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Arabian Treasure",
-          "aliases": [
-            "Arabian Treasure",
-            "Khadlaj Arabian Treasure"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Azaari",
-          "aliases": [
-            "Azaari",
-            "Khadlaj Azaari"
-          ],
-          "formats_ml": [
-            17
-          ]
-        },
-        {
-          "canonical_name": "Ghazlaan",
-          "aliases": [
-            "Ghazlaan",
-            "Khadlaj Ghazlaan"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Haneen Gold",
-          "aliases": [
-            "Haneen Gold",
-            "Khadlaj Haneen Gold"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Haneen Rose Gold",
-          "aliases": [
-            "Haneen Rose Gold",
-            "Khadlaj Haneen Rose Gold"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Hareem Al Sultan Blue",
-          "aliases": [
-            "Hareem Al Sultan Blue",
-            "Khadlaj Hareem Al Sultan Blue"
-          ],
-          "formats_ml": [
-            35
-          ]
-        },
-        {
-          "canonical_name": "Hareem Al Sultan Gold",
-          "aliases": [
-            "Hareem Al Sultan Gold",
-            "Khadlaj Hareem Al Sultan Gold"
-          ],
-          "formats_ml": [
-            35
-          ]
-        },
-        {
-          "canonical_name": "Hareem Al Sultan Silver",
-          "aliases": [
-            "Hareem Al Sultan Silver",
-            "Khadlaj Hareem Al Sultan Silver"
-          ],
-          "formats_ml": [
-            35
-          ]
-        },
-        {
-          "canonical_name": "Ibhaar",
-          "aliases": [
-            "Ibhaar",
-            "Khadlaj Ibhaar"
-          ],
-          "formats_ml": [
-            18
-          ]
-        },
-        {
-          "canonical_name": "Jameel",
-          "aliases": [
-            "Jameel",
-            "Khadlaj Jameel"
-          ],
-          "formats_ml": [
-            25
-          ]
-        },
-        {
-          "canonical_name": "Johayna Green",
-          "aliases": [
-            "Johayna Green",
-            "Khadlaj Johayna Green"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Johayna Purple",
-          "aliases": [
-            "Johayna Purple",
-            "Khadlaj Johayna Purple"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Kayaan Gold",
-          "aliases": [
-            "Kayaan Gold",
-            "Khadlaj Kayaan Gold"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Kayaan Silver",
-          "aliases": [
-            "Kayaan Silver",
-            "Khadlaj Kayaan Silver"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Lulu Al Khaleej",
-          "aliases": [
-            "Lulu Al Khaleej",
-            "Khadlaj Lulu Al Khaleej"
-          ]
-        },
-        {
-          "canonical_name": "Malika Green",
-          "aliases": [
-            "Malika Green",
-            "Khadlaj Malika Green"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Malika Red",
-          "aliases": [
-            "Malika Red",
-            "Khadlaj Malika Red"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Maya",
-          "aliases": [
-            "Maya",
-            "Khadlaj Maya"
-          ],
-          "formats_ml": [
-            20
-          ],
-          "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Mibraak",
-          "aliases": [
-            "Mibraak",
-            "Khadlaj Mibraak"
-          ],
-          "formats_ml": [
-            18
-          ],
-          "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Mukhalath Ma'a Ward Taiba",
-          "aliases": [
-            "Mukhalath Ma'a Ward Taiba",
-            "Khadlaj Mukhalath Ma'a Ward Taiba"
-          ],
-          "formats_ml": [
-            12
-          ],
-          "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Nagham",
-          "aliases": [
-            "Nagham",
-            "Khadlaj Nagham"
-          ]
-        },
-        {
-          "canonical_name": "Oud & Musk",
-          "aliases": [
-            "Oud & Musk",
-            "Khadlaj Oud & Musk"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Pink Musk",
-          "aliases": [
-            "Pink Musk",
-            "Khadlaj Pink Musk"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Pure Musk",
-          "aliases": [
-            "Pure Musk",
-            "Khadlaj Pure Musk"
-          ],
-          "formats_ml": [
-            20,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Purple Musk",
-          "aliases": [
-            "Purple Musk",
-            "Khadlaj Purple Musk"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Raniya",
-          "aliases": [
-            "Raniya",
-            "Khadlaj Raniya"
-          ],
-          "formats_ml": [
-            18
-          ]
-        },
-        {
-          "canonical_name": "Rasha",
-          "aliases": [
-            "Rasha",
-            "Khadlaj Rasha"
-          ]
-        },
-        {
-          "canonical_name": "Rimaal Brown",
-          "aliases": [
-            "Rimaal Brown",
-            "Khadlaj Rimaal Brown"
-          ],
-          "formats_ml": [
-            15
-          ]
-        },
-        {
-          "canonical_name": "Rimaal Green",
-          "aliases": [
-            "Rimaal Green",
-            "Khadlaj Rimaal Green"
-          ],
-          "formats_ml": [
-            15
-          ],
-          "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Roohi Wa Roohak Gold",
-          "aliases": [
-            "Roohi Wa Roohak Gold",
-            "Khadlaj Roohi Wa Roohak Gold"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Roohi Wa Roohak Silver",
-          "aliases": [
-            "Roohi Wa Roohak Silver",
-            "Khadlaj Roohi Wa Roohak Silver"
-          ],
-          "formats_ml": [
-            20
-          ],
-          "concentration": "Perfume Oil"
-        },
-        {
-          "canonical_name": "Safari Gold",
-          "aliases": [
-            "Safari Gold",
-            "Khadlaj Safari Gold"
-          ]
-        },
-        {
-          "canonical_name": "Shamookh Gold",
-          "aliases": [
-            "Shamookh Gold",
-            "Khadlaj Shamookh Gold"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Shamookh Silver",
-          "aliases": [
-            "Shamookh Silver",
-            "Khadlaj Shamookh Silver"
-          ],
-          "formats_ml": [
-            20
-          ]
-        },
-        {
-          "canonical_name": "Zainab",
-          "aliases": [
-            "Zainab",
-            "Khadlaj Zainab"
-          ],
-          "formats_ml": [
-            18
-          ],
-          "concentration": "Perfume Oil"
-        }
-      ]
+      "products": []
     },
     {
       "family_id": "bujairami_catalog",
