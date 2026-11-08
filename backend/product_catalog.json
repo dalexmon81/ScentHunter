@@ -22059,6 +22059,9 @@
         "SUPREMACY INCENSE",
         "Afnan SUPREMACY INCENSE"
       ],
+      "formats_ml": [
+        100
+      ],
       "identity_status": "source_verified_name",
       "source_url": "https://afnan.com/products/supremacy-incense",
       "source_evidence_url": "https://afnan.com/products/supremacy-incense"
@@ -27449,6 +27452,9 @@
       "aliases": [
         "Incense 01",
         "Swiss Arabian Incense 01"
+      ],
+      "formats_ml": [
+        50
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://fr.swissarabian.com/products/incense-01",
