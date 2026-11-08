@@ -34,14 +34,18 @@ def test_variant_attributes_and_fixed_precision_prices():
 
 def test_variant_product_form_is_nullable_and_uses_controlled_values():
     assert ProductVariant.__table__.c.product_form.nullable is True
-    constraints = {
-        constraint.name: str(getattr(constraint, "sqltext", ""))
+    checks = [
+        str(getattr(constraint, "sqltext", ""))
         for constraint in ProductVariant.__table__.constraints
-    }
-    assert "product_form_allowed" in constraints
-    assert "fine_fragrance" in constraints["product_form_allowed"]
-    assert "deodorant" in constraints["product_form_allowed"]
-    assert "home_fragrance" in constraints["product_form_allowed"]
+    ]
+    product_form_check = next(
+        (check for check in checks if "product_form IS NULL OR product_form IN" in check),
+        "",
+    )
+    assert product_form_check
+    assert "fine_fragrance" in product_form_check
+    assert "deodorant" in product_form_check
+    assert "home_fragrance" in product_form_check
 
 
 def test_required_offer_and_catalog_indexes_exist():
