@@ -300,6 +300,7 @@ def main() -> int:
                         # Enrich only from an explicit non-null catalog value.
                         # Never erase an already-reviewed form when the seed is blank.
                         variant_row.product_form = product_form
+                        variant_row.canonical_key = str(variant.get("canonical_key") or key[:320])
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
