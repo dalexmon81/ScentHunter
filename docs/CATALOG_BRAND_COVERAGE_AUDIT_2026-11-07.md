@@ -1682,3 +1682,13 @@ The harvest overlay now records these cross-checks and the reason for holding bo
 - Fenice retailer and Parfumo independent database provide corroboration for the distinct Extrait release.
 - Added `backend/tests/test_arabiyat_prestige_extrait.py` for canonical separation, official source provenance, exact 60 ml Extrait variant, registry format and identity uniqueness.
 - Catalog totals after this addition: **1,923 canonical identities; 246 explicit variants**. No retailer offer, price, stock, shipping cost or GTIN was imported.
+
+
+## Pass 35 — Arabiyat Prestige official-store collection reconciliation (2026-11-08)
+
+- Reviewed the MyPerfumes Europe official Arabiyat Prestige collection and followed individual product detail links. The collection page lists 29 products in its currently visible listing.
+- Compared those names with the existing canonical seed. Twenty source-listed identities were missing and have now been added: Mahd Al Dhahab, Nyla Sherbet, Fahad Regal, Aristo, Bóis Blanc, Cherry Musk, Marasi For Her, Marasi For Him, Swar Serpentine, Swar D'Amour, Cursed, Ramad Oriental, Kohl Opulence, Kohl Luminous, Gelato Raspberry Ripple, Gelato Black Current Lolly, La Di Da For Her, La Di Da For Him, Uhud and Safa.
+- Added explicit variants based on the official-store product listing: Nyla Sherbet 80 ml EDP; the other 19 entries 100 ml EDP. Mahd Al Dhahab EDP 100 ml remains distinct from the already added Mahd Al Dhahab Extrait 60 ml.
+- Added official product detail URLs, updated the harvest overlay and Arabiyat Prestige family registry, and created `backend/tests/test_arabiyat_prestige_official_store.py` to verify identity provenance, variant size/concentration, registry format and uniqueness.
+- No price, stock, shipping cost, retailer offer or GTIN was imported.
+- Catalog totals after this pass: **1,943 canonical identities; 266 explicit variants**.
