@@ -6,6 +6,11 @@ from pathlib import Path
 CATALOG = Path(__file__).resolve().parents[1] / "product_catalog.json"
 SOURCE = "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar"
 EXPECTED = {
+    "Basma": ("SH-MAISON-ASRAR-a39f5b0c", "https://maisonasrar.com/products/maison-asrar-basma-eau-de-parfum-100-ml-unisex"),
+    "Vanilla Rouge": ("SH-MAISON-ASRAR-02826afd", "https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml"),
+    "Petra": ("SH-MAISON-ASRAR-54c12160", "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml"),
+    "Soudfa": ("SH-MAISON-ASRAR-6210ceb2", "https://maisonasrar.com/products/maison-asrar-soudfa-eau-de-parfum-100-ml-for-women"),
+    "Casablanca": ("SH-MAISON-ASRAR-ad855115", "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml"),
     "Jawhara Rouge": ("SH-MAISON-ASRAR-d20dc7ce", "https://maisonasrar.com/collections/jawhara-collection/products/jawhara-rouge-eau-de-perfum-100ml"),
     "Jawhara Black": ("SH-MAISON-ASRAR-fce356db", "https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml"),
     "Fresh Iris": ("SH-MAISON-ASRAR-f778e873", "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml"),
@@ -25,7 +30,8 @@ class MaisonAsrarOfficialVariantTests(unittest.TestCase):
                 self.assertEqual(product["product_id"], product_id)
                 self.assertEqual(product["source_url"], product_url)
                 self.assertEqual(product["identity_status"], "source_verified_name")
-                self.assertEqual(product["source_evidence_url"], SOURCE)
+                self.assertEqual(product["source_evidence_url"], url)
+                self.assertEqual(product["source_url"], url)
                 self.assertIn(100, product["formats_ml"])
                 variants = [v for v in self.data["variants"] if v["product_id"] == product_id]
                 self.assertEqual(len(variants), 1)
