@@ -566,5 +566,58 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(products[name].get("source_url"), "https://www.fragrantica.com/designers/Mykonos.html")
                 self.assertFalse(any(v.get("product_id") == products[name]["product_id"] for v in variants))
 
+
+    def test_mykonos_fragrantica_spelling_aliases_resolve_to_existing_identities(self):
+        expected_aliases = {
+            "Jynx": ["Jinx"],
+            "Nautilus": ["Nautilius"],
+            "Empire x RRQ": ["Empire", "Mykonos Empire"],
+            "California": ["California Signature"],
+            "Xoxo Rosy": ["XoXo, Rosy"],
+            "Shades Perfume": ["Shades Parfum"],
+            "Affair": ["Intimate Affair"],
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        for canonical_name, aliases in expected_aliases.items():
+            with self.subTest(canonical_name=canonical_name):
+                self.assertIn(canonical_name, products)
+                for alias in aliases:
+                    self.assertIn(alias, products[canonical_name].get("aliases", []))
+
+    def test_mykonos_fragrantica_only_legacy_names_are_not_given_guessed_variants(self):
+        names = {
+            "Adelina", "Bloody Mary", "Crystals", "Eclipse",
+            "Nashi Pear Garden", "Roulette", "Zeus", "It's Not Ella",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name in names:
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("source_url"), "https://www.fragrantica.com/designers/Mykonos.html")
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertFalse(
+                    any(v.get("product_id") == row["product_id"] for v in variants),
+                    "Do not infer size or concentration from a designer index entry",
+                )
+
+    def test_mykonos_fragrantica_body_mists_are_not_misclassified_as_perfumes(self):
+        excluded = {"Love, Rosy", "Lychee Breeze", "Matcha Sundays"}
+        names = {
+            row.get("canonical_name")
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertTrue(excluded.isdisjoint(names))
+
 if __name__ == "__main__":
     unittest.main()
