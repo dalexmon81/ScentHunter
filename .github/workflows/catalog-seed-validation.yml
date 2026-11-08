@@ -76,6 +76,7 @@ jobs:
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
           backend.tests.test_khadlaj_perfume_oils
+          backend.tests.test_khadlaj_official_detail_pages
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
