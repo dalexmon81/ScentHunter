@@ -33904,6 +33904,25 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/petra-viola",
       "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad Polar",
+      "name": "Asad Polar",
+      "family_id": "lattafa_asad",
+      "family_name": "Asad",
+      "aliases": [
+        "Asad Polar",
+        "Lattafa Asad Polar"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad-polar/",
+      "source_evidence_url": "https://lattafa.com/product/asad-polar/"
     }
   ],
   "variants": [
@@ -36957,6 +36976,16 @@
       ],
       "variant_id": "SHV-SH-LATTAFA-PETRA-VIOLA-100-000",
       "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
+      "size_ml": 100,
+      "aliases": [
+        "Asad Polar 100 ml",
+        "Lattafa Asad Polar 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ASAD-POLAR-100-000",
+      "source_evidence_url": "https://lattafa.com/product/asad-polar/"
     }
   ]
 }
