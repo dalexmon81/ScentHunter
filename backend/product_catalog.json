@@ -16050,7 +16050,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Acadia Intenso Emir",
       "name": "Acadia Intenso Emir",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Acadia Intenso Emir",
       "aliases": [
         "Acadia Intenso Emir",
@@ -16068,7 +16068,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Arcana",
       "name": "Arcana",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Arcana",
       "aliases": [
         "Arcana",
@@ -16086,7 +16086,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Attratus",
       "name": "Attratus",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Attratus",
       "aliases": [
         "Attratus",
@@ -16103,7 +16103,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Banana Bliss",
       "name": "Banana Bliss",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Banana Bliss",
       "aliases": [
         "Banana Bliss",
@@ -16121,7 +16121,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Blackberry Wish",
       "name": "Blackberry Wish",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Blackberry Wish",
       "aliases": [
         "Blackberry Wish",
@@ -16139,7 +16139,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Cake Temptation",
       "name": "Cake Temptation",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Cake Temptation",
       "aliases": [
         "Cake Temptation",
@@ -16157,7 +16157,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Camp Fire Emir Factory Edition",
       "name": "Camp Fire Emir Factory Edition",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Camp Fire Emir Factory Edition",
       "aliases": [
         "Camp Fire Emir Factory Edition",
@@ -16175,7 +16175,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Cedrat Essence Emir",
       "name": "Cedrat Essence Emir",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Cedrat Essence Emir",
       "aliases": [
         "Cedrat Essence Emir",
@@ -16193,7 +16193,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Celestial Emir",
       "name": "Celestial Emir",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Celestial Emir",
       "aliases": [
         "Celestial Emir",
@@ -16211,7 +16211,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Charuto Regal Reserve",
       "name": "Charuto Regal Reserve",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Charuto Regal Reserve",
       "aliases": [
         "Charuto Regal Reserve",
@@ -16229,7 +16229,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Charuto Tobacco Vanille",
       "name": "Charuto Tobacco Vanille",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Charuto Tobacco Vanille",
       "aliases": [
         "Charuto Tobacco Vanille",
@@ -16246,7 +16246,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Cherry Cola",
       "name": "Cherry Cola",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Cherry Cola",
       "aliases": [
         "Cherry Cola",
@@ -16264,7 +16264,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "Coconut Lagoon",
       "name": "Coconut Lagoon",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "Coconut Lagoon",
       "aliases": [
         "Coconut Lagoon",
@@ -16282,7 +16282,7 @@
       "brand_name": "Paris Corner",
       "canonical_name": "North Stag Neuf IX",
       "name": "North Stag Neuf IX",
-      "family_id": "paris-corner_catalog",
+      "family_id": "paris_corner_catalog",
       "family_name": "North Stag Neuf IX",
       "aliases": [
         "North Stag Neuf IX",
@@ -16293,23 +16293,6 @@
       "source_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
       "source_evidence_url": "https://www.pariscornerperfumes.com/collections/north-stag-1",
       "collection_name": "North Stag"
-    },
-    {
-      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-GOURMAND-027",
-      "brand": "Paris Corner",
-      "brand_name": "Paris Corner",
-      "canonical_name": "Ministry of Gourmand",
-      "name": "Ministry of Gourmand",
-      "family_id": "paris-corner_catalog",
-      "family_name": "Ministry of Gourmand",
-      "aliases": [
-        "Ministry of Gourmand",
-        "Paris Corner Ministry of Gourmand"
-      ],
-      "concentration": null,
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-INCENSE-01-028",
