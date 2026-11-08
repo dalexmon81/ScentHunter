@@ -464,5 +464,35 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+
+    def test_khadlaj_official_perfume_sprays_visible_names_are_covered(self):
+        expected = ["Panache Angel Dust","Icon","Sawaar Vanille Blanc","Island Dreams","Onyx Silver","Strawberry Shake","Nuha Bon Bon","Oud Pure Oud Barakat","Nafais Magrib","Oud Pure Oud Galazaid","Onyx Gold","Oud Pure Oud Jumeirah","Shiyaaka Snow","Ria","Peach Velvet","Titan","Mansion","Shiyaaka Shadow","Nafais Sharq","Island Vanilla Dunes","Oud Pour Leather","Cloud Candy","Hareem Al Sultan","Island","Private Blend","Nuha Cherry Blush","Nuha Vanilla Pearl","Azure Velvet","Cream Velvet","Maison L'Imaginaire","Caffe Latte","Saqr Al Badiya","Opus Reborn","Musk Pour Amber","Fursan Brown","Fursan White","Sara","Musk Pure Musk Blend Creation of Iqbal","Le Prestige King","The Proposal Date Night","Le Prestige Royal","Le Prestige Empress","Le Prestige Bold","The Proposal Special Occasion","25 Experience","25 Trust","25 Loyalty","25 Heritage","25 Integrity","Valor Mystique","Valor Honor","Valor Chivalry","Valor Enigma","Empire Victor","Empire Empress","Empire Crown","Empire Regent","Karus Blu Spice","Karus Secret Musk","Karus Oud Fire","Karus Amber Gold","Maison Creation De Reve","Maison Epoque Artistique","Maison L'Or Noir","Maison Flor Oud","Wild Indonesian Oud Pure","Mystical Indian Oud Pure","Oud Pour Klassik","Oud Pour Noble","Musk Pour Narcis","Oud Pour Shaikh","Oud Pour Rouge","Oud Pour Blueberry","Infini Absolute","Cashmere Warm Oud","Cashmere Sunshine Musk","Oud Noir","Sensuous Night","Ombre Notes","Ghadeer Silver","Musk Al Sabah","Oud Al Sabah","Magnate Noble","Magnate Premier","Infini","Shahi Oud","Barwaaz Solid Grey","Rose Couture","Musk Couture","Private Blend Musk Ice","Biscotti Caramel Pop","Biscotti Date Toffee","Zayaan Gold","La Fede Celebrity Fame","La Fede Celebrity Crush","Ihthiraam"]
+        products = [row for row in CATALOG.get("products", []) if row.get("brand_name") == "Khadlaj"]
+        def normalize(value):
+            import unicodedata
+            value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+            return "".join(ch.lower() for ch in value if ch.isalnum())
+        known = {normalize(name) for row in products for name in [row.get("canonical_name", "")] + row.get("aliases", [])}
+        self.assertEqual([name for name in expected if normalize(name) not in known], [])
+
+    def test_khadlaj_wild_indonesian_oud_pure_has_verified_60ml_edp_variant(self):
+        product = next(
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+            and row.get("canonical_name") == "Wild Indonesian Oud"
+        )
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(
+            product.get("source_url"),
+            "https://khadlaj-perfumes.com/collections/perfumes-spray/products/wild-indonesian-oud-spray-shop-online-best-price-in-dubai-uae",
+        )
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == product.get("product_id")
+            and row.get("size_ml") == 60
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
+
 if __name__ == "__main__":
     unittest.main()
