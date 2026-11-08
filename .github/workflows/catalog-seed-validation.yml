@@ -13,6 +13,7 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/official-detail-evidence-2026-11-08
       - catalog/bujairami-maison-asrar-detail-evidence-2026-11-08
+      - catalog/maison-asrar-official-perfume-details-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -29,6 +30,7 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/official-detail-evidence-2026-11-08
       - catalog/bujairami-maison-asrar-detail-evidence-2026-11-08
+      - catalog/maison-asrar-official-perfume-details-2026-11-08
 
 permissions:
   contents: read
@@ -78,4 +80,5 @@ jobs:
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_official_detail_variant_reconciliation
           backend.tests.test_bujairami_maison_asrar_detail_evidence
+          backend.tests.test_maison_asrar_official_perfume_details
           -v
