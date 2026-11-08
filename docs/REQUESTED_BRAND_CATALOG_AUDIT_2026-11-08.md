@@ -22,7 +22,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Assaf | 140 | 0 | 140 |
 | Al Wataniah | 86 | 2 | 84 |
 | Armaf | 190 | 6 | 184 |
-| French Avenue | 119 | 5 | 114 |
+| French Avenue | 119 | 6 | 113 |
 | Arabiyat Prestige | 118 | 22 | 96 |
 | Gulf Orchid | 23 | 0 | 23 |
 | Swiss Arabian | 32 | 4 | 28 |
@@ -33,7 +33,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Maison Alhambra | 203 | 0 | 203 |
 | Zimaya | 72 | 10 | 62 |
 | Al Haramain | 101 | 0 | 101 |
-| **Total requested brands** | **2,049** | **230** | **1,819** |
+| **Total requested brands** | **2,049** | **231** | **1,818** |
 
 The full seed contains 2,052 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
@@ -50,7 +50,7 @@ The full seed contains 2,052 identities. The remaining three belong to other bra
 | Assaf | assafperfumes.eu (119); assaf.ae (21) |
 | Al Wataniah | www.alwataniah.com (86) |
 | Armaf | armaf.com (190) |
-| French Avenue | frenchavenue.com (79); www.fragrantica.com (40) |
+| French Avenue | frenchavenue.com (80); www.fragrantica.com (39) |
 | Arabiyat Prestige | www.fragrantica.com (93); eu.myperfumes.ae (22); arabiyatprestigeus.com (2); arabiyatprestige.com (1) |
 | Gulf Orchid | shop-gulforchid.com (23) |
 | Swiss Arabian | swissarabian.ma (27); us.swissarabian.com (3); de.swissarabian.com (1); www.essenciaarabe.com (1) |
@@ -186,3 +186,16 @@ Official pages checked:
 - https://frenchavenue.com/products/le-falcon-dubai
 - https://frenchavenue.com/products/spirito-ignite
 - https://frenchavenue.com/collections/new-arrivals
+
+
+### Additional French Avenue verification: Prune Hypnos
+
+The existing canonical identity **Prune Hypnos** was checked against the official French Avenue product detail page:
+- Product page: https://frenchavenue.com/products/prune-hypnos
+- Official specifications: Eau de Parfum (EDP), 100 ml
+- Catalog action: updated `source_url`, changed evidence status to `source_verified_name`, set concentration to `Eau de Parfum`, and added an explicit 100 ml EDP variant.
+- No new canonical product was created; the existing identity was retained.
+
+Note: some third-party retailers describe Prune Hypnos as Extrait de Parfum, but the official French Avenue product page specifies EDP. The catalog follows the brand's own product specification. The similarly named Fragrantica entry “Prune Hypnose” is not used to rename the official product.
+
+Official source: https://frenchavenue.com/products/prune-hypnos
