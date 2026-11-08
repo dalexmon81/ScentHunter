@@ -71,6 +71,7 @@ ADDITIONAL_IDENTITY_URLS = {
     "Pink Crush": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women",
     "Red Velvet": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women",
     "Adorable": "https://maisonasrar.com/products/adorable-eau-de-parfum-100-ml-for-women",
+    "Ameer": "https://maisonasrar.com/products/ameer",
 }
 
 LOCK_KEY = {
