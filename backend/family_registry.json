@@ -3829,6 +3829,9 @@
           "aliases": [
             "Date Caramel",
             "Paris Corner Date Caramel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -3964,6 +3967,9 @@
           "aliases": [
             "Farah",
             "Paris Corner Farah"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4382,6 +4388,9 @@
           "aliases": [
             "Marshmallow Blush",
             "Paris Corner Marshmallow Blush"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4575,6 +4584,9 @@
           "aliases": [
             "Molten Caramel",
             "Paris Corner Molten Caramel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
