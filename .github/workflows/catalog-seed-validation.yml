@@ -12,6 +12,8 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/velixir-evidence-status-correction-2026-11-08
+      - catalog/maison-asrar-detail-source-refresh-2026-11-08
+      - catalog/al-wataniah-detail-verification-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -75,5 +77,7 @@ jobs:
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
+          backend.tests.test_maison_asrar_official_detail_evidence
+          backend.tests.test_al_wataniah_official_detail_evidence
           backend.tests.test_velixir_evidence_classification
           -v
