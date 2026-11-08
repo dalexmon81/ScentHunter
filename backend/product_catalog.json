@@ -32884,8 +32884,12 @@
         "Khadlaj Ana Wa Anta"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Khadlaj.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj.html"
+      "source_url": "https://www.notino.be/khadlaj/ana-wa-anta-huile-parfumee-mixte/",
+      "source_evidence_url": "https://www.notino.be/khadlaj/ana-wa-anta-huile-parfumee-mixte/",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-ANABIA-BLUE",
@@ -33278,8 +33282,12 @@
         "Khadlaj D'Love"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/perfume/Khadlaj-Perfumes/D-Love-129838.html",
-      "source_evidence_url": "https://www.fragrantica.com/perfume/Khadlaj-Perfumes/D-Love-129838.html"
+      "source_url": "https://www.notino.fr/khadlaj/dlove-huile-parfumee-mixte/p-16254662/",
+      "source_evidence_url": "https://www.notino.fr/khadlaj/dlove-huile-parfumee-mixte/p-16254662/",
+      "formats_ml": [
+        15
+      ],
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -34156,8 +34164,12 @@
         "Khadlaj Rasha"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Khadlaj.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj.html"
+      "source_url": "https://fr.primor.eu/fr_fr/khadlaj-huile-de-parfum-concentree-rasha-129313.html",
+      "source_evidence_url": "https://fr.primor.eu/fr_fr/khadlaj-huile-de-parfum-concentree-rasha-129313.html",
+      "formats_ml": [
+        12
+      ],
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-RIMAAL-BROWN",
@@ -34232,8 +34244,12 @@
         "Khadlaj Safari Gold"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Khadlaj.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj.html"
+      "source_url": "https://www.notino.it/khadlaj/safari-gold-olio-profumato-unisex/",
+      "source_evidence_url": "https://www.notino.it/khadlaj/safari-gold-olio-profumato-unisex/",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-SARAYA",
@@ -40178,6 +40194,50 @@
         "Khadlaj Ghadeer Gold 100 ml"
       ],
       "source_evidence_url": "https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ANA-WA-ANTA",
+      "variant_id": "SHV-SH-KHADLAJ-ANA-WA-ANTA-20-OIL",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Ana Wa Anta 20 ml",
+        "Khadlaj Ana Wa Anta 20 ml"
+      ],
+      "source_evidence_url": "https://www.notino.be/khadlaj/ana-wa-anta-huile-parfumee-mixte/"
+    },
+    {
+      "product_id": "SH-KHADLAJ-D-LOVE",
+      "variant_id": "SHV-SH-KHADLAJ-DLOVE-15-OIL",
+      "size_ml": 15,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "D'Love 15 ml",
+        "Khadlaj D'Love 15 ml"
+      ],
+      "source_evidence_url": "https://www.notino.fr/khadlaj/dlove-huile-parfumee-mixte/p-16254662/"
+    },
+    {
+      "product_id": "SH-KHADLAJ-RASHA",
+      "variant_id": "SHV-SH-KHADLAJ-RASHA-12-OIL",
+      "size_ml": 12,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Rasha 12 ml",
+        "Khadlaj Rasha 12 ml"
+      ],
+      "source_evidence_url": "https://fr.primor.eu/fr_fr/khadlaj-huile-de-parfum-concentree-rasha-129313.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SAFARI-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-SAFARI-GOLD-20-OIL",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Safari Gold 20 ml",
+        "Khadlaj Safari Gold 20 ml"
+      ],
+      "source_evidence_url": "https://www.notino.it/khadlaj/safari-gold-olio-profumato-unisex/"
     }
   ]
 }
