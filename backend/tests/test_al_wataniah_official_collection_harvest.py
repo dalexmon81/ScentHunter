@@ -369,7 +369,22 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                 self.assertEqual(product.get("collection_name"), collection)
                 self.assertEqual(product.get("brand_name"), "Al Wataniah")
                 self.assertIn(product.get("identity_status"), {"source_listed_name", "source_verified_name"})
-                if name not in {"Lemon Souffle", "Choco Truffle"}:
+                detail_urls = {
+                    "Lemon Souffle": "https://www.alwataniah.com/products/lemon-souffle",
+                    "Choco Truffle": "https://www.alwataniah.com/products/choco-truffle",
+                    "Milele": "https://www.alwataniah.com/products/milele",
+                    "Turquois": "https://www.alwataniah.com/products/turquois",
+                    "Cloud": "https://www.alwataniah.com/products/cloud",
+                    "Sabah Al Ward": "https://www.alwataniah.com/products/sabah-al-ward",
+                    "Ain Emarat": "https://www.alwataniah.com/products/ain-emarat",
+                    "Arya": "https://www.alwataniah.com/products/arya",
+                    "Royal Oak I": "https://www.alwataniah.com/products/royal-oak-i",
+                    "Al Daiem": "https://www.alwataniah.com/products/al-daiem",
+                }
+                if name in detail_urls:
+                    self.assertEqual(product.get("identity_status"), "source_verified_name")
+                    self.assertEqual(product.get("source_url"), detail_urls[name])
+                else:
                     self.assertEqual(product.get("identity_status"), "source_listed_name")
                     self.assertEqual(product.get("source_url"), listing_url)
 
@@ -387,10 +402,14 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             if p.get("brand") == "Al Wataniah"
         }
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in alwataniah_ids]
-        self.assertEqual(len(variants), 2)
+        expected_variant_names = {
+            "Lemon Souffle", "Choco Truffle", "Milele", "Turquois", "Cloud",
+            "Sabah Al Ward", "Ain Emarat", "Arya", "Royal Oak I", "Al Daiem",
+        }
+        self.assertEqual(len(variants), len(expected_variant_names))
         self.assertEqual(
             {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
-            {"Lemon Souffle", "Choco Truffle"},
+            expected_variant_names,
         )
 
 
