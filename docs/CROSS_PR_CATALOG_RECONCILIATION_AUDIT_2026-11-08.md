@@ -170,6 +170,31 @@ source URL, and retain an explicit unknown/unconfirmed state where the source
 does not establish concentration. Do not bulk-fill these values or treat the
 88 rows as 88 missing products.
 
+
+## Progress after the concentration-gap scan
+
+A focused evidence-backed correction is now proposed in draft PR
+[#569](https://github.com/dalexmon81/ScentHunter/pull/569):
+
+- 21 existing Armaf variants across Club de Nuit Untold, Sillage, Woman,
+  Urban Man Elixir and Iconic now carry `Eau de Parfum`, matching the
+  concentration already recorded on their parent products and the linked
+  official Armaf detail pages.
+- No product, variant ID or size was added or changed.
+- A regression assertion now checks that each affected variant's
+  concentration and source URL match its parent product.
+- The exact PR head `101e60ba48862a7b2790b29d923cac1fe099f08e` passed
+  Catalog seed validation (run 42526587042).
+
+After those 21 proposed corrections, 67 variants in the original base snapshot
+remain without a variant-level concentration. A further 15 Mykonos variants
+have a concentration on their parent product row and should be reviewed for
+evidence inheritance; 52 variants have no concentration on the parent row and
+remain an evidence-research queue. Paris Corner's 25 rows remain unfilled:
+the official product pages inspected in this pass confirmed sizes and
+fragrance identity/notes but did not explicitly state EDP/EDT/Extrait, so
+concentration was deliberately not inferred.
+
 ## Family-registry normalization debt found in the base snapshot
 
 A separate read-only scan of the exact base-branch registry blob
