@@ -17,6 +17,7 @@ on:
       - catalog/paris-corner-eu-product-variants-2026-11-08
       - catalog/paris-corner-ministry-of-oud-official-harvest-2026-11-08
       - catalog/velixir-official-product-variants-2026-11-08
+      - catalog/games-of-spades-official-page-variants-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -37,6 +38,7 @@ on:
       - catalog/paris-corner-eu-product-variants-2026-11-08
       - catalog/paris-corner-ministry-of-oud-official-harvest-2026-11-08
       - catalog/velixir-official-product-variants-2026-11-08
+      - catalog/games-of-spades-official-page-variants-2026-11-08
 
 permissions:
   contents: read
@@ -90,6 +92,7 @@ jobs:
           backend.tests.test_paris_corner_europe_official_variants
           backend.tests.test_paris_corner_ministry_of_oud_official_harvest
           backend.tests.test_velixir_official_product_variants
+          backend.tests.test_games_of_spades_official_page_variants
           -v
       - name: Validate Paris Corner official size variants
         if: github.head_ref == 'catalog/paris-corner-official-size-variants-2026-11-08'

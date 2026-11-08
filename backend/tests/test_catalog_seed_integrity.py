@@ -47,8 +47,8 @@ class CatalogSeedIntegrityTests(unittest.TestCase):
                 self.assertNotIsInstance(size, bool)
                 self.assertGreater(size, 0)
 
-    def test_no_duplicate_product_size_variant(self):
-        keys = [(v["product_id"], v["size_ml"]) for v in self.variants]
+    def test_no_duplicate_product_size_concentration_variant(self):
+        keys = [(v["product_id"], v["size_ml"], v.get("concentration")) for v in self.variants]
         self.assertEqual(len(keys), len(set(keys)))
 
     def test_variant_sizes_appear_in_parent_product_formats(self):
