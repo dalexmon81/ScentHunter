@@ -1,6 +1,7 @@
 """Regression guard for the user-requested fragrance brand coverage."""
 import json
 import unittest
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -14,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
     "Maison Asrar": 120,
-    "Khadlaj": 116,
+    "Khadlaj": 165,
     "Bujairami": 142,
     "Paris Corner": 245,
     "Assaf": 140,
@@ -463,6 +464,56 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_khadlaj_fragrantica_147_names_are_represented(self):
+        expected = ["Bleu Glace","Caffe Latte","Cashmere Sunshine Musk","Cashmere Warm Oud","Cloud Candy","Code Viola Nectar","D'Love","Desert Rose","Gaith","Icon","Ihthiraam","Johayna Green","Kayaan Gold","Magnate Noble","Mansion","Maya","Mocha Latte","Muse","Musk Al Sabah","Musk Ice","Musk Pour Amber","Musk Pour Narcis","Ombre Notes","Opulence Bleu","Oud Noir","Pink Musk","Pure Musk","Purple Musk","Qarar","Rasayel Shagaf","Rasayel Vid","Ria","Rose & Romance","Rose Couture","Sara","Sawaar Vanille Blanc","Sensuous Night","Shiyaaka White","Strawberry Shake","Sueño","The Proposal Date Night","Titan","Uno Sensuale","Vanilla Kiss","Wow Oud","Zayaan Gold","Zayaan Silver","Barwaaz Pure Navy","Barwaaz Solid Grey","Biscotti Caramel Pop","Biscotti Date Toffee","Biscotti Melon Misk","Empire Crown","Empire Regent","Empire Victor","Fursan Brown","Fursan White","Ghadeer Gold","Ghadeer Silver","Hareem Al Sultan","Hareem Al Sultan Blue","Hareem Al Sultan Gold","Hareem Al Sultan Silver","Infini","Infini Absolute","Island","Island Dreams","Island Sun","Island Vanilla Dunes","Karus Amber Gold","Karus Blu Spice","Karus Gold Absolu","Karus Oud Fire","Karus Secret Musk","Khadlaj 25 Experience","Khadlaj 25 Heritage","Khadlaj 25 Integrity","Khadlaj 25 Loyalty","Khadlaj 25 Trust","Le Prestige Bold","Le Prestige Empress","Le Prestige King","Le Prestige Royal","Maison Creation De Reve","Maison Epoque Artistique","Maison Flor Oud","Maison L'Imaginaire","Maison L'Or Noir","Musk Pure Musk Blend","Mystical Indian Oud Pure","Oud Pure Oud Barakat","Oud Pure Oud Galazaid","Oud Pure Oud Jumeirah","Wild Indonesian Oud","Nafais Magrib","Nafais Sharq","Nuha","Nuha Bon Bon","Nuha Cherry Blush","Nuha Vanilla Pearl","Onyx Galaxy","Onyx Gold","Onyx Silver","Oud Pour Blueberry","Oud Pour Klassik","Panache Angel Dust","Panache Eleganza","Shiyaaka Blue","Shiyaaka For Men","Shiyaaka Gold","Shiyaaka Rose Gold","Shiyaaka Shadow","Shiyaaka Sky","Shiyaaka Snow","Stellar Musk","Stellar Oud","Valor Chivalry","Valor Enigma","Valor Honor","Valor Mystique","Azure Velvet","Cream Velvet","Peach Velvet","Aaliya","Al Riyan","Alf Wardat","Amber Pure","Ana Wa Anta","Anabia Blue","Anabia Red","Arabian Treasure","Azaari","Ghazlaan","Haneen Gold","Ibhaar","Jameel","Lulu Al Khaleej","Malika Red","Nagham","Oud & Musk","Raniya","Rasha","Rimaal Brown","Roohi Wa Roohak Gold","Safari Gold","Shamookh Gold","Shamookh Silver"]
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        ]
+        self.assertEqual(len(products), 165)
+        def normalize_name(value):
+            text = unicodedata.normalize("NFKD", str(value))
+            text = "".join(char for char in text if not unicodedata.combining(char))
+            return "".join(char.casefold() for char in text if char.isalnum())
+
+        names = set()
+        for row in products:
+            names.add(normalize_name(row.get("canonical_name")))
+            names.update(normalize_name(alias) for alias in row.get("aliases", []))
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(normalize_name(name), names)
+
+    def test_khadlaj_perfume_oil_variants_keep_their_product_type(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        expected = {
+            "Maya": (20, "Perfume Oil"),
+            "Kayaan Gold": (20, "Perfume Oil"),
+            "Johayna Green": (20, "Perfume Oil"),
+            "Pink Musk": (20, "Perfume Oil"),
+            "Purple Musk": (20, "Perfume Oil"),
+            "Hareem Al Sultan Blue": (35, "Perfume Oil"),
+            "Hareem Al Sultan Silver": (35, "Perfume Oil"),
+        }
+        for name, (size_ml, product_type) in expected.items():
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("product_type"), product_type)
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("product_type"), product_type)
+
 
 if __name__ == "__main__":
     unittest.main()
