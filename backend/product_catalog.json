@@ -28342,9 +28342,12 @@
         "The F*ck Up",
         "Bujairami The F*ck Up"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.com.au/collections/originals",
-      "source_evidence_url": "https://bujairami.com.au/collections/originals"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/the-f-ck-up-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/the-f-ck-up-original-creation",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-HARBOUR-TEA",
@@ -34169,6 +34172,184 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-SASHA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Sasha",
+      "name": "Sasha",
+      "family_id": "bujairami_catalog",
+      "family_name": "Sasha",
+      "aliases": [
+        "Sasha",
+        "Bujairami Sasha"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/sasha-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/sasha-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ICONIC",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Iconic",
+      "name": "Iconic",
+      "family_id": "bujairami_catalog",
+      "family_name": "Iconic",
+      "aliases": [
+        "Iconic",
+        "Bujairami Iconic"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/iconic-by-bujairami",
+      "source_evidence_url": "https://bujairami.com.au/products/iconic-by-bujairami",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AUSTRALIAN-TONKA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Australian Tonka",
+      "name": "Australian Tonka",
+      "family_id": "bujairami_catalog",
+      "family_name": "Australian Tonka",
+      "aliases": [
+        "Australian Tonka",
+        "Bujairami Australian Tonka"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/australian-tonka-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/australian-tonka-original-creation",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HAPPY-HOUR",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Happy Hour",
+      "name": "Happy Hour",
+      "family_id": "bujairami_catalog",
+      "family_name": "Happy Hour",
+      "aliases": [
+        "Happy Hour",
+        "Bujairami Happy Hour",
+        "Happy Hour Inspired By Mango Mood Phlur"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/happy-hour-inspired-by-mango-mood-phlur",
+      "source_evidence_url": "https://bujairami.com.au/products/happy-hour-inspired-by-mango-mood-phlur",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOUJEE-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Boujee Oud",
+      "name": "Boujee Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Boujee Oud",
+      "aliases": [
+        "Boujee Oud",
+        "Bujairami Boujee Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/sexy-oud-original-creation-extrait",
+      "source_evidence_url": "https://bujairami.com.au/products/sexy-oud-original-creation-extrait",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-MOUSSE-CAKE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Mousse Cake",
+      "name": "Mousse Cake",
+      "family_id": "bujairami_catalog",
+      "family_name": "Mousse Cake",
+      "aliases": [
+        "Mousse Cake",
+        "Bujairami Mousse Cake"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/mousse-cake-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/mousse-cake-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-NO-1-FATHER",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "No.1 Father",
+      "name": "No.1 Father",
+      "family_id": "bujairami_catalog",
+      "family_name": "No.1 Father",
+      "aliases": [
+        "No.1 Father",
+        "No. 1 Father",
+        "Bujairami No.1 Father"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/no-1-father-original-creation",
+      "source_evidence_url": "https://bujairami.com.au/products/no-1-father-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-PRETTY-FKED-UP",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Pretty F**ked Up",
+      "name": "Pretty F**ked Up",
+      "family_id": "bujairami_catalog",
+      "family_name": "Pretty F**ked Up",
+      "aliases": [
+        "Pretty F**ked Up",
+        "Pretty F**ked up",
+        "Bujairami Pretty F**ked Up"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/pretty-f-ked-up-original-creation-50ml",
+      "source_evidence_url": "https://bujairami.com.au/products/pretty-f-ked-up-original-creation-50ml",
+      "formats_ml": [
+        50
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-VICIOUS",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Vicious",
+      "name": "Vicious",
+      "family_id": "bujairami_catalog",
+      "family_name": "Vicious",
+      "aliases": [
+        "Vicious",
+        "Bujairami Vicious",
+        "Vicious Inspired by Dirty Heaven"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/vicious-inspired-by-dirty-heaven-borntostandout",
+      "source_evidence_url": "https://bujairami.com.au/products/vicious-inspired-by-dirty-heaven-borntostandout"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-SUNSET-BAY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Sunset Bay",
+      "name": "Sunset Bay",
+      "family_id": "bujairami_catalog",
+      "family_name": "Sunset Bay",
+      "aliases": [
+        "Sunset Bay",
+        "Bujairami Sunset Bay",
+        "Sunset Bay Inspired by Cap Camarat"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/sunset-bay-inspired-by-cap-camarat-memo-paris",
+      "source_evidence_url": "https://bujairami.com.au/products/sunset-bay-inspired-by-cap-camarat-memo-paris"
     }
   ],
   "variants": [
@@ -37810,6 +37991,56 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-QARAR-60-EXTRAIT",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ICONIC",
+      "size_ml": 100,
+      "aliases": [
+        "Iconic 100 ml",
+        "Bujairami Iconic 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-ICONIC-100-000",
+      "source_url": "https://bujairami.com.au/products/iconic-by-bujairami"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AUSTRALIAN-TONKA",
+      "size_ml": 100,
+      "aliases": [
+        "Australian Tonka 100 ml",
+        "Bujairami Australian Tonka 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-AUSTRALIAN-TONKA-100-000",
+      "source_url": "https://bujairami.com.au/products/australian-tonka-original-creation"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HAPPY-HOUR",
+      "size_ml": 100,
+      "aliases": [
+        "Happy Hour 100 ml",
+        "Bujairami Happy Hour 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-HAPPY-HOUR-100-000",
+      "source_url": "https://bujairami.com.au/products/happy-hour-inspired-by-mango-mood-phlur"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-PRETTY-FKED-UP",
+      "size_ml": 50,
+      "aliases": [
+        "Pretty F**ked Up 50 ml",
+        "Bujairami Pretty F**ked Up 50 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-PRETTY-FKED-UP-50-000",
+      "source_url": "https://bujairami.com.au/products/pretty-f-ked-up-original-creation-50ml"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-THE-F-CK-UP",
+      "size_ml": 50,
+      "aliases": [
+        "The F*ck Up 50 ml",
+        "Bujairami The F*ck Up 50 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-THE-F-CK-UP-50-000",
+      "source_url": "https://bujairami.com.au/products/the-f-ck-up-original-creation"
     }
   ]
 }
