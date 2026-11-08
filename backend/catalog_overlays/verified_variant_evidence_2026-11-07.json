@@ -4346,6 +4346,69 @@
           "size_ml": 100
         }
       ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "MyEgo",
+      "source_url": "https://officialmykonos.com/collections/100ml-collection",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Sparkling Rosé",
+      "source_url": "https://officialmykonos.com/collections/100ml-collection",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Silent Whisper",
+      "source_url": "https://officialmykonos.com/collections/100ml-collection",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 50
+        },
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Satin Blanc",
+      "source_url": "https://officialmykonos.com/collections/100ml-collection",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Mykonos",
+      "fragrance": "Musk Aura",
+      "source_url": "https://officialmykonos.com/collections/100ml-collection",
+      "variants": [
+        {
+          "concentration": "Extrait de Parfum",
+          "size_ml": 100
+        }
+      ]
     }
   ]
 }
