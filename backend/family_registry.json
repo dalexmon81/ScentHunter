@@ -10265,7 +10265,9 @@
           "canonical_name": "Al Qasr",
           "aliases": [
             "Al Qasr",
-            "Gulf Orchid Al Qasr"
+            "Al Qasr Silver",
+            "Gulf Orchid Al Qasr",
+            "Gulf Orchid Al Qasr Silver"
           ],
           "formats_ml": [
             100
@@ -10275,7 +10277,9 @@
           "canonical_name": "Al Qasr Dahab",
           "aliases": [
             "Al Qasr Dahab",
-            "Gulf Orchid Al Qasr Dahab"
+            "Al Qasr Gold",
+            "Gulf Orchid Al Qasr Dahab",
+            "Gulf Orchid Al Qasr Gold"
           ],
           "formats_ml": [
             100
@@ -10835,7 +10839,8 @@
             "Gulf Orchid Sweet Heaven Cherry"
           ],
           "formats_ml": [
-            20
+            20,
+            100
           ]
         },
         {
@@ -10869,7 +10874,8 @@
             "Gulf Orchid Sweet Heaven Tobacco"
           ],
           "formats_ml": [
-            20
+            20,
+            100
           ]
         },
         {
