@@ -1620,3 +1620,16 @@ GitHub Actions run **#42420558957** for test commit **f0c4b4872d8faf1208f4237538
 - No variants were created. The Queen of Arabia page displays 100 ml, but no size variant row was created in this pass; Musamam Black Intense's page identifies it as Eau de Parfum without a verified size in the extracted source. No GTIN, price, stock, shipping or retailer offer was added.
 - Added `backend/tests/test_lattafa_catalog.py` for official source URL, identity status, registry parity and no-offer assertions.
 - Catalog totals after Games of Spades and Lattafa additions: **1,919 canonical identities; 245 explicit variants**. CI status remains pending verification on the latest PR head.
+
+
+## Pass 31 — French Avenue official product-detail gap closure (2026-11-08)
+
+- The candidate reconciliation found three French Avenue fragrance names missing from the canonical product seed: **Jasmere**, **Amber Empire** and **Safari Breeze**.
+- All three are supported by French Avenue official product pages:
+  - Jasmere: https://frenchavenue.com/products/jasmere
+  - Amber Empire: https://frenchavenue.com/products/amber-empire
+  - Safari Breeze: https://sa.frenchavenue.com/products/safari-breeze (official Saudi Arabia storefront)
+- Added the three canonical identities to `backend/product_catalog.json` and synchronized `french_avenue_catalog` in the family registry.
+- Jasmere and Safari Breeze pages explicitly state EDP 100 ml; this pass records the product identities only and does not create variant rows. Amber Empire is recorded by official product name only. No GTIN, price, stock, shipping or retailer offer was imported.
+- Updated the dated name-harvest overlay with the official detail URLs and added `backend/tests/test_french_avenue_catalog.py` for provenance, uniqueness, registry parity and no fabricated commercial fields.
+- Catalog totals after Games of Spades, Lattafa and French Avenue additions: **1,922 canonical identities; 245 explicit variants**. CI remains unverified on the latest PR head.
