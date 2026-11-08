@@ -27931,7 +27931,12 @@
       "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-emerald",
       "collection": "Games of Spades",
-      "manufacturer": "Jo Milano Paris"
+      "manufacturer": "Jo Milano Paris",
+      "formats_ml": [
+        10,
+        50,
+        90
+      ]
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-FULL-HOUSE-REFRESH",
@@ -28115,6 +28120,7 @@
       "collection": "Games of Spades",
       "manufacturer": "Jo Milano Paris",
       "formats_ml": [
+        10,
         30,
         100
       ]
@@ -38667,6 +38673,72 @@
         "Games of Spades Blue Sapphire 90 ml"
       ],
       "source_url": "https://jomilanoparis.com/products/game-of-spades-blue-sapphire-parfum-spray-3-0-oz-90ml"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-10-EXTRAIT",
+      "size_ml": 10,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Emerald Extrait 10 ml",
+        "Games of Spades Emerald Extrait 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-50-EXTRAIT",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Emerald Extrait 50 ml",
+        "Games of Spades Emerald Extrait 50 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-EMERALD",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-EMERALD-90-EXTRAIT",
+      "size_ml": 90,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Emerald Extrait 90 ml",
+        "Games of Spades Emerald Extrait 90 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-emerald-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-10-EXTRAIT",
+      "size_ml": 10,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Rouge Extrait 10 ml",
+        "Games of Spades Rouge Extrait 10 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-30-EXTRAIT",
+      "size_ml": 30,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Rouge Extrait 30 ml",
+        "Games of Spades Rouge Extrait 30 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-GAMES-OF-SPADES-ROUGE",
+      "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-100-EXTRAIT",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Rouge Extrait 100 ml",
+        "Games of Spades Rouge Extrait 100 ml"
+      ],
+      "source_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
     }
   ]
 }
