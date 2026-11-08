@@ -14,6 +14,7 @@ from sqlalchemy import select
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app.api.legacy_catalog import router as legacy_catalog_router
+import app.api.catalog_search as catalog_search_api
 from app.api.catalog_search import router as catalog_search_router
 from app.connectors.notino import NotinoAffiliateFeedConnector
 from app.connectors.bplatz import BplatzConnector
@@ -201,7 +202,7 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
 
 
 
-def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_is_not_published():
+def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_is_not_published(monkeypatch):
     """Use authentic Bplatz HTML and the production parser; never assign a variant by hand."""
     root = Path(__file__).resolve().parents[2]
     fixture_path = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.raw.html"
@@ -323,6 +324,16 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
 
         # Catalog search may return the identity, but must not surface the stale
         # fixture as a purchasable offer.
+        # Route the HTTP adapter to this test's isolated PostgreSQL database;
+        # otherwise the module-level production session factory would query a
+        # different database and make this integration assertion meaningless.
+        monkeypatch.setattr(
+            catalog_search_api,
+            "search_catalog",
+            lambda query, *, limit=20: catalog_search_api._search_catalog(
+                query, limit=limit, session_factory=factory
+            ),
+        )
         api = FastAPI()
         api.include_router(catalog_search_router)
         with TestClient(api) as client:
@@ -336,7 +347,7 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
         )
         matching_variant = next(
             row for row in product["variants"]
-            if row["canonical_key"] == identity.canonical_key
+            if row["variant_id"] == str(variant.id)
         )
         assert matching_variant["offers"] == []
     finally:
