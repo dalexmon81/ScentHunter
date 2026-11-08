@@ -9197,6 +9197,20 @@
             "Mazaaj",
             "Zimaya Mazaaj"
           ]
+        },
+        {
+          "canonical_name": "Wujood",
+          "aliases": [
+            "Wujood",
+            "Zimaya Wujood"
+          ]
+        },
+        {
+          "canonical_name": "Luxor",
+          "aliases": [
+            "Luxor",
+            "Zimaya Luxor"
+          ]
         }
       ]
     },
