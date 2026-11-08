@@ -464,5 +464,40 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+
+    def test_assaf_covers_all_140_names_in_independent_reference(self):
+        import re
+        import unicodedata
+
+        reference_names = ["90s","Addict Blue","Alex Enable","Alexandra","Arkle","Arrogate Addict","Arrogate Addict Elixir","Arrogate Bakhur","Arrogate Blue","Arrogate Blue de Elixir","Arrogate Blue Exclusive","Arrogate Colt","Arrogate Comete","Arrogate Euphoria","Arrogate Girl","Arrogate Million Celebration","Arrogate Oud Bakhur","Arrogate Pink","Arrogate Pink Diva","Arrogate Pink Rose","Attacks","Attacks Blue","Attacks X","Aura","Aura 30","Aura Black","Baby Girl","Bakhur Pegasus","Black Lady","Black Wild","Bonjour","Boom Blue","Challenge","Charisma","Charlotte","Copacapana","Crown Spirit","Dangerous Arrogate","Deep Amber","Elizabeth","Error 404","Feeling","First Night","Forever Here","Frankel Afternoon","Frankel Ascot","Frankel Aventus","Frankel Aventus Black Elixir","Frankel Aventus Intense","Frankel Aventus Strike","Frankel Battle","Frankel Beach Afternoon","Frankel Black Elixir","Frankel Blackout","Frankel Blue Elixir","Frankel Chill","Frankel Elysium","Frankel Green Irish","Frankel Imagination","Frankel Silver","Frankel Silver Elixir","Frankel Storm","Garden Rose","Glitch","Greatness","Green Iris","Gris Erik","Gris Flora","Happy Moment","Harmony","Homme Pegasus","Hook Blue","I Am Here","I'm Here Enable","Juliet","King Enable","Lady","Lady Supreme","Legend","Lip Stick","Lord","Martha","Millionaire Enable","Miss Arrogate","Miss Arrogate Diva","Miss Flora","Miss Grace Dance Arrogate","Miss Gris","Miss Gris Dance","Miss Gris Intense","Miss Noble","Miss Sakura","Morning Girl","No Chance","No Comment","Noble","Noble Cavale","Nomad","Onset","Pegasus Oud","Pegasus Reflection","Pink Lady","Pink Queen","Pink Queen Exclusive","Private Purple","Proino Pegasus","Promise","Queen of Seduction","Rebel Enable","Risk Comete","Risk X","Rouge","Rouge Thunder","Ruffian Red","Savage","Search","Sherlock","Shift","Stand By","Strike Black","Swimming in Summer","Swimming In Summer Intense","Take Off","Tobacco Black 40","Tobacco Jam 50","Tobacco Jam 60","Tobacco Pacha","Tobacco Rage 32","Troy Enable","Wanted Lady","Warrior","Wild Colt","Wild Colt Bakhur","Wild Colt Boss","Wild Colt Elixir","Wild Colt Exclusive","Wild Colt Outlast","Wild Colt Smoky","Wild Colt Tobacco","Wild Pegasus"]
+
+        def key(value):
+            value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+            return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Assaf"
+        ]
+        product_names = {
+            key(name)
+            for row in products
+            for name in [row.get("canonical_name", ""), *row.get("aliases", [])]
+        }
+        missing = sorted(name for name in reference_names if key(name) not in product_names)
+        self.assertEqual(len(reference_names), 140)
+        self.assertEqual(len(products), 140)
+        self.assertEqual(missing, [])
+
+        registry = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+        family = next(f for f in registry.get("families", []) if f.get("family_id") == "assaf_catalog")
+        family_names = {
+            key(name)
+            for row in family.get("products", [])
+            for name in [row.get("canonical_name", ""), *row.get("aliases", [])]
+        }
+        self.assertEqual(len(family.get("products", [])), 140)
+        self.assertTrue(all(key(name) in family_names for name in reference_names))
+
 if __name__ == "__main__":
     unittest.main()
