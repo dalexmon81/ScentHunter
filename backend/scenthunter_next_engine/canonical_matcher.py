@@ -29,11 +29,11 @@ _SPACE_RE = re.compile(r"\s+")
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
 
 _PRODUCT_FORM_TITLE_SUFFIXES = (
-    "perfumed deodorant spray", "deodorant spray", "deodorant", "antiperspirant",
-    "discovery set", "gift set", "coffret", "hair mist", "body mist",
+    "perfumed deodorant spray", "deodorant spray", "deodorant stick", "deo stick", "deodorant", "antiperspirant",
+    "discovery set", "discovery kit", "gift set", "coffret", "hair mist", "body mist",
     "body spray", "body splash", "perfume oil", "fragrance oil", "attar",
     "room spray", "reed diffuser", "home fragrance", "diffuser",
-    "shower gel", "body lotion", "body cream", "hand cream",
+    "shower gel", "body wash", "body lotion", "body cream", "body butter", "hand cream", "scented candle",
 )
 
 _GENERIC_TITLE_SUFFIXES = (
