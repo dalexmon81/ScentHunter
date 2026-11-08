@@ -123,6 +123,60 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     )
                 )
 
+    def test_paris_corner_midnight_sin_official_page_and_100ml_variant_are_verified(self):
+        row = next(
+            (
+                product
+                for product in CATALOG.get("products", [])
+                if str(product.get("brand_name") or product.get("brand") or "").strip() == "Paris Corner"
+                and str(product.get("canonical_name") or product.get("name") or "").strip() == "Midnight Sin by Daniel René"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(
+            row.get("source_url"),
+            "https://www.pariscornerperfumes.com/products/midnight-sin-by-daniel-rene",
+        )
+        self.assertTrue(
+            any(
+                variant.get("product_id") == row["product_id"]
+                and variant.get("size_ml") == 100
+                for variant in CATALOG.get("variants", [])
+            )
+        )
+
+    def test_maison_alhambra_official_new_products_and_leonie_pages_are_verified(self):
+        expected = {
+            "Minerale Gold": "https://maisonalhambra-usa.com/products/maison-alhambra-minerale-gold-eau-de-parfum-for-everyone",
+            "Victorioso Fearless": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-fearless-eau-de-parfum-for-everyone",
+            "The Memory of Oud": "https://maisonalhambra-usa.com/products/maison-alhambra-the-memory-of-oud-eau-de-parfum-for-everyone",
+            "Sceptre Oceana": "https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-oceana-eau-de-parfum-for-everyone",
+            "Leonie": "https://maisonalhambra-usa.com/collections/womens-best-seller/products/maison-alhambra-leonie-eau-de-parfum-for-women",
+            "Leonie Intense": "https://maisonalhambra-usa.com/products/maison-alhambra-leonie-intense-eau-de-parfum-for-women",
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Maison Alhambra"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertTrue(
+                    any(
+                        variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == 100
+                        and variant.get("concentration") == "Eau de Parfum"
+                        for variant in CATALOG.get("variants", [])
+                    )
+                )
+
     def test_zimaya_verified_new_launches_have_official_pages_and_100ml_edp_variants(self):
         expected = {
             "Kibria Supremo": "https://ro.zimayaperfumes.com/products/kibria-supremo",
