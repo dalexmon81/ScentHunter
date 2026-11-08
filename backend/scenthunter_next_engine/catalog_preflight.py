@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Mapping
 from math import isfinite
-from typing import Any
+from typing import Any\n\n\nALLOWED_PRODUCT_FORMS = {\n    "fine_fragrance", "perfume_oil", "deodorant", "body_mist",\n    "hair_mist", "body_care", "home_fragrance", "gift_set",\n    "discovery_set", "unknown",\n}
 
 
 def _records(value: Any) -> list[Mapping[str, Any]]:
@@ -101,6 +101,16 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
         and not _valid_size_ml(row.get("size_ml"))
         for row in variant_rows
     )
+    product_form_counts = Counter(
+        row.get("product_form") if _nonempty(row.get("product_form")) else "unknown"
+        for row in product_rows
+    )
+    invalid_product_form_count = sum(
+        _nonempty(row.get("product_form"))
+        and row.get("product_form") not in ALLOWED_PRODUCT_FORMS
+        for row in product_rows
+    )
+
     missing_image_count = sum(
         not _nonempty(row.get("canonical_image") or row.get("image_url"))
         for row in product_rows
@@ -118,7 +128,7 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
         ("products_missing_brand", missing_brand_count),
         ("variants_missing_size", missing_size_count),
         ("variants_invalid_size", invalid_size_count),
-        ("products_missing_canonical_image", missing_image_count),
+        ("products_missing_canonical_image", missing_image_count),\n        ("products_invalid_product_form", invalid_product_form_count),
     ]
     for code, count in checks:
         if count:
@@ -127,7 +137,7 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
     return {
         "schema_version": raw.get("schema_version"),
         "product_count": len(product_rows),
-        "variant_count": len(variant_rows),
+        "variant_count": len(variant_rows),\n        "product_form_counts": dict(sorted(product_form_counts.items())),\n        "invalid_product_form_count": invalid_product_form_count,
         "non_mapping_product_rows": len(raw.get("products", [])) - len(product_rows),
         "non_mapping_variant_rows": len(raw.get("variants", [])) - len(variant_rows),
         "duplicate_product_ids": duplicate_products,
