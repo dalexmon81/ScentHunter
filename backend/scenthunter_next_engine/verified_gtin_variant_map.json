@@ -80,6 +80,21 @@
         "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
       ],
       "evidence_note": "Bplatz's captured authentic product HTML returns GTIN 6290360375694 in Product JSON-LD and Shopify variant barcode, with exact title French Avenue Liquid Brun Eau de Parfum 100ml. The same payload identifies Shopify variant 54015243419916, price EUR 27.50 and InStock; this record establishes identity only, not an imported offer."
+    },
+    {
+      "gtin": "6295156402103",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103",
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103-60-000",
+      "size_ml": 60,
+      "concentration": "Extrait de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-08",
+      "source_urls": [
+        "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marwa-extrait"
+      ],
+      "evidence_note": "The official MyPerfumes Europe product detail identifies Arabiyat Prestige Marwa Extrait De Parfum, 60ML, and displays UPC 6 295156 402103. The page describes the product as the Marwa signature elevated into an extrait. This mapping applies only to the 60 ml Extrait variant and does not merge it with Marwa EDP."
     }
   ]
 }
