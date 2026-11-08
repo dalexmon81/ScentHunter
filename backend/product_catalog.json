@@ -2807,7 +2807,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/affogato-al-caffe",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/affogato-al-caffe",
-      "collection_name": "Paris Corner"
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-e1dc5fd3",
@@ -12042,7 +12045,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/armaf-club-de-nuit-untold",
       "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-untold",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        10,
+        30,
+        105,
+        200
+      ]
     },
     {
       "product_id": "SH-ARMAF-f0af9d9d",
@@ -12172,7 +12181,14 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/club-de-nuit-w",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-w",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        10,
+        30,
+        105,
+        200,
+        250
+      ]
     },
     {
       "product_id": "SH-ARMAF-4494f7fc",
@@ -12189,7 +12205,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men",
       "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-silage-men",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        10,
+        30,
+        105,
+        250
+      ]
     },
     {
       "product_id": "SH-ARMAF-661683d6",
@@ -13054,7 +13076,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-urban-elixir-100ml",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        10,
+        30,
+        105,
+        250
+      ]
     },
     {
       "product_id": "SH-ARMAF-35441c5c",
@@ -13071,7 +13099,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        10,
+        30,
+        105,
+        200
+      ]
     },
     {
       "product_id": "SH-ARMAF-6485db14",
@@ -15709,7 +15743,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/attractus",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/attractus",
-      "collection_name": "Pendora Scents"
+      "collection_name": "Pendora Scents",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-BANANA-BLISS",
@@ -17086,7 +17123,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/acadia-intenso-emir",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/acadia-intenso-emir",
-      "collection_name": "Emir"
+      "collection_name": "Emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ARCANA",
@@ -17359,7 +17399,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/minya-caramel-dulce",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-caramel-dulce",
-      "collection_name": "Minya"
+      "collection_name": "Minya",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MINYA-COCO-LUSH",
@@ -23328,7 +23371,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv",
-      "collection_name": "North Stag"
+      "collection_name": "North Stag",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-0ba59d9a",
@@ -23681,7 +23727,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/reham-rose-petals",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/reham-rose-petals",
-      "collection_name": "Reham"
+      "collection_name": "Reham",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-dbb9189e",
@@ -27873,7 +27922,11 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://bujairami.com.au/products/love-spell-original-creation",
-      "source_evidence_url": "https://bujairami.com.au/products/love-spell-original-creation"
+      "source_evidence_url": "https://bujairami.com.au/products/love-spell-original-creation",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-KING-STREET",
