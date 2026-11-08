@@ -12,7 +12,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 72,
+    "Mykonos": 76,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -463,6 +463,52 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_mykonos_fragrantica_omissions_have_detail_pages_and_explicit_variants(self):
+        expected = {
+            "Berry Caramel Pancake": (
+                "https://officialmykonos.de/products/mykonos-berry-caramel-pancake",
+                50,
+                "Eau de Parfum",
+            ),
+            "Avra Kehdabra": (
+                "https://officialmykonos.de/products/mykonos-x-paola-serena-avra-kehdabra",
+                100,
+                "Eau de Parfum",
+            ),
+            "Dolce Cherry": (
+                "https://officialmykonos.de/products/mykonos-x-sapeyeeee-dolce-cherry",
+                50,
+                "Extrait de Parfum",
+            ),
+            "Violette": (
+                "https://officialmykonos.de/products/mykonos-x-violenzia-violette",
+                100,
+                "Eau de Parfum",
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), concentration)
 
 if __name__ == "__main__":
     unittest.main()
