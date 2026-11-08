@@ -11920,6 +11920,27 @@
             "Raw Human",
             "Lattafa Raw Human"
           ]
+        },
+        {
+          "canonical_name": "Asad",
+          "aliases": [
+            "Asad",
+            "Lattafa Asad"
+          ]
+        },
+        {
+          "canonical_name": "Asad Zanzibar",
+          "aliases": [
+            "Asad Zanzibar",
+            "Lattafa Asad Zanzibar"
+          ]
+        },
+        {
+          "canonical_name": "Asad Bourbon",
+          "aliases": [
+            "Asad Bourbon",
+            "Lattafa Asad Bourbon"
+          ]
         }
       ]
     },
