@@ -34092,12 +34092,14 @@
       "product_id": "SH-LATTAFA-EU-HARVEST-043",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
-      "canonical_name": "Rave Now- White",
-      "name": "Rave Now- White",
+      "canonical_name": "Rave Now White",
+      "name": "Rave Now White",
       "family_id": "lattafa_catalog",
-      "family_name": "Rave Now- White",
+      "family_name": "Rave Now White",
       "aliases": [
+        "Rave Now White",
         "Rave Now- White",
+        "Lattafa Rave Now White",
         "Lattafa Rave Now- White"
       ],
       "formats_ml": [
@@ -37281,8 +37283,9 @@
       "product_id": "SH-LATTAFA-EU-HARVEST-043",
       "size_ml": 100,
       "aliases": [
+        "Rave Now White 100 ml",
         "Rave Now- White 100 ml",
-        "Lattafa Rave Now- White 100 ml"
+        "Lattafa Rave Now White 100 ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-043-100-000"
     },
