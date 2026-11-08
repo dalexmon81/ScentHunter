@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
-    "Bujairami": 210,
+    "Bujairami": 220,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -698,6 +698,30 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(arabian_gold.get("concentration"), "Eau de Parfum")
         self.assertNotIn("formats_ml", arabian_gold)
         self.assertFalse(any(v.get("product_id") == arabian_gold["product_id"] for v in variants))
+
+
+
+    def test_bujairami_eighth_batch_assassin_to_bad_obsession(self):
+        expected = [
+            "Assassin", "Astral", "Astro", "At Last", "Aurora",
+            "Australian Tonka", "Baccarat Oud", "Backstage", "Bad N Boujee", "Bad Obsession",
+        ]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name in expected:
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [100])
+                self.assertEqual(
+                    sum(v.get("product_id") == row["product_id"] and v.get("size_ml") == 100 for v in variants),
+                    1,
+                )
 
 
 if __name__ == "__main__":
