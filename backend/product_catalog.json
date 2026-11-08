@@ -2837,8 +2837,11 @@
         "Aira",
         "Paris Corner Aira"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/aira",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-c99c94e3",
@@ -2946,8 +2949,11 @@
         "Ciao Citrus",
         "Paris Corner Ciao Citrus"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ciao-citrus",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-c5ed3eb2",
@@ -17297,9 +17303,12 @@
         "Fatal Embrace",
         "Paris Corner Fatal Embrace"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fatal-embrace",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FAYORA",
@@ -18453,9 +18462,12 @@
         "Wayfarer Infusion",
         "Paris Corner Wayfarer Infusion"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/wayfarer-infusion",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-WAYWARD-CHARLIE-EMIR",
@@ -36420,6 +36432,42 @@
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-8e21991b-100-000",
       "source_url": "https://www.pariscornerperfumes.com/products/atoof"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-e1dc5fd3",
+      "size_ml": 100,
+      "aliases": [
+        "Aira 100 ml",
+        "Paris Corner Aira 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-E1DC5FD3-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-3033b72a",
+      "size_ml": 100,
+      "aliases": [
+        "Ciao Citrus 100 ml",
+        "Paris Corner Ciao Citrus 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-3033B72A-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FATAL-EMBRACE",
+      "size_ml": 100,
+      "aliases": [
+        "Fatal Embrace 100 ml",
+        "Paris Corner Fatal Embrace 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FATAL-EMBRACE-100-000"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WAYFARER-INFUSION",
+      "size_ml": 100,
+      "aliases": [
+        "Wayfarer Infusion 100 ml",
+        "Paris Corner Wayfarer Infusion 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
     }
   ]
 }
