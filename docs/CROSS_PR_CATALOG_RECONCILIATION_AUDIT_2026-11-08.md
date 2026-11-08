@@ -271,6 +271,27 @@ current base-branch count; none of these PRs has been merged.
 Remaining by brand on that proposed combined view: Paris Corner 25, French
 Avenue 5, Assaf 7, Bujairami 2, Khadlaj 1, Lattafa 1, Mykonos 3.
 
+
+## Follow-on remediation — Armaf variant concentrations (PR #573)
+
+A separate draft PR, [#573](https://github.com/dalexmon81/ScentHunter/pull/573),
+fills the 21 previously blank concentration fields for five existing Armaf
+Club de Nuit products: Untold, Sillage, Woman, Urban Man Elixir and Iconic.
+All 21 values are supported by the corresponding official Armaf detail pages;
+the change adds no products or variants. It includes a focused regression test,
+a source-evidence note and a workflow invocation.
+
+Validation on the exact PR #573 head
+`c87123ee42d0790fe6b32a46e6bfa46ebdd31753` completed successfully
+(run 42526995498). Re-scanning that PR branch shows:
+- Armaf variants with blank concentration: 0 (down from 21).
+- All brands combined with blank concentration: 67 (down from 88).
+- Product count remains 2,061 and variant count remains 291.
+
+**Important:** #573 is still an open draft and has not been merged. The 67-row
+figure describes its candidate branch only; the base snapshot audited above
+still has the original 88 incomplete concentration fields.
+
 ## Family-registry normalization debt found in the base snapshot
 
 A separate read-only scan of the exact base-branch registry blob
