@@ -27991,7 +27991,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://zimayaperfumes.com/products/wujood-100ml",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-LUXOR",
@@ -28007,7 +28010,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://zimayaperfumes.com/products/luxor-100ml",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
