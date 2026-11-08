@@ -2,7 +2,7 @@
 
 Source: https://zimayaperfumes.com/collections/all
 
-The official global collection currently reports **106 products**. The public page exposes product names over paginated results. The following names were directly visible in the first two result pages (96 candidates); this is a discovery list, not yet the canonical product import. The remaining page must be captured before calling the brand complete.
+The official global collection currently reports **104 products**. The public page exposes product names over paginated results. The following names were directly visible in the first two result pages (96 candidates); this is a discovery list, not yet the canonical product import. The official all-products page reports 104 items. The first two result pages in this discovery note contain 96 names; 8 items remain to be captured from the final page. Ten names from this list have since passed product-page verification and were imported in batch 01; the other 86 listed candidates plus the 8 uncaptured items still need review.
 
 ## Page 1 — visible names
 
@@ -114,4 +114,4 @@ The official global collection currently reports **106 products**. The public pa
 4. Compare names against the existing central catalogue before creating identities.
 5. Keep size variants under one canonical fragrance identity; do not create offers or invent images/GTINs.
 
-No entries in this discovery document have been written to `backend/product_catalog.json`.
+Batch 01 has now imported 10 page-verified identities and 10 x 100 ml variants into `backend/product_catalog.json`. The remaining candidates are not yet imported.
