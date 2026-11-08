@@ -20,6 +20,7 @@ on:
       - catalog/khadlaj-la-fede-official-harvest-2026-11-08
       - catalog/khadlaj-main-range-official-reconciliation-2026-11-08
       - catalog/al-wataniah-launching-soon-identities-2026-11-08
+      - catalog/arabiyat-prestige-al-youm-official-harvest-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -43,6 +44,7 @@ on:
       - catalog/khadlaj-la-fede-official-harvest-2026-11-08
       - catalog/khadlaj-main-range-official-reconciliation-2026-11-08
       - catalog/al-wataniah-launching-soon-identities-2026-11-08
+      - catalog/arabiyat-prestige-al-youm-official-harvest-2026-11-08
 
 permissions:
   contents: read
@@ -82,6 +84,7 @@ jobs:
           backend.tests.test_swiss_arabian_detail_evidence
           backend.tests.test_arabiyat_prestige_extrait
           backend.tests.test_arabiyat_prestige_marwa_extrait
+          backend.tests.test_arabiyat_prestige_official_catalog_reconciliation
           backend.tests.test_assaf_range_harvest
           backend.tests.test_al_haramain_gulf_orchid_store_harvest
           backend.tests.test_afnan_lattafa_official_harvest
