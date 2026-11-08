@@ -691,23 +691,25 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(soft_hour.get("concentration"), "Extrait de Parfum")
 
 
-    def test_mykonos_imperium_and_empire_are_distinct_fragrances(self):
+    def test_mykonos_imperium_is_the_renamed_empire_x_rrq_fragrance(self):
         products = {
             row.get("canonical_name"): row
             for row in CATALOG.get("products", [])
             if row.get("brand_name") == "Mykonos"
         }
-        self.assertIn("Imperium", products)
-        self.assertIn("Empire x RRQ", products)
-        self.assertNotEqual(
-            products["Imperium"].get("product_id"),
-            products["Empire x RRQ"].get("product_id"),
-        )
+        self.assertNotIn("Imperium", products)
+        empire = products["Empire x RRQ"]
+        self.assertIn("Imperium", empire.get("aliases", []))
+        self.assertIn("Mykonos Imperium", empire.get("aliases", []))
         self.assertEqual(
-            products["Imperium"].get("source_url"),
+            empire.get("source_evidence_url"),
             "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
         )
-        self.assertNotIn("Imperium", products["Empire x RRQ"].get("aliases", []))
+        variant = next(
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == empire["product_id"] and row.get("size_ml") == 100
+        )
+        self.assertIn("Imperium 100 ml", variant.get("aliases", []))
 
     def test_mykonos_california_signature_is_an_alias_of_california(self):
         products = {
