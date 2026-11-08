@@ -10966,6 +10966,11 @@
             "Emerald",
             "Games of Spades Emerald",
             "Game of Spades Emerald"
+          ],
+          "formats_ml": [
+            10,
+            50,
+            90
           ]
         },
         {
@@ -11056,6 +11061,7 @@
             "Game of Spades Rouge"
           ],
           "formats_ml": [
+            10,
             30,
             100
           ]
