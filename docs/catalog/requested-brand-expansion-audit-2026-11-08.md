@@ -325,3 +325,29 @@ Set, gift set e travel kit sono stati esclusi. Non sono stati inventati dati su 
 - Product ID duplicati: **0**; variant ID duplicati: **0**; varianti orfane: **0**; prodotti senza famiglia corrispondente: **0**.
 
 Il catalogo dei marchi resta parziale: il conteggio descrive le identità attualmente censite, non una copertura totale garantita.
+
+
+## Cross-check copertura residua — fonti retailer indipendenti (2026-11-08)
+
+Questa sezione serve a ordinare il lavoro di completamento. I conteggi seguenti sono assortimenti esposti da retailer terzi, non cataloghi master ufficiali e non devono essere copiati come numero atteso di identità: possono includere prodotti non-profumo, varianti, set, duplicati, articoli non più in vendita e assortimenti regionali.
+
+Fonte di confronto: Azmara, pagina collezioni e filtri marca (consultata 2026-11-08): https://azmara-perfumes.com/collections/alle-produkte . Conteggi visibili: Afnan 34; Al Ambra 2; Al Haramain 11; Al Wataniah 6; Arabiyat Prestige 45; Armaf 71; Assaf 8; Bujairami 75; French Avenue 142; Gulf Orchid 45; Khadlaj 37; Lattafa 213; Maison Alhambra 50; Maison Asrar 47; Paris Corner 76; Swiss Arabian 60; Zimaya 39.
+
+Secondo confronto: Emirates Oud, assortimento filtrabile per marca (consultato 2026-11-08): https://emiratesoud.co.uk/collections/all . Conteggi visibili: Afnan 17; Al Haramain 17; Al Wataniah 1; Arabiyat Prestige 24; Armaf 42; Assaf 38; Bujairami 99; French Avenue 134; Gulf Orchid 16; Khadlaj 105; Lattafa 358; Maison Alhambra 171; Maison Asrar 39; Mykonos 31; Paris Corner 102; Swiss Arabian 23; Zimaya 28.
+
+Terzo confronto: Orientfragance, catalogo per marche (consultato 2026-11-08): https://www.orientfragance.com/en/collections/todas-las-colecciones . La pagina espone collezioni separate per Afnan, Al Haramain, Arabiyat Prestige, Armaf, French Avenue, Gulf Orchid, Khadlaj, Lattafa, Maison Alhambra, Maison Asrar, Paris Corner, Swiss Arabian e Zimaya.
+
+### Priorità di completamento
+
+Le differenze tra conteggi di retailer sono ampie; quindi nessuna marca può essere dichiarata completa sulla sola base di un conteggio terzo. Le lacune più evidenti rispetto agli assortimenti osservati sono: Arabiyat Prestige, Al Wataniah, Assaf, French Avenue, Gulf Orchid, Khadlaj, Lattafa, Maison Alhambra, Maison Asrar, Paris Corner, Swiss Arabian e Afnan. Mykonos richiede un audit dedicato perché compare in alcuni assortimenti ma non in tutti.
+
+### Regole operative vincolanti per la successiva importazione
+
+1. Usare prima le collezioni ufficiali del produttore; i retailer terzi sono fonti di scoperta e cross-check, non prova definitiva di appartenenza al marchio.
+2. Acquisire tutte le pagine/paginazioni, non soltanto la prima pagina o i nomi restituiti dalla ricerca.
+3. Aprire la scheda prodotto per verificare che sia un profumo del marchio richiesto; escludere set, deodoranti, body mist, cosmetici e accessori dal conteggio delle identità di profumo.
+4. Conservare URL di fonte per ogni identità; non dedurre concentrazione, volume, GTIN, disponibilità o prezzo dal solo nome.
+5. Normalizzare e deduplicare prima dell'inserimento; non creare nuove identità per semplici formati o varianti dello stesso profumo.
+6. Aggiornare catalogo e family registry insieme e rieseguire i test d'integrità.
+
+**Stato:** questo cross-check non aggiunge prodotti e non cambia i conteggi del catalogo. È una mappa di copertura per evitare che un assortimento parziale venga dichiarato completo. PR #425 resta draft/aperta; PR #424 resta intatta; nessun deploy, merge, attivazione store o write su staging/produzione.
