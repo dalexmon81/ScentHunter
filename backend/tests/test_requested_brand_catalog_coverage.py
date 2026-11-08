@@ -53,6 +53,25 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Requested brand coverage regressed below the reconciled catalog baseline.",
         )
 
+    def test_requested_brand_rows_have_source_provenance(self):
+        requested = set(MINIMUM_BRAND_COUNTS)
+        allowed_statuses = {"source_verified_name", "source_listed_name"}
+        missing = []
+        invalid_status = []
+        for index, row in enumerate(CATALOG.get("products", [])):
+            brand = str(row.get("brand_name") or row.get("brand") or "").strip()
+            if brand not in requested:
+                continue
+            if not str(row.get("source_url") or "").strip():
+                missing.append(f"products[{index}] {brand}: missing source_url")
+            if row.get("identity_status") not in allowed_statuses:
+                invalid_status.append(
+                    f"products[{index}] {brand}: invalid identity_status "
+                    f"{row.get('identity_status')!r}"
+                )
+        self.assertEqual(missing, [])
+        self.assertEqual(invalid_status, [])
+
     def test_aromatix_line_is_present(self):
         self.assertGreaterEqual(self.counts.get("Aromatix", 0), 1)
 
