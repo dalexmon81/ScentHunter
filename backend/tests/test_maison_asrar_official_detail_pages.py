@@ -59,6 +59,18 @@ ADDITIONAL_IDENTITY_URLS = {
     "Magic Night": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
     "Icon": "https://maisonasrar.com/products/icon-eau-de-perfum-100ml",
     "Desire": "https://maisonasrar.com/products/desire-eau-de-perfum-100ml",
+    "Black": "https://maisonasrar.com/products/black-eau-de-perfum-100ml",
+    "1963": "https://maisonasrar.com/products/1963-eau-de-perfum-100ml",
+    "Emessa": "https://maisonasrar.com/products/maison-asrar-emessa-eau-de-parfum-for-women",
+    "Zenobia": "https://maisonasrar.com/products/maison-asrar-zenobia-eau-de-parfum-100-ml-for-women",
+    "Fakhama": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+    "Hamsat Ishq": "https://maisonasrar.com/products/maison-asrar-hamsat-ishq-eau-de-parfum-100-ml-for-women",
+    "Hamsat Ghazal": "https://maisonasrar.com/products/maison-asrar-hamsat-ghazal-eau-de-parfum-100-ml-for-women",
+    "Hamsat Hob": "https://maisonasrar.com/products/maison-asrar-hamsat-hob-eau-de-parfum-100-ml-for-women",
+    "Hamsat Gharam": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women",
+    "Pink Crush": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women",
+    "Red Velvet": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women",
+    "Adorable": "https://maisonasrar.com/products/adorable-eau-de-parfum-100-ml-for-women",
 }
 
 LOCK_KEY = {
