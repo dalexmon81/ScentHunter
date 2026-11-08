@@ -33801,6 +33801,102 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-028",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Creative Art",
+      "name": "Creative Art",
+      "family_id": "lattafa_catalog",
+      "family_name": "Creative Art",
+      "aliases": [
+        "Creative Art",
+        "Lattafa Creative Art"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/creative-art/",
+      "source_evidence_url": "https://lattafa.com/product/creative-art/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-029",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "London the City of Contrast",
+      "name": "London the City of Contrast",
+      "family_id": "lattafa_catalog",
+      "family_name": "London the City of Contrast",
+      "aliases": [
+        "London the City of Contrast",
+        "Lattafa London the City of Contrast"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/london-the-city-of-contrast/",
+      "source_evidence_url": "https://lattafa.com/product/london-the-city-of-contrast/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-030",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Queen of Roses",
+      "name": "Queen of Roses",
+      "family_id": "lattafa_catalog",
+      "family_name": "Queen of Roses",
+      "aliases": [
+        "Queen of Roses",
+        "Lattafa Queen of Roses"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/queen-of-roses/",
+      "source_evidence_url": "https://lattafa.com/product/queen-of-roses/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-031",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "King of Arabia",
+      "name": "King of Arabia",
+      "family_id": "lattafa_catalog",
+      "family_name": "King of Arabia",
+      "aliases": [
+        "King of Arabia",
+        "Lattafa King of Arabia"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/king-of-arabia/",
+      "source_evidence_url": "https://lattafa.com/product/king-of-arabia/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-032",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Lattafa Pride – Stop Wait Go",
+      "name": "Lattafa Pride – Stop Wait Go",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa Pride – Stop Wait Go",
+      "aliases": [
+        "Lattafa Pride – Stop Wait Go",
+        "Stop Wait Go",
+        "Lattafa Stop Wait Go"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lattafa-pride-stop-wait-go/",
+      "source_evidence_url": "https://lattafa.com/product/lattafa-pride-stop-wait-go/"
     }
   ],
   "variants": [
@@ -36778,6 +36874,52 @@
         "Lattafa Badee Al Oud Amethyst Fusion 100 ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-027-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-028",
+      "size_ml": 100,
+      "aliases": [
+        "Creative Art 100 ml",
+        "Lattafa Creative Art 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-028-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-029",
+      "size_ml": 100,
+      "aliases": [
+        "London the City of Contrast 100 ml",
+        "Lattafa London the City of Contrast 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-029-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-030",
+      "size_ml": 100,
+      "aliases": [
+        "Queen of Roses 100 ml",
+        "Lattafa Queen of Roses 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-030-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-031",
+      "size_ml": 100,
+      "aliases": [
+        "King of Arabia 100 ml",
+        "Lattafa King of Arabia 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-031-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-032",
+      "size_ml": 100,
+      "aliases": [
+        "Lattafa Pride – Stop Wait Go 100 ml",
+        "Lattafa Lattafa Pride – Stop Wait Go 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-032-100-000"
     }
   ]
 }
