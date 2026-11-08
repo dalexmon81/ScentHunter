@@ -137,6 +137,23 @@ PR #565's current head still has no workflow run on its exact SHA. Its base bran
 
 PR #568 adds automated regression guards for unique normalized product identities, product/variant IDs, variant tuples, orphan variants and exact duplicate rows within each family. Its catalog validation job passed on the exact PR head. These checks validate the candidate tree in which the workflow runs; they do not magically combine all open branches into one tree. No merge has been performed as part of this audit.
 
+
+## Branch dependency map — important integration clarification
+
+Two of the current PRs are cumulative descendants of other catalog branches, not independent snapshots:
+
+- **PR #555** targets `catalog/gulf-orchid-official-new-arrivals-2026-11-08`. Comparing its head with that base gives a merge base equal to the current PR #554 head (`a990036c...`), with six commits ahead and zero behind. Therefore #555 already carries the #554 line of work as ancestry. Do not integrate #554 and #555 as two independent patches; treat #555 as the cumulative descendant and resolve the Gulf Orchid duplicates against #542 plus the Lattafa overlaps against #562.
+- **PR #565** targets `catalog/lattafa-four-official-products-2026-11-08`. Comparing its head with that base gives a merge base equal to the current PR #562 head (`6e33896d...`), with five commits ahead and zero behind. Therefore #565 already carries #562 as ancestry. Do not count #562's catalog rows as a second independent addition when reviewing #565; the cross-branch overlap to reconcile is the six Lattafa identities also present in #555, plus the Armaf duplicates against #558 and #564.
+
+This matters for integration order: the eventual candidate should select the cumulative descendant branch where appropriate, rather than replaying both parent and child PR diffs and accidentally duplicating the same rows.
+
+### Additional exact-head CI check
+
+- PR #555 current head: run 42520228615 — success.
+- PR #564 current head: run 42523877610 — success.
+- PR #568 current head: run 42525428834 — success.
+- PR #565 current head: no workflow run found. The branch-specific workflow trigger gap recorded above remains unresolved.
+
 ## Required integration gate
 
 Before any of these catalog PRs are integrated:
