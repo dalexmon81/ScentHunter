@@ -3013,8 +3013,13 @@
         "Date Caramel",
         "Paris Corner Date Caramel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/date-caramel",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/date-caramel",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-a7bb1ce4",
@@ -16593,8 +16598,13 @@
         "Indomitable",
         "Paris Corner Indomitable"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/indomitable",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/indomitable",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-INTENSE-OUD",
@@ -17056,8 +17066,13 @@
         "Mawj Moscow Mule",
         "Paris Corner Mawj Moscow Mule"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-MEHWISH",
@@ -23829,11 +23844,17 @@
       "family_name": "Perseviron Fig Hug",
       "aliases": [
         "Perseviron Fig Hug",
-        "Paris Corner Perseviron Fig Hug"
+        "Paris Corner Perseviron Fig Hug",
+        "Fig Hug",
+        "Paris Corner Fig Hug"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-a00c4613",
@@ -33801,6 +33822,26 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Tiramisu Speculoos",
+      "name": "Tiramisu Speculoos",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Tiramisu Speculoos",
+      "aliases": [
+        "Tiramisu Speculoos",
+        "Tiramisu Speculoos 100ML",
+        "Paris Corner Tiramisu Speculoos"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36971,6 +37012,55 @@
       "aliases": [
         "Icon 100 ml",
         "Khadlaj Icon 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-807b8de9",
+      "variant_id": "SHV-SH-PARIS-CORNER-807b8de9-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Date Caramel 100 ml",
+        "Paris Corner Date Caramel 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INDOMITABLE",
+      "variant_id": "SHV-SH-PARIS-CORNER-INDOMITABLE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Indomitable 100 ml",
+        "Paris Corner Indomitable 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-MOSCOW-MULE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Moscow Mule 100 ml",
+        "Paris Corner Mawj Moscow Mule 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-18f3d5a4",
+      "variant_id": "SHV-SH-PARIS-CORNER-18f3d5a4-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Perseviron Fig Hug 100 ml",
+        "Paris Corner Perseviron Fig Hug 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TIRAMISU-SPECULOOS",
+      "variant_id": "SHV-SH-PARIS-CORNER-TIRAMISU-SPECULOOS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Tiramisu Speculoos 100 ml",
+        "Paris Corner Tiramisu Speculoos 100 ml"
       ]
     }
   ]
