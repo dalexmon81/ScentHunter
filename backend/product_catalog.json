@@ -33328,6 +33328,40 @@
       "source_url": "https://www.alwataniah.com/collections/munchies",
       "source_evidence_url": "https://www.alwataniah.com/collections/munchies",
       "collection_name": "Munchies"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ECLIPSE",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Eclipse",
+      "name": "Eclipse",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Eclipse",
+      "aliases": [
+        "Eclipse",
+        "French Avenue Eclipse",
+        "Eclipse Extrait"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/eclipse"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ECLIPSE-NOVA",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Eclipse Nova",
+      "name": "Eclipse Nova",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Eclipse Nova",
+      "aliases": [
+        "Eclipse Nova",
+        "French Avenue Eclipse Nova",
+        "Eclipse Nova Extrait"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/eclipse-nova-extrait"
     }
   ],
   "variants": [
@@ -35493,6 +35527,26 @@
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-26fd5518-100-EDP",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ECLIPSE",
+      "variant_id": "SHV-SH-FRENCH-AVENUE-ECLIPSE-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Eclipse 100 ml",
+        "French Avenue Eclipse 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ECLIPSE-NOVA",
+      "variant_id": "SHV-SH-FRENCH-AVENUE-ECLIPSE-NOVA-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Eclipse Nova 100 ml",
+        "French Avenue Eclipse Nova 100ml"
+      ]
     }
   ]
 }
