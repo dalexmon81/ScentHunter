@@ -26,7 +26,7 @@ class ParisCornerCatalogParityTests(unittest.TestCase):
         # Registry aliases can retain spelling/diacritic variants and discovery
         # identities that have not yet been promoted to the canonical seed.
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 247)
+        self.assertEqual(len(self.products), 258)
 
     def test_all_products_use_the_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "paris_corner_catalog" for p in self.products))
@@ -39,6 +39,17 @@ class ParisCornerCatalogParityTests(unittest.TestCase):
         self.assertTrue(
             all((p.get("source_url") or "").startswith(official_prefixes) for p in self.products)
         )
+
+
+    def test_legacy_spelling_variants_are_aliases_not_duplicate_identities(self):
+        products_by_name = {p["canonical_name"]: p for p in self.products}
+        self.assertIn("Attratus", products_by_name["Attractus"].get("aliases", []))
+        self.assertIn("Paris Corner Attratus", products_by_name["Attractus"].get("aliases", []))
+        self.assertIn("Harrier Absoulte", products_by_name["Harrier Absolute"].get("aliases", []))
+        self.assertIn("Paris Corner Harrier Absoulte", products_by_name["Harrier Absolute"].get("aliases", []))
+        registry_names = {p["canonical_name"] for p in self.family["products"]}
+        self.assertNotIn("Attratus", registry_names)
+        self.assertNotIn("Harrier Absoulte", registry_names)
 
     def test_brand_collection_label_is_not_a_canonical_fragrance(self):
         self.assertFalse(any(p["canonical_name"].casefold() == "ministry of gourmand" for p in self.products))
