@@ -14,6 +14,7 @@ on:
       - catalog/mykonos-fragrantica-84-reconciliation-2026-11-08
       - catalog/velixir-28-fragrance-variant-reconciliation-2026-11-08
       - catalog/maison-asrar-fragrantica-official-reconciliation-2026-11-08
+      - catalog/khadlaj-fragrantica-official-oil-spray-reconciliation-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -30,6 +31,7 @@ on:
       - catalog/mykonos-fragrantica-84-reconciliation-2026-11-08
       - catalog/velixir-28-fragrance-variant-reconciliation-2026-11-08
       - catalog/maison-asrar-fragrantica-official-reconciliation-2026-11-08
+      - catalog/khadlaj-fragrantica-official-oil-spray-reconciliation-2026-11-08
 
 permissions:
   contents: read
