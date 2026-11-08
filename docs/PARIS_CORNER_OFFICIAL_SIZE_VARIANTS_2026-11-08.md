@@ -15,6 +15,8 @@ The inspected product pages explicitly state the 100 ml size. The retrieved prod
 | Fig Fete | https://www.pariscornerperfumes.com/products/fig-fete | 100 ml | Not stated in retrieved page content |
 | Khair Peach Delulu | https://www.pariscornerperfumes.com/products/khair-peach-delulu | 100 ml | Not stated in retrieved page content |
 
+Khair Confection was deliberately excluded: its individual product page did not expose an explicit bottle size in the retrieved page content, so no size variant was inferred.
+
 ## Catalog changes
 
 - Four existing products now point to their individual official product pages in `source_url` and `source_evidence_url`.
