@@ -1,0 +1,658 @@
+{
+  "schema_version": "1.0",
+  "dataset_type": "official_brand_collection_reconciliation",
+  "created_at": "2026-11-08",
+  "status": "official_collection_reconciled",
+  "description": "Reconciles all 105 names listed on the official Paris Corner collection page against the catalog. 98 were already represented, five official listing variants are now aliases, and two identities were added.",
+  "policy": {
+    "identity_status": "source_listed_name",
+    "no_inferred_variants": true,
+    "no_offers_or_prices": true
+  },
+  "source": {
+    "brand": "Paris Corner",
+    "url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+    "source_type": "official brand collection",
+    "displayed_total": 105,
+    "scope": "All 105 product listings across four pages. Product names carrying a 100ML suffix were treated as listing aliases where the catalog already had the same named fragrance without the size."
+  },
+  "summary": {
+    "official_listing_names": 105,
+    "already_represented": 98,
+    "listing_aliases_added": 5,
+    "new_identities_added": 2,
+    "variants_added": 0
+  },
+  "products": [
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Affogato Al Caffe",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Aira",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Arwa",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Atoof",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Azm",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Bayn Al Asrar",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Caramel Bash",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Choco Lait",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Ciao Citrus",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Confidential 100ML",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "listing_alias_added"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Cosmic Giardino",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Dar Al Oud",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Date Caramel",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "December Ambar",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "December Rose",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "December Vanilla",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Dulzura",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Dulzura Vanilla Envie",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Eshal Musk",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Eshal Vanilla",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Eternal Coffee",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Eternal Meadows",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Eternal Musk",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Farah",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Fatal Embrace",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Fayora",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Fayora Oshino",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Green Bet",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Heer",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Hurriya",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Ibisco Nirvana",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Indomitable",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Jardin des Papillons",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Kaheela Platinum",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Khair",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Khair Confection",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Khair Felicity",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Khair Fusion",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Khair Peach Delulu",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Khair Pistachio",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Khayal 100ML",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "listing_alias_added"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Manaal",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Marshmallow Blush",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Mawj Appletini",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Mawj Cognac Blaze",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Mawj Moscow Mule",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Mehwish",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Midnight Sin by Daniel René",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Miel Obscura",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Miel Vanille",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Minya 100ML",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "listing_alias_added"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Minya Caramel Dulce",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Minya Coco Lush",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Misty Dawn Musk Collection",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Molten Caramel",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Mysterium",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Nada Blumingle",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Nada Whimsical",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Nada Wink",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Nouf",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Ophidian Black Cherry 100ML",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "listing_alias_added"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Ophidian Mango Bliss",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Ophidian Sweet Surrender",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Oravea",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Oud Faek",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Oud Wahaaj",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Papillon des Vents",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Perseviron",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Perseviron Fig Hug",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Pinkling",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Plum Liquor",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Prodigy",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Prodigy Noir",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Qawafi 100ML",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "listing_alias_added"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Qissa",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Qissa Delicious",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Qissa Gala",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Qissa Pink",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Rawq",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Reham Rose Petals",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Reham Vanilla Mood",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Reham Wild Mineral",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Rifaaqat",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Rifaaqat Adorn",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Rua",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Rua Radiant Roses",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Soothing Zephyr",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Taskeen",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Taskeen Caramel Cascade",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Taskeen Lactea Divina",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Taskeen Marina",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Taskeen Wowie",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Tawaaq",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "The Show Magnifique",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "new_identity"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Tranquil Night Musk Collection",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Twilight Shadow Musk Collection",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Virilis",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zahi",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zahri Amara",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zaman Al Ula",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zariya",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "new_identity"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zodiac",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zodiac Lunaris",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zodiac Solmaris",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    },
+    {
+      "brand": "Paris Corner",
+      "official_listing_name": "Zodiac Stratos",
+      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner",
+      "status": "already_represented"
+    }
+  ]
+}
