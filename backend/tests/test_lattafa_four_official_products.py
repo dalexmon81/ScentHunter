@@ -21,6 +21,8 @@ class LattafaFourOfficialProductsTests(unittest.TestCase):
             cls.catalog = json.load(handle)
         cls.products = cls.catalog["products"]
         cls.variants = cls.catalog["variants"]
+        with FAMILY_REGISTRY_PATH.open(encoding="utf-8") as handle:
+            cls.family_registry = json.load(handle)
 
     def test_each_official_identity_is_unique_and_source_verified(self):
         for name, url in PRODUCTS.items():
