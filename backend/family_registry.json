@@ -987,13 +987,6 @@
       ],
       "products": [
         {
-          "canonical_name": "Affair",
-          "aliases": [
-            "Affair",
-            "Mykonos Affair"
-          ]
-        },
-        {
           "canonical_name": "Aphrodite",
           "aliases": [
             "Aphrodite",
@@ -1001,17 +994,6 @@
           ],
           "formats_ml": [
             50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Avra Kehdabra",
-          "aliases": [
-            "Avra Kehdabra",
-            "Mykonos Avra Kehdabra",
-            "Mykonos x Paola Serena Avra Kehdabra"
-          ],
-          "formats_ml": [
             100
           ]
         },
@@ -1026,16 +1008,6 @@
           ]
         },
         {
-          "canonical_name": "Berry Caramel Pancake",
-          "aliases": [
-            "Berry Caramel Pancake",
-            "Mykonos Berry Caramel Pancake"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
           "canonical_name": "Black Opera",
           "aliases": [
             "Black Opera",
@@ -1043,20 +1015,6 @@
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Blaze",
-          "aliases": [
-            "Blaze",
-            "Mykonos Blaze"
-          ]
-        },
-        {
-          "canonical_name": "Blossom",
-          "aliases": [
-            "Blossom",
-            "Mykonos Blossom"
           ]
         },
         {
@@ -1077,17 +1035,6 @@
           ],
           "formats_ml": [
             50
-          ]
-        },
-        {
-          "canonical_name": "California",
-          "aliases": [
-            "California",
-            "Mykonos California"
-          ],
-          "formats_ml": [
-            50,
-            100
           ]
         },
         {
@@ -1112,6 +1059,17 @@
           ]
         },
         {
+          "canonical_name": "California",
+          "aliases": [
+            "California",
+            "Mykonos California"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
           "canonical_name": "Caramel Fudge Cookie",
           "aliases": [
             "Caramel Fudge Cookie",
@@ -1119,13 +1077,6 @@
           ],
           "formats_ml": [
             50
-          ]
-        },
-        {
-          "canonical_name": "Chai Crema Latte",
-          "aliases": [
-            "Chai Crema Latte",
-            "Mykonos Chai Crema Latte"
           ]
         },
         {
@@ -1180,41 +1131,10 @@
           ]
         },
         {
-          "canonical_name": "Dolce Cherry",
-          "aliases": [
-            "Dolce Cherry",
-            "Mykonos Dolce Cherry",
-            "Mykonos x Sapeyeeee Dolce Cherry"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Down to Earth",
-          "aliases": [
-            "Down to Earth",
-            "Mykonos Down to Earth"
-          ]
-        },
-        {
           "canonical_name": "Dreamscape",
           "aliases": [
             "Dreamscape",
             "Mykonos Dreamscape"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Empire x RRQ",
-          "aliases": [
-            "Empire x RRQ",
-            "Mykonos Empire x RRQ",
-            "Empire (Mykonos x RRQ)",
-            "Mykonos Empire (Mykonos x RRQ)"
           ],
           "formats_ml": [
             50,
@@ -1233,19 +1153,6 @@
           ]
         },
         {
-          "canonical_name": "Glitch",
-          "aliases": [
-            "Glitch",
-            "Mykonos Glitch",
-            "Glitch (Mykonos x SetiawanAde)",
-            "Mykonos Glitch (Mykonos x SetiawanAde)"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
           "canonical_name": "Hawaiian Crush",
           "aliases": [
             "Hawaiian Crush",
@@ -1253,134 +1160,6 @@
           ],
           "formats_ml": [
             50
-          ]
-        },
-        {
-          "canonical_name": "Imperium",
-          "aliases": [
-            "Imperium",
-            "Mykonos Imperium"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Inception",
-          "aliases": [
-            "Inception",
-            "Mykonos Inception"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Inferno",
-          "aliases": [
-            "Inferno",
-            "Mykonos Inferno"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Invade",
-          "aliases": [
-            "Invade",
-            "Mykonos Invade",
-            "Invade (Mykonos x SetiawanAde)",
-            "Mykonos Invade (Mykonos x SetiawanAde)"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Ivory",
-          "aliases": [
-            "Ivory",
-            "Mykonos Ivory"
-          ]
-        },
-        {
-          "canonical_name": "Jynx",
-          "aliases": [
-            "Jynx",
-            "Mykonos Jynx"
-          ]
-        },
-        {
-          "canonical_name": "Luminos",
-          "aliases": [
-            "Luminos",
-            "Mykonos Luminos"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Marbella",
-          "aliases": [
-            "Marbella",
-            "Mykonos Marbella"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Matcha Latte",
-          "aliases": [
-            "Matcha Latte",
-            "Mykonos Matcha Latte"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Mayfair",
-          "aliases": [
-            "Mayfair",
-            "Mykonos Mayfair"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Memoir of Meri",
-          "aliases": [
-            "Memoir of Meri",
-            "Mykonos Memoir of Meri"
-          ]
-        },
-        {
-          "canonical_name": "Milk Drops",
-          "aliases": [
-            "Milk Drops",
-            "Mykonos Milk Drops"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Monaco Royale",
-          "aliases": [
-            "Monaco Royale",
-            "Mykonos Monaco Royale"
-          ],
-          "formats_ml": [
-            50,
-            100
           ]
         },
         {
@@ -1404,60 +1183,6 @@
           ]
         },
         {
-          "canonical_name": "MyEgo",
-          "aliases": [
-            "MyEgo",
-            "Mykonos MyEgo",
-            "MyEgo (Mykonos x AlterEgo)",
-            "Mykonos MyEgo (Mykonos x AlterEgo)"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Nautilus",
-          "aliases": [
-            "Nautilus",
-            "Mykonos Nautilus"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "On The Rocks",
-          "aliases": [
-            "On The Rocks",
-            "Mykonos On The Rocks"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Once Upon Don",
-          "aliases": [
-            "Once Upon Don",
-            "Mykonos Once Upon Don"
-          ]
-        },
-        {
-          "canonical_name": "Only You",
-          "aliases": [
-            "Only You",
-            "Mykonos Only You"
-          ]
-        },
-        {
-          "canonical_name": "Pandan Sticky Rice",
-          "aliases": [
-            "Pandan Sticky Rice",
-            "Mykonos Pandan Sticky Rice"
-          ]
-        },
-        {
           "canonical_name": "Paradise",
           "aliases": [
             "Paradise",
@@ -1465,17 +1190,6 @@
           ],
           "formats_ml": [
             50
-          ]
-        },
-        {
-          "canonical_name": "Penthouse",
-          "aliases": [
-            "Penthouse",
-            "Mykonos Penthouse"
-          ],
-          "formats_ml": [
-            50,
-            100
           ]
         },
         {
@@ -1489,167 +1203,10 @@
           ]
         },
         {
-          "canonical_name": "Pink Drops",
-          "aliases": [
-            "Pink Drops",
-            "Mykonos Pink Drops"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Pistachio Cream Cake",
-          "aliases": [
-            "Pistachio Cream Cake",
-            "Mykonos Pistachio Cream Cake"
-          ]
-        },
-        {
-          "canonical_name": "Reflection",
-          "aliases": [
-            "Reflection",
-            "Mykonos Reflection"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Reflection Elixir",
-          "aliases": [
-            "Reflection Elixir",
-            "Mykonos Reflection Elixir"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Rouge",
-          "aliases": [
-            "Rouge",
-            "Mykonos Rouge"
-          ]
-        },
-        {
-          "canonical_name": "Royal Ispahan",
-          "aliases": [
-            "Royal Ispahan",
-            "Mykonos Royal Ispahan"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Sansa",
-          "aliases": [
-            "Sansa",
-            "Mykonos Sansa"
-          ]
-        },
-        {
-          "canonical_name": "Satin Blanc",
-          "aliases": [
-            "Satin Blanc",
-            "Mykonos Satin Blanc"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Senja",
-          "aliases": [
-            "Senja",
-            "Mykonos Senja"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Seven Roses",
-          "aliases": [
-            "Seven Roses",
-            "Mykonos Seven Roses"
-          ]
-        },
-        {
-          "canonical_name": "Shades Perfume",
-          "aliases": [
-            "Shades Perfume",
-            "Mykonos Shades Perfume"
-          ]
-        },
-        {
-          "canonical_name": "Silent Whisper",
-          "aliases": [
-            "Silent Whisper",
-            "Mykonos Silent Whisper"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Slow Living",
-          "aliases": [
-            "Slow Living",
-            "Mykonos Slow Living"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
-          "canonical_name": "Sorrento",
-          "aliases": [
-            "Sorrento",
-            "Mykonos Sorrento"
-          ],
-          "formats_ml": [
-            50,
-            100
-          ]
-        },
-        {
           "canonical_name": "Sparkling Rosé",
           "aliases": [
             "Sparkling Rosé",
             "Mykonos Sparkling Rosé"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Stilettos",
-          "aliases": [
-            "Stilettos",
-            "Mykonos Stilettos"
-          ],
-          "formats_ml": [
-            50
-          ]
-        },
-        {
-          "canonical_name": "Tea Poetry",
-          "aliases": [
-            "Tea Poetry",
-            "Mykonos Tea Poetry"
-          ]
-        },
-        {
-          "canonical_name": "Untamed",
-          "aliases": [
-            "Untamed",
-            "Mykonos Untamed"
           ],
           "formats_ml": [
             100
@@ -1676,10 +1233,477 @@
           ]
         },
         {
+          "canonical_name": "Xoxo Rosy",
+          "aliases": [
+            "Xoxo Rosy",
+            "Mykonos Xoxo Rosy"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Empire x RRQ",
+          "aliases": [
+            "Empire x RRQ",
+            "Mykonos Empire x RRQ",
+            "Empire (Mykonos x RRQ)",
+            "Mykonos Empire (Mykonos x RRQ)"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Inception",
+          "aliases": [
+            "Inception",
+            "Mykonos Inception"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sorrento",
+          "aliases": [
+            "Sorrento",
+            "Mykonos Sorrento"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Slow Living",
+          "aliases": [
+            "Slow Living",
+            "Mykonos Slow Living"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Untamed",
+          "aliases": [
+            "Untamed",
+            "Mykonos Untamed"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Reflection",
+          "aliases": [
+            "Reflection",
+            "Mykonos Reflection"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Glitch",
+          "aliases": [
+            "Glitch",
+            "Mykonos Glitch",
+            "Glitch (Mykonos x SetiawanAde)",
+            "Mykonos Glitch (Mykonos x SetiawanAde)"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Inferno",
+          "aliases": [
+            "Inferno",
+            "Mykonos Inferno"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Marbella",
+          "aliases": [
+            "Marbella",
+            "Mykonos Marbella"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Milk Drops",
+          "aliases": [
+            "Milk Drops",
+            "Mykonos Milk Drops"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Pink Drops",
+          "aliases": [
+            "Pink Drops",
+            "Mykonos Pink Drops"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Luminos",
+          "aliases": [
+            "Luminos",
+            "Mykonos Luminos"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Sansa",
+          "aliases": [
+            "Sansa",
+            "Mykonos Sansa"
+          ]
+        },
+        {
+          "canonical_name": "Reflection Elixir",
+          "aliases": [
+            "Reflection Elixir",
+            "Mykonos Reflection Elixir"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Nautilus",
+          "aliases": [
+            "Nautilus",
+            "Mykonos Nautilus"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Penthouse",
+          "aliases": [
+            "Penthouse",
+            "Mykonos Penthouse"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Royal Ispahan",
+          "aliases": [
+            "Royal Ispahan",
+            "Mykonos Royal Ispahan"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "On The Rocks",
+          "aliases": [
+            "On The Rocks",
+            "Mykonos On The Rocks"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Tea Poetry",
+          "aliases": [
+            "Tea Poetry",
+            "Mykonos Tea Poetry"
+          ]
+        },
+        {
+          "canonical_name": "Affair",
+          "aliases": [
+            "Affair",
+            "Mykonos Affair"
+          ]
+        },
+        {
+          "canonical_name": "Only You",
+          "aliases": [
+            "Only You",
+            "Mykonos Only You"
+          ]
+        },
+        {
+          "canonical_name": "Shades Perfume",
+          "aliases": [
+            "Shades Perfume",
+            "Mykonos Shades Perfume"
+          ]
+        },
+        {
+          "canonical_name": "Chai Crema Latte",
+          "aliases": [
+            "Chai Crema Latte",
+            "Mykonos Chai Crema Latte"
+          ]
+        },
+        {
+          "canonical_name": "Jynx",
+          "aliases": [
+            "Jynx",
+            "Mykonos Jynx"
+          ]
+        },
+        {
+          "canonical_name": "Rouge",
+          "aliases": [
+            "Rouge",
+            "Mykonos Rouge"
+          ]
+        },
+        {
+          "canonical_name": "Seven Roses",
+          "aliases": [
+            "Seven Roses",
+            "Mykonos Seven Roses"
+          ]
+        },
+        {
+          "canonical_name": "Ivory",
+          "aliases": [
+            "Ivory",
+            "Mykonos Ivory"
+          ]
+        },
+        {
+          "canonical_name": "Blossom",
+          "aliases": [
+            "Blossom",
+            "Mykonos Blossom"
+          ]
+        },
+        {
+          "canonical_name": "Zora",
+          "aliases": [
+            "Zora",
+            "Mykonos Zora"
+          ]
+        },
+        {
+          "canonical_name": "Down to Earth",
+          "aliases": [
+            "Down to Earth",
+            "Mykonos Down to Earth"
+          ]
+        },
+        {
+          "canonical_name": "When in Paris",
+          "aliases": [
+            "When in Paris",
+            "Mykonos When in Paris"
+          ]
+        },
+        {
+          "canonical_name": "Pandan Sticky Rice",
+          "aliases": [
+            "Pandan Sticky Rice",
+            "Mykonos Pandan Sticky Rice"
+          ]
+        },
+        {
+          "canonical_name": "Pistachio Cream Cake",
+          "aliases": [
+            "Pistachio Cream Cake",
+            "Mykonos Pistachio Cream Cake"
+          ]
+        },
+        {
+          "canonical_name": "Blaze",
+          "aliases": [
+            "Blaze",
+            "Mykonos Blaze"
+          ]
+        },
+        {
+          "canonical_name": "Memoir of Meri",
+          "aliases": [
+            "Memoir of Meri",
+            "Mykonos Memoir of Meri"
+          ]
+        },
+        {
+          "canonical_name": "Once Upon Don",
+          "aliases": [
+            "Once Upon Don",
+            "Mykonos Once Upon Don"
+          ]
+        },
+        {
           "canonical_name": "Verve",
           "aliases": [
             "Verve",
             "Mykonos Verve"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Matcha Latte",
+          "aliases": [
+            "Matcha Latte",
+            "Mykonos Matcha Latte"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Imperium",
+          "aliases": [
+            "Imperium",
+            "Mykonos Imperium"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mayfair",
+          "aliases": [
+            "Mayfair",
+            "Mykonos Mayfair"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Monaco Royale",
+          "aliases": [
+            "Monaco Royale",
+            "Mykonos Monaco Royale"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Satin Blanc",
+          "aliases": [
+            "Satin Blanc",
+            "Mykonos Satin Blanc"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Senja",
+          "aliases": [
+            "Senja",
+            "Mykonos Senja"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Silent Whisper",
+          "aliases": [
+            "Silent Whisper",
+            "Mykonos Silent Whisper"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Stilettos",
+          "aliases": [
+            "Stilettos",
+            "Mykonos Stilettos"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "MyEgo",
+          "aliases": [
+            "MyEgo",
+            "Mykonos MyEgo",
+            "MyEgo (Mykonos x AlterEgo)",
+            "Mykonos MyEgo (Mykonos x AlterEgo)"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Invade",
+          "aliases": [
+            "Invade",
+            "Mykonos Invade",
+            "Invade (Mykonos x SetiawanAde)",
+            "Mykonos Invade (Mykonos x SetiawanAde)"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Avra Kehdabra",
+          "aliases": [
+            "Avra Kehdabra",
+            "Mykonos Avra Kehdabra",
+            "Mykonos x Paola Serena Avra Kehdabra"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Berry Caramel Pancake",
+          "aliases": [
+            "Berry Caramel Pancake",
+            "Mykonos Berry Caramel Pancake"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Dolce Cherry",
+          "aliases": [
+            "Dolce Cherry",
+            "Mykonos Dolce Cherry",
+            "Mykonos x Sapeyeeee Dolce Cherry"
           ],
           "formats_ml": [
             50
@@ -1697,27 +1721,132 @@
           ]
         },
         {
-          "canonical_name": "When in Paris",
+          "canonical_name": "Daydream",
           "aliases": [
-            "When in Paris",
-            "Mykonos When in Paris"
-          ]
-        },
-        {
-          "canonical_name": "Xoxo Rosy",
-          "aliases": [
-            "Xoxo Rosy",
-            "Mykonos Xoxo Rosy"
+            "Daydream",
+            "Mykonos Daydream"
           ],
           "formats_ml": [
-            50
+            100
           ]
         },
         {
-          "canonical_name": "Zora",
+          "canonical_name": "Inception Reimagined",
           "aliases": [
-            "Zora",
-            "Mykonos Zora"
+            "Inception Reimagined",
+            "Mykonos Inception Reimagined"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Monaco Royale Black",
+          "aliases": [
+            "Monaco Royale Black",
+            "Mykonos Monaco Royale Black"
+          ],
+          "formats_ml": [
+            50,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shape Shift",
+          "aliases": [
+            "Shape Shift",
+            "Mykonos Shape Shift"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Kingsman",
+          "aliases": [
+            "Kingsman",
+            "Mykonos Kingsman"
+          ]
+        },
+        {
+          "canonical_name": "Wallflower",
+          "aliases": [
+            "Wallflower",
+            "Mykonos Wallflower"
+          ]
+        },
+        {
+          "canonical_name": "Elysian",
+          "aliases": [
+            "Elysian",
+            "Mykonos Elysian"
+          ]
+        },
+        {
+          "canonical_name": "Undercover",
+          "aliases": [
+            "Undercover",
+            "Mykonos Undercover"
+          ]
+        },
+        {
+          "canonical_name": "Celestial",
+          "aliases": [
+            "Celestial",
+            "Mykonos Celestial"
+          ]
+        },
+        {
+          "canonical_name": "Café Lyon",
+          "aliases": [
+            "Café Lyon",
+            "Cafe Lyon",
+            "Mykonos Café Lyon"
+          ]
+        },
+        {
+          "canonical_name": "President",
+          "aliases": [
+            "President",
+            "Mykonos President"
+          ]
+        },
+        {
+          "canonical_name": "Déjà Vu",
+          "aliases": [
+            "Déjà Vu",
+            "Deja Vu",
+            "Mykonos Déjà Vu"
+          ]
+        },
+        {
+          "canonical_name": "Soft Hour x NCT Haechan",
+          "aliases": [
+            "Soft Hour x NCT Haechan",
+            "Mykonos Soft Hour x NCT Haechan"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Forever Musc",
+          "aliases": [
+            "Forever Musc",
+            "Mykonos Forever Musc"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Inspire Perfume",
+          "aliases": [
+            "Inspire Perfume",
+            "Mykonos Inspire Perfume"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
