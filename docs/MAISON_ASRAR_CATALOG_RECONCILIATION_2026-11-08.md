@@ -17,14 +17,14 @@ https://maisonasrarperfumes.eu/perfumes/
 The working catalog snapshot contains:
 - 120 Maison Asrar canonical identities.
 - 9 identities already supported by Maison Asrar-owned individual product pages before the previous evidence passes, plus 3 Lock & Key identities explicitly branded Maison Asrar on Gulf Orchid's storefront.
-- 74 identities still lacking individual product-page evidence after these passes.
+- 73 identities still lacking individual product-page evidence after these passes.
 - 3 additional Maison Asrar records — Plot Twist, Love Key and Unsolved Mystery — are listed on Gulf Orchid's own storefront. Their individual product pages explicitly label the brand as Maison Asrar and state 100 ml EDP. They are retained as Maison Asrar identities, and their existing variants now carry the corresponding page-level evidence URL. Gulf Orchid is the storefront/source for these Lock & Key releases; the records are not reassigned to Gulf Orchid as the fragrance brand.
 
 The 120 identities should not be described as a verified, complete current range. The three Lock & Key records are separately supported by Gulf Orchid product pages that explicitly identify Maison Asrar as the fragrance brand; they are not counted among the 43 Maison Asrar-owned product-page records. The 74 official fragrance collection count is a current storefront snapshot; it does not establish that older or discontinued identities are invalid.
 
 ## Official detail-page upgrades in this change
 
-Thirty-four existing identities were upgraded to individual Maison Asrar product pages in this PR, across three evidence passes:
+Thirty-five existing identities were upgraded to individual Maison Asrar product pages in this PR, across three evidence passes:
 - Bloom Bloom — 100 ml Eau de Parfum
 - Lolita — 100 ml Eau de Parfum
 - Bonita — 100 ml Eau de Parfum
@@ -59,6 +59,7 @@ Thirty-four existing identities were upgraded to individual Maison Asrar product
 - Pink Crush
 - Red Velvet
 - Adorable
+- Ameer
 
 For the first twelve identities, `source_url` and `source_evidence_url` point to official individual product pages. Their 12 existing variant additions use the exact 90 ml / 100 ml and Eau de Parfum wording embedded in the official product URL paths; the rendered product page itself does not expose those attributes as structured fields. The next twenty-two identities have individual official page URLs and `source_verified_name` status, but no size or concentration has been inferred from their URL slugs. No new variants or formats are added for these twenty-two records.
 
@@ -68,6 +69,6 @@ Room sprays and home-fragrance products are not perfume identities and must rema
 
 ## Validation
 
-The regression tests verify all thirty-four upgraded official product URLs and identity status, the twelve explicit variant records and their evidence URLs, the twenty-two identity-only records' lack of inferred formats/variants, Lock & Key provenance, and unique variant IDs.
+The regression tests verify all thirty-five upgraded official product URLs and identity status, the twelve explicit variant records and their evidence URLs, the twenty-three identity-only records' lack of inferred formats/variants, Lock & Key provenance, and unique variant IDs.
 
-Across the three evidence passes, the catalog adds 12 explicit variants and upgrades twenty-two more existing identity records without adding variants. The current working snapshot remains 2,061 identities and 303 variants. It does not claim that the remaining 74 identities have been individually verified or that the Maison Asrar catalog is complete.
+Across the three evidence passes, the catalog adds 12 explicit variants and upgrades twenty-three more existing identity records without adding variants. The current working snapshot remains 2,061 identities and 303 variants. It does not claim that the remaining 73 identities have been individually verified or that the Maison Asrar catalog is complete.
