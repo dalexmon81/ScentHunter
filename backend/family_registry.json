@@ -3552,6 +3552,26 @@
       ],
       "products": [
         {
+          "canonical_name": "A Chaos In The Ocean",
+          "aliases": [
+            "A Chaos In The Ocean",
+            "Paris Corner A Chaos In The Ocean"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "A Walk on Dirt",
+          "aliases": [
+            "A Walk on Dirt",
+            "Paris Corner A Walk on Dirt"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Acadia Intenso Emir",
           "aliases": [
             "Acadia Intenso Emir",
@@ -3579,6 +3599,38 @@
           ]
         },
         {
+          "canonical_name": "Amber Oud",
+          "aliases": [
+            "Amber Oud",
+            "Paris Corner Amber Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arabian Oryx Intense Oud",
+          "aliases": [
+            "Arabian Oryx Intense Oud",
+            "Paris Corner Arabian Oryx Intense Oud",
+            "Arabian Oryx: Intense Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Arabian Oryx Intense Oud Saffron",
+          "aliases": [
+            "Arabian Oryx Intense Oud Saffron",
+            "Paris Corner Arabian Oryx Intense Oud Saffron",
+            "Arabian Oryx: Intense Oud Saffron"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Arcana",
           "aliases": [
             "Arcana",
@@ -3590,6 +3642,16 @@
           "aliases": [
             "Arwa",
             "Paris Corner Arwa"
+          ]
+        },
+        {
+          "canonical_name": "Aseerah",
+          "aliases": [
+            "Aseerah",
+            "Paris Corner Aseerah"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -3625,6 +3687,50 @@
           ]
         },
         {
+          "canonical_name": "Autobiography Citron Vanille",
+          "aliases": [
+            "Autobiography Citron Vanille",
+            "Paris Corner Autobiography Citron Vanille",
+            "Autobiography: Citron Vanille"
+          ],
+          "formats_ml": [
+            65
+          ]
+        },
+        {
+          "canonical_name": "Autobiography Oh Boy",
+          "aliases": [
+            "Autobiography Oh Boy",
+            "Paris Corner Autobiography Oh Boy",
+            "Autobiography: Oh Boy"
+          ],
+          "formats_ml": [
+            65
+          ]
+        },
+        {
+          "canonical_name": "Autobiography Salty Breeze",
+          "aliases": [
+            "Autobiography Salty Breeze",
+            "Paris Corner Autobiography Salty Breeze",
+            "Autobiography: Salty Breeze"
+          ],
+          "formats_ml": [
+            65
+          ]
+        },
+        {
+          "canonical_name": "Autobiography Supreme Gold",
+          "aliases": [
+            "Autobiography Supreme Gold",
+            "Paris Corner Autobiography Supreme Gold",
+            "Autobiography: Supreme Gold"
+          ],
+          "formats_ml": [
+            65
+          ]
+        },
+        {
           "canonical_name": "Azm",
           "aliases": [
             "Azm",
@@ -3650,6 +3756,13 @@
           "aliases": [
             "Blackberry Wish",
             "Paris Corner Blackberry Wish"
+          ]
+        },
+        {
+          "canonical_name": "Brooch",
+          "aliases": [
+            "Brooch",
+            "Paris Corner Brooch"
           ]
         },
         {
@@ -3681,10 +3794,30 @@
           ]
         },
         {
+          "canonical_name": "Cedrat Essence",
+          "aliases": [
+            "Cedrat Essence",
+            "Paris Corner Cedrat Essence"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
           "canonical_name": "Cedrat Essence Emir",
           "aliases": [
             "Cedrat Essence Emir",
             "Paris Corner Cedrat Essence Emir"
+          ]
+        },
+        {
+          "canonical_name": "Celestial",
+          "aliases": [
+            "Celestial",
+            "Paris Corner Celestial"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -3751,6 +3884,16 @@
           ]
         },
         {
+          "canonical_name": "Cloud Born",
+          "aliases": [
+            "Cloud Born",
+            "Paris Corner Cloud Born"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Coconut Lagoon",
           "aliases": [
             "Coconut Lagoon",
@@ -3763,6 +3906,26 @@
             "Confidential",
             "Paris Corner Confidential",
             "Confidential 100ML"
+          ]
+        },
+        {
+          "canonical_name": "Corazon Bourbon",
+          "aliases": [
+            "Corazon Bourbon",
+            "Paris Corner Corazon Bourbon"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Corazon Le Parfum",
+          "aliases": [
+            "Corazon Le Parfum",
+            "Paris Corner Corazon Le Parfum"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -3840,6 +4003,20 @@
           "aliases": [
             "December Vanilla",
             "Paris Corner December Vanilla"
+          ]
+        },
+        {
+          "canonical_name": "Deux II Expressions",
+          "aliases": [
+            "Deux II Expressions",
+            "Paris Corner Deux II Expressions"
+          ]
+        },
+        {
+          "canonical_name": "Deux II Expressions North Stag",
+          "aliases": [
+            "Deux II Expressions North Stag",
+            "Paris Corner Deux II Expressions North Stag"
           ]
         },
         {
@@ -3950,10 +4127,75 @@
           ]
         },
         {
+          "canonical_name": "Factory Edition Camp Fire",
+          "aliases": [
+            "Factory Edition Camp Fire",
+            "Paris Corner Factory Edition Camp Fire",
+            "Factory Edition: Camp Fire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Factory Edition Just Bergamot",
+          "aliases": [
+            "Factory Edition Just Bergamot",
+            "Paris Corner Factory Edition Just Bergamot",
+            "Factory Edition: Just Bergamot"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Factory Edition Rich Santal",
+          "aliases": [
+            "Factory Edition Rich Santal",
+            "Paris Corner Factory Edition Rich Santal",
+            "Factory Edition: Rich Santal"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Factory Edition Ultra Citrus",
+          "aliases": [
+            "Factory Edition Ultra Citrus",
+            "Paris Corner Factory Edition Ultra Citrus",
+            "Factory Edition: Ultra Citrus"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Factory Edition Warm Leather",
+          "aliases": [
+            "Factory Edition Warm Leather",
+            "Paris Corner Factory Edition Warm Leather",
+            "Factory Edition: Warm Leather"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Farah",
           "aliases": [
             "Farah",
             "Paris Corner Farah"
+          ]
+        },
+        {
+          "canonical_name": "Fascination",
+          "aliases": [
+            "Fascination",
+            "Paris Corner Fascination"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -3992,10 +4234,30 @@
           ]
         },
         {
+          "canonical_name": "Fire Your Desire",
+          "aliases": [
+            "Fire Your Desire",
+            "Paris Corner Fire Your Desire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Fire Your Desire Emir",
           "aliases": [
             "Fire Your Desire Emir",
             "Paris Corner Fire Your Desire Emir"
+          ]
+        },
+        {
+          "canonical_name": "Forbidden Sugar",
+          "aliases": [
+            "Forbidden Sugar",
+            "Paris Corner Forbidden Sugar"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4041,10 +4303,24 @@
           ]
         },
         {
+          "canonical_name": "Glorify",
+          "aliases": [
+            "Glorify",
+            "Paris Corner Glorify"
+          ]
+        },
+        {
           "canonical_name": "Green Bet",
           "aliases": [
             "Green Bet",
             "Paris Corner Green Bet"
+          ]
+        },
+        {
+          "canonical_name": "Harrier Absolute",
+          "aliases": [
+            "Harrier Absolute",
+            "Paris Corner Harrier Absolute"
           ]
         },
         {
@@ -4081,6 +4357,16 @@
           "aliases": [
             "Hurriya",
             "Paris Corner Hurriya"
+          ]
+        },
+        {
+          "canonical_name": "Hurriya Gingerique",
+          "aliases": [
+            "Hurriya Gingerique",
+            "Paris Corner Hurriya Gingerique"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4147,6 +4433,13 @@
           ]
         },
         {
+          "canonical_name": "Jardin des Papillons",
+          "aliases": [
+            "Jardin des Papillons",
+            "Paris Corner Jardin des Papillons"
+          ]
+        },
+        {
           "canonical_name": "Jardin Des Papillons",
           "aliases": [
             "Jardin Des Papillons",
@@ -4167,6 +4460,13 @@
           "aliases": [
             "Just Bergamot Emir Factory Edition",
             "Paris Corner Just Bergamot Emir Factory Edition"
+          ]
+        },
+        {
+          "canonical_name": "Kaheela Lux",
+          "aliases": [
+            "Kaheela Lux",
+            "Paris Corner Kaheela Lux"
           ]
         },
         {
@@ -4262,12 +4562,26 @@
           ]
         },
         {
+          "canonical_name": "Lueur d'Espoir Arena Intense",
+          "aliases": [
+            "Lueur d'Espoir Arena Intense",
+            "Paris Corner Lueur d'Espoir Arena Intense"
+          ]
+        },
+        {
           "canonical_name": "Lueur D'Espoir Arena Intense",
           "aliases": [
             "Lueur D'Espoir Arena Intense",
             "Paris Corner Lueur D'Espoir Arena Intense",
             "Lueur d'Espoir Arena Intense",
             "Paris Corner Lueur d'Espoir Arena Intense"
+          ]
+        },
+        {
+          "canonical_name": "Lueur d'Espoir Memories of Summer",
+          "aliases": [
+            "Lueur d'Espoir Memories of Summer",
+            "Paris Corner Lueur d'Espoir Memories of Summer"
           ]
         },
         {
@@ -4287,12 +4601,26 @@
           ]
         },
         {
+          "canonical_name": "Lueur d'Espoir Serene Grove",
+          "aliases": [
+            "Lueur d'Espoir Serene Grove",
+            "Paris Corner Lueur d'Espoir Serene Grove"
+          ]
+        },
+        {
           "canonical_name": "Lueur D'Espoir Serene Grove",
           "aliases": [
             "Lueur D'Espoir Serene Grove",
             "Paris Corner Lueur D'Espoir Serene Grove",
             "Lueur d'Espoir Serene Grove",
             "Paris Corner Lueur d'Espoir Serene Grove"
+          ]
+        },
+        {
+          "canonical_name": "Lueur d'Espoir Silhouette",
+          "aliases": [
+            "Lueur d'Espoir Silhouette",
+            "Paris Corner Lueur d'Espoir Silhouette"
           ]
         },
         {
@@ -4319,10 +4647,40 @@
           ]
         },
         {
+          "canonical_name": "Magic Oud in Dark Roses",
+          "aliases": [
+            "Magic Oud in Dark Roses",
+            "Paris Corner Magic Oud in Dark Roses"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Magic Oud in Kalimath",
+          "aliases": [
+            "Magic Oud in Kalimath",
+            "Paris Corner Magic Oud in Kalimath"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Magic Oud In Pure Zaffron",
           "aliases": [
             "Magic Oud In Pure Zaffron",
             "Paris Corner Magic Oud In Pure Zaffron"
+          ]
+        },
+        {
+          "canonical_name": "Magic Oud in Sandal Wood",
+          "aliases": [
+            "Magic Oud in Sandal Wood",
+            "Paris Corner Magic Oud in Sandal Wood"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4337,6 +4695,13 @@
           "aliases": [
             "Magic Oud Kashmir Musk",
             "Paris Corner Magic Oud Kashmir Musk"
+          ]
+        },
+        {
+          "canonical_name": "Magic Oud Sandal Wood",
+          "aliases": [
+            "Magic Oud Sandal Wood",
+            "Paris Corner Magic Oud Sandal Wood"
           ]
         },
         {
@@ -4414,6 +4779,13 @@
           "aliases": [
             "Midnight Sin By Daniel Rene",
             "Paris Corner Midnight Sin By Daniel Rene",
+            "Midnight Sin by Daniel René",
+            "Paris Corner Midnight Sin by Daniel René"
+          ]
+        },
+        {
+          "canonical_name": "Midnight Sin by Daniel René",
+          "aliases": [
             "Midnight Sin by Daniel René",
             "Paris Corner Midnight Sin by Daniel René"
           ]
@@ -4596,6 +4968,13 @@
           ]
         },
         {
+          "canonical_name": "Nawal",
+          "aliases": [
+            "Nawal",
+            "Paris Corner Nawal"
+          ]
+        },
+        {
           "canonical_name": "Nectarine Haze",
           "aliases": [
             "Nectarine Haze",
@@ -4607,6 +4986,13 @@
           "aliases": [
             "Neon Star",
             "Paris Corner Neon Star"
+          ]
+        },
+        {
+          "canonical_name": "Noir d'Arabie",
+          "aliases": [
+            "Noir d'Arabie",
+            "Paris Corner Noir d'Arabie"
           ]
         },
         {
@@ -4749,6 +5135,13 @@
           ]
         },
         {
+          "canonical_name": "Papillon des Vents",
+          "aliases": [
+            "Papillon des Vents",
+            "Paris Corner Papillon des Vents"
+          ]
+        },
+        {
           "canonical_name": "Papillon Des Vents",
           "aliases": [
             "Papillon Des Vents",
@@ -4857,6 +5250,13 @@
           ]
         },
         {
+          "canonical_name": "Qissa Blue",
+          "aliases": [
+            "Qissa Blue",
+            "Paris Corner Qissa Blue"
+          ]
+        },
+        {
           "canonical_name": "Qissa Delicious",
           "aliases": [
             "Qissa Delicious",
@@ -4875,6 +5275,13 @@
           "aliases": [
             "Qissa Pink",
             "Paris Corner Qissa Pink"
+          ]
+        },
+        {
+          "canonical_name": "Quatre IV Expressions North Stag",
+          "aliases": [
+            "Quatre IV Expressions North Stag",
+            "Paris Corner Quatre IV Expressions North Stag"
           ]
         },
         {
@@ -4962,6 +5369,13 @@
           ]
         },
         {
+          "canonical_name": "RUA",
+          "aliases": [
+            "RUA",
+            "Paris Corner RUA"
+          ]
+        },
+        {
           "canonical_name": "Rua Radiant Roses",
           "aliases": [
             "Rua Radiant Roses",
@@ -5008,6 +5422,13 @@
           "aliases": [
             "Taskeen Lactea Divina",
             "Paris Corner Taskeen Lactea Divina",
+            "Taskeen Lactéa Divina",
+            "Paris Corner Taskeen Lactéa Divina"
+          ]
+        },
+        {
+          "canonical_name": "Taskeen Lactéa Divina",
+          "aliases": [
             "Taskeen Lactéa Divina",
             "Paris Corner Taskeen Lactéa Divina"
           ]
@@ -5106,6 +5527,13 @@
           ]
         },
         {
+          "canonical_name": "Trois III Expressions North Stag",
+          "aliases": [
+            "Trois III Expressions North Stag",
+            "Paris Corner Trois III Expressions North Stag"
+          ]
+        },
+        {
           "canonical_name": "Trois III Expressions, North Stag",
           "aliases": [
             "Trois III Expressions, North Stag",
@@ -5126,6 +5554,13 @@
           "aliases": [
             "Ultra Citrus Emir Factory Edition",
             "Paris Corner Ultra Citrus Emir Factory Edition"
+          ]
+        },
+        {
+          "canonical_name": "Un I Expressions North Stag",
+          "aliases": [
+            "Un I Expressions North Stag",
+            "Paris Corner Un I Expressions North Stag"
           ]
         },
         {
@@ -5382,160 +5817,6 @@
           "aliases": [
             "Zodiac Stratos",
             "Paris Corner Zodiac Stratos"
-          ]
-        },
-        {
-          "canonical_name": "Harrier Absolute",
-          "aliases": [
-            "Harrier Absolute",
-            "Paris Corner Harrier Absolute"
-          ]
-        },
-        {
-          "canonical_name": "Magic Oud Sandal Wood",
-          "aliases": [
-            "Magic Oud Sandal Wood",
-            "Paris Corner Magic Oud Sandal Wood"
-          ]
-        },
-        {
-          "canonical_name": "Brooch",
-          "aliases": [
-            "Brooch",
-            "Paris Corner Brooch"
-          ]
-        },
-        {
-          "canonical_name": "Deux II Expressions",
-          "aliases": [
-            "Deux II Expressions",
-            "Paris Corner Deux II Expressions"
-          ]
-        },
-        {
-          "canonical_name": "Glorify",
-          "aliases": [
-            "Glorify",
-            "Paris Corner Glorify"
-          ]
-        },
-        {
-          "canonical_name": "Kaheela Lux",
-          "aliases": [
-            "Kaheela Lux",
-            "Paris Corner Kaheela Lux"
-          ]
-        },
-        {
-          "canonical_name": "Nawal",
-          "aliases": [
-            "Nawal",
-            "Paris Corner Nawal"
-          ]
-        },
-        {
-          "canonical_name": "Qissa Blue",
-          "aliases": [
-            "Qissa Blue",
-            "Paris Corner Qissa Blue"
-          ]
-        },
-        {
-          "canonical_name": "Jardin des Papillons",
-          "aliases": [
-            "Jardin des Papillons",
-            "Paris Corner Jardin des Papillons"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Arena Intense",
-          "aliases": [
-            "Lueur d'Espoir Arena Intense",
-            "Paris Corner Lueur d'Espoir Arena Intense"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Memories of Summer",
-          "aliases": [
-            "Lueur d'Espoir Memories of Summer",
-            "Paris Corner Lueur d'Espoir Memories of Summer"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Serene Grove",
-          "aliases": [
-            "Lueur d'Espoir Serene Grove",
-            "Paris Corner Lueur d'Espoir Serene Grove"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Silhouette",
-          "aliases": [
-            "Lueur d'Espoir Silhouette",
-            "Paris Corner Lueur d'Espoir Silhouette"
-          ]
-        },
-        {
-          "canonical_name": "Noir d'Arabie",
-          "aliases": [
-            "Noir d'Arabie",
-            "Paris Corner Noir d'Arabie"
-          ]
-        },
-        {
-          "canonical_name": "RUA",
-          "aliases": [
-            "RUA",
-            "Paris Corner RUA"
-          ]
-        },
-        {
-          "canonical_name": "Taskeen Lactéa Divina",
-          "aliases": [
-            "Taskeen Lactéa Divina",
-            "Paris Corner Taskeen Lactéa Divina"
-          ]
-        },
-        {
-          "canonical_name": "Deux II Expressions North Stag",
-          "aliases": [
-            "Deux II Expressions North Stag",
-            "Paris Corner Deux II Expressions North Stag"
-          ]
-        },
-        {
-          "canonical_name": "Midnight Sin by Daniel René",
-          "aliases": [
-            "Midnight Sin by Daniel René",
-            "Paris Corner Midnight Sin by Daniel René"
-          ]
-        },
-        {
-          "canonical_name": "Papillon des Vents",
-          "aliases": [
-            "Papillon des Vents",
-            "Paris Corner Papillon des Vents"
-          ]
-        },
-        {
-          "canonical_name": "Quatre IV Expressions North Stag",
-          "aliases": [
-            "Quatre IV Expressions North Stag",
-            "Paris Corner Quatre IV Expressions North Stag"
-          ]
-        },
-        {
-          "canonical_name": "Trois III Expressions North Stag",
-          "aliases": [
-            "Trois III Expressions North Stag",
-            "Paris Corner Trois III Expressions North Stag"
-          ]
-        },
-        {
-          "canonical_name": "Un I Expressions North Stag",
-          "aliases": [
-            "Un I Expressions North Stag",
-            "Paris Corner Un I Expressions North Stag"
           ]
         }
       ]
