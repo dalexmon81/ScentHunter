@@ -29,11 +29,11 @@ Fifteen existing identities were upgraded from collection-level evidence to indi
 - Reflection
 - Reflection Elixir
 
-For each identity, `source_url` and `source_evidence_url` now point to its individual official product page and `identity_status` is `source_verified_name`. Existing variants for those identities now carry the same detail-page URL as variant-level evidence. Existing variant sizes and concentrations were retained, not inferred or expanded.
+For each identity, `source_url` and `source_evidence_url` now point to its individual official product page and `identity_status` is `source_verified_name`. Twenty-three existing 50 ml and 100 ml variants now carry the matching individual detail-page URL as variant-level evidence. The one 15 ml Royal Ispahan travel-size variant retains the configurable Travel Size page as its evidence. Existing variant sizes and concentrations were retained, not inferred or expanded.
 
 ## Important source distinction
 
-The official 15 ml Travel Size page is one configurable product with a list of fragrance options. It explicitly names the 15 ml choices and has a selector for additional options. The catalog's 15 ml variant evidence should therefore be interpreted as a configurable travel-size offer, not as proof of a separate 15 ml product-detail page for each scent. No new 15 ml sizes were added in this change.
+The official 15 ml Travel Size page is one configurable product with a list of fragrance options. It explicitly names the 15 ml choices and has a selector for additional options. The catalog's 15 ml variant evidence should therefore be interpreted as a configurable travel-size offer, not as proof of a separate 15 ml product-detail page for each scent. The Royal Ispahan 15 ml row retains this travel-size URL rather than inheriting its 50/100 ml detail page. No new 15 ml sizes were added in this change.
 
 ## No speculative expansion
 
@@ -41,4 +41,4 @@ No extra identities were added from the EU retailer's 90-item catalogue or from 
 
 ## Validation
 
-The new regression test checks all 15 upgraded identity URLs, their `source_verified_name` status, and variant-level evidence URLs. It does not claim that the 72-identity Mykonos set is historically complete.
+The new regression test checks all 15 upgraded identity URLs, their `source_verified_name` status, and variant-level evidence URLs, including the distinct travel-size source. It does not claim that the 72-identity Mykonos set is historically complete.
