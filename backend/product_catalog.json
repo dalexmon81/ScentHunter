@@ -727,7 +727,10 @@
       "source_url": "https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex",
       "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-treasure-eau-de-parfum-100-ml-unisex",
       "collection_name": "Royal Collection",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-066e4606",
@@ -797,7 +800,10 @@
       "source_url": "https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex",
       "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-heritage-eau-de-parfum-100-ml-unisex",
       "collection_name": "Royal Collection",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-16266aa9",
@@ -36468,6 +36474,26 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-7eef4331",
+      "size_ml": 100,
+      "aliases": [
+        "Treasure 100 ml",
+        "Maison Asrar Treasure 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-7eef4331-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-100281b5",
+      "size_ml": 100,
+      "aliases": [
+        "Heritage 100 ml",
+        "Maison Asrar Heritage 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-100281b5-100-EDP",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
