@@ -129,6 +129,55 @@ def test_seed_apply_imports_identity_without_creating_variant_or_offer(tmp_path)
         ).fetchone()[0] == "fine_fragrance"
 
 
+def test_seed_enriches_null_product_form_without_erasing_or_conflicting_existing_value(tmp_path):
+    catalog = sample_catalog()
+    catalog["variants"][0].pop("product_form", None)
+    catalog_path = tmp_path / "form-enrichment.json"
+    database_path = tmp_path / "form-enrichment.sqlite3"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    database_url = f"sqlite:///{database_path}"
+    env = os.environ.copy()
+    env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+    env.pop("SCENTHUNTER_DATABASE_URL", None)
+    migration = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=BACKEND, env=env, capture_output=True, text=True, check=False,
+    )
+    assert migration.returncode == 0, migration.stderr
+    first = run_seed(catalog_path, database_url, "--apply")
+    assert first.returncode == 0, first.stderr
+
+    catalog["variants"][0]["product_form"] = "fine_fragrance"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    enriched = run_seed(catalog_path, database_url, "--apply")
+    assert enriched.returncode == 0, enriched.stderr
+
+    with sqlite3.connect(database_path) as connection:
+        form, canonical_key = connection.execute(
+            "SELECT product_form, canonical_key FROM product_variants"
+        ).fetchone()
+    assert form == "fine_fragrance"
+    assert "fine_fragrance" in canonical_key
+
+    catalog["variants"][0].pop("product_form")
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    rerun = run_seed(catalog_path, database_url, "--apply")
+    assert rerun.returncode == 0, rerun.stderr
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT product_form FROM product_variants"
+        ).fetchone()[0] == "fine_fragrance"
+
+    catalog["variants"][0]["product_form"] = "deodorant"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    conflict = run_seed(catalog_path, database_url, "--apply")
+    assert conflict.returncode != 0
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT product_form FROM product_variants"
+        ).fetchone()[0] == "fine_fragrance"
+
+
 def test_seed_blocks_unknown_product_form_without_writing_database(tmp_path):
     catalog = sample_catalog()
     catalog["variants"][0]["product_form"] = "deodorizer"
