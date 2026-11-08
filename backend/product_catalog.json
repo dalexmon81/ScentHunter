@@ -33897,6 +33897,120 @@
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/lattafa-pride-stop-wait-go/",
       "source_evidence_url": "https://lattafa.com/product/lattafa-pride-stop-wait-go/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-033",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Majd Al Sultan Black Intense",
+      "name": "Majd Al Sultan Black Intense",
+      "family_id": "lattafa_catalog",
+      "family_name": "Majd Al Sultan Black Intense",
+      "aliases": [
+        "Majd Al Sultan Black Intense",
+        "Lattafa Majd Al Sultan Black Intense"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/majd-al-sultan-black-intense/",
+      "source_evidence_url": "https://lattafa.com/product/majd-al-sultan-black-intense/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-034",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ramaad Al Oud",
+      "name": "Ramaad Al Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ramaad Al Oud",
+      "aliases": [
+        "Ramaad Al Oud",
+        "Lattafa Ramaad Al Oud"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ramaad-al-oud/",
+      "source_evidence_url": "https://lattafa.com/product/ramaad-al-oud/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-035",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Farfasha",
+      "name": "Farfasha",
+      "family_id": "lattafa_catalog",
+      "family_name": "Farfasha",
+      "aliases": [
+        "Farfasha",
+        "Lattafa Farfasha"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/farfasha/",
+      "source_evidence_url": "https://lattafa.com/product/farfasha/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-036",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Dream Of Haze",
+      "name": "Dream Of Haze",
+      "family_id": "lattafa_catalog",
+      "family_name": "Dream Of Haze",
+      "aliases": [
+        "Dream Of Haze",
+        "Lattafa Dream Of Haze"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/dream-of-haze/",
+      "source_evidence_url": "https://lattafa.com/product/dream-of-haze/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-037",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Canyon",
+      "name": "Atlas Canyon",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Canyon",
+      "aliases": [
+        "Atlas Canyon",
+        "Lattafa Atlas Canyon"
+      ],
+      "formats_ml": [
+        55
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-canyon/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-canyon/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-038",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Glacial Valley",
+      "name": "Atlas Glacial Valley",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Glacial Valley",
+      "aliases": [
+        "Atlas Glacial Valley",
+        "Lattafa Atlas Glacial Valley"
+      ],
+      "formats_ml": [
+        55
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-glacial-valley/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/"
     }
   ],
   "variants": [
@@ -36920,6 +37034,60 @@
         "Lattafa Lattafa Pride – Stop Wait Go 100 ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-032-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-033",
+      "size_ml": 100,
+      "aliases": [
+        "Majd Al Sultan Black Intense 100 ml",
+        "Lattafa Majd Al Sultan Black Intense 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-033-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-034",
+      "size_ml": 100,
+      "aliases": [
+        "Ramaad Al Oud 100 ml",
+        "Lattafa Ramaad Al Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-034-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-035",
+      "size_ml": 100,
+      "aliases": [
+        "Farfasha 100 ml",
+        "Lattafa Farfasha 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-035-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-036",
+      "size_ml": 100,
+      "aliases": [
+        "Dream Of Haze 100 ml",
+        "Lattafa Dream Of Haze 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-036-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-037",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Canyon 55 ml",
+        "Lattafa Atlas Canyon 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-037-55-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-038",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Glacial Valley 55 ml",
+        "Lattafa Atlas Glacial Valley 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-038-55-000"
     }
   ]
 }
