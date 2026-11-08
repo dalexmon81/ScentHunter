@@ -35440,6 +35440,201 @@
         100
       ],
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANA-ABIYEDH-ROUGE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ana Abiyedh Rouge",
+      "name": "Ana Abiyedh Rouge",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ana Abiyedh Rouge",
+      "aliases": [
+        "Ana Abiyedh Rouge",
+        "Lattafa Ana Abiyedh Rouge"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ana-abiyedh-rouge/",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/ana-abiyedh-rouge-set",
+      "source_product_url": "https://lattafa.com/product/ana-abiyedh-rouge/",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAVE-NOW-WHITE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Rave Now White",
+      "name": "Rave Now White",
+      "family_id": "lattafa_catalog",
+      "family_name": "Rave Now White",
+      "aliases": [
+        "Rave Now White",
+        "Lattafa Rave Now White"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/rave-now-white/",
+      "source_evidence_url": "https://lattafa.com/product/rave-now-white/",
+      "source_product_url": "https://lattafa.com/product/rave-now-white/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-24-CARAT-WHITE-GOLD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "24 Carat White Gold",
+      "name": "24 Carat White Gold",
+      "family_id": "lattafa_catalog",
+      "family_name": "24 Carat White Gold",
+      "aliases": [
+        "24 Carat White Gold",
+        "Lattafa 24 Carat White Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/24-carat-white-gold/",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/24-carat-white-gold",
+      "source_product_url": "https://lattafa.com/product/24-carat-white-gold/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-AJAYEB-DUBAI-PORTRAIT",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ajayeb Dubai Portrait",
+      "name": "Ajayeb Dubai Portrait",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ajayeb Dubai Portrait",
+      "aliases": [
+        "Ajayeb Dubai Portrait",
+        "Lattafa Ajayeb Dubai Portrait",
+        "Ajayab Dubai Portrait"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ajayeb-dubai-portrait/",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/ajayab-dubai",
+      "source_product_url": "https://lattafa.com/product/ajayeb-dubai-portrait/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-DUR-AL-MAKNOON-SILVER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Dur Al Maknoon Silver",
+      "name": "Al Dur Al Maknoon Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Dur Al Maknoon Silver",
+      "aliases": [
+        "Al Dur Al Maknoon Silver",
+        "Lattafa Al Dur Al Maknoon Silver"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-dur-al-maknoon-silver/",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/al-dur-al-maknoon-silver",
+      "source_product_url": "https://lattafa.com/product/al-dur-al-maknoon-silver/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NASHAMA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Nashama",
+      "name": "Al Nashama",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Nashama",
+      "aliases": [
+        "Al Nashama",
+        "Lattafa Al Nashama"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/al-nashama",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/al-nashama",
+      "source_product_url": "https://www.lattafa-usa.com/products/al-nashama",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-AMEER-AL-OUD-INTENSE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ameer Al Oud Intense",
+      "name": "Ameer Al Oud Intense",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ameer Al Oud Intense",
+      "aliases": [
+        "Ameer Al Oud Intense",
+        "Lattafa Ameer Al Oud Intense",
+        "Ameer Al Oudh Intense",
+        "Ameer Al Oudh – Intense"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ameer-al-oudh-intense/",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/ameer-al-oud-intense",
+      "source_product_url": "https://lattafa.com/product/ameer-al-oudh-intense/",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANA-ABIYEDH-CORAL",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ana Abiyedh Coral",
+      "name": "Ana Abiyedh Coral",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ana Abiyedh Coral",
+      "aliases": [
+        "Ana Abiyedh Coral",
+        "Lattafa Ana Abiyedh Coral"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ana-abiyedh-coral/",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/ana-abiyedh-coral",
+      "source_product_url": "https://lattafa.com/product/ana-abiyedh-coral/",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-GMG-WHIPPED-PLEASURE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "GMG Whipped Pleasure",
+      "name": "GMG Whipped Pleasure",
+      "family_id": "lattafa_catalog",
+      "family_name": "GMG Whipped Pleasure",
+      "aliases": [
+        "GMG Whipped Pleasure",
+        "Lattafa GMG Whipped Pleasure",
+        "Whipped Pleasure",
+        "Give Me Gourmand Whipped Pleasure"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/whipped-pleasure/",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/whipped-pleasure",
+      "source_product_url": "https://lattafa.com/product/whipped-pleasure/",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "collection_name": "Give Me Gourmand"
     }
   ],
   "variants": [
@@ -39381,6 +39576,105 @@
         "Arabiyat Prestige Al Shujae 100 ml"
       ],
       "source_url": "https://arabiyatprestige.com/products/al-shujae-edp-100-ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANA-ABIYEDH-ROUGE",
+      "variant_id": "SHV-SH-LATTAFA-ANA-ABIYEDH-ROUGE-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ana Abiyedh Rouge 60 ml",
+        "Lattafa Ana Abiyedh Rouge 60 ml"
+      ],
+      "source_url": "https://lattafa.com/product/ana-abiyedh-rouge/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAVE-NOW-WHITE",
+      "variant_id": "SHV-SH-LATTAFA-RAVE-NOW-WHITE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rave Now White 100 ml",
+        "Lattafa Rave Now White 100 ml"
+      ],
+      "source_url": "https://lattafa.com/product/rave-now-white/"
+    },
+    {
+      "product_id": "SH-LATTAFA-24-CARAT-WHITE-GOLD",
+      "variant_id": "SHV-SH-LATTAFA-24-CARAT-WHITE-GOLD-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "24 Carat White Gold 100 ml",
+        "Lattafa 24 Carat White Gold 100 ml"
+      ],
+      "source_url": "https://lattafa.com/product/24-carat-white-gold/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AJAYEB-DUBAI-PORTRAIT",
+      "variant_id": "SHV-SH-LATTAFA-AJAYEB-DUBAI-PORTRAIT-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ajayeb Dubai Portrait 100 ml",
+        "Lattafa Ajayeb Dubai Portrait 100 ml"
+      ],
+      "source_url": "https://lattafa.com/product/ajayeb-dubai-portrait/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-DUR-AL-MAKNOON-SILVER",
+      "variant_id": "SHV-SH-LATTAFA-AL-DUR-AL-MAKNOON-SILVER-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Al Dur Al Maknoon Silver 100 ml",
+        "Lattafa Al Dur Al Maknoon Silver 100 ml"
+      ],
+      "source_url": "https://lattafa.com/product/al-dur-al-maknoon-silver/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NASHAMA",
+      "variant_id": "SHV-SH-LATTAFA-AL-NASHAMA-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Al Nashama 100 ml",
+        "Lattafa Al Nashama 100 ml"
+      ],
+      "source_url": "https://www.lattafa-usa.com/products/al-nashama"
+    },
+    {
+      "product_id": "SH-LATTAFA-AMEER-AL-OUD-INTENSE",
+      "variant_id": "SHV-SH-LATTAFA-AMEER-AL-OUD-INTENSE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ameer Al Oud Intense 100 ml",
+        "Lattafa Ameer Al Oud Intense 100 ml"
+      ],
+      "source_url": "https://lattafa.com/product/ameer-al-oudh-intense/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANA-ABIYEDH-CORAL",
+      "variant_id": "SHV-SH-LATTAFA-ANA-ABIYEDH-CORAL-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ana Abiyedh Coral 60 ml",
+        "Lattafa Ana Abiyedh Coral 60 ml"
+      ],
+      "source_url": "https://lattafa.com/product/ana-abiyedh-coral/"
+    },
+    {
+      "product_id": "SH-LATTAFA-GMG-WHIPPED-PLEASURE",
+      "variant_id": "SHV-SH-LATTAFA-GMG-WHIPPED-PLEASURE-75-EDP",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "GMG Whipped Pleasure 75 ml",
+        "Lattafa GMG Whipped Pleasure 75 ml"
+      ],
+      "source_url": "https://lattafa.com/product/whipped-pleasure/"
     }
   ]
 }
