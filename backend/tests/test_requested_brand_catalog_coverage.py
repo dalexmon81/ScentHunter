@@ -22,7 +22,7 @@ MINIMUM_BRAND_COUNTS = {
     "Armaf": 190,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 23,
+    "Gulf Orchid": 26,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 114,
@@ -463,6 +463,76 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_gulf_orchid_cloud_9_official_detail_page_and_100ml_edp_variant_are_verified(self):
+        row = next(
+            (
+                product
+                for product in CATALOG.get("products", [])
+                if str(product.get("brand_name") or product.get("brand") or "").strip() == "Gulf Orchid"
+                and str(product.get("canonical_name") or product.get("name") or "").strip() == "Cloud 9"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://shop-gulforchid.com/products/cloud-9")
+        self.assertEqual(row.get("concentration"), "Eau de Parfum")
+        self.assertIn(100, row.get("formats_ml", []))
+        matching = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+            and variant.get("size_ml") == 100
+            and variant.get("concentration") == "Eau de Parfum"
+        ]
+        self.assertEqual(len(matching), 1)
+
+    def test_vanilla_aura_and_vanilla_voyage_are_not_misattributed_to_gulf_orchid(self):
+        gulf_names = {
+            str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Gulf Orchid"
+        }
+        asrar_names = {
+            str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Maison Asrar"
+        }
+        for name in ("vanilla aura", "vanilla voyage"):
+            with self.subTest(name=name):
+                self.assertNotIn(name, gulf_names)
+                self.assertIn(name, asrar_names)
+
+
+    def test_four_more_gulf_orchid_official_pages_and_100ml_edp_variants_are_verified(self):
+        expected = {
+            "Candy Bite": "https://shop-gulforchid.com/products/candy-bite",
+            "Matcha Latte": "https://shop-gulforchid.com/products/matcha-latte",
+            "Maestro": "https://shop-gulforchid.com/products/maestro",
+            "Rice Milk": "https://shop-gulforchid.com/products/rice-milk",
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Gulf Orchid"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertIn(100, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                    and variant.get("concentration") == "Eau de Parfum"
+                ]
+                self.assertEqual(len(matching), 1)
 
 if __name__ == "__main__":
     unittest.main()

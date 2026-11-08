@@ -4434,21 +4434,6 @@
       "source_url": "https://arabiyatprestige.com/collections/all"
     },
     {
-      "product_id": "SH-GULF-ORCHID-2e9b4429",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
-      "canonical_name": "Vanilla Aura",
-      "name": "Vanilla Aura",
-      "family_id": "gulf_orchid_catalog",
-      "family_name": "Vanilla Aura",
-      "aliases": [
-        "Vanilla Aura",
-        "Gulf Orchid Vanilla Aura"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/products/vanilla-aura"
-    },
-    {
       "product_id": "SH-AFNAN-dd53546f",
       "brand": "Afnan",
       "brand_name": "Afnan",
@@ -12904,22 +12889,6 @@
       "aliases": [
         "Turath",
         "Gulf Orchid Turath"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
-    },
-    {
-      "product_id": "SH-GULF-ORCHID-0aca84c2",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
-      "canonical_name": "Vanilla Voyage",
-      "name": "Vanilla Voyage",
-      "family_id": "gulf_orchid_catalog",
-      "family_name": "Vanilla Voyage",
-      "aliases": [
-        "Vanilla Voyage",
-        "Gulf Orchid Vanilla Voyage"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://shop-gulforchid.com/collections",
@@ -33716,6 +33685,106 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cloud 9",
+      "name": "Cloud 9",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Cloud 9",
+      "aliases": [
+        "Cloud 9",
+        "Gulf Orchid Cloud 9"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/cloud-9",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CANDY-BITE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Candy Bite",
+      "name": "Candy Bite",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Candy Bite",
+      "aliases": [
+        "Candy Bite",
+        "Gulf Orchid Candy Bite"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/candy-bite",
+      "source_evidence_url": "https://shop-gulforchid.com/products/candy-bite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MATCHA-LATTE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Matcha Latte",
+      "name": "Matcha Latte",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Matcha Latte",
+      "aliases": [
+        "Matcha Latte",
+        "Gulf Orchid Matcha Latte"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/matcha-latte",
+      "source_evidence_url": "https://shop-gulforchid.com/products/matcha-latte",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MAESTRO",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Maestro",
+      "name": "Maestro",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Maestro",
+      "aliases": [
+        "Maestro",
+        "Gulf Orchid Maestro"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/maestro",
+      "source_evidence_url": "https://shop-gulforchid.com/products/maestro",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-RICE-MILK",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Rice Milk",
+      "name": "Rice Milk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Rice Milk",
+      "aliases": [
+        "Rice Milk",
+        "Gulf Orchid Rice Milk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/rice-milk",
+      "source_evidence_url": "https://shop-gulforchid.com/products/rice-milk",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36468,6 +36537,56 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud 9 100 ml",
+        "Gulf Orchid Cloud 9 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-CLOUD-9-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CANDY-BITE",
+      "size_ml": 100,
+      "aliases": [
+        "Candy Bite 100 ml",
+        "Gulf Orchid Candy Bite 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-CANDY-BITE-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MATCHA-LATTE",
+      "size_ml": 100,
+      "aliases": [
+        "Matcha Latte 100 ml",
+        "Gulf Orchid Matcha Latte 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-MATCHA-LATTE-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MAESTRO",
+      "size_ml": 100,
+      "aliases": [
+        "Maestro 100 ml",
+        "Gulf Orchid Maestro 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-MAESTRO-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-RICE-MILK",
+      "size_ml": 100,
+      "aliases": [
+        "Rice Milk 100 ml",
+        "Gulf Orchid Rice Milk 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-RICE-MILK-100-000",
+      "concentration": "Eau de Parfum"
     }
   ]
 }

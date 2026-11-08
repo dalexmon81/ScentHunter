@@ -10318,20 +10318,6 @@
           ]
         },
         {
-          "canonical_name": "Vanilla Aura",
-          "aliases": [
-            "Vanilla Aura",
-            "Gulf Orchid Vanilla Aura"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Voyage",
-          "aliases": [
-            "Vanilla Voyage",
-            "Gulf Orchid Vanilla Voyage"
-          ]
-        },
-        {
           "canonical_name": "Vanilla Addiction",
           "aliases": [
             "Vanilla Addiction",
@@ -10420,6 +10406,41 @@
           "aliases": [
             "Piña Colada Musk",
             "Gulf Orchid Piña Colada Musk"
+          ]
+        },
+        {
+          "canonical_name": "Cloud 9",
+          "aliases": [
+            "Cloud 9",
+            "Gulf Orchid Cloud 9"
+          ]
+        },
+        {
+          "canonical_name": "Candy Bite",
+          "aliases": [
+            "Candy Bite",
+            "Gulf Orchid Candy Bite"
+          ]
+        },
+        {
+          "canonical_name": "Matcha Latte",
+          "aliases": [
+            "Matcha Latte",
+            "Gulf Orchid Matcha Latte"
+          ]
+        },
+        {
+          "canonical_name": "Maestro",
+          "aliases": [
+            "Maestro",
+            "Gulf Orchid Maestro"
+          ]
+        },
+        {
+          "canonical_name": "Rice Milk",
+          "aliases": [
+            "Rice Milk",
+            "Gulf Orchid Rice Milk"
           ]
         }
       ]
