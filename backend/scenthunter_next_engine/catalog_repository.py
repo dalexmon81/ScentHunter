@@ -12,7 +12,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from .models import CanonicalProduct, CanonicalVariant
+from .models import CanonicalProduct, CanonicalVariant, ProductForm
 
 
 class CatalogFormatError(ValueError):
@@ -148,6 +148,13 @@ class CatalogRepository:
             if product_id in seen_product_ids:
                 raise CatalogFormatError(f"Duplicate canonical product ID: {product_id}")
             seen_product_ids.add(product_id)
+            raw_product_form = _text(record.get("product_form")) or ProductForm.UNKNOWN.value
+            try:
+                product_form = ProductForm(raw_product_form)
+            except ValueError as exc:
+                raise CatalogFormatError(
+                    f"Unsupported product_form {raw_product_form!r} for {product_id}"
+                ) from exc
             image_url = _text(record.get("canonical_image"))
             product_aliases = _aliases(record.get("aliases"))
             try:
@@ -159,7 +166,7 @@ class CatalogRepository:
                         variants=tuple(variants_by_product.get(product_id, ())),
                         canonical_image_url=image_url,
                         aliases=product_aliases,
-                        concentration=_text(record.get("concentration")),
+                        concentration=_text(record.get("concentration")),\n                        product_form=product_form,
                     )
                 )
             except ValueError:
