@@ -3304,7 +3304,8 @@
       "family_name": "Private Blend Musk Ice",
       "aliases": [
         "Private Blend Musk Ice",
-        "Khadlaj Private Blend Musk Ice"
+        "Khadlaj Private Blend Musk Ice",
+        "Musk Ice"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/all",
@@ -33716,6 +33717,993 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-BLEU-GLACE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Bleu Glace",
+      "name": "Bleu Glace",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Bleu Glace",
+      "aliases": [
+        "Bleu Glace",
+        "Khadlaj Bleu Glace"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/bleu-glace-100-ml-extrait-de-parfum-for-men-fresh-fragrance-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-CODE-VIOLA-NECTAR",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Code Viola Nectar",
+      "name": "Code Viola Nectar",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Code Viola Nectar",
+      "aliases": [
+        "Code Viola Nectar",
+        "Khadlaj Code Viola Nectar",
+        "La Fede Code Viola Nectar",
+        "Code Viola Necter"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/code-viola-nectar-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-D-LOVE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "D'Love",
+      "name": "D'Love",
+      "family_id": "khadlaj_catalog",
+      "family_name": "D'Love",
+      "aliases": [
+        "D'Love",
+        "Khadlaj D'Love"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fragrantica.com/perfume/Khadlaj-Perfumes/D-Love-129838.html",
+      "source_evidence_url": "https://www.fragrantica.com/perfume/Khadlaj-Perfumes/D-Love-129838.html",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-DESERT-ROSE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Desert Rose",
+      "name": "Desert Rose",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Desert Rose",
+      "aliases": [
+        "Desert Rose",
+        "Khadlaj Desert Rose"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/desert-rose-100-ml-extrait-de-parfum-for-women-fragrance-to-shop-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-GAITH",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Gaith",
+      "name": "Gaith",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Gaith",
+      "aliases": [
+        "Gaith",
+        "Khadlaj Gaith"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/gaith-100-ml-edp-spray-men-perfumes-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-JOHAYNA-GREEN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Johayna Green",
+      "name": "Johayna Green",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Johayna Green",
+      "aliases": [
+        "Johayna Green",
+        "Khadlaj Johayna Green"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/johayna-green-20ml-best-non-alcoholic-perfume-oil-dubai-uae-usa-uk-worldwide",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/johayna-green-20ml-best-non-alcoholic-perfume-oil-dubai-uae-usa-uk-worldwide",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-KAYAAN-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Kayaan Gold",
+      "name": "Kayaan Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Kayaan Gold",
+      "aliases": [
+        "Kayaan Gold",
+        "Khadlaj Kayaan Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/kayaan-gold-20-ml-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/kayaan-gold-20-ml-for-women",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-MAYA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Maya",
+      "name": "Maya",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Maya",
+      "aliases": [
+        "Maya",
+        "Khadlaj Maya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-MOCHA-LATTE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Mocha Latte",
+      "name": "Mocha Latte",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Mocha Latte",
+      "aliases": [
+        "Mocha Latte",
+        "Khadlaj Mocha Latte"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/mocha-latte-100-ml-extrait-de-parfum-spray-for-unisex-coffee-fragrance-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-OPULENCE-BLEU",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Opulence Bleu",
+      "name": "Opulence Bleu",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Opulence Bleu",
+      "aliases": [
+        "Opulence Bleu",
+        "Khadlaj Opulence Bleu"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-PINK-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Pink Musk",
+      "name": "Pink Musk",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Pink Musk",
+      "aliases": [
+        "Pink Musk",
+        "Khadlaj Pink Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/khadlaj-pink-musk-20-ml-perfume-oil-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/khadlaj-pink-musk-20-ml-perfume-oil-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-PURE-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Pure Musk",
+      "name": "Pure Musk",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Pure Musk",
+      "aliases": [
+        "Pure Musk",
+        "Khadlaj Pure Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/pure-musk-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/pure-musk-20-ml-best-concentrated-perfume-scent-for-him-and-her-in-dubai-usa-uk-europe-worldwide",
+      "formats_ml": [
+        20,
+        100
+      ],
+      "product_type": "Perfume Oil and Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-PURPLE-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Purple Musk",
+      "name": "Purple Musk",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Purple Musk",
+      "aliases": [
+        "Purple Musk",
+        "Khadlaj Purple Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/purple-musk-20-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/purple-musk-20-ml",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RASAYEL-SHAGAF",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rasayel Shagaf",
+      "name": "Rasayel Shagaf",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rasayel Shagaf",
+      "aliases": [
+        "Rasayel Shagaf",
+        "Khadlaj Rasayel Shagaf"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/rasayel-shagaf-100-ml-edp-de-parfum-spray-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RASAYEL-VID",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rasayel Vid",
+      "name": "Rasayel Vid",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rasayel Vid",
+      "aliases": [
+        "Rasayel Vid",
+        "Khadlaj Rasayel Vid"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/rasayel-vid-100-ml-extrait-de-parfum-spray-copy",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ROSE-AND-ROMANCE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rose And Romance",
+      "name": "Rose And Romance",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rose And Romance",
+      "aliases": [
+        "Rose And Romance",
+        "Khadlaj Rose And Romance",
+        "Rose & Romance"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-UNO-SENSUALE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Uno Sensuale",
+      "name": "Uno Sensuale",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Uno Sensuale",
+      "aliases": [
+        "Uno Sensuale",
+        "Khadlaj Uno Sensuale",
+        "La Fede Uno Sensuale"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/women-perfume/products/uno-sensuale-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-VANILLA-KISS",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Vanilla Kiss",
+      "name": "Vanilla Kiss",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Vanilla Kiss",
+      "aliases": [
+        "Vanilla Kiss",
+        "Khadlaj Vanilla Kiss"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fragrantica.com/perfume/Khadlaj-Perfumes/Vanilla-Kiss-119157.html",
+      "source_evidence_url": "https://www.fragrantica.com/perfume/Khadlaj-Perfumes/Vanilla-Kiss-119157.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-WOW-OUD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Wow Oud",
+      "name": "Wow Oud",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Wow Oud",
+      "aliases": [
+        "Wow Oud",
+        "Khadlaj Wow Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/oud-range/products/wow-oud-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-BARWAAZ-PURE-NAVY",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Barwaaz Pure Navy",
+      "name": "Barwaaz Pure Navy",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Barwaaz Pure Navy",
+      "aliases": [
+        "Barwaaz Pure Navy",
+        "Khadlaj Barwaaz Pure Navy"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-BISCOTTI-MELON-MISK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Biscotti Melon Misk",
+      "name": "Biscotti Melon Misk",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Biscotti Melon Misk",
+      "aliases": [
+        "Biscotti Melon Misk",
+        "Khadlaj Biscotti Melon Misk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/biscotti-melon-misk-100-ml-extrait-de-parfum-spray-for-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/biscotti-melon-misk-100-ml-extrait-de-parfum-spray-for-women-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-GHADEER-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ghadeer Gold",
+      "name": "Ghadeer Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Ghadeer Gold",
+      "aliases": [
+        "Ghadeer Gold",
+        "Khadlaj Ghadeer Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/ghadeer-gold-100-ml-edp-spray-for-women-best-price-perfume-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-HAREEM-AL-SULTAN-BLUE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Hareem Al Sultan Blue",
+      "name": "Hareem Al Sultan Blue",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Hareem Al Sultan Blue",
+      "aliases": [
+        "Hareem Al Sultan Blue",
+        "Khadlaj Hareem Al Sultan Blue"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/hareem-al-sultan-blue-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/hareem-al-sultan-blue-35ml",
+      "formats_ml": [
+        35
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-HAREEM-AL-SULTAN-SILVER",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Hareem Al Sultan Silver",
+      "name": "Hareem Al Sultan Silver",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Hareem Al Sultan Silver",
+      "aliases": [
+        "Hareem Al Sultan Silver",
+        "Khadlaj Hareem Al Sultan Silver"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/hareem-al-sultan-silver-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/hareem-al-sultan-silver-35ml",
+      "formats_ml": [
+        35
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-NUHA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Nuha",
+      "name": "Nuha",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Nuha",
+      "aliases": [
+        "Nuha",
+        "Khadlaj Nuha"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/nuha-collection-women-fragrances-online-dubai-uae",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-AALIYA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Aaliya",
+      "name": "Aaliya",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Aaliya",
+      "aliases": [
+        "Aaliya",
+        "Khadlaj Aaliya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "formats_ml": [
+        27
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-AL-RIYAN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Al Riyan",
+      "name": "Al Riyan",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Al Riyan",
+      "aliases": [
+        "Al Riyan",
+        "Khadlaj Al Riyan",
+        "Al Riyaan"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/al-riyan-17ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/al-riyan-17ml",
+      "formats_ml": [
+        17
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ALF-WARDAT",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Alf Wardat",
+      "name": "Alf Wardat",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Alf Wardat",
+      "aliases": [
+        "Alf Wardat",
+        "Khadlaj Alf Wardat",
+        "Alf Wardaat"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/alf-wardaat-25ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/alf-wardaat-25ml",
+      "formats_ml": [
+        30
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-AMBER-PURE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Amber Pure",
+      "name": "Amber Pure",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Amber Pure",
+      "aliases": [
+        "Amber Pure",
+        "Khadlaj Amber Pure"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/amber-pure-20-ml-alcohol-free-concentrated-perfume-oils",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/amber-pure-20-ml-alcohol-free-concentrated-perfume-oils",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ANA-WA-ANTA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ana Wa Anta",
+      "name": "Ana Wa Anta",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Ana Wa Anta",
+      "aliases": [
+        "Ana Wa Anta",
+        "Khadlaj Ana Wa Anta"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ANABIA-BLUE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Anabia Blue",
+      "name": "Anabia Blue",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Anabia Blue",
+      "aliases": [
+        "Anabia Blue",
+        "Khadlaj Anabia Blue"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/anabia-blue-20ml-concentrated-perfume-oil-attars-by-khadlaj-atyaab",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/anabia-blue-20ml-concentrated-perfume-oil-attars-by-khadlaj-atyaab",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ANABIA-RED",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Anabia Red",
+      "name": "Anabia Red",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Anabia Red",
+      "aliases": [
+        "Anabia Red",
+        "Khadlaj Anabia Red"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/anabia-red-20-ml-atyaab-concentrated-perfume-oils",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/anabia-red-20-ml-atyaab-concentrated-perfume-oils",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ARABIAN-TREASURE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Arabian Treasure",
+      "name": "Arabian Treasure",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Arabian Treasure",
+      "aliases": [
+        "Arabian Treasure",
+        "Khadlaj Arabian Treasure"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/arabian-treasure-20-ml-contrated-perfume-oil-alcohol-free-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/arabian-treasure-20-ml-contrated-perfume-oil-alcohol-free-dubai-uae",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-AZAARI",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Azaari",
+      "name": "Azaari",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Azaari",
+      "aliases": [
+        "Azaari",
+        "Khadlaj Azaari"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-GHAZLAAN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ghazlaan",
+      "name": "Ghazlaan",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Ghazlaan",
+      "aliases": [
+        "Ghazlaan",
+        "Khadlaj Ghazlaan"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/ghazlaan-20ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/ghazlaan-20ml",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-HANEEN-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Haneen Gold",
+      "name": "Haneen Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Haneen Gold",
+      "aliases": [
+        "Haneen Gold",
+        "Khadlaj Haneen Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/haneen-gold-20-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/haneen-gold-20-ml",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-IBHAAR",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Ibhaar",
+      "name": "Ibhaar",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Ibhaar",
+      "aliases": [
+        "Ibhaar",
+        "Khadlaj Ibhaar"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/ibhaar-18ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/ibhaar-18ml",
+      "formats_ml": [
+        18
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-JAMEEL",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Jameel",
+      "name": "Jameel",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Jameel",
+      "aliases": [
+        "Jameel",
+        "Khadlaj Jameel"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/jameel-25-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/jameel-25-ml",
+      "formats_ml": [
+        25
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-LULU-AL-KHALEEJ",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Lulu Al Khaleej",
+      "name": "Lulu Al Khaleej",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Lulu Al Khaleej",
+      "aliases": [
+        "Lulu Al Khaleej",
+        "Khadlaj Lulu Al Khaleej"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-MALIKA-RED",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Malika Red",
+      "name": "Malika Red",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Malika Red",
+      "aliases": [
+        "Malika Red",
+        "Khadlaj Malika Red"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/malika-red-20-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/malika-red-20-ml",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-NAGHAM",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Nagham",
+      "name": "Nagham",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Nagham",
+      "aliases": [
+        "Nagham",
+        "Khadlaj Nagham"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-OUD-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud & Musk",
+      "name": "Oud & Musk",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Oud & Musk",
+      "aliases": [
+        "Oud & Musk",
+        "Khadlaj Oud & Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/khadlaj-oud-and-musk-20-ml-alcohol-free-perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/khadlaj-oud-and-musk-20-ml-alcohol-free-perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RANIYA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Raniya",
+      "name": "Raniya",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Raniya",
+      "aliases": [
+        "Raniya",
+        "Khadlaj Raniya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "formats_ml": [
+        18
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RASHA",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rasha",
+      "name": "Rasha",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rasha",
+      "aliases": [
+        "Rasha",
+        "Khadlaj Rasha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RIMAAL-BROWN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Rimaal Brown",
+      "name": "Rimaal Brown",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Rimaal Brown",
+      "aliases": [
+        "Rimaal Brown",
+        "Khadlaj Rimaal Brown"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/rimaal-brown-15-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils/products/rimaal-brown-15-ml",
+      "formats_ml": [
+        15
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ROOHI-WA-ROOHAK-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Roohi Wa Roohak Gold",
+      "name": "Roohi Wa Roohak Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Roohi Wa Roohak Gold",
+      "aliases": [
+        "Roohi Wa Roohak Gold",
+        "Khadlaj Roohi Wa Roohak Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/roohi-wa-roohak-gold-20-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/roohi-wa-roohak-gold-20-ml",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-SAFARI-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Safari Gold",
+      "name": "Safari Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Safari Gold",
+      "aliases": [
+        "Safari Gold",
+        "Khadlaj Safari Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/Khadlaj-Perfumes.html",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-SHAMOOKH-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Shamookh Gold",
+      "name": "Shamookh Gold",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Shamookh Gold",
+      "aliases": [
+        "Shamookh Gold",
+        "Khadlaj Shamookh Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-SHAMOOKH-SILVER",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Shamookh Silver",
+      "name": "Shamookh Silver",
+      "family_id": "khadlaj_catalog",
+      "family_name": "Shamookh Silver",
+      "aliases": [
+        "Shamookh Silver",
+        "Khadlaj Shamookh Silver"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/concentrated-perfume-oils",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
     }
   ],
   "variants": [
@@ -33783,7 +34771,8 @@
       "size_ml": 100,
       "aliases": [
         "Private Blend Musk Ice 100 ml",
-        "Khadlaj Private Blend Musk Ice 100ml"
+        "Khadlaj Private Blend Musk Ice 100ml",
+        "Musk Ice 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-dd1434f1-100-000",
       "concentration": "Extrait de Parfum"
@@ -36468,6 +37457,435 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-BLEU-GLACE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-BLEU-GLACE-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Bleu Glace 100 ml",
+        "Khadlaj Bleu Glace 100ml"
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-CODE-VIOLA-NECTAR",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-CODE-VIOLA-NECTAR-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Code Viola Nectar 100 ml",
+        "Khadlaj Code Viola Nectar 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-DESERT-ROSE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-DESERT-ROSE-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Desert Rose 100 ml",
+        "Khadlaj Desert Rose 100ml"
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-GAITH",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-GAITH-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Gaith 100 ml",
+        "Khadlaj Gaith 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-JOHAYNA-GREEN",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-JOHAYNA-GREEN-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Johayna Green 20 ml",
+        "Khadlaj Johayna Green 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-KAYAAN-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-KAYAAN-GOLD-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Kayaan Gold 20 ml",
+        "Khadlaj Kayaan Gold 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-MAYA",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-MAYA-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Maya 20 ml",
+        "Khadlaj Maya 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-MOCHA-LATTE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-MOCHA-LATTE-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Mocha Latte 100 ml",
+        "Khadlaj Mocha Latte 100ml"
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-PINK-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-PINK-MUSK-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Pink Musk 20 ml",
+        "Khadlaj Pink Musk 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-PURE-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-PURE-MUSK-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Pure Musk 20 ml",
+        "Khadlaj Pure Musk 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-PURE-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-PURE-MUSK-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Pure Musk 100 ml",
+        "Khadlaj Pure Musk 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-PURPLE-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-PURPLE-MUSK-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Purple Musk 20 ml",
+        "Khadlaj Purple Musk 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RASAYEL-SHAGAF",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-RASAYEL-SHAGAF-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Rasayel Shagaf 100 ml",
+        "Khadlaj Rasayel Shagaf 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RASAYEL-VID",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-RASAYEL-VID-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Rasayel Vid 100 ml",
+        "Khadlaj Rasayel Vid 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-UNO-SENSUALE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-UNO-SENSUALE-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Uno Sensuale 100 ml",
+        "Khadlaj Uno Sensuale 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-WOW-OUD",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-WOW-OUD-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Wow Oud 100 ml",
+        "Khadlaj Wow Oud 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-BISCOTTI-MELON-MISK",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-BISCOTTI-MELON-MISK-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Biscotti Melon Misk 100 ml",
+        "Khadlaj Biscotti Melon Misk 100ml"
+      ],
+      "concentration": "Extrait de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-GHADEER-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-GHADEER-GOLD-100-001",
+      "size_ml": 100,
+      "aliases": [
+        "Ghadeer Gold 100 ml",
+        "Khadlaj Ghadeer Gold 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-HAREEM-AL-SULTAN-BLUE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-HAREEM-AL-SULTAN-BLUE-35-001",
+      "size_ml": 35,
+      "aliases": [
+        "Hareem Al Sultan Blue 35 ml",
+        "Khadlaj Hareem Al Sultan Blue 35ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-HAREEM-AL-SULTAN-SILVER",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-HAREEM-AL-SULTAN-SILVER-35-001",
+      "size_ml": 35,
+      "aliases": [
+        "Hareem Al Sultan Silver 35 ml",
+        "Khadlaj Hareem Al Sultan Silver 35ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-NUHA",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-NUHA-85-001",
+      "size_ml": 85,
+      "aliases": [
+        "Nuha 85 ml",
+        "Khadlaj Nuha 85ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "product_type": "Perfume Spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-AALIYA",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-AALIYA-27-001",
+      "size_ml": 27,
+      "aliases": [
+        "Aaliya 27 ml",
+        "Khadlaj Aaliya 27ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-AL-RIYAN",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-AL-RIYAN-17-001",
+      "size_ml": 17,
+      "aliases": [
+        "Al Riyan 17 ml",
+        "Khadlaj Al Riyan 17ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ALF-WARDAT",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-ALF-WARDAT-30-001",
+      "size_ml": 30,
+      "aliases": [
+        "Alf Wardat 30 ml",
+        "Khadlaj Alf Wardat 30ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-AMBER-PURE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-AMBER-PURE-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Amber Pure 20 ml",
+        "Khadlaj Amber Pure 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ANABIA-BLUE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-ANABIA-BLUE-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Anabia Blue 20 ml",
+        "Khadlaj Anabia Blue 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ANABIA-RED",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-ANABIA-RED-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Anabia Red 20 ml",
+        "Khadlaj Anabia Red 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ARABIAN-TREASURE",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-ARABIAN-TREASURE-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Arabian Treasure 20 ml",
+        "Khadlaj Arabian Treasure 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-GHAZLAAN",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-GHAZLAAN-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Ghazlaan 20 ml",
+        "Khadlaj Ghazlaan 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-HANEEN-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-HANEEN-GOLD-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Haneen Gold 20 ml",
+        "Khadlaj Haneen Gold 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-IBHAAR",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-IBHAAR-18-001",
+      "size_ml": 18,
+      "aliases": [
+        "Ibhaar 18 ml",
+        "Khadlaj Ibhaar 18ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-JAMEEL",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-JAMEEL-25-001",
+      "size_ml": 25,
+      "aliases": [
+        "Jameel 25 ml",
+        "Khadlaj Jameel 25ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-MALIKA-RED",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-MALIKA-RED-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Malika Red 20 ml",
+        "Khadlaj Malika Red 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-OUD-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-OUD-MUSK-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Oud & Musk 20 ml",
+        "Khadlaj Oud & Musk 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RANIYA",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-RANIYA-18-001",
+      "size_ml": 18,
+      "aliases": [
+        "Raniya 18 ml",
+        "Khadlaj Raniya 18ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-RIMAAL-BROWN",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-RIMAAL-BROWN-15-001",
+      "size_ml": 15,
+      "aliases": [
+        "Rimaal Brown 15 ml",
+        "Khadlaj Rimaal Brown 15ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-ROOHI-WA-ROOHAK-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-ROOHI-WA-ROOHAK-GOLD-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Roohi Wa Roohak Gold 20 ml",
+        "Khadlaj Roohi Wa Roohak Gold 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-SHAMOOKH-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-SHAMOOKH-GOLD-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Shamookh Gold 20 ml",
+        "Khadlaj Shamookh Gold 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-FRAG-SHAMOOKH-SILVER",
+      "variant_id": "SHV-SH-KHADLAJ-FRAG-SHAMOOKH-SILVER-20-001",
+      "size_ml": 20,
+      "aliases": [
+        "Shamookh Silver 20 ml",
+        "Khadlaj Shamookh Silver 20ml"
+      ],
+      "concentration": "Perfume Oil",
+      "product_type": "Perfume Oil"
     }
   ]
 }
