@@ -2,7 +2,7 @@
 
 ## Exact revision inspected
 - Branch: `catalog/complete-brand-expansion-2026-11`
-- Commit: `36f140d51c7a4ce38166cf0318e6a51b62f6a4bb`
+- Commit: `2be1bb18557fe0b11245c549c2f1e381eadf55a3`
 - Pull request: #426 (draft, open, unmerged)
 - This is a structural audit of the exact branch files. It is not a CI result and not a production import.
 
@@ -57,12 +57,14 @@ These are counts in this branch snapshot, not a claim that every historical, reg
 - Structural coverage is now **0 missing canonical-to-registry matches**. Legacy registry-only names are retained; they are not automatically promoted into the canonical product catalog.
 
 ## CI status
-- GitHub Actions run: [Catalog seed validation #51](https://github.com/dalexmon81/ScentHunter/actions/runs/42454300386)
-- Exact tested commit: `7bea4c4f8702a3fe52c806f04cdac388aa78b93e`
-- Result on that commit: **success — 73 tests passed**.
-- The inspected PR head above is newer (`36f140d51c7a4ce38166cf0318e6a51b62f6a4bb`). The available PR-run and commit-status endpoints returned no run/status for this exact head, so the latest head is **not CI-verified**.
+- GitHub Actions run: [Catalog seed validation #66](https://github.com/dalexmon81/ScentHunter/actions/runs/42454400996)
+- Tested code/test commit: `36f140d51c7a4ce38166cf0318e6a51b62f6a4bb`
+- Result: **success — 73 tests passed**.
+- The current PR head `2be1bb18557fe0b11245c549c2f1e381eadf55a3` is a documentation-only commit after that successful run. The catalog JSON, family registry, workflow and test files are unchanged from the tested commit.
 
-The workflow currently lists 18 test modules. Five additional brand-specific modules remain deferred because their assertions expect identities or product-level evidence not present in the canonical seed; these are documented below. The passing result on the older commit must not be described as a pass for the current head.
+The catalog validation workflow checks seed integrity, provenance labels, canonical-to-family-registry coverage, selected brand regressions, and variant safety. It deliberately does not claim that all listing-backed identities are product-page verified.
+
+A separate `fly-pilot.yml` workflow reports a failed status on this branch, but it is not the catalog validation suite. This work did not dispatch a Fly deployment or change production resources.
 
 ## Deferred source-level checks
 The following older regression modules are not part of this CI gate because their assertions currently expect product rows or product-level evidence that is not present in the canonical seed. They remain visible in the repository for follow-up; no missing product sizes or sources were invented to make them pass:
