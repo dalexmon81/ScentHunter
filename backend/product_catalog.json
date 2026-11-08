@@ -5328,7 +5328,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/lattafa-mishlah/",
-      "source_evidence_url": "https://lattafa.com/product/lattafa-mishlah/"
+      "source_evidence_url": "https://lattafa.com/product/lattafa-mishlah/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-486f7f23",
