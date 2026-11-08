@@ -31,6 +31,8 @@ on:
       - "tests/test_next_engine_service.py"
       - "tests/test_phase2_schema_contract.py"
       - "backend/app/connectors/notino.py"
+      - "backend/scrapers/notino/**"
+      - "backend/tests/test_notino_authorization_gate.py"
       - "backend/app/connectors/base.py"
       - "backend/app/workers/ingestion_tasks.py"
       - "backend/app/api/admin_catalog.py"
