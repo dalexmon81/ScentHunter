@@ -12,7 +12,7 @@ EXPECTED = {
     "Nyla Sherbet": (80, "Eau de Parfum"),
     "Fahad Regal": (100, "Eau de Parfum"),
     "Aristo": (100, "Eau de Parfum"),
-    "Bóis Blanc": (100, "Eau de Parfum"),
+    "Bois Blanc": (100, "Eau de Parfum"),
     "Cherry Musk": (100, "Eau de Parfum"),
     "Marasi For Her": (100, "Eau de Parfum"),
     "Marasi For Him": (100, "Eau de Parfum"),
