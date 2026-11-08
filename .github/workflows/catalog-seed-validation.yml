@@ -44,6 +44,7 @@ jobs:
           backend.tests.test_french_avenue_catalog
           backend.tests.test_games_of_spades_catalog
           backend.tests.test_khadlaj_catalog_parity
+          backend.tests.test_khadlaj_la_fede
           backend.tests.test_lattafa_catalog
           backend.tests.test_paris_corner_catalog_parity
           backend.tests.test_swiss_arabian_detail_evidence
