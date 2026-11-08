@@ -12,7 +12,7 @@ EXPECTED = {
     "Nyla Sherbet": (80, "Eau de Parfum"),
     "Fahad Regal": (100, "Eau de Parfum"),
     "Aristo": (100, "Eau de Parfum"),
-    "Bóis Blanc": (100, "Eau de Parfum"),
+    "Bois Blanc": (100, "Eau de Parfum"),
     "Cherry Musk": (100, "Eau de Parfum"),
     "Marasi For Her": (100, "Eau de Parfum"),
     "Marasi For Him": (100, "Eau de Parfum"),
@@ -42,6 +42,8 @@ class ArabiyatPrestigeOfficialStoreTests(unittest.TestCase):
                 self.assertIn(name, products)
                 self.assertIn("eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/", products[name]["source_url"])
                 self.assertEqual(products[name]["identity_status"], "source_verified_name")
+                if name == "Bois Blanc":
+                    self.assertIn("Bóis Blanc", products[name]["aliases"])
 
     def test_explicit_size_and_concentration_variants_exist(self):
         products = {
