@@ -46,7 +46,7 @@ class MaisonAsrarLockAndKeyTests(unittest.TestCase):
         self.assertTrue(any(p["canonical_name"] == "Black Grapefruit" and p.get("identity_status") == "source_listed_name" for p in products))
         black = next(p for p in products if p["canonical_name"] == "Black")
         bloom = next(p for p in products if p["canonical_name"] == "Bloom Bloom")
-        self.assertIn("Black Grapefruit", black["aliases"])
+        self.assertNotIn("Black Grapefruit", black["aliases"])
         self.assertIn("Bloom", bloom["aliases"])
 
     def test_catalog_ids_and_brand_name_pairs_are_unique(self):
