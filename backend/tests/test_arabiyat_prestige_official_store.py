@@ -23,7 +23,7 @@ EXPECTED = {
     "Kohl Opulence": (100, "Eau de Parfum"),
     "Kohl Luminous": (100, "Eau de Parfum"),
     "Gelato Raspberry Ripple": (100, "Eau de Parfum"),
-    "Gelato Black Current Lolly": (100, "Eau de Parfum"),
+    "Gelato Black Currant Lolly": (100, "Eau de Parfum"),
     "La Di Da For Her": (100, "Eau de Parfum"),
     "La Di Da For Him": (100, "Eau de Parfum"),
     "Uhud": (100, "Eau de Parfum"),
