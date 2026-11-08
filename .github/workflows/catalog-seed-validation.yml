@@ -15,6 +15,7 @@ on:
       - catalog/lattafa-official-new-launches-2026-11-08
       - catalog/lattafa-official-detail-verification-2026-11-08
       - catalog/armaf-official-new-exclusive-2026-11-08
+      - catalog/armaf-official-detail-audit-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -33,6 +34,7 @@ on:
       - catalog/lattafa-official-new-launches-2026-11-08
       - catalog/lattafa-official-detail-verification-2026-11-08
       - catalog/armaf-official-new-exclusive-2026-11-08
+      - catalog/armaf-official-detail-audit-2026-11-08
 
 permissions:
   contents: read

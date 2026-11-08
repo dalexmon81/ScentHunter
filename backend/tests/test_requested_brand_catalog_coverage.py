@@ -607,5 +607,38 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
+    def test_armaf_official_detail_pages_and_explicit_variants(self):
+        expected = {
+            "Club de Nuit Bling": ("https://armaf.com/products/club-de-nuit-bling", "Eau de Parfum", None),
+            "Club de Nuit Lionheart Man": ("https://armaf.com/products/cdn-lion-heart-man-spr", "Eau de Parfum", None),
+            "Odyssey Nexus": ("https://armaf.com/products/odyssey-nexus", "Eau de Parfum", None),
+            "Odyssey Li'Chi Lush EDP": ("https://armaf.com/products/odyssey-lichi-lush-edp", "Eau de Parfum", None),
+            "Club de Nuit Oud": ("https://fr.armaf.eu/products/club-de-nuit-oud", "Eau de Parfum", 105),
+            "Club de Nuit Man": ("https://fr.armaf.eu/products/club-de-nuit-man", "Eau de Toilette", 105),
+            "Club de Nuit Intense Man": ("https://fr.armaf.eu/products/club-de-nuit-intense-for-man", "Eau de Toilette", 105),
+            "Odyssey Pink Pop": ("https://armaf.com/products/odyssey-pink-pop-edp", "Eau de Parfum", None),
+            "Odyssey French Kiss": ("https://armaf.com/products/odyssey-french-kiss", "Eau de Parfum", None),
+            "Odyssey Soda Pop": ("https://www.armaf.ae/products/odyssey-soda-pop", "Eau de Parfum", 100),
+        }
+        products = {
+            p.get("canonical_name"): p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (url, concentration, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), url)
+                self.assertEqual(row.get("concentration"), concentration)
+                if size is None:
+                    self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+                else:
+                    matches = [v for v in variants if v.get("product_id") == row["product_id"] and v.get("size_ml") == size and v.get("concentration") == concentration]
+                    self.assertEqual(len(matches), 1)
+
+
+
 if __name__ == "__main__":
     unittest.main()

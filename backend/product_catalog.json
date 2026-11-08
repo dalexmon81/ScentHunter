@@ -12143,9 +12143,13 @@
         "Club de Nuit Intense Man",
         "Armaf Club de Nuit Intense Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.armaf.eu/products/club-de-nuit-intense-for-man",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Toilette",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-96ab7130",
@@ -12367,9 +12371,10 @@
         "Club de Nuit Bling",
         "Armaf Club de Nuit Bling"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-91877071",
@@ -12447,9 +12452,13 @@
         "Club de Nuit Oud",
         "Armaf Club de Nuit Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.armaf.eu/products/club-de-nuit-oud",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-e4d46951",
@@ -12575,9 +12584,10 @@
         "Club de Nuit Lionheart Man",
         "Armaf Club de Nuit Lionheart Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-8a8dfbb3",
@@ -12623,9 +12633,13 @@
         "Club de Nuit Man",
         "Armaf Club de Nuit Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.armaf.eu/products/club-de-nuit-man",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Toilette",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-e5e7e73b",
@@ -13398,8 +13412,8 @@
         "Odyssey Nexus",
         "Armaf Odyssey Nexus"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-nexus",
       "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=4",
       "concentration": "Eau de Parfum"
     },
@@ -13534,8 +13548,8 @@
         "Odyssey Li'Chi Lush EDP",
         "Armaf Odyssey Li'Chi Lush EDP"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=5",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-lichi-lush-edp",
       "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=5",
       "concentration": "Eau de Parfum"
     },
@@ -34069,6 +34083,57 @@
       "formats_ml": [
         60
       ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-PINK-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Pink Pop",
+      "name": "Odyssey Pink Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Pink Pop",
+      "aliases": [
+        "Odyssey Pink Pop",
+        "Armaf Odyssey Pink Pop"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-pink-pop-edp"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-FRENCH-KISS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey French Kiss",
+      "name": "Odyssey French Kiss",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey French Kiss",
+      "aliases": [
+        "Odyssey French Kiss",
+        "Armaf Odyssey French Kiss"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-french-kiss"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SODA-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Soda Pop",
+      "name": "Odyssey Soda Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Soda Pop",
+      "aliases": [
+        "Odyssey Soda Pop",
+        "Armaf Odyssey Soda Pop"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.armaf.ae/products/odyssey-soda-pop",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37118,6 +37183,46 @@
       "aliases": [
         "Uniq Effects of Uniq 60 ml",
         "Armaf Uniq Effects of Uniq 60ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-8c539773",
+      "variant_id": "SHV-SH-ARMAF-8c539773-105-EDP-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Oud 105 ml",
+        "Armaf Club de Nuit Oud 105ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-dd435afb",
+      "variant_id": "SHV-SH-ARMAF-dd435afb-105-EDT-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Man 105 ml",
+        "Armaf Club de Nuit Man 105ml"
+      ],
+      "concentration": "Eau de Toilette"
+    },
+    {
+      "product_id": "SH-ARMAF-f0af9d9d",
+      "variant_id": "SHV-SH-ARMAF-f0af9d9d-105-EDT-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Intense Man 105 ml",
+        "Armaf Club de Nuit Intense Man 105ml"
+      ],
+      "concentration": "Eau de Toilette"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SODA-POP",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-SODA-POP-100-EDP-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Soda Pop 100 ml",
+        "Armaf Odyssey Soda Pop 100ml"
       ],
       "concentration": "Eau de Parfum"
     }
