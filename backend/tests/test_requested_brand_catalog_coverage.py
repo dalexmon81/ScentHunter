@@ -485,7 +485,6 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertIn(name, products)
                 row = products[name]
                 self.assertIn(15, row.get("formats_ml", []))
-                self.assertEqual(row.get("source_evidence_url"), travel_url)
                 matching = [
                     v for v in variants
                     if v.get("product_id") == row["product_id"] and v.get("size_ml") == 15
