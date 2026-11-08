@@ -66,73 +66,73 @@ KHADLAJ = {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Sueno": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
         "size": 100,
         "concentration": "Extrait de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Saraya": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
         "size": 60,
         "concentration": "Extrait de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Zayaan Silver": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Qarar": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum",
         "size": 60,
         "concentration": "Extrait de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Ihthiraam": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance",
         "size": 60,
         "concentration": "Extrait de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Icon": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Onyx Galaxy": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "existing_variant": false
+        "existing_variant": False
     },
     "Island Sun": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-island-sun-100-ml-extrait-de-parfum",
         "size": 100,
         "concentration": "Extrait de Parfum",
-        "existing_variant": true
+        "existing_variant": True
     },
     "Karus Gold Absolu": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/karus-gold-absolu-100-ml-edp-spray",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "existing_variant": true
+        "existing_variant": True
     },
     "Shiyaaka Sky": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/special-edition-shiyaaka-sky-100-ml",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "existing_variant": true
+        "existing_variant": True
     },
     "Panache Angel Dust": {
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
         "size": 100,
         "concentration": "Extrait de Parfum",
-        "existing_variant": true
+        "existing_variant": True
     }
 }
 
