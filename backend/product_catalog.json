@@ -25022,9 +25022,10 @@
         "Le Falcon",
         "French Avenue Le Falcon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/le-falcon",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-b600d17c",
@@ -25038,9 +25039,10 @@
         "Le Falcon Dubai",
         "French Avenue Le Falcon Dubai"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/le-falcon-dubai",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-d21d0a98",
@@ -25294,9 +25296,10 @@
         "Spirito Ignite",
         "French Avenue Spirito Ignite"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/spirito-ignite",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-44492640",
@@ -35546,6 +35549,36 @@
       "aliases": [
         "Eclipse Nova 100 ml",
         "French Avenue Eclipse Nova 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-87d40729",
+      "variant_id": "SHV-SH-FRENCH-AVENUE-87d40729-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Le Falcon 100 ml",
+        "French Avenue Le Falcon 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b600d17c",
+      "variant_id": "SHV-SH-FRENCH-AVENUE-b600d17c-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Le Falcon Dubai 100 ml",
+        "French Avenue Le Falcon Dubai 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-a3e0db37",
+      "variant_id": "SHV-SH-FRENCH-AVENUE-a3e0db37-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Spirito Ignite 100 ml",
+        "French Avenue Spirito Ignite 100ml"
       ]
     }
   ]
