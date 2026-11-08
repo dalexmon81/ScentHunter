@@ -48,9 +48,9 @@ Sources:
 - Shop Aromatix: https://shoparomatix.com/
 - Signature Aromatix Collection: https://shoparomatix.com/pages/aromatic-collection
 
-Shop Aromatix is a multi-brand retailer. Its navigation distinguishes an Aromatix brand listing from Aromatix X French Avenue. The Signature Aromatix Collection page describes a ten-fragrance collaboration with French Avenue. The retailer also lists many unrelated designer and Middle Eastern brands.
+Shop Aromatix is a multi-brand retailer. Its navigation distinguishes an Aromatix brand listing from Aromatix X French Avenue. The Signature Aromatix Collection page describes a ten-fragrance collaboration with French Avenue. The separate Aromatix X French Avenue storefront collection currently shows 12 listings: the ten named signature fragrances plus two `Summer Vibes` five-piece 30 ml sets. Those sets are bundles, not five additional canonical fragrance identities each.
 
-Do not treat every product sold by Shop Aromatix as an Aromatix-branded perfume. The collaboration line and any separate Aromatix-branded products must be modeled only after individual product pages establish exact identity and brand attribution. Keep the existing 12 Notino-listed names at listing-level until matched to reliable individual product details or a clearly scoped official collection.
+The ten named signature fragrances (Teas Me, Frostbite, Naughty Dates, Sun Kissed, Forbidden Fruit, Magnetiq, Platine Blanc, X Xandal, Royal Taboo and Carnal Desire) are already represented in the seed's 12 Aromatix records. The official collaboration pages identify them as Aromatix X French Avenue; the current seed groups them under Aromatix. Do not silently change that brand attribution until the data model and the two remaining Notino-listed names (Ora and Roza) are reconciled against individual product pages. Do not treat every product sold by Shop Aromatix as an Aromatix-branded perfume.
 
 ## Next verification steps
 
