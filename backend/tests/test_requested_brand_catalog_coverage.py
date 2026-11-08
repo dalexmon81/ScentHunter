@@ -12,7 +12,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 98,
+    "Mykonos": 100,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
@@ -689,6 +689,46 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         soft_hour = products["Soft Hour x NCT Haechan"]
         self.assertEqual(soft_hour.get("formats_ml"), [100])
         self.assertEqual(soft_hour.get("concentration"), "Extrait de Parfum")
+
+
+    def test_mykonos_imperium_and_empire_are_distinct_fragrances(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("Imperium", products)
+        self.assertIn("Empire x RRQ", products)
+        self.assertNotEqual(
+            products["Imperium"].get("product_id"),
+            products["Empire x RRQ"].get("product_id"),
+        )
+        self.assertEqual(
+            products["Imperium"].get("source_url"),
+            "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+        )
+        self.assertNotIn("Imperium", products["Empire x RRQ"].get("aliases", []))
+
+    def test_mykonos_california_and_california_signature_are_separate(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        self.assertIn("California", products)
+        self.assertIn("California Signature", products)
+        self.assertNotEqual(
+            products["California"].get("product_id"),
+            products["California Signature"].get("product_id"),
+        )
+        self.assertNotIn(
+            "California Signature",
+            products["California"].get("aliases", []),
+        )
+        self.assertEqual(
+            products["California"].get("source_url"),
+            "https://mykonosperfumes.eu/products/mykonos-california",
+        )
 
 if __name__ == "__main__":
     unittest.main()
