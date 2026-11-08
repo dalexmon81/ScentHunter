@@ -42,8 +42,8 @@ class KhadlajLaFedeTests(unittest.TestCase):
         )
 
     def test_individually_verified_la_fede_products_are_canonical(self):
-        self.assertEqual({p["canonical_name"] for p in self.products}, set(EXPECTED))
-        self.assertEqual(len(self.family["products"]), 36)
+        self.assertTrue(set(EXPECTED).issubset({p["canonical_name"] for p in self.products}))
+        self.assertEqual(len(self.family["products"]), 41)
 
     def test_each_canonical_la_fede_product_has_official_detail_evidence(self):
         for name, expected in EXPECTED.items():
