@@ -72,6 +72,18 @@ ADDITIONAL_IDENTITY_URLS = {
     "Red Velvet": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women",
     "Adorable": "https://maisonasrar.com/products/adorable-eau-de-parfum-100-ml-for-women",
     "Ameer": "https://maisonasrar.com/products/ameer",
+    "Gentle Oud": "https://maisonasrar.com/products/maison-asrar-gentle-oud-eau-de-parfum-80-ml-for-men",
+    "Italian Leather": "https://maisonasrar.com/products/maison-asrar-italian-leather-eau-de-parfum-80-ml-for-men",
+    "Wood Intense": "https://maisonasrar.com/products/maison-asrar-wood-intense-eau-de-parfum-80-ml-for-men",
+    "Khateer": "https://maisonasrar.com/products/maison-asrar-khateer-eau-de-parfum-100-ml-for-men",
+    "Basma": "https://maisonasrar.com/products/maison-asrar-basma-eau-de-parfum-100-ml-unisex",
+    "Khayal": "https://maisonasrar.com/products/maison-asrar-khayal-eau-de-parfum-100-ml-unisex",
+    "Soudfa": "https://maisonasrar.com/products/maison-asrar-soudfa-eau-de-parfum-100-ml-for-women",
+    "Rose Musk": "https://maisonasrar.com/products/maison-asrar-rose-musk-eau-de-parfum-100-ml-for-women",
+    "Rose Oud": "https://maisonasrar.com/products/maison-asrar-rose-oud-eau-de-parfum-100-ml-for-women",
+    "Rose Honey": "https://maisonasrar.com/products/maison-asrar-rose-honey-eau-de-parfum-100-ml-for-women",
+    "Rose Vanilla": "https://maisonasrar.com/products/maison-asrar-rose-vanilla-eau-de-parfum-100-ml-for-women",
+    "Daham": "https://maisonasrar.com/products/maison-asrar-daham-eau-de-parfum-100-ml-for-men",
 }
 
 LOCK_KEY = {
