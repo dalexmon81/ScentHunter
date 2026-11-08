@@ -11846,7 +11846,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-only-you"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-only-you",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-d36ff1d7",
@@ -11862,7 +11865,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-shades"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-shades",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-52353618",
@@ -11878,7 +11884,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-sapeyeeee-chai-crema-latte"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-sapeyeeee-chai-crema-latte",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-aa3e1b8a",
@@ -11894,7 +11903,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-paola-serena-jynx"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-paola-serena-jynx",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-10a2bd45",
@@ -11910,7 +11922,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-sapeyeeee-rouge"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-sapeyeeee-rouge",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-67332242",
@@ -11926,7 +11941,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-seven-roses"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-seven-roses",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-c8ea16e6",
@@ -11942,7 +11960,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-ivory"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-ivory",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-69a65dd6",
@@ -11958,7 +11979,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-blossom"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-blossom",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-e036b897",
@@ -11974,7 +11998,11 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-zora"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-zora",
+      "formats_ml": [
+        50,
+        100
+      ]
     },
     {
       "product_id": "SH-MYKONOS-070136ba",
@@ -11990,7 +12018,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-down-to-earth"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-down-to-earth",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-35ac95ff",
@@ -12006,7 +12037,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-when-in-paris"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-when-in-paris",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-9ff7fa43",
@@ -12022,7 +12056,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-pandan-sticky-rice"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-pandan-sticky-rice",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-825c174b",
@@ -12038,7 +12075,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-pistachio-cream-cake"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-pistachio-cream-cake",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-775acf3b",
@@ -12054,7 +12094,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-blaze"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-blaze",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-9abbf020",
@@ -12070,7 +12113,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-jumbo-memoir-of-meri"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-jumbo-memoir-of-meri",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-3b92f6c9",
@@ -12086,7 +12132,10 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-jumbo-once-upon-don"
+      "source_evidence_url": "https://mykonosperfumes.eu/products/mykonos-x-jumbo-once-upon-don",
+      "formats_ml": [
+        50
+      ]
     },
     {
       "product_id": "SH-MYKONOS-accabf2b",
