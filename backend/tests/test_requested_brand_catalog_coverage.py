@@ -496,3 +496,34 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_khadlaj_hareem_al_sultan_gold_35ml_official_oil_page_is_verified(self):
+        row = next(
+            (
+                product
+                for product in CATALOG.get("products", [])
+                if str(product.get("brand_name") or product.get("brand") or "").strip() == "Khadlaj"
+                and str(product.get("canonical_name") or product.get("name") or "").strip() == "Hareem Al Sultan Gold"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        source_url = (
+            "https://khadlaj-perfumes.com/collections/flash-sale/"
+            "products/hareem-al-sultan-gold-35ml"
+        )
+        self.assertEqual(row.get("source_url"), source_url)
+        self.assertEqual(row.get("source_evidence_url"), source_url)
+        matching = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+            and variant.get("size_ml") == 35
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].get("source_url"), source_url)
+        self.assertEqual(matching[0].get("source_evidence_url"), source_url)
+        # The official page identifies this as a non-alcoholic concentrated
+        # perfume oil, not an EDP/Extrait spray concentration.
+        self.assertNotIn("concentration", row)
+        self.assertNotIn("concentration", matching[0])
