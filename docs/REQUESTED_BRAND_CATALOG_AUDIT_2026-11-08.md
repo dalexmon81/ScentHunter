@@ -132,3 +132,13 @@ Fragrantica's designer index reports 157 perfumes, including editions through 20
 2. Page through all French Avenue official collection pages (including pagination and new arrivals), normalize only safe spelling/case aliases, and reconcile the product titles with the 117 current identities.
 3. For any proposed addition, preserve the exact official product URL and record why it is a distinct fragrance rather than a size, concentration variant, bundle or renamed duplicate.
 4. Do not change `identity_status` from `source_listed_name` to `source_verified_name` on the basis of a brand homepage or collection landing page alone.
+
+
+### Manual page checks and false-positive prevention
+
+- Assaf official collection page 2 shows existing identities such as Frankel Blackout, Noble, Frankel Ascot, Frankel Storm, Miss Sakura, Frankel Beach Afternoon, No Chance, Gris Flora, Pegasus Oud, Pink Lady, Frankel Afternoon, Troy Enable, Gris Erik, Miss Flora, Frankel Silver, Arrogate Addict Elixir, Glitch, Frankel Battle and Baby Girl. These are already represented in the 140-name catalog.
+- Assaf official collection page 3 shows additional existing identities including Stand By, Pegasus Reflection, Feeling, Alex Enable, Hook Blue, Elizabeth, Error 404, Forever Here, Take Off, Greatness, Aura 30 and Pink Lady. These are also already represented.
+- Page 3 also exposes "Arrogate Pink with Powder", but its official product page assigns SKU `PKG-ASFP50-ON-10101`. The `PKG` prefix and the product title indicate a package/bundle rather than a clean standalone perfume identity. It is deliberately **not** added as a new canonical fragrance pending clearer product composition evidence.
+- The Assaf storefront also lists collection bundles such as "Enable Collection" and "Wild Pegasus and Alexandra Collection". These must not be counted as new perfume identities.
+
+This spot-check confirms that the official storefront contains many of the existing catalog names and that naive harvesting of every store listing would introduce bundles/packages as false fragrance identities. The official collection is paginated and this is not yet an exhaustive crawl of all pages.
