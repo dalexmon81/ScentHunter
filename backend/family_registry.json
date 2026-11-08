@@ -3045,6 +3045,34 @@
             "Peach Velvet",
             "Khadlaj Peach Velvet"
           ]
+        },
+        {
+          "canonical_name": "Zayaan Gold",
+          "aliases": [
+            "Zayaan Gold",
+            "Khadlaj Zayaan Gold"
+          ]
+        },
+        {
+          "canonical_name": "Biscotti Caramel Pop",
+          "aliases": [
+            "Biscotti Caramel Pop",
+            "Khadlaj Biscotti Caramel Pop"
+          ]
+        },
+        {
+          "canonical_name": "Oud Pour Leather",
+          "aliases": [
+            "Oud Pour Leather",
+            "Khadlaj Oud Pour Leather"
+          ]
+        },
+        {
+          "canonical_name": "Private Blend",
+          "aliases": [
+            "Private Blend",
+            "Khadlaj Private Blend"
+          ]
         }
       ]
     },
@@ -6864,6 +6892,90 @@
           "aliases": [
             "Imperial Ocean",
             "French Avenue Imperial Ocean"
+          ]
+        },
+        {
+          "canonical_name": "Prune Hypnos",
+          "aliases": [
+            "Prune Hypnos",
+            "French Avenue Prune Hypnos"
+          ]
+        },
+        {
+          "canonical_name": "Spirito Mystic",
+          "aliases": [
+            "Spirito Mystic",
+            "French Avenue Spirito Mystic"
+          ]
+        },
+        {
+          "canonical_name": "Ravine Ginger",
+          "aliases": [
+            "Ravine Ginger",
+            "French Avenue Ravine Ginger"
+          ]
+        },
+        {
+          "canonical_name": "Nuit",
+          "aliases": [
+            "Nuit",
+            "French Avenue Nuit"
+          ]
+        },
+        {
+          "canonical_name": "Irida",
+          "aliases": [
+            "Irida",
+            "French Avenue Irida"
+          ]
+        },
+        {
+          "canonical_name": "Sagittarius",
+          "aliases": [
+            "Sagittarius",
+            "French Avenue Sagittarius"
+          ]
+        },
+        {
+          "canonical_name": "Soir",
+          "aliases": [
+            "Soir",
+            "French Avenue Soir"
+          ]
+        },
+        {
+          "canonical_name": "Sweet Paradise",
+          "aliases": [
+            "Sweet Paradise",
+            "French Avenue Sweet Paradise"
+          ]
+        },
+        {
+          "canonical_name": "Zenith Tobacco",
+          "aliases": [
+            "Zenith Tobacco",
+            "French Avenue Zenith Tobacco"
+          ]
+        },
+        {
+          "canonical_name": "Tropical Kiss",
+          "aliases": [
+            "Tropical Kiss",
+            "French Avenue Tropical Kiss"
+          ]
+        },
+        {
+          "canonical_name": "Signature White",
+          "aliases": [
+            "Signature White",
+            "French Avenue Signature White"
+          ]
+        },
+        {
+          "canonical_name": "Miraj Absolu",
+          "aliases": [
+            "Miraj Absolu",
+            "French Avenue Miraj Absolu"
           ]
         }
       ]
