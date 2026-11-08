@@ -62,3 +62,84 @@ First-party references:
 - Monarch: https://maisonasrar.com/products/maison-asrar-monarch-eau-de-parfum
 - Gulf Orchid product pages: https://shop-gulforchid.com/products/plot-twist ; https://shop-gulforchid.com/products/love-key ; https://shop-gulforchid.com/products/unsolved-mystery
 - Independent cross-check (not official): https://maisonasrarperfumes.eu/fr/perfumes/
+
+
+### Khadlaj: official perfume-spray coverage and variant reconciliation (8 November 2026)
+
+#### Identity coverage
+
+- Seed before this pass: **116 Khadlaj identities / 29 variants**.
+- The brand-owned `https://khadlaj-perfumes.com/collections/perfumes-spray` collection reports **101 products**. Eight paginated pages exposed **96 individual product cards** with readable names and product-image labels. The linked ninth page returned no product cards, so five of the 101 reported items remain unidentified in this pass.
+- All 96 visible official product names map to existing seed identities after alias reconciliation. No new canonical identity was required from the 96 visible cards.
+- The official card spelling `SENSUOS NIGHT` / product-page slug `sensous-night` maps to the seed's `Sensuous Night`; the aliases now include `Sensuos Night` and `Sensous Night`. Do not create a second identity.
+- `WILD INDONESIAN OUD PURE` maps to the seed identity `Wild Indonesian Oud` through its existing alias. Do not create a duplicate.
+- `KHADLAJ 25 EXPERIENCE/TRUST/LOYALTY/HERITAGE/INTEGRITY` map to the seed's shorter canonical names `25 Experience`, `25 Trust`, `25 Loyalty`, `25 Heritage` and `25 Integrity`; their aliases preserve the official full names.
+- `Hareem Al Sultan` (75 ml EDP spray) is a separate identity from `Hareem Al Sultan Gold` (35 ml product). Both are retained.
+
+#### First-party variants added
+
+The official collection cards and linked product pages explicitly state sizes and concentrations for the 96 visible products. Eighteen of those products already had matching variant rows. This PR adds the **78 missing variant rows**, bringing the visible official range to 96 products with explicit variant rows. The brand's total in the seed becomes **116 identities / 107 variants**; the other 11 existing variants, which belong to identities outside these 96 visible cards, are preserved.
+
+The newly recorded variants cover the actual sizes shown by the brand: 60 ml, 75 ml, 85 ml and 100 ml. No blanket 100 ml default was applied. The product-level `formats_ml` and concentration fields were updated to match the first-party evidence where stated. For products with a known size but conflicting concentration text, size is recorded while concentration is left blank.
+
+**Source inconsistency:** the official Saqr Al Badiya product page's image/URL labels it Extrait de Parfum, while the body description calls it Eau de Parfum. The variant is therefore recorded as 100 ml with concentration unconfirmed; neither concentration is selected by guesswork.
+
+The following direct product pages were checked and recorded as product-specific evidence:
+- Panache Angel Dust: https://khadlaj-perfumes.com/collections/perfumes-spray/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae
+- Oud Pure Oud Barakat: https://khadlaj-perfumes.com/collections/perfumes-spray/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women
+- Nuha Bon Bon: https://khadlaj-perfumes.com/collections/perfumes-spray/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online
+- Hareem Al Sultan: https://khadlaj-perfumes.com/collections/perfumes-spray/products/tiktk-viral-hareem-al-sultan-perfume-in-75-ml-edp-spray-by-khadlaj-dubai
+- Saqr Al Badiya: https://khadlaj-perfumes.com/collections/perfumes-spray/products/saqr-al-badiya-extrait-de-parfum-spray-for-men-with-aquatic-notes-shop-online-dubai-uae
+- Wild Indonesian Oud Pure: https://khadlaj-perfumes.com/collections/perfumes-spray/products/wild-indonesian-oud-spray-shop-online-best-price-in-dubai-uae
+- Sensuos Night: https://khadlaj-perfumes.com/collections/perfumes-spray/products/sensous-night-edp-spray-shop-online-best-price-in-dubai-uae
+- La Fede Celebrity Fame: https://khadlaj-perfumes.com/collections/perfumes-spray/products/la-fede-celebrity-fame-100ml-eau-de-parfum
+- Ihthiraam: https://khadlaj-perfumes.com/collections/perfumes-spray/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance
+- Khadlaj 25 Experience: https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-experience-100-ml-edp-spray
+- Khadlaj 25 Trust: https://khadlaj-perfumes.com/collections/perfumes-spray/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women
+- Khadlaj 25 Loyalty: https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae
+- Khadlaj 25 Heritage: https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-heritage-100-ml-edp-spray
+- Khadlaj 25 Integrity: https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-25-integrity-100-ml-edp-spray
+
+The 96 collection-card records are linked to their corresponding official listing pages 1–8; each card's image alt text carries the size/concentration label. The collection count of 101 is retained as the source-reported total, but the five records not exposed by page 9 remain a discovery gap. Do not infer their names or variants.
+
+#### Validation and remaining work
+
+- Full catalog after this branch: **2,061 identities / 353 variants**.
+- Khadlaj: **116 identities / 107 variants**; 9 Khadlaj identities still have no variant row and remain outside the 96 visible official product cards.
+- No duplicate product IDs, duplicate brand/canonical names, duplicate variant IDs, orphan variants or variant-size mismatches were found.
+- The 9 remaining identities are not deleted or marked discontinued; they may be legacy, regional or present in other Khadlaj collections. The five product cards not surfaced by the official page-9 response also remain unresolved.
+
+First-party collection pages:
+- Page 1: https://khadlaj-perfumes.com/collections/perfumes-spray
+- Page 2: https://khadlaj-perfumes.com/collections/perfumes-spray?page=2
+- Page 3: https://khadlaj-perfumes.com/collections/perfumes-spray?page=3
+- Page 4: https://khadlaj-perfumes.com/collections/perfumes-spray?page=4
+- Page 5: https://khadlaj-perfumes.com/collections/perfumes-spray?page=5
+- Page 6: https://khadlaj-perfumes.com/collections/perfumes-spray?page=6
+- Page 7: https://khadlaj-perfumes.com/collections/perfumes-spray?page=7
+- Page 8: https://khadlaj-perfumes.com/collections/perfumes-spray?page=8
+- Page 9 (reported count only; no product cards returned): https://khadlaj-perfumes.com/collections/perfumes-spray?page=9
+
+
+CI note: the catalog validation workflow now explicitly includes the stacked target branch `catalog/maison-asrar-verified-variants-2026-11-08`; this PR head was advanced after the base-branch trigger update so the pull-request validation can run without changing `main`.
+
+
+### Khadlaj follow-up: last nine seeded identities receive first-party variants (8 November 2026)
+
+The nine Khadlaj identities that still lacked a variant after the first collection pass were checked against additional brand-owned product pages and official new-launch collections. All nine now have an explicit first-party size/concentration variant:
+
+| Identity | Official product page | Variant |
+|---|---|---|
+| Panache Eleganza | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women | 100 ml Extrait de Parfum |
+| Stellar Musk | https://khadlaj-perfumes.com/collections/women-perfume/products/stellar-musk-100-ml-edp-spray-for-women | 100 ml Eau de Parfum |
+| Stellar Oud | https://khadlaj-perfumes.com/products/stellar-oud-100-ml-edp-spray-for-men-women | 100 ml Eau de Parfum |
+| Onyx Galaxy | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men | 100 ml Eau de Parfum |
+| Muse | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women | 100 ml Eau de Parfum |
+| Sueno | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women | 100 ml Extrait de Parfum |
+| Saraya | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women | 60 ml Extrait de Parfum |
+| Zayaan Silver | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men | 100 ml Eau de Parfum |
+| Qarar | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum | 60 ml Extrait de Parfum |
+
+**Updated Khadlaj result:** 116 canonical identities / 116 explicit variant rows. No Khadlaj identity in the current seed remains without a variant. The five product cards not surfaced by the ninth page of the 101-item Perfume Sprays collection remain a source-discovery limitation; the nine records above were found through separate official product/new-launch pages, not guessed from the missing cards.
+
+**Updated whole-catalog result on this branch:** 2,061 product identities / 362 variants. Integrity checks report zero duplicate product IDs, duplicate brand/canonical-name pairs, duplicate variant IDs, orphan variants or variant-size mismatches. The full GitHub Actions catalog validation passed on commit `ae6e83b1f08973feef8190a3c9cd4e81864ad7d7` (run 42472046924). The subsequent audit-only update does not alter catalog data.
