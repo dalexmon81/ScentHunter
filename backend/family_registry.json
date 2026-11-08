@@ -6537,79 +6537,24 @@
       ],
       "products": [
         {
-          "canonical_name": "Kayaan Classic",
+          "canonical_name": "Abyat",
           "aliases": [
-            "Kayaan Classic",
-            "Al Wataniah Kayaan Classic"
+            "Abyat",
+            "Al Wataniah Abyat"
           ]
         },
         {
-          "canonical_name": "Kayaan Terra",
+          "canonical_name": "Ain Emarat",
           "aliases": [
-            "Kayaan Terra",
-            "Al Wataniah Kayaan Terra"
+            "Ain Emarat",
+            "Al Wataniah Ain Emarat"
           ]
         },
         {
-          "canonical_name": "Kayaan Gold",
+          "canonical_name": "Ain Emarat Extrait",
           "aliases": [
-            "Kayaan Gold",
-            "Al Wataniah Kayaan Gold"
-          ]
-        },
-        {
-          "canonical_name": "Kayaan Midnight",
-          "aliases": [
-            "Kayaan Midnight",
-            "Al Wataniah Kayaan Midnight"
-          ]
-        },
-        {
-          "canonical_name": "Lemon Souffle",
-          "aliases": [
-            "Lemon Souffle",
-            "Al Wataniah Lemon Souffle"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Choco Truffle",
-          "aliases": [
-            "Choco Truffle",
-            "Al Wataniah Choco Truffle"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Rose Eclat",
-          "aliases": [
-            "Rose Eclat",
-            "Al Wataniah Rose Eclat"
-          ]
-        },
-        {
-          "canonical_name": "Milele",
-          "aliases": [
-            "Milele",
-            "Al Wataniah Milele"
-          ]
-        },
-        {
-          "canonical_name": "Turquois",
-          "aliases": [
-            "Turquois",
-            "Al Wataniah Turquois"
-          ]
-        },
-        {
-          "canonical_name": "Cloud",
-          "aliases": [
-            "Cloud",
-            "Al Wataniah Cloud"
+            "Ain Emarat Extrait",
+            "Al Wataniah Ain Emarat Extrait"
           ]
         },
         {
@@ -6697,6 +6642,20 @@
           ]
         },
         {
+          "canonical_name": "Attar Al Wesal Ice Blue",
+          "aliases": [
+            "Attar Al Wesal Ice Blue",
+            "Al Wataniah Attar Al Wesal Ice Blue"
+          ]
+        },
+        {
+          "canonical_name": "Attar Al Wesal Intense",
+          "aliases": [
+            "Attar Al Wesal Intense",
+            "Al Wataniah Attar Al Wesal Intense"
+          ]
+        },
+        {
           "canonical_name": "Baraa",
           "aliases": [
             "Baraa",
@@ -6711,6 +6670,13 @@
           ]
         },
         {
+          "canonical_name": "Blush Papillon",
+          "aliases": [
+            "Blush Papillon",
+            "Al Wataniah Blush Papillon"
+          ]
+        },
+        {
           "canonical_name": "Brownie Bite",
           "aliases": [
             "Brownie Bite",
@@ -6718,10 +6684,34 @@
           ]
         },
         {
+          "canonical_name": "Cashmere Ivory",
+          "aliases": [
+            "Cashmere Ivory",
+            "Al Wataniah Cashmere Ivory"
+          ]
+        },
+        {
           "canonical_name": "Castilla",
           "aliases": [
             "Castilla",
             "Al Wataniah Castilla"
+          ]
+        },
+        {
+          "canonical_name": "Choco Truffle",
+          "aliases": [
+            "Choco Truffle",
+            "Al Wataniah Choco Truffle"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Cloud",
+          "aliases": [
+            "Cloud",
+            "Al Wataniah Cloud"
           ]
         },
         {
@@ -6736,7 +6726,8 @@
           "aliases": [
             "Da'im",
             "Al Wataniah Da'im",
-            "Da’im"
+            "Da’im",
+            "Dai'm"
           ]
         },
         {
@@ -6754,10 +6745,17 @@
           ]
         },
         {
-          "canonical_name": "Eqaab",
+          "canonical_name": "Emerald Ascot",
           "aliases": [
-            "Eqaab",
-            "Al Wataniah Eqaab"
+            "Emerald Ascot",
+            "Al Wataniah Emerald Ascot"
+          ]
+        },
+        {
+          "canonical_name": "Emerald Plume",
+          "aliases": [
+            "Emerald Plume",
+            "Al Wataniah Emerald Plume"
           ]
         },
         {
@@ -6772,6 +6770,20 @@
           "aliases": [
             "Emiran Selar",
             "Al Wataniah Emiran Selar"
+          ]
+        },
+        {
+          "canonical_name": "Eqaab",
+          "aliases": [
+            "Eqaab",
+            "Al Wataniah Eqaab"
+          ]
+        },
+        {
+          "canonical_name": "Everest",
+          "aliases": [
+            "Everest",
+            "Al Wataniah Everest"
           ]
         },
         {
@@ -6813,7 +6825,8 @@
           "canonical_name": "Granada",
           "aliases": [
             "Granada",
-            "Al Wataniah Granada"
+            "Al Wataniah Granada",
+            "Al Andalus Granada"
           ]
         },
         {
@@ -6838,6 +6851,41 @@
           ]
         },
         {
+          "canonical_name": "Kayaan Classic",
+          "aliases": [
+            "Kayaan Classic",
+            "Al Wataniah Kayaan Classic"
+          ]
+        },
+        {
+          "canonical_name": "Kayaan Extrait",
+          "aliases": [
+            "Kayaan Extrait",
+            "Al Wataniah Kayaan Extrait"
+          ]
+        },
+        {
+          "canonical_name": "Kayaan Gold",
+          "aliases": [
+            "Kayaan Gold",
+            "Al Wataniah Kayaan Gold"
+          ]
+        },
+        {
+          "canonical_name": "Kayaan Midnight",
+          "aliases": [
+            "Kayaan Midnight",
+            "Al Wataniah Kayaan Midnight"
+          ]
+        },
+        {
+          "canonical_name": "Kayaan Terra",
+          "aliases": [
+            "Kayaan Terra",
+            "Al Wataniah Kayaan Terra"
+          ]
+        },
+        {
           "canonical_name": "Kenz Al Malik",
           "aliases": [
             "Kenz Al Malik",
@@ -6859,6 +6907,16 @@
           ]
         },
         {
+          "canonical_name": "Lemon Souffle",
+          "aliases": [
+            "Lemon Souffle",
+            "Al Wataniah Lemon Souffle"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Lily",
           "aliases": [
             "Lily",
@@ -6877,6 +6935,13 @@
           "aliases": [
             "Massad Royale",
             "Al Wataniah Massad Royale"
+          ]
+        },
+        {
+          "canonical_name": "Milele",
+          "aliases": [
+            "Milele",
+            "Al Wataniah Milele"
           ]
         },
         {
@@ -6922,10 +6987,24 @@
           ]
         },
         {
+          "canonical_name": "Onyx",
+          "aliases": [
+            "Onyx",
+            "Al Wataniah Onyx"
+          ]
+        },
+        {
           "canonical_name": "Oud Mystery Intense",
           "aliases": [
             "Oud Mystery Intense",
             "Al Wataniah Oud Mystery Intense"
+          ]
+        },
+        {
+          "canonical_name": "Polo Estate Navy Gold",
+          "aliases": [
+            "Polo Estate Navy Gold",
+            "Al Wataniah Polo Estate Navy Gold"
           ]
         },
         {
@@ -6939,7 +7018,8 @@
           "canonical_name": "Qasar Al Watan",
           "aliases": [
             "Qasar Al Watan",
-            "Al Wataniah Qasar Al Watan"
+            "Al Wataniah Qasar Al Watan",
+            "Qasr Al Watan"
           ]
         },
         {
@@ -6978,6 +7058,13 @@
           ]
         },
         {
+          "canonical_name": "Rose Eclat",
+          "aliases": [
+            "Rose Eclat",
+            "Al Wataniah Rose Eclat"
+          ]
+        },
+        {
           "canonical_name": "Rose Mystery Intense",
           "aliases": [
             "Rose Mystery Intense",
@@ -7010,6 +7097,13 @@
           "aliases": [
             "Sabah Al Ward Garden of Eden",
             "Al Wataniah Sabah Al Ward Garden of Eden"
+          ]
+        },
+        {
+          "canonical_name": "Sabah Al Ward Pearl",
+          "aliases": [
+            "Sabah Al Ward Pearl",
+            "Al Wataniah Sabah Al Ward Pearl"
           ]
         },
         {
@@ -7048,6 +7142,13 @@
           ]
         },
         {
+          "canonical_name": "Shouq",
+          "aliases": [
+            "Shouq",
+            "Al Wataniah Shouq"
+          ]
+        },
+        {
           "canonical_name": "Special Oud",
           "aliases": [
             "Special Oud",
@@ -7076,6 +7177,13 @@
           ]
         },
         {
+          "canonical_name": "The Crest",
+          "aliases": [
+            "The Crest",
+            "Al Wataniah The Crest"
+          ]
+        },
+        {
           "canonical_name": "Tiara Pink",
           "aliases": [
             "Tiara Pink",
@@ -7087,6 +7195,13 @@
           "aliases": [
             "Tibyan",
             "Al Wataniah Tibyan"
+          ]
+        },
+        {
+          "canonical_name": "Turquois",
+          "aliases": [
+            "Turquois",
+            "Al Wataniah Turquois"
           ]
         },
         {
@@ -7122,111 +7237,6 @@
           "aliases": [
             "Ziyana",
             "Al Wataniah Ziyana"
-          ]
-        },
-        {
-          "canonical_name": "The Crest",
-          "aliases": [
-            "The Crest",
-            "Al Wataniah The Crest"
-          ]
-        },
-        {
-          "canonical_name": "Onyx",
-          "aliases": [
-            "Onyx",
-            "Al Wataniah Onyx"
-          ]
-        },
-        {
-          "canonical_name": "Polo Estate Navy Gold",
-          "aliases": [
-            "Polo Estate Navy Gold",
-            "Al Wataniah Polo Estate Navy Gold"
-          ]
-        },
-        {
-          "canonical_name": "Kayaan Extrait",
-          "aliases": [
-            "Kayaan Extrait",
-            "Al Wataniah Kayaan Extrait"
-          ]
-        },
-        {
-          "canonical_name": "Everest",
-          "aliases": [
-            "Everest",
-            "Al Wataniah Everest"
-          ]
-        },
-        {
-          "canonical_name": "Emerald Plume",
-          "aliases": [
-            "Emerald Plume",
-            "Al Wataniah Emerald Plume"
-          ]
-        },
-        {
-          "canonical_name": "Emerald Ascot",
-          "aliases": [
-            "Emerald Ascot",
-            "Al Wataniah Emerald Ascot"
-          ]
-        },
-        {
-          "canonical_name": "Attar Al Wesal Ice Blue",
-          "aliases": [
-            "Attar Al Wesal Ice Blue",
-            "Al Wataniah Attar Al Wesal Ice Blue"
-          ]
-        },
-        {
-          "canonical_name": "Sabah Al Ward Pearl",
-          "aliases": [
-            "Sabah Al Ward Pearl",
-            "Al Wataniah Sabah Al Ward Pearl"
-          ]
-        },
-        {
-          "canonical_name": "Attar Al Wesal Intense",
-          "aliases": [
-            "Attar Al Wesal Intense",
-            "Al Wataniah Attar Al Wesal Intense"
-          ]
-        },
-        {
-          "canonical_name": "Blush Papillon",
-          "aliases": [
-            "Blush Papillon",
-            "Al Wataniah Blush Papillon"
-          ]
-        },
-        {
-          "canonical_name": "Cashmere Ivory",
-          "aliases": [
-            "Cashmere Ivory",
-            "Al Wataniah Cashmere Ivory"
-          ]
-        },
-        {
-          "canonical_name": "Abyat",
-          "aliases": [
-            "Abyat",
-            "Al Wataniah Abyat"
-          ]
-        },
-        {
-          "canonical_name": "Ain Emarat",
-          "aliases": [
-            "Ain Emarat",
-            "Al Wataniah Ain Emarat"
-          ]
-        },
-        {
-          "canonical_name": "Ain Emarat Extrait",
-          "aliases": [
-            "Ain Emarat Extrait",
-            "Al Wataniah Ain Emarat Extrait"
           ]
         }
       ]
