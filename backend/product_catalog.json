@@ -24625,9 +24625,12 @@
         "Arabian Incense",
         "French Avenue Arabian Incense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
-      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+      "formats_ml": [
+        80
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/arabian-incense",
+      "source_evidence_url": "https://frenchavenue.com/products/arabian-incense"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-4a1695d9",
@@ -36680,6 +36683,17 @@
       ],
       "variant_id": "SHV-SH-SWISS-ARABIAN-INCENSE-01-50-000",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-9cac4756",
+      "size_ml": 80,
+      "aliases": [
+        "Arabian Incense 80 ml",
+        "French Avenue Arabian Incense 80ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-9CAC4756-80-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://frenchavenue.com/products/arabian-incense"
     }
   ]
 }
