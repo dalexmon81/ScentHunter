@@ -2637,6 +2637,36 @@
             "Rose Oud",
             "Maison Asrar Rose Oud"
           ]
+        },
+        {
+          "canonical_name": "Plot Twist",
+          "aliases": [
+            "Plot Twist",
+            "Maison Asrar Plot Twist"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Love Key",
+          "aliases": [
+            "Love Key",
+            "Maison Asrar Love Key"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Unsolved Mystery",
+          "aliases": [
+            "Unsolved Mystery",
+            "Maison Asrar Unsolved Mystery"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
