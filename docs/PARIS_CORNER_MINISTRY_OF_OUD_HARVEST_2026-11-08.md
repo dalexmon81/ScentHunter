@@ -34,9 +34,9 @@ All eleven pages explicitly state a 100 ml size. Five pages explicitly identify 
 ## Snapshot after this harvest
 
 - Total canonical identities: 2,073
-- Total variants: 331
+- Total variants: 332
 - Paris Corner canonical identities: 258
-- Paris Corner variants: 49
+- Paris Corner variants: 50
 
 ## Regression protection
 
