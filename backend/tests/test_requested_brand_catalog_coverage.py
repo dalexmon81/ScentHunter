@@ -1,6 +1,7 @@
 """Regression guard for the user-requested fragrance brand coverage."""
 import json
 import unittest
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -473,7 +474,9 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         ]
         self.assertEqual(len(products), 165)
         def normalize_name(value):
-            return "".join(char.casefold() for char in str(value) if char.isalnum())
+            text = unicodedata.normalize("NFKD", str(value))
+            text = "".join(char for char in text if not unicodedata.combining(char))
+            return "".join(char.casefold() for char in text if char.isalnum())
 
         names = set()
         for row in products:
