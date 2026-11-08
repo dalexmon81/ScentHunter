@@ -16845,6 +16845,166 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://lattafa.com/product-category/perfumes/"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VANILLA-ADDICTION",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Vanilla Addiction",
+      "name": "Vanilla Addiction",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Vanilla Addiction",
+      "aliases": [
+        "Vanilla Addiction",
+        "Gulf Orchid Vanilla Addiction"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MANGO-ICE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Mango Ice",
+      "name": "Mango Ice",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Mango Ice",
+      "aliases": [
+        "Mango Ice",
+        "Gulf Orchid Mango Ice"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-COTTON-CANDY-MUSK",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cotton Candy Musk",
+      "name": "Cotton Candy Musk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Cotton Candy Musk",
+      "aliases": [
+        "Cotton Candy Musk",
+        "Gulf Orchid Cotton Candy Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy",
+      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-TAHARA-VANILLA-MUSK",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Tahara Vanilla Musk",
+      "name": "Tahara Vanilla Musk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Tahara Vanilla Musk",
+      "aliases": [
+        "Tahara Vanilla Musk",
+        "Gulf Orchid Tahara Vanilla Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
+      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-20ML",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Sweet Heaven 20ML",
+      "name": "Sweet Heaven 20ML",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Sweet Heaven 20ML",
+      "aliases": [
+        "Sweet Heaven 20ML",
+        "Gulf Orchid Sweet Heaven 20ML"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-PINK-MARSHMALLOW",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Pink Marshmallow",
+      "name": "Pink Marshmallow",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Pink Marshmallow",
+      "aliases": [
+        "Pink Marshmallow",
+        "Gulf Orchid Pink Marshmallow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/pink-marshmallow",
+      "source_evidence_url": "https://shop-gulforchid.com/products/pink-marshmallow"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-COCO-BLANCO",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Coco Blanco",
+      "name": "Coco Blanco",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Coco Blanco",
+      "aliases": [
+        "Coco Blanco",
+        "Gulf Orchid Coco Blanco"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/coco-blanco",
+      "source_evidence_url": "https://shop-gulforchid.com/products/coco-blanco"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-EXOTIC-OUD",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Exotic Oud",
+      "name": "Exotic Oud",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Exotic Oud",
+      "aliases": [
+        "Exotic Oud",
+        "Gulf Orchid Exotic Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VANILLA-LATTE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Vanilla Latte",
+      "name": "Vanilla Latte",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Vanilla Latte",
+      "aliases": [
+        "Vanilla Latte",
+        "Gulf Orchid Vanilla Latte"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-COOKIE-BITE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cookie Bite",
+      "name": "Cookie Bite",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Cookie Bite",
+      "aliases": [
+        "Cookie Bite",
+        "Gulf Orchid Cookie Bite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite"
     }
   ],
   "variants": [
