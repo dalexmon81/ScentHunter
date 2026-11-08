@@ -287,3 +287,22 @@ Le varianti di volume, i deodoranti e i set non sono stati trasformati in identi
 - **0** product ID duplicati; **0** variant ID duplicati; **0** varianti orfane; **0** prodotti senza famiglia corrispondente nel registry.
 
 La copertura completa dei marchi resta da verificare; il numero attuale rappresenta solo le identità individuate e trascritte dalle pagine citate.
+
+## Incremento Lattafa — pagine ufficiali 6 e 7 (2026-11-08)
+
+Aggiunte **23 identità** ulteriori al catalogo Lattafa:
+Al Nashama Caprice, Kingdom Men, Kingdom Women, Angham, Ajwad Pink to Pink, Sehr Lattafa, Qaaed Al Shabaab, Mahasin Crystal, Emeer, Ameer Al Arab Imperium, Ameer Al Oud, Adeeb, Maitha, Mohra Silky Rose, Abraaj, Haakim, Amoura, Raneen, Victoria, Lail Maleki Moroccan Blue, Mashrabya, Mayar Cherry Intense e Afeef.
+
+Fonti ufficiali:
+- https://lattafa.com/product-category/lattafa-perfumes/page/6/
+- https://lattafa.com/product-category/lattafa/page/7/
+
+Sono state importate solo identità di profumi e oli profumati nominati nel catalogo. Deodoranti, spray corpo, gift set e kit non sono stati aggiunti come profumi. Non sono stati inventati formati, prezzi o disponibilità.
+
+### Integrity snapshot
+- **1397** identità canoniche.
+- **141** righe variante; **31** famiglie.
+- Lattafa: **76**; Afnan: **83**.
+- Product ID duplicati: **0**; variant ID duplicati: **0**; varianti orfane: **0**; prodotti senza famiglia registry: **0**.
+
+La copertura del marchio non è ancora completa: sono state esaminate solo alcune pagine selezionate del catalogo ufficiale.
