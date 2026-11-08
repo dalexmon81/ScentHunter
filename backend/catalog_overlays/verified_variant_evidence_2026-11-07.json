@@ -302,6 +302,21 @@
       "brand": "Gulf Orchid",
       "url": "https://shop-gulforchid.com/products/riwaya_eau_de_parfum",
       "note": "Official Gulf Orchid product page explicitly identifies Riwaya as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/pink-marshmallow",
+      "note": "Official Gulf Orchid product page explicitly lists Pink Marshmallow as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/coco-blanco",
+      "note": "Official Gulf Orchid product page explicitly lists Coco Blanco as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "note": "Official Gulf Orchid product page explicitly lists Vanilla Latte as 100 ML - EDP."
     }
   ],
   "products": [
@@ -4634,6 +4649,39 @@
       "brand": "Gulf Orchid",
       "fragrance": "Maestro",
       "source_url": "https://shop-gulforchid.com/products/maestro",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Pink Marshmallow",
+      "source_url": "https://shop-gulforchid.com/products/pink-marshmallow",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Coco Blanco",
+      "source_url": "https://shop-gulforchid.com/products/coco-blanco",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Vanilla Latte",
+      "source_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
       "variants": [
         {
           "concentration": "Eau de Parfum",
