@@ -31825,8 +31825,9 @@
         "Khadlaj Wild Indonesian Oud",
         "Khadlaj Wild Indonesian Oud Pure"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/wild-indonesian-oud-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/wild-indonesian-oud-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-095",
@@ -36468,6 +36469,18 @@
         "Paris Corner Wayfarer Infusion 100ml"
       ],
       "variant_id": "SHV-SH-PARIS-CORNER-WAYFARER-INFUSION-100-000"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-094",
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-094-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Wild Indonesian Oud 60 ml",
+        "Wild Indonesian Oud Pure 60 ml",
+        "Khadlaj Wild Indonesian Oud Pure 60 ml"
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/wild-indonesian-oud-spray-shop-online-best-price-in-dubai-uae"
     }
   ]
 }
