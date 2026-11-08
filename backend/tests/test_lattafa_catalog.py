@@ -36,7 +36,7 @@ class LattafaCatalogTests(unittest.TestCase):
     def test_asad_line_contains_only_asad_products(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "lattafa_asad")
         names = {p["canonical_name"] for p in family["products"]}
-        self.assertEqual(names, {"Asad", "Asad Zanzibar", "Asad Bourbon", "Asad Elixir"})
+        self.assertEqual(names, {"Asad", "Asad Zanzibar", "Asad Bourbon", "Asad Elixir", "Asad Polar"})
 
     def test_non_asad_lattta_products_are_in_the_general_family(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "lattafa_catalog")
