@@ -32810,6 +32810,23 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/safa"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103",
+      "brand": "Arabiyat Prestige",
+      "brand_name": "Arabiyat Prestige",
+      "canonical_name": "Marwa Extrait",
+      "name": "Marwa Extrait",
+      "family_id": "arabiyat_prestige_catalog",
+      "family_name": "Marwa Extrait",
+      "aliases": [
+        "Marwa Extrait",
+        "Arabiyat Prestige Marwa Extrait",
+        "Marwa Extrait De Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marwa-extrait",
+      "source_evidence_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/marwa-extrait"
     }
   ],
   "variants": [
@@ -35398,6 +35415,17 @@
         "Arabiyat Prestige Safa 100ml"
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-SAFA-100-EDP"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103",
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-MARWA-EXTRAIT-6295156402103-60-000",
+      "size_ml": 60,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Marwa Extrait 60 ml",
+        "Arabiyat Prestige Marwa Extrait 60 ml",
+        "Marwa Extrait De Parfum 60ML"
+      ]
     }
   ]
 }
