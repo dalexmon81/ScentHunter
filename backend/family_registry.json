@@ -775,211 +775,6 @@
       "excluded_aliases": []
     },
     {
-      "family_id": "velixir_catalog",
-      "brand": "Velixir",
-      "query_aliases": [
-        "Velixir"
-      ],
-      "products": [
-        {
-          "canonical_name": "Adonis",
-          "aliases": [
-            "Adonis",
-            "Velixir Adonis"
-          ]
-        },
-        {
-          "canonical_name": "Aphrodite",
-          "aliases": [
-            "Aphrodite",
-            "Velixir Aphrodite"
-          ]
-        },
-        {
-          "canonical_name": "Apollo",
-          "aliases": [
-            "Apollo",
-            "Velixir Apollo"
-          ]
-        },
-        {
-          "canonical_name": "Ares",
-          "aliases": [
-            "Ares",
-            "Velixir Ares"
-          ]
-        },
-        {
-          "canonical_name": "Artemis",
-          "aliases": [
-            "Artemis",
-            "Velixir Artemis"
-          ]
-        },
-        {
-          "canonical_name": "Asteria",
-          "aliases": [
-            "Asteria",
-            "Velixir Asteria"
-          ]
-        },
-        {
-          "canonical_name": "Athena",
-          "aliases": [
-            "Athena",
-            "Velixir Athena"
-          ]
-        },
-        {
-          "canonical_name": "Comus",
-          "aliases": [
-            "Comus",
-            "Velixir Comus"
-          ]
-        },
-        {
-          "canonical_name": "Concordia",
-          "aliases": [
-            "Concordia",
-            "Velixir Concordia"
-          ]
-        },
-        {
-          "canonical_name": "Demeter",
-          "aliases": [
-            "Demeter",
-            "Velixir Demeter"
-          ]
-        },
-        {
-          "canonical_name": "Ether",
-          "aliases": [
-            "Ether",
-            "Velixir Ether"
-          ]
-        },
-        {
-          "canonical_name": "Galatea",
-          "aliases": [
-            "Galatea",
-            "Velixir Galatea"
-          ]
-        },
-        {
-          "canonical_name": "Harmonia",
-          "aliases": [
-            "Harmonia",
-            "Velixir Harmonia"
-          ]
-        },
-        {
-          "canonical_name": "Helios",
-          "aliases": [
-            "Helios",
-            "Velixir Helios"
-          ]
-        },
-        {
-          "canonical_name": "Hera",
-          "aliases": [
-            "Hera",
-            "Velixir Hera"
-          ]
-        },
-        {
-          "canonical_name": "Himeros",
-          "aliases": [
-            "Himeros",
-            "Velixir Himeros"
-          ]
-        },
-        {
-          "canonical_name": "Icarus",
-          "aliases": [
-            "Icarus",
-            "Velixir Icarus"
-          ]
-        },
-        {
-          "canonical_name": "Morpheus",
-          "aliases": [
-            "Morpheus",
-            "Velixir Morpheus"
-          ]
-        },
-        {
-          "canonical_name": "Narcisus",
-          "aliases": [
-            "Narcisus",
-            "Velixir Narcisus"
-          ]
-        },
-        {
-          "canonical_name": "Nyx",
-          "aliases": [
-            "Nyx",
-            "Velixir Nyx"
-          ]
-        },
-        {
-          "canonical_name": "Orion",
-          "aliases": [
-            "Orion",
-            "Velixir Orion"
-          ]
-        },
-        {
-          "canonical_name": "Orpheus",
-          "aliases": [
-            "Orpheus",
-            "Velixir Orpheus"
-          ]
-        },
-        {
-          "canonical_name": "Paladin",
-          "aliases": [
-            "Paladin",
-            "Velixir Paladin"
-          ]
-        },
-        {
-          "canonical_name": "Panacea",
-          "aliases": [
-            "Panacea",
-            "Velixir Panacea"
-          ]
-        },
-        {
-          "canonical_name": "Persephone",
-          "aliases": [
-            "Persephone",
-            "Velixir Persephone"
-          ]
-        },
-        {
-          "canonical_name": "Poseidon",
-          "aliases": [
-            "Poseidon",
-            "Velixir Poseidon"
-          ]
-        },
-        {
-          "canonical_name": "Selene",
-          "aliases": [
-            "Selene",
-            "Velixir Selene"
-          ]
-        },
-        {
-          "canonical_name": "Uranus",
-          "aliases": [
-            "Uranus",
-            "Velixir Uranus"
-          ]
-        }
-      ]
-    },
-    {
       "family_id": "mykonos_catalog",
       "brand": "Mykonos",
       "query_aliases": [
@@ -17206,6 +17001,379 @@
             "Genesis Pisces",
             "Pisces",
             "French Avenue Genesis Pisces"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "velixir_catalog",
+      "brand": "Velixir",
+      "query_aliases": [
+        "Velixir"
+      ],
+      "products": [
+        {
+          "canonical_name": "Adonis",
+          "aliases": [
+            "Adonis",
+            "Velixir Adonis"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aphrodite",
+          "aliases": [
+            "Aphrodite",
+            "Velixir Aphrodite"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Apollo",
+          "aliases": [
+            "Apollo",
+            "Velixir Apollo"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ares",
+          "aliases": [
+            "Ares",
+            "Velixir Ares"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Artemis",
+          "aliases": [
+            "Artemis",
+            "Velixir Artemis"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asteria",
+          "aliases": [
+            "Asteria",
+            "Velixir Asteria"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Athena",
+          "aliases": [
+            "Athena",
+            "Velixir Athena"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Comus",
+          "aliases": [
+            "Comus",
+            "Velixir Comus"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Concordia",
+          "aliases": [
+            "Concordia",
+            "Velixir Concordia"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Demeter",
+          "aliases": [
+            "Demeter",
+            "Velixir Demeter"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ether",
+          "aliases": [
+            "Ether",
+            "Velixir Ether"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Galatea",
+          "aliases": [
+            "Galatea",
+            "Velixir Galatea"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Harmonia",
+          "aliases": [
+            "Harmonia",
+            "Velixir Harmonia"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Helios",
+          "aliases": [
+            "Helios",
+            "Velixir Helios"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Hera",
+          "aliases": [
+            "Hera",
+            "Velixir Hera"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Himeros",
+          "aliases": [
+            "Himeros",
+            "Velixir Himeros"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Icarus",
+          "aliases": [
+            "Icarus",
+            "Velixir Icarus"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Morpheus",
+          "aliases": [
+            "Morpheus",
+            "Velixir Morpheus"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Narcisus",
+          "aliases": [
+            "Narcisus",
+            "Velixir Narcisus"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Nyx",
+          "aliases": [
+            "Nyx",
+            "Velixir Nyx"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Orion",
+          "aliases": [
+            "Orion",
+            "Velixir Orion"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Orpheus",
+          "aliases": [
+            "Orpheus",
+            "Velixir Orpheus"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Paladin",
+          "aliases": [
+            "Paladin",
+            "Velixir Paladin"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Panacea",
+          "aliases": [
+            "Panacea",
+            "Velixir Panacea"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Persephone",
+          "aliases": [
+            "Persephone",
+            "Velixir Persephone"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Poseidon",
+          "aliases": [
+            "Poseidon",
+            "Velixir Poseidon"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Selene",
+          "aliases": [
+            "Selene",
+            "Velixir Selene"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Uranus",
+          "aliases": [
+            "Uranus",
+            "Velixir Uranus"
+          ],
+          "formats_ml": [
+            2,
+            3,
+            35,
+            100
           ]
         }
       ]
