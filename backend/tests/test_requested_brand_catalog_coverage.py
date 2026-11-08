@@ -619,5 +619,22 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         }
         self.assertTrue(excluded.isdisjoint(names))
 
+
+    def test_velixir_official_range_has_all_confirmed_size_variants(self):
+        extrait = {"Comus", "Ether", "Orpheus", "Panacea"}
+        products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Velixir"}
+        variants = CATALOG.get("variants", [])
+        self.assertEqual(len(products), 28)
+        self.assertEqual(sum(1 for row in variants if row.get("product_id") in {p["product_id"] for p in products.values()}), 52)
+        for name, row in products.items():
+            expected_sizes = [100] if name in extrait else [35, 100]
+            with self.subTest(name=name):
+                self.assertEqual(sorted(row.get("formats_ml", [])), expected_sizes)
+                matching = [v for v in variants if v.get("product_id") == row["product_id"]]
+                self.assertEqual(sorted(v.get("size_ml") for v in matching), expected_sizes)
+                self.assertTrue(all(v.get("concentration") == row.get("concentration") for v in matching))
+        self.assertIn("Narcissus", products["Narcisus"].get("aliases", []))
+        self.assertIn("Harmony", products["Harmonia"].get("aliases", []))
+
 if __name__ == "__main__":
     unittest.main()
