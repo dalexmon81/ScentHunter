@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 166,
-    "Bujairami": 142,
+    "Bujairami": 671,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
