@@ -37,7 +37,9 @@
     "https://www.parfum-paris-corner.com/boutique/",
     "https://www.lattafa-usa.com/collections/eau-de-parfum-edp",
     "https://maisonasrar.com/collections/all",
-    "https://khadlaj-perfumes.sa/"
+    "https://khadlaj-perfumes.sa/",
+    "https://maisondisfragrances.com/fr/collections/maison-asrar",
+    "https://maisondisfragrances.com/fr/collections/bujairami"
   ],
   "checked_at": "2026-11-07",
   "data_kind": "candidate_fragrance_identities_only_no_variants_no_offers",
@@ -241,7 +243,9 @@
         "Basma",
         "Bloom Bloom",
         "Bonita",
-        "Alonoud"
+        "Alonoud",
+        "Rose",
+        "Lily"
       ]
     },
     {
@@ -630,7 +634,9 @@
         "HIM",
         "Snow White",
         "Million Dollar Smell",
-        "Only Ever"
+        "Only Ever",
+        "Chroma",
+        "Special Day"
       ]
     },
     {
