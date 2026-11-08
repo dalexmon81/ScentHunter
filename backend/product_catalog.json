@@ -24218,6 +24218,134 @@
       "identity_status": "source_listed_name",
       "source_url": "https://frenchavenue.com/collections/genesis",
       "source_evidence_url": "https://frenchavenue.com/collections/genesis"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-2c314e20",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "8TH Wonder",
+      "name": "8TH Wonder",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "8TH Wonder",
+        "French Avenue 8TH Wonder"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-0b9bce5a",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Affogato",
+      "name": "Affogato",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Affogato",
+        "French Avenue Affogato"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-99be2329",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Amber Saffron",
+      "name": "Amber Saffron",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Amber Saffron",
+        "French Avenue Amber Saffron"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-42121128",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "An Equestrian Series Della",
+      "name": "An Equestrian Series Della",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "An Equestrian Series Della",
+        "French Avenue An Equestrian Series Della"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-bf18f173",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "An Equestrian Series Haydan",
+      "name": "An Equestrian Series Haydan",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "An Equestrian Series Haydan",
+        "French Avenue An Equestrian Series Haydan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-37a45471",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "An Equestrian Series Olena",
+      "name": "An Equestrian Series Olena",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "An Equestrian Series Olena",
+        "French Avenue An Equestrian Series Olena"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-2935660a",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "An Equestrian Series Pierce",
+      "name": "An Equestrian Series Pierce",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "An Equestrian Series Pierce",
+        "French Avenue An Equestrian Series Pierce"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-9cac4756",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Arabian Incense",
+      "name": "Arabian Incense",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Arabian Incense",
+        "French Avenue Arabian Incense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://frenchavenue.com/collections/all-fragrances-for-sale",
+      "source_evidence_url": "https://frenchavenue.com/collections/all-fragrances-for-sale"
     }
   ],
   "variants": [
