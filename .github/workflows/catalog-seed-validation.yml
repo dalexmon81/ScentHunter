@@ -11,6 +11,8 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/verified-incense-fragrances-2026-11-08
+      - catalog/lattafa-official-launches-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -25,6 +27,8 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/verified-incense-fragrances-2026-11-08
+      - catalog/lattafa-official-launches-2026-11-08
 
 permissions:
   contents: read
