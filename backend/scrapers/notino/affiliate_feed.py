@@ -512,7 +512,15 @@ def import_configured_feed() -> dict:
 
 
 def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
-    """Read fresh feed-backed Notino variants for normal search without site scraping."""
+    """Read fresh feed-backed variants only while written feed permission is current."""
+    try:
+        _require_authorized_feed_import()
+    except FeedImportError as exc:
+        return {
+            "status": "unavailable", "verified": False, "results": [],
+            "error": str(exc),
+            "details": {"source": "cj_viv_authorized_xml", "authorization_required": True},
+        }
     query = re.sub(r"\s+", " ", str(query or "")).strip()
     if not query:
         return {"status": "success", "verified": True, "results": [], "error": None,
