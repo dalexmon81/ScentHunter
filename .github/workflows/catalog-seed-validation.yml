@@ -77,3 +77,6 @@ jobs:
           if [ -f backend/tests/test_lattafa_mishlah_official_page.py ]; then
             python -m unittest backend.tests.test_lattafa_mishlah_official_page -v
           fi
+          if [ -f backend/tests/test_lattafa_four_official_products.py ]; then
+            python -m unittest backend.tests.test_lattafa_four_official_products -v
+          fi
