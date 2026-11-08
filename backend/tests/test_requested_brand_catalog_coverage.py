@@ -325,6 +325,46 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(row.get("concentration"), concentration)
                     self.assertEqual(matching[0].get("concentration"), concentration)
 
+
+    def test_paris_corner_eleven_more_official_pages_and_variants_are_verified(self):
+        expected = {
+            "Tawaaq": ("https://www.pariscornerperfumes.com/products/tawaaq", 100, None),
+            "Lueur d'Espoir Noche": ("https://www.pariscornerperfumes.com/products/lueur-noche", 100, None),
+            "Lueur d'Espoir Arena": ("https://www.pariscornerperfumes.com/products/lueur-arena", 100, "Eau de Parfum"),
+            "Lueur d'Espoir Ambre": ("https://www.pariscornerperfumes.com/products/lueur-ambre", 100, None),
+            "North Stag Neuf IX": ("https://www.pariscornerperfumes.com/products/north-stag-neuf-ix", 100, "Extrait de Parfum"),
+            "North Stag Sept VII": ("https://www.pariscornerperfumes.com/products/north-stag-sept-vii", 100, "Extrait de Parfum"),
+            "Rose de Nuit": ("https://www.pariscornerperfumes.com/products/rose-de-nuit", 100, "Eau de Parfum"),
+            "Super Crush Emir": ("https://www.pariscornerperfumes.com/products/super-crush-emir", 75, None),
+            "Ministry of Oud - Thailand Oud in Cairo": ("https://www.pariscornerperfumes.com/products/ministry-of-oud-thailand-oud-in-cairo", 100, None),
+            "Charuto Mysterious Tobacco": ("https://www.pariscornerperfumes.com/products/paris-corner-perfumes", 100, "Eau de Parfum"),
+            "North Stag Huit VIII": ("https://www.pariscornerperfumes.com/products/north-stag-huit-viii", 100, "Extrait de Parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == row["product_id"] and v.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matching), 1)
+                if concentration is None:
+                    self.assertNotIn("concentration", row)
+                    self.assertNotIn("concentration", matching[0])
+                else:
+                    self.assertEqual(row.get("concentration"), concentration)
+                    self.assertEqual(matching[0].get("concentration"), concentration)
+
     def test_aromatix_signature_collection_is_present(self):
         names = {
             str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
