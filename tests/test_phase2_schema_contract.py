@@ -31,6 +31,19 @@ def test_variant_attributes_and_fixed_precision_prices():
     assert str(PriceHistory.__table__.c.price.type) == "NUMERIC(12, 2)"
     assert any(isinstance(fk, ForeignKey) for fk in MatchAudit.__table__.c.offer_id.foreign_keys)
 
+
+def test_variant_product_form_is_nullable_and_uses_controlled_values():
+    assert ProductVariant.__table__.c.product_form.nullable is True
+    constraints = {
+        constraint.name: str(getattr(constraint, "sqltext", ""))
+        for constraint in ProductVariant.__table__.constraints
+    }
+    assert "product_form_allowed" in constraints
+    assert "fine_fragrance" in constraints["product_form_allowed"]
+    assert "deodorant" in constraints["product_form_allowed"]
+    assert "home_fragrance" in constraints["product_form_allowed"]
+
+
 def test_required_offer_and_catalog_indexes_exist():
     indexes = {index.name for table in Base.metadata.tables.values() for index in table.indexes}
     assert {
@@ -54,6 +67,7 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.exec_driver_sql("PRAGMA integrity_check").scalar_one() == "ok"
         tables = set(inspect(engine).get_table_names())
+        assert "product_form" in {column["name"] for column in inspect(engine).get_columns("product_variants")}
         assert {
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
