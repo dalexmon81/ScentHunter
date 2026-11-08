@@ -49,3 +49,30 @@ Before this update, the Mykonos seed had 76 canonical identities. The EU retaile
 - No size/concentration variants are created for Inspire Perfume or the announced names whose page says the final concentration/size is not confirmed.
 - Fragrantica currently reports 84 records; its page could not be opened directly by the crawler (403), so its indexed designer listing is used for name-level cross-check only.
 - This is a cross-source reconciliation snapshot, not a guarantee of worldwide historical completeness or current stock availability.
+
+## Fragrantica-only legacy / additional names
+
+The indexed Fragrantica designer page's All Fragrances and collection sections include additional perfume names not present in the 90-item EU retailer explorer or the current official Indonesian 54-product collection. These have been added as name-only records with Fragrantica as the evidence URL; no sizes, concentrations or variants are inferred:
+- Adelina
+- Bloody Mary
+- Crystals
+- Eclipse
+- Nashi Pear Garden
+- Roulette
+- Zeus
+- It's Not Ella
+
+This brings the cross-source union in ScentHunter to 99 Mykonos perfume identities. It is intentionally not called “84 Fragrantica perfumes”: Fragrantica's designer count includes overlapping collection groupings, while the union also includes EU retailer announcements and the Indonesian official catalog's Imperium.
+
+### Alias reconciliation
+
+The following source spellings/names are aliases on existing identities, not extra products:
+- Jinx → Jynx
+- Nautilius → Nautilus
+- XoXo, Rosy → Xoxo Rosy
+- Empire → Empire x RRQ
+- California Signature → California (official Indonesian product page title is California; its description calls it California Signature)
+- Shades Parfum → Shades Perfume
+- Intimate Affair → Affair (retailer/secondary catalogue wording; retain as alias pending a dedicated official product-page check)
+
+The three items in Fragrantica's separate Body Mists section — Love, Rosy; Lychee Breeze; Matcha Sundays — are deliberately not added as perfume identities. They require a separate product-type taxonomy and should not be treated as Extrait/EDP variants.
