@@ -34011,6 +34011,158 @@
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/atlas-glacial-valley/",
       "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-039",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad Polar",
+      "name": "Asad Polar",
+      "family_id": "lattafa_catalog",
+      "family_name": "Asad Polar",
+      "aliases": [
+        "Asad Polar",
+        "Lattafa Asad Polar"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad-polar/",
+      "source_evidence_url": "https://lattafa.com/product/asad-polar/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-040",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Beyond Precious",
+      "name": "Beyond Precious",
+      "family_id": "lattafa_catalog",
+      "family_name": "Beyond Precious",
+      "aliases": [
+        "Beyond Precious",
+        "Lattafa Beyond Precious"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/beyond-precious/",
+      "source_evidence_url": "https://lattafa.com/product/beyond-precious/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-041",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Harlequin Cream – Give Me Gourmand",
+      "name": "Harlequin Cream – Give Me Gourmand",
+      "family_id": "lattafa_catalog",
+      "family_name": "Harlequin Cream – Give Me Gourmand",
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand",
+        "Lattafa Harlequin Cream – Give Me Gourmand"
+      ],
+      "formats_ml": [
+        75
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-042",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Rave Now- women",
+      "name": "Rave Now- women",
+      "family_id": "lattafa_catalog",
+      "family_name": "Rave Now- women",
+      "aliases": [
+        "Rave Now- women",
+        "Lattafa Rave Now- women"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/rave-now-women/",
+      "source_evidence_url": "https://lattafa.com/product/rave-now-women/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-043",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Rave Now- White",
+      "name": "Rave Now- White",
+      "family_id": "lattafa_catalog",
+      "family_name": "Rave Now- White",
+      "aliases": [
+        "Rave Now- White",
+        "Lattafa Rave Now- White"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/rave-now-white/",
+      "source_evidence_url": "https://lattafa.com/product/rave-now-white/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-044",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Rave Now- rouge",
+      "name": "Rave Now- rouge",
+      "family_id": "lattafa_catalog",
+      "family_name": "Rave Now- rouge",
+      "aliases": [
+        "Rave Now- rouge",
+        "Lattafa Rave Now- rouge"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/rave-now-rouge/",
+      "source_evidence_url": "https://lattafa.com/product/rave-now-rouge/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-045",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Fearless",
+      "name": "Fearless",
+      "family_id": "lattafa_catalog",
+      "family_name": "Fearless",
+      "aliases": [
+        "Fearless",
+        "Lattafa Fearless"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/fearless/",
+      "source_evidence_url": "https://lattafa.com/product/fearless/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-046",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raw Human",
+      "name": "Raw Human",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raw Human",
+      "aliases": [
+        "Raw Human",
+        "Lattafa Raw Human"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raw-human/",
+      "source_evidence_url": "https://lattafa.com/product/raw-human/"
     }
   ],
   "variants": [
@@ -37088,6 +37240,78 @@
         "Lattafa Atlas Glacial Valley 55 ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-038-55-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-039",
+      "size_ml": 100,
+      "aliases": [
+        "Asad Polar 100 ml",
+        "Lattafa Asad Polar 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-039-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-040",
+      "size_ml": 100,
+      "aliases": [
+        "Beyond Precious 100 ml",
+        "Lattafa Beyond Precious 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-040-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-041",
+      "size_ml": 75,
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand 75 ml",
+        "Lattafa Harlequin Cream – Give Me Gourmand 75 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-041-75-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-042",
+      "size_ml": 100,
+      "aliases": [
+        "Rave Now- women 100 ml",
+        "Lattafa Rave Now- women 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-042-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-043",
+      "size_ml": 100,
+      "aliases": [
+        "Rave Now- White 100 ml",
+        "Lattafa Rave Now- White 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-043-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-044",
+      "size_ml": 100,
+      "aliases": [
+        "Rave Now- rouge 100 ml",
+        "Lattafa Rave Now- rouge 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-044-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-045",
+      "size_ml": 100,
+      "aliases": [
+        "Fearless 100 ml",
+        "Lattafa Fearless 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-045-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-046",
+      "size_ml": 100,
+      "aliases": [
+        "Raw Human 100 ml",
+        "Lattafa Raw Human 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-046-100-000"
     }
   ]
 }
