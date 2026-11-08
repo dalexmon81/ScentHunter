@@ -464,5 +464,32 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
 
+    def test_arabiyat_prestige_attar_al_youm_products_and_aliases(self):
+        expected = [["Attar Al Youm Black","https://myperfumes.ae/products/attar-al-youm-edp-100ml-1"],["Musk Al Youm","https://myperfumes.ae/products/musk-al-youm-edp-100ml-1"],["Oud Al Youm","https://myperfumes.ae/collections/arabiyat-prestige/products/oud-al-youm-edp-100ml-1"]]
+        products = {
+            p.get("canonical_name"): p
+            for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Arabiyat Prestige"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, url in expected:
+            with self.subTest(name=name):
+                p = products[name]
+                self.assertEqual(p.get("identity_status"), "source_verified_name")
+                self.assertEqual(p.get("source_url"), url)
+                self.assertEqual(p.get("formats_ml"), [100])
+                self.assertEqual(p.get("concentration"), "Eau de Parfum")
+                matching = [v for v in variants if v.get("product_id") == p["product_id"]]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), 100)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        alias_expectations = {
+            "Nyla Vani-Elle": "Nyla Vani-elle",
+            "Ash'aa Mauve": "Asha'a Mauve",
+            "Noirè": "Noire",
+        }
+        for canonical, alias in alias_expectations.items():
+            self.assertIn(alias, products[canonical].get("aliases", []))
+
 if __name__ == "__main__":
     unittest.main()
