@@ -11,7 +11,7 @@ The counts are not directly interchangeable. Fragrantica has collection grouping
 
 ## Seed reconciliation
 
-Before this update, the Mykonos seed had 76 canonical identities. The EU retailer's 89-name current A–Z list contains 14 names absent from the seed; the seed also contains Imperium, which is absent from that current EU list but is independently listed by the brand's Indonesian storefront. The merged catalog therefore retains Imperium and adds the 15 distinct identities below (including Soft Hour x NCT Haechan from the retailer's new-release explorer, not the current A–Z list). The resulting 98 identities represent a cross-source union, not a claim that 91 are simultaneously available for purchase.
+Before this update, the Mykonos seed on the PR base branch contained 72 canonical identities. The reconciled branch contains 99 identities: a net addition of 27, with no Mykonos identities removed. These additions are a cross-source union from the authorized EU retailer's product pages and new-release explorer, the official Indonesian storefront, and Fragrantica's indexed designer listing. They include current EU-range names, separately documented announced products, and eight name-only legacy entries. The 99 count is not a claim that all products are simultaneously available for purchase, and the source counts are not interchangeable. The 27 net additions are: Adelina, Avra Kehdabra, Berry Caramel Pancake, Bloody Mary, Café Lyon, Celestial, Crystals, Daydream, Dolce Cherry, Déjà Vu, Eclipse, Elysian, Forever Musc, Inception Reimagined, Inspire Perfume, It's Not Ella, Kingsman, Monaco Royale Black, Nashi Pear Garden, President, Roulette, Shape Shift, Soft Hour x NCT Haechan, Undercover, Violette, Wallflower and Zeus.
 
 ## Added identities
 
