@@ -34672,6 +34672,184 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMBER-GROVE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amber Grove",
+      "name": "Amber Grove",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amber Grove",
+      "aliases": [
+        "Amber Grove",
+        "Bujairami Amber Grove"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-grove/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amber-grove/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMIRA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amira",
+      "name": "Amira",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amira",
+      "aliases": [
+        "Amira",
+        "Bujairami Amira"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amira/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amira/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        50,
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMOURA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amoura",
+      "name": "Amoura",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amoura",
+      "aliases": [
+        "Amoura",
+        "Bujairami Amoura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amoura/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amoura/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMPLIFY",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Amplify",
+      "name": "Amplify",
+      "family_id": "bujairami_catalog",
+      "family_name": "Amplify",
+      "aliases": [
+        "Amplify",
+        "Bujairami Amplify"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amplify/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/amplify/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AOUD-MINERAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aoud Mineral",
+      "name": "Aoud Mineral",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aoud Mineral",
+      "aliases": [
+        "Aoud Mineral",
+        "Bujairami Aoud Mineral"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aoud-mineral/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aoud-mineral/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-INFINITE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Infinite",
+      "name": "Aqua Infinite",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Infinite",
+      "aliases": [
+        "Aqua Infinite",
+        "Bujairami Aqua Infinite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-infinite/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-infinite/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-PREVAIL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Prevail",
+      "name": "Aqua Prevail",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Prevail",
+      "aliases": [
+        "Aqua Prevail",
+        "Bujairami Aqua Prevail"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-prevail/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-prevail/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-PURE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Pure",
+      "name": "Aqua Pure",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Pure",
+      "aliases": [
+        "Aqua Pure",
+        "Bujairami Aqua Pure"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-pure/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-pure/",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-RUSH",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aqua Rush",
+      "name": "Aqua Rush",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aqua Rush",
+      "aliases": [
+        "Aqua Rush",
+        "Bujairami Aqua Rush"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-rush/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aqua-rush/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37841,6 +38019,96 @@
         "Bujairami Amber Floweret 100ml"
       ],
       "source_url": "https://bujairamiperfumes.eu/perfumes/amber-floweret/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMBER-GROVE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMBER-GROVE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Grove 100 ml",
+        "Bujairami Amber Grove 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amber-grove/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMIRA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMIRA-50-000",
+      "size_ml": 50,
+      "aliases": [
+        "Amira 50 ml",
+        "Bujairami Amira 50ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amira/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMIRA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMIRA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amira 100 ml",
+        "Bujairami Amira 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amira/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMOURA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMOURA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amoura 100 ml",
+        "Bujairami Amoura 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amoura/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AMPLIFY",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AMPLIFY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amplify 100 ml",
+        "Bujairami Amplify 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/amplify/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AOUD-MINERAL",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AOUD-MINERAL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aoud Mineral 100 ml",
+        "Bujairami Aoud Mineral 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aoud-mineral/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-INFINITE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AQUA-INFINITE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aqua Infinite 100 ml",
+        "Bujairami Aqua Infinite 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-infinite/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-PREVAIL",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AQUA-PREVAIL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aqua Prevail 100 ml",
+        "Bujairami Aqua Prevail 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-prevail/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH6-AQUA-RUSH",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH6-AQUA-RUSH-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aqua Rush 100 ml",
+        "Bujairami Aqua Rush 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aqua-rush/"
     }
   ]
 }
