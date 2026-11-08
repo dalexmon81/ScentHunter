@@ -237,6 +237,66 @@
       "brand": "Gulf Orchid",
       "url": "https://shop-gulforchid.com/products/matcha-latte",
       "note": "Official Gulf Orchid product page explicitly identifies Matcha Latte as 100 ML EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/nobilty_eau_de_parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Nobilty as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/romantic-perfume-by-gulf-orchid-eau-de-parfum-for-women",
+      "note": "Official Gulf Orchid product page explicitly identifies Romantic For Her as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Sweet Heaven as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/almalek-by-gulf-orchid-eau-de-parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Almalek as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/huyam_eau_de_parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Huyam as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/atlantic_eau_de_parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Atlantic as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/old_fashioned_eau_de_parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Old Fashioned as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/shahm",
+      "note": "Official Gulf Orchid product page explicitly identifies Shahm as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/widian_eau_de_parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Widian as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/arctic_eau_de_parfum",
+      "note": "Official Gulf Orchid product page explicitly identifies Arctic as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/shumookh-gulf-orchid-eau-de-parfum-100-ml",
+      "note": "Official Gulf Orchid product page explicitly identifies Shumookh as 100 ML - EDP."
+    },
+    {
+      "brand": "Gulf Orchid",
+      "url": "https://shop-gulforchid.com/products/maestro",
+      "note": "Official Gulf Orchid product page explicitly identifies Maestro as 100 ML - EDP."
     }
   ],
   "products": [
@@ -4503,6 +4563,72 @@
       "brand": "Gulf Orchid",
       "fragrance": "Matcha Latte",
       "source_url": "https://shop-gulforchid.com/products/matcha-latte",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Huyam",
+      "source_url": "https://shop-gulforchid.com/products/huyam_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Atlantic",
+      "source_url": "https://shop-gulforchid.com/products/atlantic_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Old Fashioned",
+      "source_url": "https://shop-gulforchid.com/products/old_fashioned_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Shahm",
+      "source_url": "https://shop-gulforchid.com/products/shahm",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Arctic",
+      "source_url": "https://shop-gulforchid.com/products/arctic_eau_de_parfum",
+      "variants": [
+        {
+          "concentration": "Eau de Parfum",
+          "size_ml": 100
+        }
+      ]
+    },
+    {
+      "brand": "Gulf Orchid",
+      "fragrance": "Maestro",
+      "source_url": "https://shop-gulforchid.com/products/maestro",
       "variants": [
         {
           "concentration": "Eau de Parfum",
