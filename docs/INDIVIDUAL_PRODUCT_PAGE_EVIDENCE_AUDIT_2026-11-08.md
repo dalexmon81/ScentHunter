@@ -36,7 +36,7 @@ This is a documentation-only evidence pass against the requested-brand catalog s
 
 ## Coverage and limitations
 
-- 14 individual product pages were reviewed across six brands.
+- 17 individual product pages were reviewed across six brands.
 - These are sample confirmations, not a full audit of the 1,872 listing-level identities.
 - No product was added or deleted, no identity status was changed, and no variant was created.
 - This document does not claim that any brand's catalog is complete.
@@ -51,3 +51,26 @@ All product-detail URLs in the evidence table are manufacturer/brand storefront 
 - Khadlaj Perfumes: https://khadlaj-perfumes.com/
 - Al Wataniah: https://www.alwataniah.com/
 - Assaf: https://assaf.ae/
+
+
+## Second pass — Armaf individual product pages (8 November 2026)
+
+Three additional Armaf catalog identities currently marked `source_listed_name` were opened from the brand's official US storefront and checked at product-detail level:
+
+| Existing catalog identity | Official product page | Explicit evidence on product page | Safe conclusion |
+|---|---|---|---|
+| Club de Nuit Intenso Fuego | https://armaf.com/products/club-de-nuit-intenso-fuego | Exact product name; Eau de Parfum; men; 3.4 oz | Individual identity verified; record EDP and 3.4 oz only if the catalog's unit policy supports source-native ounces |
+| Club de Nuit Elite | https://armaf.com/products/club-de-nuit-elite-1 | Exact product name; Eau de Parfum; unisex; 3.4 oz | Individual identity verified; EDP, unisex and 3.4 oz explicit |
+| Club de Nuit Intense Overdose | https://armaf.com/products/club-de-nuit-intense-overdose | Exact product name; Extrait de Parfum; men; 3.6 oz | Individual identity verified; preserve Extrait as its own concentration, not as EDP |
+
+These three pages are first-party product details, not merely collection cards. They provide explicit product identity, concentration and size. The source's ounce measurements are intentionally not converted here.
+
+The official storefront also lists adjacent products and gift sets that contain sprays, shampoos or body products. Those must not be mistaken for independent fine-fragrance identities without checking their own product details.
+
+## Updated coverage
+
+- 17 individual product pages reviewed across six brands.
+- The second pass adds three individually verified Armaf identities.
+- The overall audit remains a sample, not a full audit of the 1,872 listing-level identities.
+- No product was added or deleted, no identity status was changed, and no variant was created.
+- Catalog JSON and production code remain unchanged.
