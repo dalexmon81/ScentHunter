@@ -24554,6 +24554,694 @@
       "identity_status": "source_listed_name",
       "source_url": "https://frenchavenue.com/collections/all",
       "source_evidence_url": "https://frenchavenue.com/collections/all"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-01aa400b",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Arsh",
+      "name": "Arsh",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Arsh",
+        "French Avenue Arsh"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-952a1bda",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Axis",
+      "name": "Axis",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Axis",
+        "French Avenue Axis"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b10c55c5",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Chronicles",
+      "name": "Chronicles",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Chronicles",
+        "French Avenue Chronicles"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ce852d93",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Cocolatte Lassi",
+      "name": "Cocolatte Lassi",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Cocolatte Lassi",
+        "French Avenue Cocolatte Lassi"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-70667230",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Cosmic Tonka",
+      "name": "Cosmic Tonka",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Cosmic Tonka",
+        "French Avenue Cosmic Tonka"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-64500b5b",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Crystal Oud",
+      "name": "Crystal Oud",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Crystal Oud",
+        "French Avenue Crystal Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-169b907f",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "El Dorado",
+      "name": "El Dorado",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "El Dorado",
+        "French Avenue El Dorado"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-083f7903",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Elinor Green",
+      "name": "Elinor Green",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Elinor Green",
+        "French Avenue Elinor Green"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-d5ebbf15",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Ethos Aoud Oud",
+      "name": "Ethos Aoud Oud",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Ethos Aoud Oud",
+        "French Avenue Ethos Aoud Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-902dc12e",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Fierte",
+      "name": "Fierte",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Fierte",
+        "French Avenue Fierte"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-7d922ef0",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Fierte Luna",
+      "name": "Fierte Luna",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Fierte Luna",
+        "French Avenue Fierte Luna"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-88c7252f",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Firestorm Extrait",
+      "name": "Firestorm Extrait",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Firestorm Extrait",
+        "French Avenue Firestorm Extrait"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-fd01fa01",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Fleuriche Bisou Rose",
+      "name": "Fleuriche Bisou Rose",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Fleuriche Bisou Rose",
+        "French Avenue Fleuriche Bisou Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ebe919b4",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Grecia",
+      "name": "Grecia",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Grecia",
+        "French Avenue Grecia"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ac32dcb4",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Grecia Rosa Extrait",
+      "name": "Grecia Rosa Extrait",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Grecia Rosa Extrait",
+        "French Avenue Grecia Rosa Extrait"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-c8b41ffc",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Grow",
+      "name": "Grow",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Grow",
+        "French Avenue Grow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-7940fec5",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Hypnotic Gold",
+      "name": "Hypnotic Gold",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Hypnotic Gold",
+        "French Avenue Hypnotic Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b7858f6b",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Inej",
+      "name": "Inej",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Inej",
+        "French Avenue Inej"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b47b1b41",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Iris Patchouli",
+      "name": "Iris Patchouli",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Iris Patchouli",
+        "French Avenue Iris Patchouli"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-87d40729",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Le Falcon",
+      "name": "Le Falcon",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Le Falcon",
+        "French Avenue Le Falcon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b600d17c",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Le Falcon Dubai",
+      "name": "Le Falcon Dubai",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Le Falcon Dubai",
+        "French Avenue Le Falcon Dubai"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-d21d0a98",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Les Extraits Absolus Shadow",
+      "name": "Les Extraits Absolus Shadow",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Les Extraits Absolus Shadow",
+        "French Avenue Les Extraits Absolus Shadow"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-6d2b89be",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Les Extraits Absolus Unknown",
+      "name": "Les Extraits Absolus Unknown",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Les Extraits Absolus Unknown",
+        "French Avenue Les Extraits Absolus Unknown"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-01eda34e",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Marmara",
+      "name": "Marmara",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Marmara",
+        "French Avenue Marmara"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-42115188",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Musc D' Prive",
+      "name": "Musc D' Prive",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Musc D' Prive",
+        "French Avenue Musc D' Prive"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-aec125d1",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Muse",
+      "name": "Muse",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Muse",
+        "French Avenue Muse"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-f26d3d79",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Mythical Gryphon",
+      "name": "Mythical Gryphon",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Mythical Gryphon",
+        "French Avenue Mythical Gryphon"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ea60023e",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "NECTARE Extradose",
+      "name": "NECTARE Extradose",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "NECTARE Extradose",
+        "French Avenue NECTARE Extradose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-d3b3bd11",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Papa Yeah!",
+      "name": "Papa Yeah!",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Papa Yeah!",
+        "French Avenue Papa Yeah!"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ec89776e",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Paradigm",
+      "name": "Paradigm",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Paradigm",
+        "French Avenue Paradigm"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-05ce3186",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Paradox Azuree",
+      "name": "Paradox Azuree",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Paradox Azuree",
+        "French Avenue Paradox Azuree"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-2ad9d950",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Paradox Rossa",
+      "name": "Paradox Rossa",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Paradox Rossa",
+        "French Avenue Paradox Rossa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-e5c4a27a",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Pure Desert Oud",
+      "name": "Pure Desert Oud",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Pure Desert Oud",
+        "French Avenue Pure Desert Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-b5d5d225",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Ripple",
+      "name": "Ripple",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Ripple",
+        "French Avenue Ripple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-9a22aa0e",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Safari Breeze",
+      "name": "Safari Breeze",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Safari Breeze",
+        "French Avenue Safari Breeze"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-8e0e27f1",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Solitaire",
+      "name": "Solitaire",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Solitaire",
+        "French Avenue Solitaire"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-a3e0db37",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Spirito Ignite",
+      "name": "Spirito Ignite",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Spirito Ignite",
+        "French Avenue Spirito Ignite"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-44492640",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Sultana - The Joyful",
+      "name": "Sultana - The Joyful",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Sultana - The Joyful",
+        "French Avenue Sultana - The Joyful"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-8ced14d4",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Thunder Extrait",
+      "name": "Thunder Extrait",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Thunder Extrait",
+        "French Avenue Thunder Extrait"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ab606149",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Tobacco D'Feu",
+      "name": "Tobacco D'Feu",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Tobacco D'Feu",
+        "French Avenue Tobacco D'Feu"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-bfc7ffe0",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Velvet Mood",
+      "name": "Velvet Mood",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Velvet Mood",
+        "French Avenue Velvet Mood"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-a72af002",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Venus de Milo",
+      "name": "Venus de Milo",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Venus de Milo",
+        "French Avenue Venus de Milo"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-f3a88551",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Western Shisha",
+      "name": "Western Shisha",
+      "family_id": "french_avenue_catalog",
+      "family_name": "French Avenue",
+      "aliases": [
+        "Western Shisha",
+        "French Avenue Western Shisha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
+      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
     }
   ],
   "variants": [
