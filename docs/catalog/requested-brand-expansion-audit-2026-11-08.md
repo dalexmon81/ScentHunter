@@ -351,3 +351,8 @@ Le differenze tra conteggi di retailer sono ampie; quindi nessuna marca può ess
 6. Aggiornare catalogo e family registry insieme e rieseguire i test d'integrità.
 
 **Stato:** questo cross-check non aggiunge prodotti e non cambia i conteggi del catalogo. È una mappa di copertura per evitare che un assortimento parziale venga dichiarato completo. PR #425 resta draft/aperta; PR #424 resta intatta; nessun deploy, merge, attivazione store o write su staging/produzione.
+
+
+## Maison Asrar — ulteriore identità verificata (2026-11-08)
+
+Aggiunta **Black Grapefruit** come identità canonica Maison Asrar. Il nome è presente nel catalogo ufficiale Maison Asrar, nella collezione prodotti: https://maisonasrar.com/collections/all (pagina consultata il 2026-11-08). Nessuna concentrazione, volume, GTIN, prezzo o disponibilità è stata dedotta. Catalogo e family registry sono stati aggiornati insieme; la copertura complessiva Maison Asrar resta da completare e il totale esposto dalla collezione include categorie miste.
