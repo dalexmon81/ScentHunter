@@ -56,13 +56,35 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
     def test_aromatix_line_is_present(self):
         self.assertGreaterEqual(self.counts.get("Aromatix", 0), 1)
 
-    def test_maison_asrar_royal_collection_starters_are_present(self):
+    def test_maison_asrar_royal_collection_is_complete_against_official_listing(self):
         names = {
             str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
             for row in CATALOG.get("products", [])
             if str(row.get("brand_name") or row.get("brand") or "").strip() == "Maison Asrar"
         }
-        for name in ("Belgravia", "Legacy", "Vanguard", "Regent"):
+        # Nine individual fragrances shown in Maison Asrar's official UAE
+        # Royal Collection. "The Royal" on the UK storefront is a bundle of
+        # Legacy, Majesty and Vanguard, not a separate fragrance identity.
+        expected = (
+            "Belgravia", "Legacy", "Vanguard", "Regent", "Majesty",
+            "Heritage", "Monarch", "Treasure", "Imperial",
+        )
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(name.casefold(), names)
+
+    def test_aromatix_signature_collection_is_present(self):
+        names = {
+            str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Aromatix"
+        }
+        expected = (
+            "Teas Me", "Frostbite", "Naughty Dates", "Sun Kissed",
+            "Forbidden Fruit", "Magnetiq", "Platine Blanc", "X Xandal",
+            "Royal Taboo", "Carnal Desire",
+        )
+        for name in expected:
             with self.subTest(name=name):
                 self.assertIn(name.casefold(), names)
 
