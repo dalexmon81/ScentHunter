@@ -35047,6 +35047,206 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASSASSIN",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Assassin",
+      "name": "Assassin",
+      "family_id": "bujairami_catalog",
+      "family_name": "Assassin",
+      "aliases": [
+        "Assassin",
+        "Bujairami Assassin"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/assassin/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/assassin/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRAL",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Astral",
+      "name": "Astral",
+      "family_id": "bujairami_catalog",
+      "family_name": "Astral",
+      "aliases": [
+        "Astral",
+        "Bujairami Astral"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astral/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/astral/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRO",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Astro",
+      "name": "Astro",
+      "family_id": "bujairami_catalog",
+      "family_name": "Astro",
+      "aliases": [
+        "Astro",
+        "Bujairami Astro"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astro/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/astro/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AT-LAST",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "At Last",
+      "name": "At Last",
+      "family_id": "bujairami_catalog",
+      "family_name": "At Last",
+      "aliases": [
+        "At Last",
+        "Bujairami At Last"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/at-last/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/at-last/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AURORA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Aurora",
+      "name": "Aurora",
+      "family_id": "bujairami_catalog",
+      "family_name": "Aurora",
+      "aliases": [
+        "Aurora",
+        "Bujairami Aurora"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aurora/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/aurora/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AUSTRALIAN-TONKA",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Australian Tonka",
+      "name": "Australian Tonka",
+      "family_id": "bujairami_catalog",
+      "family_name": "Australian Tonka",
+      "aliases": [
+        "Australian Tonka",
+        "Bujairami Australian Tonka"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/australian-tonka/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/australian-tonka/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACCARAT-OUD",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Baccarat Oud",
+      "name": "Baccarat Oud",
+      "family_id": "bujairami_catalog",
+      "family_name": "Baccarat Oud",
+      "aliases": [
+        "Baccarat Oud",
+        "Bujairami Baccarat Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baccarat-oud/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/baccarat-oud/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACKSTAGE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Backstage",
+      "name": "Backstage",
+      "family_id": "bujairami_catalog",
+      "family_name": "Backstage",
+      "aliases": [
+        "Backstage",
+        "Bujairami Backstage"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/backstage/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/backstage/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-N-BOUJEE",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad N Boujee",
+      "name": "Bad N Boujee",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad N Boujee",
+      "aliases": [
+        "Bad N Boujee",
+        "Bujairami Bad N Boujee"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-n-boujee/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/bad-n-boujee/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-OBSESSION",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Bad Obsession",
+      "name": "Bad Obsession",
+      "family_id": "bujairami_catalog",
+      "family_name": "Bad Obsession",
+      "aliases": [
+        "Bad Obsession",
+        "Bujairami Bad Obsession"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-obsession/",
+      "source_evidence_url": "https://bujairamiperfumes.eu/perfumes/bad-obsession/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -38396,6 +38596,106 @@
         "Bujairami Asfahan Oud 100ml"
       ],
       "source_url": "https://bujairamiperfumes.eu/perfumes/asfahan-oud/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASSASSIN",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-ASSASSIN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Assassin 100 ml",
+        "Bujairami Assassin 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/assassin/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRAL",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-ASTRAL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Astral 100 ml",
+        "Bujairami Astral 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astral/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-ASTRO",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-ASTRO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Astro 100 ml",
+        "Bujairami Astro 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/astro/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AT-LAST",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-AT-LAST-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "At Last 100 ml",
+        "Bujairami At Last 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/at-last/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AURORA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-AURORA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Aurora 100 ml",
+        "Bujairami Aurora 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/aurora/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-AUSTRALIAN-TONKA",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-AUSTRALIAN-TONKA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Australian Tonka 100 ml",
+        "Bujairami Australian Tonka 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/australian-tonka/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACCARAT-OUD",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BACCARAT-OUD-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Baccarat Oud 100 ml",
+        "Bujairami Baccarat Oud 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/baccarat-oud/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BACKSTAGE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BACKSTAGE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Backstage 100 ml",
+        "Bujairami Backstage 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/backstage/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-N-BOUJEE",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BAD-N-BOUJEE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Bad N Boujee 100 ml",
+        "Bujairami Bad N Boujee 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-n-boujee/"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BATCH8-BAD-OBSESSION",
+      "variant_id": "SHV-SH-BUJAIRAMI-BATCH8-BAD-OBSESSION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Bad Obsession 100 ml",
+        "Bujairami Bad Obsession 100ml"
+      ],
+      "source_url": "https://bujairamiperfumes.eu/perfumes/bad-obsession/"
     }
   ]
 }
