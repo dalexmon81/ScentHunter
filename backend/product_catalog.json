@@ -4444,9 +4444,10 @@
         "9 PM Night Out",
         "Afnan 9 PM Night Out"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.afnan.com/en/products/9pm-night-out",
+      "source_evidence_url": "https://afnan.com/collections/all",
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AFNAN-ab1ea63f",
@@ -35590,6 +35591,16 @@
       "aliases": [
         "Prune Hypnos 100 ml",
         "French Avenue Prune Hypnos 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-AFNAN-dd53546f",
+      "variant_id": "SHV-SH-AFNAN-dd53546f-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "9 PM Night Out 100 ml",
+        "Afnan 9 PM Night Out 100ml"
       ]
     }
   ]
