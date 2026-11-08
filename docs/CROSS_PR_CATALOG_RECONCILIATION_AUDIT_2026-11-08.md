@@ -138,6 +138,32 @@ PR #565's current head still has no workflow run on its exact SHA. Its base bran
 PR #568 adds automated regression guards for unique normalized product identities, product/variant IDs, variant tuples, orphan variants and exact duplicate rows within each family. Its catalog validation job passed on the exact PR head. These checks validate the candidate tree in which the workflow runs; they do not magically combine all open branches into one tree. No merge has been performed as part of this audit.
 
 
+
+## Family-registry normalization debt found in the base snapshot
+
+A separate read-only scan of the 34-family registry found 19 pairs of canonical
+labels within the same family that collapse to the same normalized spelling
+when case, punctuation and diacritics are ignored. Examples include:
+
+- Paris Corner: `Jardin Des Papillons` / `Jardin des Papillons`;
+  `Noir D'Arabie` / `Noir d'Arabie`; and `Rua` / `RUA`.
+- Arabiyat Prestige: `Nyla Vani-elle` / `Nyla Vani-Elle`;
+  `Noire` / `Noirè`.
+- Lattafa: `Ajwad Pink To Pink` / `Ajwad Pink to Pink`.
+- Khadlaj: `Sueño` / `Sueno`.
+
+These are registry-label normalization collisions, not 19 confirmed duplicate
+catalog product rows: the current product catalog itself has no duplicate
+normalized brand + canonical-name identities. Some pairs may be legitimate
+orthographic variants, but they should be represented as one canonical
+registry row with aliases where they denote the same fragrance. Do not apply
+blind deletion or merge them without checking the official product identity.
+
+**Action:** keep the new uniqueness test strict for product identities and
+exact duplicate registry rows; treat normalized registry-label collisions as
+a separate cleanup queue with source-by-source review before enforcing a
+normalized registry uniqueness assertion.
+
 ## Branch dependency map — important integration clarification
 
 Two of the current PRs are cumulative descendants of other catalog branches, not independent snapshots:
