@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - catalog/brand-expansion-2026-11
+      - catalog/complete-brand-expansion-2026-11
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
