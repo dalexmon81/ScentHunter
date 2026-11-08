@@ -32492,6 +32492,21 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://sa.frenchavenue.com/products/safari-breeze"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HECTIC",
+      "brand": "Bujairami",
+      "brand_name": "Bujairami",
+      "canonical_name": "Hectic",
+      "name": "Hectic",
+      "family_id": "bujairami_catalog",
+      "family_name": "Hectic",
+      "aliases": [
+        "Hectic",
+        "Bujairami Hectic"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.com.au/products/hectic-inspired-by-louis-vuitton-imagination-extrait"
     }
   ],
   "variants": [
