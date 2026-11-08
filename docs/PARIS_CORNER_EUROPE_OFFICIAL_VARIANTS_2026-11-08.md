@@ -34,9 +34,9 @@ Individual official European product pages:
 ## Snapshot after change
 
 - Total canonical identities: 2,061 (unchanged)
-- Total variants: 323
+- Total variants: 319
 - Paris Corner canonical identities: 246 (unchanged)
-- Paris Corner variants: 41
+- Paris Corner variants: 37
 
 ## Regression protection
 
