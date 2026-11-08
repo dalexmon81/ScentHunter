@@ -399,6 +399,26 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
 
+
+    def test_paris_corner_atoof_official_page_and_100ml_variant_are_verified(self):
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        self.assertIn("Atoof", products)
+        row = products["Atoof"]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://www.pariscornerperfumes.com/products/atoof")
+        self.assertIn(100, row.get("formats_ml", []))
+        matching = [
+            v for v in CATALOG.get("variants", [])
+            if v.get("product_id") == row["product_id"] and v.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertNotIn("concentration", row)
+        self.assertNotIn("concentration", matching[0])
+
     def test_aromatix_signature_collection_is_present(self):
         names = {
             str(row.get("canonical_name") or row.get("name") or "").strip().casefold()
