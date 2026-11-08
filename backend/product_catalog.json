@@ -6638,8 +6638,13 @@
         "Junoon",
         "Al Haramain Junoon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-9ed401a1",
@@ -6653,8 +6658,15 @@
         "Amber Oud Ruby Edition",
         "Al Haramain Amber Oud Ruby Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        60,
+        120,
+        200
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-06088667",
@@ -6668,8 +6680,14 @@
         "Amber Oud Gold Edition Extreme",
         "Al Haramain Amber Oud Gold Edition Extreme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        60,
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-a21d9ab5",
@@ -6683,8 +6701,13 @@
         "Junoon Oud",
         "Al Haramain Junoon Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-304c1eca",
@@ -6698,8 +6721,13 @@
         "Azlan Oud Bleu Edition",
         "Al Haramain Azlan Oud Bleu Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-1c89e86a",
@@ -6713,8 +6741,15 @@
         "Amber Oud Ultra Violet",
         "Al Haramain Amber Oud Ultra Violet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        60,
+        120,
+        200
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-5d7e5051",
@@ -6728,8 +6763,13 @@
         "Azlan Oud Saffron Edition",
         "Al Haramain Azlan Oud Saffron Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-27b89224",
@@ -6743,8 +6783,14 @@
         "Amber Oud Tobacco Edition",
         "Al Haramain Amber Oud Tobacco Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100,
+        200
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-2270da08",
@@ -6758,8 +6804,13 @@
         "Sheikh Majestic",
         "Al Haramain Sheikh Majestic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-d58da4e3",
@@ -6773,8 +6824,13 @@
         "Sheikh Royal",
         "Al Haramain Sheikh Royal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-b81ae29a",
@@ -6788,8 +6844,13 @@
         "Sheikh Warrior",
         "Al Haramain Sheikh Warrior"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-b0672b55",
@@ -6803,8 +6864,13 @@
         "Sheikh Knight",
         "Al Haramain Sheikh Knight"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-6c00b776",
@@ -6818,8 +6884,15 @@
         "Amber Oud Aqua Dubai",
         "Al Haramain Amber Oud Aqua Dubai"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        75,
+        100,
+        200
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-5e8e5f16",
@@ -6833,8 +6906,14 @@
         "Amber Oud Dubai Night",
         "Al Haramain Amber Oud Dubai Night"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        75,
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-bcf136e8",
@@ -6849,7 +6928,7 @@
         "Al Haramain Amber Oud Black Edition"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-54e2230e",
@@ -6864,7 +6943,7 @@
         "Al Haramain Amber Oud Gold 999.9 Dubai Edition"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-b84d77e4",
@@ -6879,7 +6958,7 @@
         "Al Haramain Amber Oud Private Edition"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-740e41cb",
@@ -6894,7 +6973,7 @@
         "Al Haramain Amber Oud Extreme Gold Edition"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-0cf10f35",
@@ -6908,8 +6987,14 @@
         "Amber Oud Bleu Edition",
         "Al Haramain Amber Oud Bleu Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        60,
+        200
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-4812dbe2",
@@ -6923,8 +7008,14 @@
         "Amber Oud White Edition",
         "Al Haramain Amber Oud White Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        60,
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-09ca9964",
@@ -6938,8 +7029,15 @@
         "Amber Oud Carbon Edition",
         "Al Haramain Amber Oud Carbon Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        60,
+        100,
+        200
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-06b99fdd",
@@ -6953,8 +7051,13 @@
         "Azlan Oud Amber Edition",
         "Al Haramain Azlan Oud Amber Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-39f12439",
@@ -6968,8 +7071,13 @@
         "Azlan Oud Charcoal Edition",
         "Al Haramain Azlan Oud Charcoal Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-bab0d2ac",
@@ -6983,8 +7091,13 @@
         "L'Aventure Iris",
         "Al Haramain L'Aventure Iris"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-1f4b8012",
@@ -6998,8 +7111,13 @@
         "L'Aventure Ciel",
         "Al Haramain L'Aventure Ciel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-f7954db1",
@@ -7013,8 +7131,13 @@
         "L'Aventure Gold",
         "Al Haramain L'Aventure Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-75972e8d",
@@ -7028,8 +7151,13 @@
         "L'Aventure Fraiche",
         "Al Haramain L'Aventure Fraiche"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-f996a468",
@@ -7043,8 +7171,13 @@
         "L'Aventure Grapefruit",
         "Al Haramain L'Aventure Grapefruit"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-4455529b",
@@ -7058,8 +7191,14 @@
         "L'Aventure Femme",
         "Al Haramain L'Aventure Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        30,
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-fb738f11",
@@ -7074,7 +7213,7 @@
         "Al Haramain L'Aventure"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-1e094af0",
@@ -7088,8 +7227,14 @@
         "L'Aventure Rose",
         "Al Haramain L'Aventure Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100,
+        200
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-00065288",
@@ -7103,8 +7248,13 @@
         "L'Aventure Blanche",
         "Al Haramain L'Aventure Blanche"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        30
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-e3c8a133",
@@ -7119,7 +7269,7 @@
         "Al Haramain L'Aventure Intense"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-3771511e",
@@ -7134,7 +7284,7 @@
         "Al Haramain L'Aventure Knight"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-838494c5",
@@ -7148,8 +7298,13 @@
         "Black Oud",
         "Al Haramain Black Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-506ef01f",
@@ -7163,8 +7318,13 @@
         "Golden Oud",
         "Al Haramain Golden Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-GAMES-OF-SPADES-1b8843a4",
@@ -16589,16 +16749,20 @@
       "brand_name": "Al Haramain",
       "canonical_name": "Amber Oud Gold Edition",
       "name": "Amber Oud Gold Edition",
-      "family_id": "al-haramain_catalog",
+      "family_id": "al_haramain_catalog",
       "family_name": "Amber Oud Gold Edition",
       "aliases": [
         "Amber Oud Gold Edition",
         "Al Haramain Amber Oud Gold Edition"
       ],
-      "concentration": null,
-      "identity_status": "source_listed_name",
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop.alharamainperfumes.com/eu/collection.html",
-      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html"
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/collection.html",
+      "formats_ml": [
+        120,
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-ARROGATE-PINK-DIVA-048",
@@ -35431,6 +35595,420 @@
         "La Fede Celebrity Fame 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-OFFICIAL-LA-FEDE-CELEBRITY-FAME-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ff023f21",
+      "size_ml": 75,
+      "aliases": [
+        "Junoon 75 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-ff023f21-75-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-9ed401a1",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Ruby Edition 60 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-9ed401a1-60-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-9ed401a1",
+      "size_ml": 120,
+      "aliases": [
+        "Amber Oud Ruby Edition 120 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-9ed401a1-120-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-9ed401a1",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Ruby Edition 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-9ed401a1-200-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-06088667",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Gold Edition Extreme 60 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-06088667-60-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-06088667",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Gold Edition Extreme 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-06088667-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-a21d9ab5",
+      "size_ml": 75,
+      "aliases": [
+        "Junoon Oud 75 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-a21d9ab5-75-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-304c1eca",
+      "size_ml": 100,
+      "aliases": [
+        "Azlan Oud Bleu Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-304c1eca-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1c89e86a",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Ultra Violet 60 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1c89e86a-60-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1c89e86a",
+      "size_ml": 120,
+      "aliases": [
+        "Amber Oud Ultra Violet 120 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1c89e86a-120-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1c89e86a",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Ultra Violet 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1c89e86a-200-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-5d7e5051",
+      "size_ml": 100,
+      "aliases": [
+        "Azlan Oud Saffron Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-5d7e5051-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-27b89224",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Tobacco Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-27b89224-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-27b89224",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Tobacco Edition 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-27b89224-200-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-2270da08",
+      "size_ml": 100,
+      "aliases": [
+        "Sheikh Majestic 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-2270da08-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-d58da4e3",
+      "size_ml": 100,
+      "aliases": [
+        "Sheikh Royal 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-d58da4e3-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-b81ae29a",
+      "size_ml": 100,
+      "aliases": [
+        "Sheikh Warrior 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-b81ae29a-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-b0672b55",
+      "size_ml": 100,
+      "aliases": [
+        "Sheikh Knight 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-b0672b55-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6c00b776",
+      "size_ml": 75,
+      "aliases": [
+        "Amber Oud Aqua Dubai 75 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-75-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6c00b776",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Aqua Dubai 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6c00b776",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Aqua Dubai 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-200-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-5e8e5f16",
+      "size_ml": 75,
+      "aliases": [
+        "Amber Oud Dubai Night 75 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-5e8e5f16-75-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-5e8e5f16",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Dubai Night 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-5e8e5f16-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-0cf10f35",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Bleu Edition 60 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-0cf10f35-60-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-0cf10f35",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Bleu Edition 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-0cf10f35-200-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4812dbe2",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud White Edition 60 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4812dbe2-60-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4812dbe2",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud White Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4812dbe2-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-09ca9964",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Carbon Edition 60 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-09ca9964-60-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-09ca9964",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Carbon Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-09ca9964-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-09ca9964",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Carbon Edition 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-09ca9964-200-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-06b99fdd",
+      "size_ml": 100,
+      "aliases": [
+        "Azlan Oud Amber Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-06b99fdd-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-39f12439",
+      "size_ml": 100,
+      "aliases": [
+        "Azlan Oud Charcoal Edition 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-39f12439-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-bab0d2ac",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Iris 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-bab0d2ac-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1f4b8012",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Ciel 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1f4b8012-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f7954db1",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Gold 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-f7954db1-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-75972e8d",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Fraiche 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-75972e8d-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f996a468",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Grapefruit 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-f996a468-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4455529b",
+      "size_ml": 30,
+      "aliases": [
+        "L'Aventure Femme 30 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4455529b-30-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4455529b",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Femme 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4455529b-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1e094af0",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Rose 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1e094af0-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1e094af0",
+      "size_ml": 200,
+      "aliases": [
+        "L'Aventure Rose 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1e094af0-200-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-00065288",
+      "size_ml": 30,
+      "aliases": [
+        "L'Aventure Blanche 30 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-00065288-30-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-838494c5",
+      "size_ml": 100,
+      "aliases": [
+        "Black Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-838494c5-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-506ef01f",
+      "size_ml": 100,
+      "aliases": [
+        "Golden Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-506ef01f-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AMBER-OUD-GOLD-EDITION-047",
+      "size_ml": 120,
+      "aliases": [
+        "Amber Oud Gold Edition 120 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AMBER-OUD-GOLD-EDITION-047-120-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AMBER-OUD-GOLD-EDITION-047",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Gold Edition 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AMBER-OUD-GOLD-EDITION-047-200-EDP",
       "concentration": "Eau de Parfum"
     }
   ]
