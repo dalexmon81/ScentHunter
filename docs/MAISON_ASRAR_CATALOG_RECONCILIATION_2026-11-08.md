@@ -20,7 +20,7 @@ The working catalog snapshot contains:
 - 73 identities still lacking individual product-page evidence after these passes.
 - 3 additional Maison Asrar records — Plot Twist, Love Key and Unsolved Mystery — are listed on Gulf Orchid's own storefront. Their individual product pages explicitly label the brand as Maison Asrar and state 100 ml EDP. They are retained as Maison Asrar identities, and their existing variants now carry the corresponding page-level evidence URL. Gulf Orchid is the storefront/source for these Lock & Key releases; the records are not reassigned to Gulf Orchid as the fragrance brand.
 
-The 120 identities should not be described as a verified, complete current range. The three Lock & Key records are separately supported by Gulf Orchid product pages that explicitly identify Maison Asrar as the fragrance brand; they are not counted among the 43 Maison Asrar-owned product-page records. The 74 official fragrance collection count is a current storefront snapshot; it does not establish that older or discontinued identities are invalid.
+The 120 identities should not be described as a verified, complete current range. The three Lock & Key records are separately supported by Gulf Orchid product pages that explicitly identify Maison Asrar as the fragrance brand; they are not counted among the 44 Maison Asrar-owned product-page records. The 74 official fragrance collection count is a current storefront snapshot; it does not establish that older or discontinued identities are invalid.
 
 ## Official detail-page upgrades in this change
 
@@ -61,7 +61,7 @@ Thirty-five existing identities were upgraded to individual Maison Asrar product
 - Adorable
 - Ameer
 
-For the first twelve identities, `source_url` and `source_evidence_url` point to official individual product pages. Their 12 existing variant additions use the exact 90 ml / 100 ml and Eau de Parfum wording embedded in the official product URL paths; the rendered product page itself does not expose those attributes as structured fields. The next twenty-two identities have individual official page URLs and `source_verified_name` status, but no size or concentration has been inferred from their URL slugs. No new variants or formats are added for these twenty-two records.
+For the first twelve identities, `source_url` and `source_evidence_url` point to official individual product pages. Their 12 existing variant additions use the exact 90 ml / 100 ml and Eau de Parfum wording embedded in the official product URL paths; the rendered product page itself does not expose those attributes as structured fields. The next twenty-three identities have individual official page URLs and `source_verified_name` status, but no size or concentration has been inferred from their URL slugs. No new variants or formats are added for these twenty-three records.
 
 ## Scope exclusions
 
