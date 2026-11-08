@@ -2,7 +2,7 @@
 
 ## Exact revision inspected
 - Branch: `catalog/complete-brand-expansion-2026-11`
-- Commit: `39b99a895db268382c2b0e64b37139564d8e7258`
+- Commit: `8aed146e83a4a0f6f231a2c03897f5a4ebfe8094`
 - Pull request: #426 (draft, open, unmerged)
 - This is a structural audit of the exact branch files. It is not a CI result and not a production import.
 
@@ -57,7 +57,7 @@ These are counts in this branch snapshot, not a claim that every historical, reg
 - Structural coverage is now **0 missing canonical-to-registry matches**. Legacy registry-only names are retained; they are not automatically promoted into the canonical product catalog.
 
 ## CI status
-The available GitHub workflow-run and commit-status endpoints did not return a run or check for the latest head at the time of this report. CI is **pending / not verified**, not green.
+The available GitHub integration returned no pull-request workflow run and no commit status check for this exact head at the time of this report. This does not prove that no push-triggered Actions run exists, because the run-list integration only exposes pull-request-triggered runs. CI for this exact head is therefore **not verified**, not green.
 
 ## Remaining validation
 1. Obtain a real GitHub Actions result for this head and fix any failures.
