@@ -12,6 +12,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/lattafa-mishlah-official-page-2026-11-08
+      - catalog/lattafa-four-official-products-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
