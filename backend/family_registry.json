@@ -3618,6 +3618,106 @@
             "Ya Habibi",
             "Bujairami Ya Habibi"
           ]
+        },
+        {
+          "canonical_name": "Dominus",
+          "aliases": [
+            "Dominus",
+            "Bujairami Dominus"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Lucid Dream",
+          "aliases": [
+            "Lucid Dream",
+            "Bujairami Lucid Dream"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Drip",
+          "aliases": [
+            "Drip",
+            "Bujairami Drip"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sandy Shores",
+          "aliases": [
+            "Sandy Shores",
+            "Bujairami Sandy Shores"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shinko",
+          "aliases": [
+            "Shinko",
+            "Bujairami Shinko"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Kokoma Paradise",
+          "aliases": [
+            "Kokoma Paradise",
+            "Bujairami Kokoma Paradise"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Eleganto",
+          "aliases": [
+            "Eleganto",
+            "Bujairami Eleganto"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Safari Squeeze",
+          "aliases": [
+            "Safari Squeeze",
+            "Bujairami Safari Squeeze"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Stellar",
+          "aliases": [
+            "Stellar",
+            "Bujairami Stellar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Downtown",
+          "aliases": [
+            "Downtown",
+            "Bujairami Downtown"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
