@@ -461,9 +461,9 @@ unset rather than misclassifying an oil as a spray concentration.
 Official source:
 https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-gold-35ml
 
-PR #574 is open and draft. Its exact head at the time of this update is
-`56c5d5a997223b68ce433009bcbfd95bd54e6b98`; Catalog seed validation run
-42527658396 was queued when last checked. No merge performed.
+PR #574 is open and draft. Its exact head
+`56c5d5a997223b68ce433009bcbfd95bd54e6b98` passed Catalog seed validation
+(run 42527658396). No merge performed.
 
 ### Lattafa — Asad Elixir 100 ml
 
