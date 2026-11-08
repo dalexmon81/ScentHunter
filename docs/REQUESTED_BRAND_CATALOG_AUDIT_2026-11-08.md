@@ -22,7 +22,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Assaf | 140 | 0 | 140 |
 | Al Wataniah | 86 | 2 | 84 |
 | Armaf | 190 | 6 | 184 |
-| French Avenue | 119 | 2 | 117 |
+| French Avenue | 119 | 5 | 114 |
 | Arabiyat Prestige | 118 | 22 | 96 |
 | Gulf Orchid | 23 | 0 | 23 |
 | Swiss Arabian | 32 | 4 | 28 |
@@ -33,7 +33,7 @@ This audit inspects the canonical `backend/product_catalog.json` on the consolid
 | Maison Alhambra | 203 | 0 | 203 |
 | Zimaya | 72 | 10 | 62 |
 | Al Haramain | 101 | 0 | 101 |
-| **Total requested brands** | **2,049** | **227** | **1,822** |
+| **Total requested brands** | **2,049** | **230** | **1,819** |
 
 The full seed contains 2,052 identities. The remaining three belong to other brands (Al Ambra: 2; Giorgio Armani: 1) and are outside this requested-brand subtotal.
 
@@ -50,7 +50,7 @@ The full seed contains 2,052 identities. The remaining three belong to other bra
 | Assaf | assafperfumes.eu (119); assaf.ae (21) |
 | Al Wataniah | www.alwataniah.com (86) |
 | Armaf | armaf.com (190) |
-| French Avenue | frenchavenue.com (76); www.fragrantica.com (43) |
+| French Avenue | frenchavenue.com (79); www.fragrantica.com (40) |
 | Arabiyat Prestige | www.fragrantica.com (93); eu.myperfumes.ae (22); arabiyatprestigeus.com (2); arabiyatprestige.com (1) |
 | Gulf Orchid | shop-gulforchid.com (23) |
 | Swiss Arabian | swissarabian.ma (27); us.swissarabian.com (3); de.swissarabian.com (1); www.essenciaarabe.com (1) |
@@ -153,7 +153,7 @@ A comparison against the official New Arrivals collection found two standalone p
 | Eclipse | https://frenchavenue.com/products/eclipse | Extrait de Parfum | 100 ml |
 | Eclipse Nova | https://frenchavenue.com/products/eclipse-nova-extrait | Extrait de Parfum | 100 ml |
 
-Both were added as distinct canonical products with `source_verified_name`, exact product-page `source_url`, and explicit 100 ml variants. The French Avenue identity count is now 119; the full seed is now 2,052 products and 214 variants. Across the 20 requested brands the subtotal is now 2,049 identities (227 `source_verified_name`, 1,822 `source_listed_name`).
+Both were added as distinct canonical products with `source_verified_name`, exact product-page `source_url`, and explicit 100 ml variants. The French Avenue identity count is now 119; the full seed is now 2,052 products and 214 variants at this stage. Across the 20 requested brands the subtotal was 2,049 identities (227 `source_verified_name`, 1,822 `source_listed_name`) before the further official-page verifications below.
 
 The official New Arrivals collection also displays **Aromatix Summer Vibes Blue** and **Aromatix Summer Vibes Yellow**. Their product detail pages describe each as a 5 × 30 ml set containing five existing Aromatix scents, not a new single fragrance. They were deliberately excluded from the canonical perfume identities; they may belong in a future kit/bundle model.
 
@@ -164,4 +164,25 @@ Official sources:
 - https://frenchavenue.com/products/aromatix-summer-vibes-blue
 - https://frenchavenue.com/products/aromatix-summer-vibes-yellow
 
-The latest 2026 discovery list on Fragrantica is retained as a secondary lead list only. It includes additional candidates (for example Crystal Oud, Ethos Aoud Oud, Papa Yeah!, Le Falcon, Le Falcon Dubai and Les Extraits Absolus Shadow/Unknown) that still require exact official product-page confirmation before catalog insertion.
+The latest 2026 discovery list on Fragrantica is retained as a secondary lead list only. Crystal Oud, Ethos Aoud Oud, Papa Yeah! and Les Extraits Absolus Shadow/Unknown remain listed-name candidates without individual official product-page evidence located in this pass. Le Falcon, Le Falcon Dubai and Spirito Ignite have now been verified against individual official product pages and upgraded below.
+
+
+### Additional French Avenue official product-page verification
+
+The following existing catalog identities were checked against their individual official product pages. Their source URLs now point directly to the official detail pages, their evidence status is `source_verified_name`, and the official size/concentration specifications are represented as explicit 100 ml variants:
+
+| Canonical identity | Official detail page | Concentration | Size |
+|---|---|---|---:|
+| Le Falcon | https://frenchavenue.com/products/le-falcon | Eau de Parfum | 100 ml |
+| Le Falcon Dubai | https://frenchavenue.com/products/le-falcon-dubai | Eau de Parfum | 100 ml |
+| Spirito Ignite | https://frenchavenue.com/products/spirito-ignite | Extrait de Parfum | 100 ml |
+
+These were already present as discovery identities, so no duplicate canonical products were created. The three official pages upgrade the evidence and variant completeness only.
+
+Still not promoted: **Crystal Oud, Ethos Aoud Oud, Papa Yeah!, Les Extraits Absolus Shadow and Les Extraits Absolus Unknown**. The current secondary sources identify them as 2026 launches, but this check did not locate their individual official product detail pages. They remain discovery candidates and are not assigned invented sizes/concentrations.
+
+Official pages checked:
+- https://frenchavenue.com/products/le-falcon
+- https://frenchavenue.com/products/le-falcon-dubai
+- https://frenchavenue.com/products/spirito-ignite
+- https://frenchavenue.com/collections/new-arrivals
