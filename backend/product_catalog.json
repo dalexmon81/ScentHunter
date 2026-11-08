@@ -15575,6 +15575,46 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-AMBRA-SECRET-ADVENTURE-001",
+      "brand": "Al Ambra",
+      "brand_name": "Al Ambra",
+      "canonical_name": "Secret Adventure",
+      "name": "Secret Adventure",
+      "family_id": "al_ambra_catalog",
+      "family_name": "Secret Adventure",
+      "aliases": [
+        "Secret Adventure",
+        "Al Ambra Secret Adventure"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://azmara-perfumes.com/collections/al-ambra/products/al-ambra-secret-adventure",
+      "source_evidence_url": "https://azmara-perfumes.com/collections/al-ambra/products/al-ambra-secret-adventure"
+    },
+    {
+      "product_id": "SH-AL-AMBRA-CECIL-001",
+      "brand": "Al Ambra",
+      "brand_name": "Al Ambra",
+      "canonical_name": "Cecil",
+      "name": "Cecil",
+      "family_id": "al_ambra_catalog",
+      "family_name": "Cecil",
+      "aliases": [
+        "Cecil",
+        "Al Ambra Cecil"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://azmara-perfumes.com/collections/al-ambra/products/al-ambra-cecil",
+      "source_evidence_url": "https://azmara-perfumes.com/collections/al-ambra/products/al-ambra-cecil"
     }
   ],
   "variants": [
