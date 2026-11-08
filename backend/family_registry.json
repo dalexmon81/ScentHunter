@@ -2097,6 +2097,9 @@
           "aliases": [
             "Dear Jasmine",
             "Maison Asrar Dear Jasmine"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2188,6 +2191,9 @@
           "aliases": [
             "Fresh Iris",
             "Maison Asrar Fresh Iris"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2279,6 +2285,9 @@
           "aliases": [
             "Jawhara Black",
             "Maison Asrar Jawhara Black"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2286,6 +2295,9 @@
           "aliases": [
             "Jawhara Rouge",
             "Maison Asrar Jawhara Rouge"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
