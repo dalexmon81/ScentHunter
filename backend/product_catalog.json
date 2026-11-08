@@ -1403,9 +1403,13 @@
         "Dear Jasmine",
         "Maison Asrar Dear Jasmine"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml",
+      "source_evidence_url": "https://maisonasrar.com/blogs/news/%D8%A7%D9%84%D9%8A%D8%A7%D8%B3%D9%85%D9%8A%D9%86",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-3269274a",
@@ -1611,9 +1615,13 @@
         "Fresh Iris",
         "Maison Asrar Fresh Iris"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml",
+      "source_evidence_url": "https://maisonasrar.com/blogs/news/iris",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-a5a7cc49",
@@ -1819,9 +1827,13 @@
         "Jawhara Black",
         "Maison Asrar Jawhara Black"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-d20dc7ce",
@@ -1835,9 +1847,13 @@
         "Jawhara Rouge",
         "Maison Asrar Jawhara Rouge"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/collections/jawhara-collection/products/jawhara-rouge-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/blogs/news/experience-the-luxury-perfumes-by-maison-asrar",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-186e6d46",
@@ -37116,6 +37132,50 @@
         "Paris Corner Khair Peach Delulu 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-d20dc7ce",
+      "variant_id": "SHV-SH-MAISON-ASRAR-d20dc7ce-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Jawhara Rouge 100 ml",
+        "Maison Asrar Jawhara Rouge 100 ml"
+      ],
+      "source_url": "https://maisonasrar.com/collections/jawhara-collection/products/jawhara-rouge-eau-de-perfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-fce356db",
+      "variant_id": "SHV-SH-MAISON-ASRAR-fce356db-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Jawhara Black 100 ml",
+        "Maison Asrar Jawhara Black 100 ml"
+      ],
+      "source_url": "https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-f778e873",
+      "variant_id": "SHV-SH-MAISON-ASRAR-f778e873-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Fresh Iris 100 ml",
+        "Maison Asrar Fresh Iris 100 ml"
+      ],
+      "source_url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-f17a24a5",
+      "variant_id": "SHV-SH-MAISON-ASRAR-f17a24a5-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Dear Jasmine 100 ml",
+        "Maison Asrar Dear Jasmine 100 ml"
+      ],
+      "source_url": "https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml"
     }
   ]
 }
