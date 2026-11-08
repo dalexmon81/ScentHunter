@@ -505,7 +505,8 @@ def import_feed_bytes(data: bytes) -> dict:
 
 
 def import_configured_feed() -> dict:
-    """Fetch/import from env config. Diagnostics deliberately omit URL and credentials."""
+    """Fetch/import only after canonical approval; diagnostics omit credentials."""
+    _require_authorized_feed_import()
     payload = _fetch_feed()
     return import_feed_bytes(payload)
 
