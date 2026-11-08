@@ -11,6 +11,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/lattafa-mishlah-official-page-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -40,36 +41,39 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate recovered catalog seed
-        run: >-
-          python -m unittest
-          backend.tests.test_catalog_seed_integrity
-          backend.tests.test_catalog_seed_recovery
-          backend.tests.test_catalog_family_registry_coverage
-          backend.tests.test_catalog_source_confidence
-          backend.tests.test_bujairami_originals
-          backend.tests.test_bujairami_catalog
-          backend.tests.test_armaf_detail_evidence
-          backend.tests.test_paris_corner_detail_evidence
-          backend.tests.test_zimaya_detail_evidence
-          backend.tests.test_maison_asrar_royal_collection
-          backend.tests.test_maison_asrar_lock_and_key
-          backend.tests.test_al_haramain_catalog
-          backend.tests.test_al_wataniah_detail_evidence
-          backend.tests.test_french_avenue_catalog
-          backend.tests.test_games_of_spades_catalog
-          backend.tests.test_khadlaj_catalog_parity
-          backend.tests.test_khadlaj_la_fede
-          backend.tests.test_lattafa_catalog
-          backend.tests.test_paris_corner_catalog_parity
-          backend.tests.test_swiss_arabian_detail_evidence
-          backend.tests.test_arabiyat_prestige_extrait
-          backend.tests.test_arabiyat_prestige_marwa_extrait
-          backend.tests.test_assaf_range_harvest
-          backend.tests.test_al_haramain_gulf_orchid_store_harvest
-          backend.tests.test_afnan_lattafa_official_harvest
-          backend.tests.test_khadlaj_official_spray_harvest
-          backend.tests.test_paris_corner_official_collection_reconciliation
-          backend.tests.test_arabiyat_prestige_official_store
-          backend.tests.test_al_wataniah_official_collection_harvest
-          backend.tests.test_requested_brand_catalog_coverage
-          -v
+        run: |
+          python -m unittest \
+            backend.tests.test_catalog_seed_integrity \
+            backend.tests.test_catalog_seed_recovery \
+            backend.tests.test_catalog_family_registry_coverage \
+            backend.tests.test_catalog_source_confidence \
+            backend.tests.test_bujairami_originals \
+            backend.tests.test_bujairami_catalog \
+            backend.tests.test_armaf_detail_evidence \
+            backend.tests.test_paris_corner_detail_evidence \
+            backend.tests.test_zimaya_detail_evidence \
+            backend.tests.test_maison_asrar_royal_collection \
+            backend.tests.test_maison_asrar_lock_and_key \
+            backend.tests.test_al_haramain_catalog \
+            backend.tests.test_al_wataniah_detail_evidence \
+            backend.tests.test_french_avenue_catalog \
+            backend.tests.test_games_of_spades_catalog \
+            backend.tests.test_khadlaj_catalog_parity \
+            backend.tests.test_khadlaj_la_fede \
+            backend.tests.test_lattafa_catalog \
+            backend.tests.test_paris_corner_catalog_parity \
+            backend.tests.test_swiss_arabian_detail_evidence \
+            backend.tests.test_arabiyat_prestige_extrait \
+            backend.tests.test_arabiyat_prestige_marwa_extrait \
+            backend.tests.test_assaf_range_harvest \
+            backend.tests.test_al_haramain_gulf_orchid_store_harvest \
+            backend.tests.test_afnan_lattafa_official_harvest \
+            backend.tests.test_khadlaj_official_spray_harvest \
+            backend.tests.test_paris_corner_official_collection_reconciliation \
+            backend.tests.test_arabiyat_prestige_official_store \
+            backend.tests.test_al_wataniah_official_collection_harvest \
+            backend.tests.test_requested_brand_catalog_coverage \
+            -v
+          if [ -f backend/tests/test_lattafa_mishlah_official_page.py ]; then
+            python -m unittest backend.tests.test_lattafa_mishlah_official_page -v
+          fi
