@@ -36,7 +36,7 @@ This is a documentation-only evidence pass against the requested-brand catalog s
 
 ## Coverage and limitations
 
-- 21 individual product pages were reviewed across six brands.
+- 27 individual product pages were reviewed across six brands.
 - These are sample confirmations, not a full audit of the 1,872 listing-level identities.
 - No product was added or deleted, no identity status was changed, and no variant was created.
 - This document does not claim that any brand's catalog is complete.
@@ -93,6 +93,32 @@ The product pages establish the named identities and the explicitly shown sizes/
 
 - 21 individual product pages reviewed across six brands.
 - This pass adds four individual Lattafa product pages.
+- The audit remains a sample, not a full audit of the 1,872 listing-level identities.
+- No product was added or deleted, no identity status was changed, and no variant was created.
+- Catalog JSON and production code remain unchanged.
+
+
+## Fourth pass — Maison Alhambra / Lattafa USA product pages (8 November 2026)
+
+Six more existing Maison Alhambra identities marked `source_listed_name` were checked against individual product pages on the Maison Alhambra USA storefront. The pages identify the seller as Maison Alhambra USA and the footer carries the Lattafa-USA copyright. This is treated as a Lattafa USA brand storefront source, not as proof that every international market carries the same assortment.
+
+| Existing catalog identity | Product-detail page | Explicit page evidence | Safe conclusion |
+|---|---|---|---|
+| Afro Leather | https://maisonalhambra-usa.com/products/maison-alhambra-afro-leather-eau-de-parfum-for-everyone | EDP in title; 80 ml; barcode 6291108736081; unisex | Individual identity, concentration, size and barcode verified |
+| Alpine Homme Sport | https://maisonalhambra-usa.com/products/maison-alhambra-alpine-homme-sport-eau-de-parfum-for-men | EDP in title; 100 ml; barcode 6291108735879; men | Individual identity, concentration, size and barcode verified |
+| Anarch | https://maisonalhambra-usa.com/products/maison-alhambra-anarch-eau-de-parfum-for-everyone | EDP in title; 100 ml; barcode 6291107459080; unisex | Individual identity, concentration, size and barcode verified |
+| Anchor Black | https://maisonalhambra-usa.com/products/maison-alhambra-anchor-black-eau-de-parfum-for-men | EDP in title; 100 ml; barcode 6291108730058; men | Individual identity, concentration, size and barcode verified |
+| Athena | https://maisonalhambra-usa.com/products/maison-alhambra-athena-eau-de-parfum-for-women | EDP in title; 100 ml; barcode 6290360599243; women | Individual identity, concentration, size and barcode verified |
+| Aura D'eclat | https://maisonalhambra-usa.com/products/maison-alhambra-aura-declat-eau-de-parfum-for-women | EDP in title; 100 ml; barcode 6291107459103; women | Individual identity, concentration, size and barcode verified; preserve the catalog spelling/alias relationship for D'eclat rather than creating a second identity |
+
+### Source-quality note
+
+A separate search surfaced MaisonAlhambra.co, but its own pages disclose an Amazon affiliate relationship and editorial/guide function. It is **not** used as first-party evidence in this audit. The six product details above instead come from the Maison Alhambra USA storefront, whose product pages show barcodes, selected sizes, and a footer naming Lattafa-USA.com. The US storefront evidence should not be silently generalized to every regional market.
+
+## Updated coverage
+
+- 27 individual product pages reviewed across six brands.
+- This pass adds six individually checked Maison Alhambra pages.
 - The audit remains a sample, not a full audit of the 1,872 listing-level identities.
 - No product was added or deleted, no identity status was changed, and no variant was created.
 - Catalog JSON and production code remain unchanged.
