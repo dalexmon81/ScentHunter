@@ -22335,6 +22335,374 @@
       "identity_status": "source_listed_name",
       "source_url": "https://afnan.com/collections/all?page=3",
       "source_evidence_url": "https://afnan.com/collections/all?page=3"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NASHAMA-CAPRICE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Nashama Caprice",
+      "name": "Al Nashama Caprice",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Nashama Caprice",
+      "aliases": [
+        "Al Nashama Caprice",
+        "Lattafa Al Nashama Caprice"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KINGDOM-MEN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Kingdom Men",
+      "name": "Kingdom Men",
+      "family_id": "lattafa_catalog",
+      "family_name": "Kingdom Men",
+      "aliases": [
+        "Kingdom Men",
+        "Lattafa Kingdom Men"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KINGDOM-WOMEN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Kingdom Women",
+      "name": "Kingdom Women",
+      "family_id": "lattafa_catalog",
+      "family_name": "Kingdom Women",
+      "aliases": [
+        "Kingdom Women",
+        "Lattafa Kingdom Women"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANGHAM",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Angham",
+      "name": "Angham",
+      "family_id": "lattafa_catalog",
+      "family_name": "Angham",
+      "aliases": [
+        "Angham",
+        "Lattafa Angham"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AJWAD-PINK-TO-PINK",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ajwad Pink to Pink",
+      "name": "Ajwad Pink to Pink",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ajwad Pink to Pink",
+      "aliases": [
+        "Ajwad Pink to Pink",
+        "Lattafa Ajwad Pink to Pink"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-SEHR-LATTAFA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Sehr Lattafa",
+      "name": "Sehr Lattafa",
+      "family_id": "lattafa_catalog",
+      "family_name": "Sehr Lattafa",
+      "aliases": [
+        "Sehr Lattafa",
+        "Lattafa Sehr Lattafa"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QAAED-AL-SHABAAB",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Qaaed Al Shabaab",
+      "name": "Qaaed Al Shabaab",
+      "family_id": "lattafa_catalog",
+      "family_name": "Qaaed Al Shabaab",
+      "aliases": [
+        "Qaaed Al Shabaab",
+        "Lattafa Qaaed Al Shabaab"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAHASIN-CRYSTAL",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mahasin Crystal",
+      "name": "Mahasin Crystal",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mahasin Crystal",
+      "aliases": [
+        "Mahasin Crystal",
+        "Lattafa Mahasin Crystal"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EMEER",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Emeer",
+      "name": "Emeer",
+      "family_id": "lattafa_catalog",
+      "family_name": "Emeer",
+      "aliases": [
+        "Emeer",
+        "Lattafa Emeer"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AMEER-AL-ARAB-IMPERIUM",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ameer Al Arab Imperium",
+      "name": "Ameer Al Arab Imperium",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ameer Al Arab Imperium",
+      "aliases": [
+        "Ameer Al Arab Imperium",
+        "Lattafa Ameer Al Arab Imperium"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AMEER-AL-OUD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ameer Al Oud",
+      "name": "Ameer Al Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ameer Al Oud",
+      "aliases": [
+        "Ameer Al Oud",
+        "Lattafa Ameer Al Oud"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ADEEB",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Adeeb",
+      "name": "Adeeb",
+      "family_id": "lattafa_catalog",
+      "family_name": "Adeeb",
+      "aliases": [
+        "Adeeb",
+        "Lattafa Adeeb"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAITHA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Maitha",
+      "name": "Maitha",
+      "family_id": "lattafa_catalog",
+      "family_name": "Maitha",
+      "aliases": [
+        "Maitha",
+        "Lattafa Maitha"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MOHRA-SILKY-ROSE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mohra Silky Rose",
+      "name": "Mohra Silky Rose",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mohra Silky Rose",
+      "aliases": [
+        "Mohra Silky Rose",
+        "Lattafa Mohra Silky Rose"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ABRAAJ",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Abraaj",
+      "name": "Abraaj",
+      "family_id": "lattafa_catalog",
+      "family_name": "Abraaj",
+      "aliases": [
+        "Abraaj",
+        "Lattafa Abraaj"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HAAKIM",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Haakim",
+      "name": "Haakim",
+      "family_id": "lattafa_catalog",
+      "family_name": "Haakim",
+      "aliases": [
+        "Haakim",
+        "Lattafa Haakim"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AMOURA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Amoura",
+      "name": "Amoura",
+      "family_id": "lattafa_catalog",
+      "family_name": "Amoura",
+      "aliases": [
+        "Amoura",
+        "Lattafa Amoura"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RANEEN",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raneen",
+      "name": "Raneen",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raneen",
+      "aliases": [
+        "Raneen",
+        "Lattafa Raneen"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-VICTORIA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Victoria",
+      "name": "Victoria",
+      "family_id": "lattafa_catalog",
+      "family_name": "Victoria",
+      "aliases": [
+        "Victoria",
+        "Lattafa Victoria"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-LAIL-MALEKI-MOROCCAN-BLUE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Lail Maleki Moroccan Blue",
+      "name": "Lail Maleki Moroccan Blue",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lail Maleki Moroccan Blue",
+      "aliases": [
+        "Lail Maleki Moroccan Blue",
+        "Lattafa Lail Maleki Moroccan Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MASHRABYA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mashrabya",
+      "name": "Mashrabya",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mashrabya",
+      "aliases": [
+        "Mashrabya",
+        "Lattafa Mashrabya"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAYAR-CHERRY-INTENSE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mayar Cherry Intense",
+      "name": "Mayar Cherry Intense",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mayar Cherry Intense",
+      "aliases": [
+        "Mayar Cherry Intense",
+        "Lattafa Mayar Cherry Intense"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AFEEF",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Afeef",
+      "name": "Afeef",
+      "family_id": "lattafa_catalog",
+      "family_name": "Afeef",
+      "aliases": [
+        "Afeef",
+        "Lattafa Afeef"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
+      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
     }
   ],
   "variants": [
