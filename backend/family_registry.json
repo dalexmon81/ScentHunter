@@ -2033,452 +2033,10 @@
       ],
       "products": [
         {
-          "canonical_name": "Belgravia",
-          "aliases": [
-            "Belgravia",
-            "Maison Asrar Belgravia"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Legacy",
-          "aliases": [
-            "Legacy",
-            "Maison Asrar Legacy"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Vanguard",
-          "aliases": [
-            "Vanguard",
-            "Maison Asrar Vanguard"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Regent",
-          "aliases": [
-            "Regent",
-            "Maison Asrar Regent"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Ameer",
-          "aliases": [
-            "Ameer",
-            "Maison Asrar Ameer"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Majesty",
-          "aliases": [
-            "Majesty",
-            "Maison Asrar Majesty"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Veyra",
-          "aliases": [
-            "Veyra",
-            "Maison Asrar Veyra"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Aura",
-          "aliases": [
-            "Vanilla Aura",
-            "Maison Asrar Vanilla Aura"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Faris Al Arab",
-          "aliases": [
-            "Faris Al Arab",
-            "Maison Asrar Faris Al Arab"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Voyage",
-          "aliases": [
-            "Vanilla Voyage",
-            "Maison Asrar Vanilla Voyage"
-          ],
-          "formats_ml": [
-            25
-          ]
-        },
-        {
-          "canonical_name": "III Thriller",
-          "aliases": [
-            "III Thriller",
-            "Maison Asrar III Thriller"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Last Swim",
-          "aliases": [
-            "Last Swim",
-            "Maison Asrar Last Swim"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Pomme Rouge",
-          "aliases": [
-            "Pomme Rouge",
-            "Maison Asrar Pomme Rouge"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Haven",
-          "aliases": [
-            "Haven",
-            "Maison Asrar Haven"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Muharib",
-          "aliases": [
-            "Muharib",
-            "Maison Asrar Muharib"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Silent Surge",
-          "aliases": [
-            "Silent Surge",
-            "Maison Asrar Silent Surge"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Treasure",
-          "aliases": [
-            "Treasure",
-            "Maison Asrar Treasure"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Hunter",
-          "aliases": [
-            "Hunter",
-            "Maison Asrar Hunter"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Imperial",
-          "aliases": [
-            "Imperial",
-            "Maison Asrar Imperial"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Monarch",
-          "aliases": [
-            "Monarch",
-            "Maison Asrar Monarch"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Heritage",
-          "aliases": [
-            "Heritage",
-            "Maison Asrar Heritage"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
           "canonical_name": "1963",
           "aliases": [
             "1963",
             "Maison Asrar 1963"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Librae",
-          "aliases": [
-            "Librae",
-            "Maison Asrar Librae"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Lily",
-          "aliases": [
-            "Lily",
-            "Maison Asrar Lily"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Lolita",
-          "aliases": [
-            "Lolita",
-            "Maison Asrar Lolita"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Lumiere",
-          "aliases": [
-            "Lumiere",
-            "Maison Asrar Lumiere"
-          ],
-          "formats_ml": [
-            110
-          ]
-        },
-        {
-          "canonical_name": "Luna",
-          "aliases": [
-            "Luna",
-            "Maison Asrar Luna"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Magic Night",
-          "aliases": [
-            "Magic Night",
-            "Maison Asrar Magic Night"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Masterpiece",
-          "aliases": [
-            "Masterpiece",
-            "Maison Asrar Masterpiece"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Milky Way",
-          "aliases": [
-            "Milky Way",
-            "Maison Asrar Milky Way"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Mohra",
-          "aliases": [
-            "Mohra",
-            "Maison Asrar Mohra"
-          ]
-        },
-        {
-          "canonical_name": "Nada",
-          "aliases": [
-            "Nada",
-            "Maison Asrar Nada"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Never Forget Me",
-          "aliases": [
-            "Never Forget Me",
-            "Maison Asrar Never Forget Me"
-          ],
-          "formats_ml": [
-            90
-          ]
-        },
-        {
-          "canonical_name": "Night in Paris",
-          "aliases": [
-            "Night in Paris",
-            "Maison Asrar Night in Paris"
-          ],
-          "formats_ml": [
-            90
-          ]
-        },
-        {
-          "canonical_name": "Oh Honey!",
-          "aliases": [
-            "Oh Honey!",
-            "Maison Asrar Oh Honey!"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Omniya",
-          "aliases": [
-            "Omniya",
-            "Maison Asrar Omniya"
-          ]
-        },
-        {
-          "canonical_name": "Oscar",
-          "aliases": [
-            "Oscar",
-            "Maison Asrar Oscar"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Patchouli with Love",
-          "aliases": [
-            "Patchouli with Love",
-            "Maison Asrar Patchouli with Love"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Petra",
-          "aliases": [
-            "Petra",
-            "Maison Asrar Petra"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Pink Crush",
-          "aliases": [
-            "Pink Crush",
-            "Maison Asrar Pink Crush"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Qamar",
-          "aliases": [
-            "Qamar",
-            "Maison Asrar Qamar"
-          ]
-        },
-        {
-          "canonical_name": "Red Velvet",
-          "aliases": [
-            "Red Velvet",
-            "Maison Asrar Red Velvet"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Rey",
-          "aliases": [
-            "Rey",
-            "Maison Asrar Rey"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Rose",
-          "aliases": [
-            "Rose",
-            "Maison Asrar Rose",
-            "Rosé"
-          ],
-          "formats_ml": [
-            110
-          ]
-        },
-        {
-          "canonical_name": "Rose Honey",
-          "aliases": [
-            "Rose Honey",
-            "Maison Asrar Rose Honey"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Rose Musk",
-          "aliases": [
-            "Rose Musk",
-            "Maison Asrar Rose Musk"
           ],
           "formats_ml": [
             100
@@ -2505,6 +2063,30 @@
           ]
         },
         {
+          "canonical_name": "Amal",
+          "aliases": [
+            "Amal",
+            "Maison Asrar Amal"
+          ]
+        },
+        {
+          "canonical_name": "Ameer",
+          "aliases": [
+            "Ameer",
+            "Maison Asrar Ameer"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asala",
+          "aliases": [
+            "Asala",
+            "Maison Asrar Asala"
+          ]
+        },
+        {
           "canonical_name": "Aseel",
           "aliases": [
             "Aseel",
@@ -2516,6 +2098,16 @@
           "aliases": [
             "Basma",
             "Maison Asrar Basma"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Belgravia",
+          "aliases": [
+            "Belgravia",
+            "Maison Asrar Belgravia"
           ],
           "formats_ml": [
             100
@@ -2716,6 +2308,16 @@
           ]
         },
         {
+          "canonical_name": "Faris Al Arab",
+          "aliases": [
+            "Faris Al Arab",
+            "Maison Asrar Faris Al Arab"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Flair",
           "aliases": [
             "Flair",
@@ -2803,6 +2405,26 @@
           ]
         },
         {
+          "canonical_name": "Haven",
+          "aliases": [
+            "Haven",
+            "Maison Asrar Haven"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Heritage",
+          "aliases": [
+            "Heritage",
+            "Maison Asrar Heritage"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Hikaya",
           "aliases": [
             "Hikaya",
@@ -2823,10 +2445,40 @@
           ]
         },
         {
+          "canonical_name": "Hunter",
+          "aliases": [
+            "Hunter",
+            "Maison Asrar Hunter"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Icon",
           "aliases": [
             "Icon",
             "Maison Asrar Icon"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "III Thriller",
+          "aliases": [
+            "III Thriller",
+            "Maison Asrar III Thriller"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Imperial",
+          "aliases": [
+            "Imperial",
+            "Maison Asrar Imperial"
           ],
           "formats_ml": [
             100
@@ -2927,6 +2579,26 @@
           ]
         },
         {
+          "canonical_name": "Last Swim",
+          "aliases": [
+            "Last Swim",
+            "Maison Asrar Last Swim"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Legacy",
+          "aliases": [
+            "Legacy",
+            "Maison Asrar Legacy"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Leo",
           "aliases": [
             "Leo",
@@ -2937,13 +2609,292 @@
           ]
         },
         {
-          "canonical_name": "Rose Vanilla",
+          "canonical_name": "Librae",
           "aliases": [
-            "Rose Vanilla",
-            "Maison Asrar Rose Vanilla"
+            "Librae",
+            "Maison Asrar Librae"
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Lily",
+          "aliases": [
+            "Lily",
+            "Maison Asrar Lily"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Lolita",
+          "aliases": [
+            "Lolita",
+            "Maison Asrar Lolita"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Love Key",
+          "aliases": [
+            "Love Key",
+            "Maison Asrar Love Key"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Lumiere",
+          "aliases": [
+            "Lumiere",
+            "Maison Asrar Lumiere"
+          ],
+          "formats_ml": [
+            110
+          ]
+        },
+        {
+          "canonical_name": "Luna",
+          "aliases": [
+            "Luna",
+            "Maison Asrar Luna"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Magic Night",
+          "aliases": [
+            "Magic Night",
+            "Maison Asrar Magic Night"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Majesty",
+          "aliases": [
+            "Majesty",
+            "Maison Asrar Majesty"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Masterpiece",
+          "aliases": [
+            "Masterpiece",
+            "Maison Asrar Masterpiece"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Milky Way",
+          "aliases": [
+            "Milky Way",
+            "Maison Asrar Milky Way"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mohra",
+          "aliases": [
+            "Mohra",
+            "Maison Asrar Mohra"
+          ]
+        },
+        {
+          "canonical_name": "Monarch",
+          "aliases": [
+            "Monarch",
+            "Maison Asrar Monarch"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Muharib",
+          "aliases": [
+            "Muharib",
+            "Maison Asrar Muharib"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Nada",
+          "aliases": [
+            "Nada",
+            "Maison Asrar Nada"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Never Forget Me",
+          "aliases": [
+            "Never Forget Me",
+            "Maison Asrar Never Forget Me"
+          ],
+          "formats_ml": [
+            90
+          ]
+        },
+        {
+          "canonical_name": "Night in Paris",
+          "aliases": [
+            "Night in Paris",
+            "Maison Asrar Night in Paris"
+          ],
+          "formats_ml": [
+            90
+          ]
+        },
+        {
+          "canonical_name": "Oh Honey!",
+          "aliases": [
+            "Oh Honey!",
+            "Maison Asrar Oh Honey!"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Omniya",
+          "aliases": [
+            "Omniya",
+            "Maison Asrar Omniya"
+          ]
+        },
+        {
+          "canonical_name": "Oscar",
+          "aliases": [
+            "Oscar",
+            "Maison Asrar Oscar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Patchouli with Love",
+          "aliases": [
+            "Patchouli with Love",
+            "Maison Asrar Patchouli with Love"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Petra",
+          "aliases": [
+            "Petra",
+            "Maison Asrar Petra"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Pink Crush",
+          "aliases": [
+            "Pink Crush",
+            "Maison Asrar Pink Crush"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Plot Twist",
+          "aliases": [
+            "Plot Twist",
+            "Maison Asrar Plot Twist"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Pomme Rouge",
+          "aliases": [
+            "Pomme Rouge",
+            "Maison Asrar Pomme Rouge"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Qamar",
+          "aliases": [
+            "Qamar",
+            "Maison Asrar Qamar"
+          ]
+        },
+        {
+          "canonical_name": "Red Carpet",
+          "aliases": [
+            "Red Carpet",
+            "Maison Asrar Red Carpet"
+          ]
+        },
+        {
+          "canonical_name": "Red Velvet",
+          "aliases": [
+            "Red Velvet",
+            "Maison Asrar Red Velvet"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Regent",
+          "aliases": [
+            "Regent",
+            "Maison Asrar Regent"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rey",
+          "aliases": [
+            "Rey",
+            "Maison Asrar Rey"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rose",
+          "aliases": [
+            "Rose",
+            "Maison Asrar Rose",
+            "Rosé"
+          ],
+          "formats_ml": [
+            110
           ]
         },
         {
@@ -2967,10 +2918,74 @@
           ]
         },
         {
+          "canonical_name": "Rose Honey",
+          "aliases": [
+            "Rose Honey",
+            "Maison Asrar Rose Honey"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rose Musk",
+          "aliases": [
+            "Rose Musk",
+            "Maison Asrar Rose Musk"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rose Oud",
+          "aliases": [
+            "Rose Oud",
+            "Maison Asrar Rose Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rose Vanilla",
+          "aliases": [
+            "Rose Vanilla",
+            "Maison Asrar Rose Vanilla"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Rubellite",
           "aliases": [
             "Rubellite",
             "Maison Asrar Rubellite"
+          ]
+        },
+        {
+          "canonical_name": "Runway Girl",
+          "aliases": [
+            "Runway Girl",
+            "Maison Asrar Runway Girl"
+          ]
+        },
+        {
+          "canonical_name": "Shaheen Black",
+          "aliases": [
+            "Shaheen Black",
+            "Maison Asrar Shaheen Black"
+          ]
+        },
+        {
+          "canonical_name": "Silent Surge",
+          "aliases": [
+            "Silent Surge",
+            "Maison Asrar Silent Surge"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2982,6 +2997,13 @@
           ],
           "formats_ml": [
             110
+          ]
+        },
+        {
+          "canonical_name": "Smokey Eyes",
+          "aliases": [
+            "Smokey Eyes",
+            "Maison Asrar Smokey Eyes"
           ]
         },
         {
@@ -3055,6 +3077,16 @@
           ]
         },
         {
+          "canonical_name": "Treasure",
+          "aliases": [
+            "Treasure",
+            "Maison Asrar Treasure"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Trophy",
           "aliases": [
             "Trophy",
@@ -3085,6 +3117,36 @@
           ]
         },
         {
+          "canonical_name": "Unsolved Mystery",
+          "aliases": [
+            "Unsolved Mystery",
+            "Maison Asrar Unsolved Mystery"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanguard",
+          "aliases": [
+            "Vanguard",
+            "Maison Asrar Vanguard"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Aura",
+          "aliases": [
+            "Vanilla Aura",
+            "Maison Asrar Vanilla Aura"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Vanilla Rouge",
           "aliases": [
             "Vanilla Rouge",
@@ -3099,6 +3161,26 @@
           "aliases": [
             "Vanilla Seduction",
             "Maison Asrar Vanilla Seduction"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanilla Voyage",
+          "aliases": [
+            "Vanilla Voyage",
+            "Maison Asrar Vanilla Voyage"
+          ],
+          "formats_ml": [
+            25
+          ]
+        },
+        {
+          "canonical_name": "Veyra",
+          "aliases": [
+            "Veyra",
+            "Maison Asrar Veyra"
           ],
           "formats_ml": [
             100
@@ -3149,81 +3231,6 @@
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Rose Oud",
-          "aliases": [
-            "Rose Oud",
-            "Maison Asrar Rose Oud"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Plot Twist",
-          "aliases": [
-            "Plot Twist",
-            "Maison Asrar Plot Twist"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Love Key",
-          "aliases": [
-            "Love Key",
-            "Maison Asrar Love Key"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Unsolved Mystery",
-          "aliases": [
-            "Unsolved Mystery",
-            "Maison Asrar Unsolved Mystery"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Asala",
-          "aliases": [
-            "Asala",
-            "Maison Asrar Asala"
-          ]
-        },
-        {
-          "canonical_name": "Red Carpet",
-          "aliases": [
-            "Red Carpet",
-            "Maison Asrar Red Carpet"
-          ]
-        },
-        {
-          "canonical_name": "Runway Girl",
-          "aliases": [
-            "Runway Girl",
-            "Maison Asrar Runway Girl"
-          ]
-        },
-        {
-          "canonical_name": "Shaheen Black",
-          "aliases": [
-            "Shaheen Black",
-            "Maison Asrar Shaheen Black"
-          ]
-        },
-        {
-          "canonical_name": "Smokey Eyes",
-          "aliases": [
-            "Smokey Eyes",
-            "Maison Asrar Smokey Eyes"
           ]
         }
       ]
