@@ -51,7 +51,7 @@ concentration fields. Examples include:
 - L'Aventure Rose: 100 and 200 ml EDP
 - Azlan Oud Bleu, Saffron, Amber and Charcoal Editions: 100 ml Extrait de Parfum
 
-Twenty-eight products with no sufficiently explicit matching size/concentration
+Seven products with no sufficiently explicit matching size/concentration
 on the inspected official listing remain unexpanded; no variant data was
 guessed. In particular, oils, attars, travel sets and gift sets shown in the
 official store/catalog were not converted into spray variants or inserted as
