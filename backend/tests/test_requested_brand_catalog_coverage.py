@@ -15,7 +15,7 @@ MINIMUM_BRAND_COUNTS = {
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
-    "Bujairami": 171,
+    "Bujairami": 181,
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
@@ -562,6 +562,32 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(row.get("source_url"), source_url)
                 self.assertEqual(row.get("concentration"), concentration)
                 self.assertEqual(row.get("formats_ml"), [100])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+
+
+
+    def test_bujairami_fourth_batch_authorized_guide_products(self):
+        expected = [
+            "Addiction", "Adore", "Adversary", "Aethera", "Affectionate",
+            "Affinity", "After Dark", "Afterglow", "Afternoon Bliss", "Aftershock",
+        ]
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Bujairami"
+        }
+        variants = CATALOG.get("variants", [])
+        for name in expected:
+            with self.subTest(name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("formats_ml"), [100])
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
                 matches = [
                     variant for variant in variants
                     if variant.get("product_id") == row["product_id"]
