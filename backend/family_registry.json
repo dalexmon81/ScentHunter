@@ -4051,14 +4051,6 @@
           ]
         },
         {
-          "canonical_name": "Harrier Absoulte",
-          "aliases": [
-            "Harrier Absoulte",
-            "Paris Corner Harrier Absoulte",
-            "Paris Corner Harrier Absoulte"
-          ]
-        },
-        {
           "canonical_name": "Heer",
           "aliases": [
             "Heer",
@@ -5436,7 +5428,12 @@
           "canonical_name": "Harrier Absolute",
           "aliases": [
             "Harrier Absolute",
-            "Paris Corner Harrier Absolute"
+            "Paris Corner Harrier Absolute",
+            "Harrier Absoulte",
+            "Paris Corner Harrier Absoulte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
