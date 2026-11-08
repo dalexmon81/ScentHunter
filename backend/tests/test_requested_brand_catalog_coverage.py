@@ -748,7 +748,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         edp_names = {"Belgravia", "Legacy", "Vanguard", "Regent", "Ameer", "Majesty", "Veyra", "Vanilla Aura", "Faris Al Arab", "Vanilla Voyage", "III Thriller", "Last Swim", "Pomme Rouge", "Haven", "Muharib", "Silent Surge", "Treasure", "Hunter", "Imperial", "Monarch", "Bonita", "Cascade", "Coffee Blend", "Daham", "Date Night", "Dubai London", "Dubai Miami", "Dubai Milano", "DXB", "DXB Jumeirah", "Fakhama", "Flair", "Gentle Oud", "Gold Noir", "Hamsat Ishq", "Heritage", "Hikaya", "Hilm", "Infina", "Italian Leather", "Joy", "Khateer", "Khayal", "Kiss My Lips", "Leo", "Librae", "Lily", "Lolita", "Lumiere", "Luna", "Masterpiece", "Milky Way", "Nada", "Never Forget Me", "Night in Paris", "Oh Honey!", "Patchouli with Love", "Pink Crush", "Red Velvet", "Rose", "Silver Elixer", "Soirée", "Throne", "Throne Eclipse", "Timeless", "Tornado", "Vanilla Seduction", "Vision", "Wadi", "Wood Intense"}
         products = {row.get("canonical_name"): row for row in CATALOG.get("products", []) if row.get("brand_name") == "Maison Asrar"}
         variants = CATALOG.get("variants", [])
-        self.assertEqual(len(products), 124)
+        self.assertEqual(len(products), 125)
         self.assertNotIn("Black Grapefruit", products)
         self.assertIn("Rosé", products["Rose"].get("aliases", []))
         self.assertIn("Silver Elixir", products["Silver Elixer"].get("aliases", []))
@@ -761,7 +761,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 if name in edp_names:
                     self.assertEqual(row.get("concentration"), "Eau de Parfum")
                     self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
-        for name in ["Asala", "Red Carpet", "Runway Girl", "Shaheen Black", "Smokey Eyes"]:
+        for name in ["Amal", "Asala", "Red Carpet", "Runway Girl", "Shaheen Black", "Smokey Eyes"]:
             with self.subTest(legacy_name=name):
                 row = products[name]
                 self.assertEqual(row.get("identity_status"), "source_listed_name")
