@@ -40,12 +40,12 @@ EXPECTED = {
     },
     "Hareem Al Sultan Blue": {
         "size": 35,
-        "conc": null,
+        "conc": None,
         "url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml"
     },
     "Maya": {
         "size": 20,
-        "conc": null,
+        "conc": None,
         "url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae"
     },
     "Mocha Latte": {
