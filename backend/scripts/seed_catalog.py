@@ -143,7 +143,7 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
             continue
         variant_ids.add(source_id)
         product_form = row.get("product_form")
-        if product_form not in (None, "") and product_form not in PRODUCT_FORM_VALUES:
+        if product_form not in (None, "") and (not isinstance(product_form, str) or product_form not in PRODUCT_FORM_VALUES):
             blocked.append(f"{source_id}: unsupported product_form {product_form!r}")
         size = row.get("size_ml")
         if size not in (None, ""):
