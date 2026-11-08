@@ -1,9 +1,9 @@
-"""Read-only cross-PR catalog collision audit.
+"""Read-only audit of direct additions across selected open catalog PRs.
 
-The workflow fetches all remote branches, then this script compares selected
-open catalog PR snapshots against one shared baseline. It reports only records
-introduced relative to that baseline and detects collisions between branches.
-It never edits catalog data.
+Each PR is compared with its actual GitHub base branch. This avoids treating
+records inherited from a parent/cumulative PR as fresh additions. Direct
+additions are then compared across PRs and against the shared catalog baseline.
+The script reports blockers only; it never edits catalog data.
 """
 from __future__ import annotations
 
@@ -16,33 +16,34 @@ from collections import defaultdict
 from typing import Any
 
 BASE_REF = "catalog/requested-brand-harvest-2026-11-08"
-CANDIDATE_REFS = (
-    "catalog/velixir-28-fragrance-variant-reconciliation-2026-11-08",  # PR 465
-    "catalog/velixir-official-product-variants-2026-11-08",  # PR 517
-    "catalog/mykonos-detail-evidence-2026-11-08",  # PR 539
-    "catalog/cumulative-source-reconciled-2026-11-08",  # PR 546
-    "catalog/gulf-orchid-source-reconciliation-2026-11-08",  # PR 542
-    "catalog/gulf-orchid-official-new-arrivals-2026-11-08",  # PR 554
-    "catalog/lattafa-official-new-launches-2026-11-08",  # PR 555, cumulative
-    "catalog/armaf-official-detail-audit-2026-11-08",  # PR 558
-    "catalog/lattafa-four-official-products-2026-11-08",  # PR 562
-    "catalog/armaf-eu-official-2026-11-08",  # PR 564
-    "catalog/armaf-official-fragrance-additions-2026-11-08",  # PR 565, cumulative
-    "catalog/armaf-variant-concentration-verified-2026-11-08",  # PR 569
-    "catalog/mykonos-travel-variant-concentration-verified-2026-11-08",  # PR 570
-    "catalog/french-avenue-aromatix-variant-concentration-verified-2026-11-08",  # PR 571
-    "catalog/assaf-gris-erik-100ml-variant-concentration-2026-11-08",  # PR 572
-    "catalog/armaf-concentration-verification-2026-11-08",  # PR 573
-    "catalog/khadlaj-hareem-al-sultan-gold-oil-source-verified-2026-11-08",  # PR 574
-    "catalog/verified-incense-fragrances-2026-11-08",  # PR 575
-    "catalog/lattafa-official-launches-2026-11-08",  # PR 576, cumulative
-    "catalog/lattafa-amethyst-petra-2026-11-08",  # PR 577, cumulative
-    "catalog/lattafa-asad-polar-2026-11-08",  # PR 578, cumulative
-    "catalog/paris-corner-official-pages-2026-11-08",  # PR 579, cumulative
-)
-
 CATALOG_PATH = "backend/product_catalog.json"
 FAMILY_REGISTRY_PATH = "backend/family_registry.json"
+
+# (PR number, head branch, actual PR base branch)
+CANDIDATE_PRS = (
+    (465, "catalog/velixir-28-fragrance-variant-reconciliation-2026-11-08", "catalog/mykonos-fragrantica-84-reconciliation-2026-11-08"),
+    (517, "catalog/velixir-official-product-variants-2026-11-08", "catalog/paris-corner-ministry-of-oud-official-harvest-2026-11-08"),
+    (539, "catalog/mykonos-detail-evidence-2026-11-08", BASE_REF),
+    (546, "catalog/cumulative-source-reconciled-2026-11-08", "catalog/cumulative-requested-brands-2026-11-08"),
+    (542, "catalog/gulf-orchid-source-reconciliation-2026-11-08", BASE_REF),
+    (554, "catalog/gulf-orchid-official-new-arrivals-2026-11-08", BASE_REF),
+    (555, "catalog/lattafa-official-new-launches-2026-11-08", "catalog/gulf-orchid-official-new-arrivals-2026-11-08"),
+    (558, "catalog/armaf-official-detail-audit-2026-11-08", "catalog/armaf-official-new-exclusive-2026-11-08"),
+    (562, "catalog/lattafa-four-official-products-2026-11-08", "catalog/lattafa-mishlah-official-page-2026-11-08"),
+    (564, "catalog/armaf-eu-official-2026-11-08", "catalog/maison-alhambra-eu-official-2026-11-08"),
+    (565, "catalog/armaf-official-fragrance-additions-2026-11-08", "catalog/lattafa-four-official-products-2026-11-08"),
+    (569, "catalog/armaf-variant-concentration-verified-2026-11-08", BASE_REF),
+    (570, "catalog/mykonos-travel-variant-concentration-verified-2026-11-08", BASE_REF),
+    (571, "catalog/french-avenue-aromatix-variant-concentration-verified-2026-11-08", BASE_REF),
+    (572, "catalog/assaf-gris-erik-100ml-variant-concentration-2026-11-08", BASE_REF),
+    (573, "catalog/armaf-concentration-verification-2026-11-08", BASE_REF),
+    (574, "catalog/khadlaj-hareem-al-sultan-gold-oil-source-verified-2026-11-08", BASE_REF),
+    (575, "catalog/verified-incense-fragrances-2026-11-08", BASE_REF),
+    (576, "catalog/lattafa-official-launches-2026-11-08", "catalog/verified-incense-fragrances-2026-11-08"),
+    (577, "catalog/lattafa-amethyst-petra-2026-11-08", "catalog/lattafa-official-launches-2026-11-08"),
+    (578, "catalog/lattafa-asad-polar-2026-11-08", "catalog/lattafa-amethyst-petra-2026-11-08"),
+    (579, "catalog/paris-corner-official-pages-2026-11-08", "catalog/lattafa-asad-polar-2026-11-08"),
+)
 
 
 def normalize(value: Any) -> str:
@@ -67,9 +68,10 @@ def git_json(ref: str, path: str) -> dict[str, Any]:
 
 
 def product_identity(row: dict[str, Any]) -> tuple[str, str]:
-    brand = row.get("brand_name") or row.get("brand")
-    name = row.get("canonical_name") or row.get("name")
-    return normalize(brand), normalize(name)
+    return (
+        normalize(row.get("brand_name") or row.get("brand")),
+        normalize(row.get("canonical_name") or row.get("name")),
+    )
 
 
 def variant_identity(row: dict[str, Any]) -> tuple[str, Any, str]:
@@ -80,41 +82,20 @@ def variant_identity(row: dict[str, Any]) -> tuple[str, Any, str]:
     )
 
 
-def git_is_ancestor(older: str, newer: str) -> bool:
-    result = subprocess.run(
-        [
-            "git",
-            "merge-base",
-            "--is-ancestor",
-            f"refs/remotes/origin/{older}",
-            f"refs/remotes/origin/{newer}",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode not in (0, 1):
-        raise RuntimeError(
-            f"Could not compare branch ancestry: {older} -> {newer}: {result.stderr}"
-        )
-    return result.returncode == 0
+def product_pairs(catalog: dict[str, Any]) -> set[tuple[str, tuple[str, str]]]:
+    return {
+        (str(row.get("product_id") or ""), product_identity(row))
+        for row in catalog.get("products", [])
+        if row.get("product_id") and all(product_identity(row))
+    }
 
 
-def maximal_candidate_refs() -> tuple[str, ...]:
-    """Keep only branch tips that are not ancestors of another candidate tip."""
-    refs = list(CANDIDATE_REFS)
-    drop: set[str] = set()
-    for older in refs:
-        for newer in refs:
-            if older == newer or older in drop:
-                continue
-            if git_is_ancestor(older, newer):
-                # Equal tips are not a parent/child relationship in practice;
-                # keep the first listed ref to avoid double-counting aliases.
-                if not git_is_ancestor(newer, older) or refs.index(older) > refs.index(newer):
-                    drop.add(older)
-                    break
-    return tuple(ref for ref in refs if ref not in drop)
+def variant_pairs(catalog: dict[str, Any]) -> set[tuple[str, tuple[str, Any, str]]]:
+    return {
+        (str(row.get("variant_id") or ""), variant_identity(row))
+        for row in catalog.get("variants", [])
+        if row.get("variant_id") and row.get("product_id") and row.get("size_ml") is not None
+    }
 
 
 def registry_entries(registry: dict[str, Any]) -> set[tuple[str, str]]:
@@ -130,158 +111,128 @@ def registry_entries(registry: dict[str, Any]) -> set[tuple[str, str]]:
     return entries
 
 
-def index_baseline(catalog: dict[str, Any]) -> tuple[set, set]:
-    product_pairs = {
-        (str(row.get("product_id") or ""), product_identity(row))
-        for row in catalog.get("products", [])
-    }
-    variant_pairs = {
-        (str(row.get("variant_id") or ""), variant_identity(row))
-        for row in catalog.get("variants", [])
-    }
-    return product_pairs, variant_pairs
+def add_product(pair, source, by_identity, by_id, pair_sources):
+    product_id, identity = pair
+    by_identity[identity][product_id].add(source)
+    by_id[product_id][identity].add(source)
+    pair_sources[pair].add(source)
+
+
+def add_variant(pair, source, by_tuple, by_id, pair_sources):
+    variant_id, key = pair
+    by_tuple[key][variant_id].add(source)
+    # A concentration correction on an existing variant ID is allowed.
+    # Reusing that ID for a different product or bottle size is not.
+    by_id[variant_id][(key[0], key[1])].add(source)
+    pair_sources[pair].add(source)
 
 
 def audit() -> int:
     baseline = git_json(BASE_REF, CATALOG_PATH)
-    base_registry = git_json(BASE_REF, FAMILY_REGISTRY_PATH)
-    base_product_pairs, base_variant_pairs = index_baseline(baseline)
-    base_registry_entries = registry_entries(base_registry)
-    active_refs = maximal_candidate_refs()
+    baseline_registry = git_json(BASE_REF, FAMILY_REGISTRY_PATH)
+    base_products = product_pairs(baseline)
+    base_variants = variant_pairs(baseline)
+    base_registry = registry_entries(baseline_registry)
 
-    products_by_identity: dict[tuple[str, str], dict[str, set[str]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
-    variants_by_tuple: dict[tuple[str, Any, str], dict[str, set[str]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
-    product_id_to_identity: dict[str, dict[tuple[str, str], set[str]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
-    variant_id_to_tuple: dict[str, dict[tuple[str, Any], set[str]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
-    product_pair_to_refs: dict[tuple[str, tuple[str, str]], set[str]] = defaultdict(set)
-    variant_pair_to_refs: dict[tuple[str, tuple[str, Any, str]], set[str]] = defaultdict(set)
-    registry_entry_to_refs: dict[tuple[str, str], set[str]] = defaultdict(set)
+    products_by_identity = defaultdict(lambda: defaultdict(set))
+    products_by_id = defaultdict(lambda: defaultdict(set))
+    variants_by_tuple = defaultdict(lambda: defaultdict(set))
+    variants_by_id = defaultdict(lambda: defaultdict(set))
+    product_addition_sources = defaultdict(set)
+    variant_addition_sources = defaultdict(set)
+    registry_addition_sources = defaultdict(set)
 
-    # Seed the comparison with the baseline itself. This catches a candidate
-    # that reuses an existing identity/tuple with a different ID, not only
-    # collisions between two newly-added branches.
-    for product_id, identity in base_product_pairs:
-        if product_id and all(identity):
-            products_by_identity[identity][product_id].add("BASELINE")
-            product_id_to_identity[product_id][identity].add("BASELINE")
-    for variant_id, key in base_variant_pairs:
-        if variant_id and key[0] and key[1] is not None:
-            variants_by_tuple[key][variant_id].add("BASELINE")
-            variant_id_to_tuple[variant_id][(key[0], key[1])].add("BASELINE")
-    for pair in base_product_pairs:
-        product_pair_to_refs[pair].add("BASELINE")
-    for pair in base_variant_pairs:
-        variant_pair_to_refs[pair].add("BASELINE")
-    for entry in base_registry_entries:
-        registry_entry_to_refs[entry].add("BASELINE")
+    # Baseline records are context for identity/ID collisions, but are not
+    # considered duplicate additions shared by multiple PRs.
+    for pair in base_products:
+        add_product(pair, "BASELINE", products_by_identity, products_by_id, defaultdict(set))
+    for pair in base_variants:
+        add_variant(pair, "BASELINE", variants_by_tuple, variants_by_id, defaultdict(set))
 
     loaded = 0
-    for ref in active_refs:
-        catalog = git_json(ref, CATALOG_PATH)
+    for pr_number, head_ref, base_ref in CANDIDATE_PRS:
+        head_catalog = git_json(head_ref, CATALOG_PATH)
+        base_catalog = git_json(base_ref, CATALOG_PATH)
+        head_registry = git_json(head_ref, FAMILY_REGISTRY_PATH)
+        base_registry_for_pr = git_json(base_ref, FAMILY_REGISTRY_PATH)
+        source = f"PR #{pr_number} ({head_ref})"
         loaded += 1
-        for row in catalog.get("products", []):
-            product_id = str(row.get("product_id") or "")
-            identity = product_identity(row)
-            if not product_id or not all(identity):
-                continue
-            if (product_id, identity) in base_product_pairs:
-                continue
-            products_by_identity[identity][product_id].add(ref)
-            product_id_to_identity[product_id][identity].add(ref)
-            product_pair_to_refs[(product_id, identity)].add(ref)
 
-        for row in catalog.get("variants", []):
-            variant_id = str(row.get("variant_id") or "")
-            key = variant_identity(row)
-            if not variant_id or not key[0] or key[1] is None:
-                continue
-            if (variant_id, key) in base_variant_pairs:
-                continue
-            variants_by_tuple[key][variant_id].add(ref)
-            variant_id_to_tuple[variant_id][(key[0], key[1])].add(ref)
-            variant_pair_to_refs[(variant_id, key)].add(ref)
+        new_products = product_pairs(head_catalog) - product_pairs(base_catalog)
+        new_variants = variant_pairs(head_catalog) - variant_pairs(base_catalog)
+        new_registry = registry_entries(head_registry) - registry_entries(base_registry_for_pr)
 
-        registry = git_json(ref, FAMILY_REGISTRY_PATH)
-        for entry in registry_entries(registry):
-            if entry not in base_registry_entries:
-                registry_entry_to_refs[entry].add(ref)
+        for pair in new_products:
+            add_product(pair, source, products_by_identity, products_by_id, product_addition_sources)
+        for pair in new_variants:
+            add_variant(pair, source, variants_by_tuple, variants_by_id, variant_addition_sources)
+        for entry in new_registry - base_registry:
+            registry_addition_sources[entry].add(source)
 
     findings: list[str] = []
-    for identity, ids_to_refs in sorted(products_by_identity.items()):
-        if len(ids_to_refs) > 1:
-            refs = sorted({ref for refs in ids_to_refs.values() for ref in refs})
-            ids = sorted(ids_to_refs)
+    for identity, ids_to_sources in sorted(products_by_identity.items()):
+        if len(ids_to_sources) > 1:
+            sources = sorted({src for values in ids_to_sources.values() for src in values})
             findings.append(
-                f"PRODUCT IDENTITY COLLISION {identity}: product_ids={ids}; branches={refs}"
+                f"PRODUCT IDENTITY COLLISION {identity}: product_ids={sorted(ids_to_sources)}; sources={sources}"
             )
 
-    for product_id, identities_to_refs in sorted(product_id_to_identity.items()):
-        if len(identities_to_refs) > 1:
-            refs = sorted({ref for refs in identities_to_refs.values() for ref in refs})
+    for product_id, identities_to_sources in sorted(products_by_id.items()):
+        if len(identities_to_sources) > 1:
+            sources = sorted({src for values in identities_to_sources.values() for src in values})
             findings.append(
-                f"PRODUCT ID REUSED {product_id}: identities={list(identities_to_refs)}; branches={refs}"
+                f"PRODUCT ID REUSED {product_id}: identities={list(identities_to_sources)}; sources={sources}"
             )
 
-    for key, ids_to_refs in sorted(variants_by_tuple.items(), key=lambda item: str(item[0])):
-        if len(ids_to_refs) > 1:
-            refs = sorted({ref for refs in ids_to_refs.values() for ref in refs})
-            ids = sorted(ids_to_refs)
+    for key, ids_to_sources in sorted(variants_by_tuple.items(), key=lambda item: str(item[0])):
+        if len(ids_to_sources) > 1:
+            sources = sorted({src for values in ids_to_sources.values() for src in values})
             findings.append(
-                f"VARIANT TUPLE COLLISION {key}: variant_ids={ids}; branches={refs}"
+                f"VARIANT TUPLE COLLISION {key}: variant_ids={sorted(ids_to_sources)}; sources={sources}"
             )
 
-    for variant_id, tuples_to_refs in sorted(variant_id_to_tuple.items()):
-        if len(tuples_to_refs) > 1:
-            refs = sorted({ref for refs in tuples_to_refs.values() for ref in refs})
+    for variant_id, product_sizes in sorted(variants_by_id.items()):
+        if len(product_sizes) > 1:
+            sources = sorted({src for values in product_sizes.values() for src in values})
             findings.append(
-                f"VARIANT ID REUSED FOR DIFFERENT PRODUCT/SIZE {variant_id}: keys={list(tuples_to_refs)}; branches={refs}"
+                f"VARIANT ID REUSED FOR DIFFERENT PRODUCT/SIZE {variant_id}: keys={list(product_sizes)}; sources={sources}"
             )
 
-    for pair, refs_set in sorted(product_pair_to_refs.items(), key=lambda item: str(item[0])):
-        refs = sorted(refs_set - {"BASELINE"})
-        if len(refs) > 1:
+    for pair, sources_set in sorted(product_addition_sources.items(), key=lambda item: str(item[0])):
+        if len(sources_set) > 1:
             findings.append(
-                f"IDENTICAL PRODUCT ADDITION SHARED BY BRANCHES {pair}: branches={refs}"
+                f"IDENTICAL PRODUCT ADDITION SHARED {pair}: sources={sorted(sources_set)}"
             )
 
-    for pair, refs_set in sorted(variant_pair_to_refs.items(), key=lambda item: str(item[0])):
-        refs = sorted(refs_set - {"BASELINE"})
-        if len(refs) > 1:
+    for pair, sources_set in sorted(variant_addition_sources.items(), key=lambda item: str(item[0])):
+        if len(sources_set) > 1:
             findings.append(
-                f"IDENTICAL VARIANT ADDITION SHARED BY BRANCHES {pair}: branches={refs}"
+                f"IDENTICAL VARIANT ADDITION SHARED {pair}: sources={sorted(sources_set)}"
             )
 
-    for entry, refs_set in sorted(registry_entry_to_refs.items()):
-        refs = sorted(refs_set - {"BASELINE"})
-        if len(refs) > 1:
+    for entry, sources_set in sorted(registry_addition_sources.items()):
+        if len(sources_set) > 1:
             findings.append(
-                f"FAMILY REGISTRY ENTRY SHARED BY BRANCHES {entry}: branches={refs}"
+                f"FAMILY REGISTRY ENTRY SHARED {entry}: sources={sorted(sources_set)}"
             )
 
     print(
         f"Cross-PR catalog audit: baseline={BASE_REF}; "
-        f"candidate_branches={loaded}; active_tips={list(active_refs)}"
+        f"candidate_prs={loaded}; direct_changes_only=true"
     )
     print(
         "Baseline sizes: "
         f"products={len(baseline.get('products', []))}, "
-        f"variants={len(baseline.get('variants', []))}"
+        f"variants={len(baseline.get('variants', []))}, "
+        f"families={len(baseline_registry.get('families', []))}"
     )
     if findings:
-        print(f"BLOCKED: {len(findings)} cross-branch collision(s) detected.")
+        print(f"BLOCKED: {len(findings)} cross-PR collision(s) detected.")
         for finding in findings:
             print(f" - {finding}")
         return 1
 
-    print("PASS: no cross-branch product or variant identity collisions detected.")
+    print("PASS: no cross-PR product, variant or family-registry overlaps detected.")
     return 0
 
 
