@@ -16590,6 +16590,118 @@
             "Nuha",
             "Khadlaj Nuha"
           ]
+        },
+        {
+          "canonical_name": "Bleu Glace",
+          "aliases": [
+            "Bleu Glace",
+            "Khadlaj Bleu Glace",
+            "Bleu Glacé"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Desert Rose",
+          "aliases": [
+            "Desert Rose",
+            "Khadlaj Desert Rose"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Gaith",
+          "aliases": [
+            "Gaith",
+            "Khadlaj Gaith"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mocha Latte",
+          "aliases": [
+            "Mocha Latte",
+            "Khadlaj Mocha Latte"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rasayel Shagaf",
+          "aliases": [
+            "Rasayel Shagaf",
+            "Khadlaj Rasayel Shagaf"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rasayel Vid",
+          "aliases": [
+            "Rasayel Vid",
+            "Khadlaj Rasayel Vid"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rose And Romance",
+          "aliases": [
+            "Rose And Romance",
+            "Khadlaj Rose And Romance",
+            "Rose & Romance"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Uno Sensuale",
+          "aliases": [
+            "Uno Sensuale",
+            "Khadlaj Uno Sensuale"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Wow Oud",
+          "aliases": [
+            "Wow Oud",
+            "Khadlaj Wow Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ghadeer Gold",
+          "aliases": [
+            "Ghadeer Gold",
+            "Khadlaj Ghadeer Gold"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Nuha",
+          "aliases": [
+            "Nuha",
+            "Khadlaj Nuha"
+          ],
+          "formats_ml": [
+            85
+          ]
         }
       ]
     },
@@ -17592,6 +17704,16 @@
           "aliases": [
             "La Fede White Forest Strawberry",
             "Khadlaj La Fede White Forest Strawberry"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Code Viola Nectar",
+          "aliases": [
+            "Code Viola Nectar",
+            "Khadlaj Code Viola Nectar"
           ],
           "formats_ml": [
             100
