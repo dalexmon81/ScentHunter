@@ -366,3 +366,8 @@ Aggiunte **5 identità** mancanti dalla seconda pagina della collezione ufficial
 ## Paris Corner — pagine ufficiali 3 e 4 (2026-11-08)
 
 Aggiunte 6 identità non ancora presenti nel catalogo: **La Nuit Pendora**, **La Serpiente Emir**, **Le Charme**, **Midnight Sin by Daniel René**, **Miel Obscura**, **Miel Vanille**. Fonti ufficiali: https://www.pariscornerperfumes.com/collections/all?page=3 e https://www.pariscornerperfumes.com/collections/all?page=4 . I prodotti esplicitamente presentati sotto i marchi-sottomarca Ministry of Oud non sono stati assegnati a Paris Corner senza una verifica separata del brand proprietario. Nessuna variante o dato commerciale è stato dedotto.
+
+
+## Paris Corner — pagina ufficiale 5 (2026-11-08)
+
+Aggiunte **16 identità** mancanti dalla pagina 5 della collezione ufficiale: Misty Dawn Musk Collection, Nada Blumingle, Nada Whimsical, Nada Wink, North Stag Huit VIII, North Stag Hypnotic Oud Quinze XV, North Stag Neuf IX, North Stag Phenomenal Quatorze XIV, North Stag Sept VII, Nouf, Ophidian Black Cherry, Ophidian Mango Bliss, Ophidian Sweet Surrender, Opulentia Empyreal Emir, Opulentia Flame Emir, Opulentia Inverno Emir. Fonte: https://www.pariscornerperfumes.com/collections/all?page=5 . La pagina contiene anche prodotti Ministry of Oud e set multiprodotto: Ministry of Oud è stato escluso dall'attribuzione Paris Corner perché il sito lo espone come marchio separato; i set sono stati esclusi. Le identità North Stag sono incluse perché la scheda ufficiale definisce North Stag una linea di profumi di Paris Corner. Nessun formato o concentrazione è stato inventato.
