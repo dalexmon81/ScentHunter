@@ -348,3 +348,70 @@ Before any of these catalog PRs are integrated:
 ## Safety boundary
 
 This audit changes documentation only. It does not change product catalog data, family registry, variants, prices, stock, offers, `main`, or production. No PR is merged or closed by this report.
+
+
+## Paris Corner — 25 variant concentration evidence review
+
+A read-only scan of the exact base catalog blob
+`a0e787b370902eb69860250b233feebe466054e2` identifies 25 Paris Corner
+variant rows without a variant-level concentration. The matching product rows
+already carry individual official Paris Corner product URLs. The product
+detail pages were checked directly:
+
+- Affogato Al Caffe — https://www.pariscornerperfumes.com/products/affogato-al-caffe
+- Minya Caramel Dulce — https://www.pariscornerperfumes.com/products/minya-caramel-dulce
+- Reham Rose Petals — https://www.pariscornerperfumes.com/products/reham-rose-petals
+- Acadia Intenso Emir — https://www.pariscornerperfumes.com/products/acadia-intenso-emir
+- Attractus — https://www.pariscornerperfumes.com/products/attractus
+- North Stag Hypnotic Oud Quinze XV — https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv
+- Midnight Sin by Daniel René — https://www.pariscornerperfumes.com/products/midnight-sin-by-daniel-rene
+- Dulzura Vanilla Envie — https://www.pariscornerperfumes.com/products/dulzura-vanilla-envie
+- Green Bet — https://www.pariscornerperfumes.com/products/green-bet
+- Heer — https://www.pariscornerperfumes.com/products/heer
+- Marshmallow Blush — https://www.pariscornerperfumes.com/products/marshmallow-blush
+- Rawq — https://www.pariscornerperfumes.com/products/rawq
+- The Show Magnifique — https://www.pariscornerperfumes.com/products/the-show-magnifique
+- Tawaaq — https://www.pariscornerperfumes.com/products/tawaaq
+- Lueur d'Espoir Noche — https://www.pariscornerperfumes.com/products/lueur-noche
+- Lueur d'Espoir Ambre — https://www.pariscornerperfumes.com/products/lueur-ambre
+- Super Crush Emir — https://www.pariscornerperfumes.com/products/super-crush-emir
+- Ministry of Oud - Thailand Oud in Cairo — https://www.pariscornerperfumes.com/products/ministry-of-oud-thailand-oud-in-cairo
+- Deux II Expressions North Stag — https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml
+- North Stag Phenomenal Quatorze XIV — https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv
+- Atoof — https://www.pariscornerperfumes.com/products/atoof
+- Aira — https://www.pariscornerperfumes.com/products/aira
+- Ciao Citrus — https://www.pariscornerperfumes.com/products/ciao-citrus
+- Fatal Embrace — https://www.pariscornerperfumes.com/products/fatal-embrace
+- Wayfarer Infusion — https://www.pariscornerperfumes.com/products/wayfarer-infusion
+
+For the 24 pages successfully retrieved, the visible manufacturer detail
+content identifies the fragrance and size (mostly 100 ml; Super Crush Emir is
+75 ml) but does not explicitly label Eau de Parfum, Eau de Toilette or Extrait.
+The Attractus URL could not be retrieved by the page inspection tool, so it
+remains unverified at detail-page level. No concentration value is justified
+for any of these 25 variants by the evidence collected in this pass.
+
+**Action:** leave all 25 variant concentration fields blank. The product URLs
+remain useful provenance for identity/size, but their presence is not evidence
+of concentration. Revisit only if a manufacturer specification, packaging
+label or other approved primary evidence explicitly states the concentration.
+
+## Armaf — duplicate correction work across PR #569 and PR #573
+
+PR #569 and PR #573 both propose the same 21 variant-level changes for the
+same five Armaf Club de Nuit products. A direct patch comparison shows the
+same 21 existing variant IDs receive the same `Eau de Parfum` value and the
+same official source URLs in both PRs. They are not 42 distinct corrections.
+
+PR #573 additionally carries a separate focused test module, a workflow
+trigger update and an evidence document; PR #569 carries its own focused
+Armaf detail-evidence test. The branches have diverged (compare reports
+four commits ahead and two behind when comparing #569's branch to #573's),
+so do not integrate both catalog patches as independent work. Select one
+catalog data patch, then deliberately retain/reconcile the stronger
+complementary tests, workflow and evidence documentation in a single
+integration candidate.
+
+The exact #573 catalog patch repeats #569's 21 data edits; this is a
+cross-PR duplication finding, not a request to close either PR automatically.
+No merge or branch deletion was performed.
