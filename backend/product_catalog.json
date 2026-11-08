@@ -3622,7 +3622,8 @@
       "source_url": "https://khadlaj-perfumes.com/collections/all",
       "formats_ml": [
         35
-      ]
+      ],
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers"
     },
     {
       "product_id": "SH-KHADLAJ-f26d9535",
@@ -3797,7 +3798,8 @@
       "family_name": "Private Blend Musk Ice",
       "aliases": [
         "Private Blend Musk Ice",
-        "Khadlaj Private Blend Musk Ice"
+        "Khadlaj Private Blend Musk Ice",
+        "Musk Ice"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/all",
@@ -19044,7 +19046,8 @@
       "family_name": "Sueno",
       "aliases": [
         "Sueno",
-        "Khadlaj Sueno"
+        "Khadlaj Sueno",
+        "Sueño"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
@@ -31783,7 +31786,12 @@
         "Khadlaj Hareem Al Sultan"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/premium-colllection"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-060",
@@ -31915,7 +31923,8 @@
       "family_name": "Le Prestige King",
       "aliases": [
         "Le Prestige King",
-        "Khadlaj Le Prestige King"
+        "Khadlaj Le Prestige King",
+        "Lé Prestige King"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
@@ -31945,7 +31954,8 @@
       "family_name": "Le Prestige Royal",
       "aliases": [
         "Le Prestige Royal",
-        "Khadlaj Le Prestige Royal"
+        "Khadlaj Le Prestige Royal",
+        "Lé Prestige Royal"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
@@ -31960,7 +31970,8 @@
       "family_name": "Le Prestige Empress",
       "aliases": [
         "Le Prestige Empress",
-        "Khadlaj Le Prestige Empress"
+        "Khadlaj Le Prestige Empress",
+        "Lé Prestige Empress"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
@@ -31975,7 +31986,8 @@
       "family_name": "Le Prestige Bold",
       "aliases": [
         "Le Prestige Bold",
-        "Khadlaj Le Prestige Bold"
+        "Khadlaj Le Prestige Bold",
+        "Lé Prestige Bold"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
@@ -34762,6 +34774,407 @@
       "identity_status": "source_listed_name",
       "source_url": "https://www.fragrantica.com/designers/MAISON-ASRAR.html",
       "source_evidence_url": "https://www.fragrantica.com/designers/MAISON-ASRAR.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ANABIA-RED",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Anabia Red",
+      "name": "Anabia Red",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Anabia Red",
+        "Khadlaj Anabia Red"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ANABIA-BLUE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Anabia Blue",
+      "name": "Anabia Blue",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Anabia Blue",
+        "Khadlaj Anabia Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-JOHAYNA-PURPLE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Johayna Purple",
+      "name": "Johayna Purple",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Johayna Purple",
+        "Khadlaj Johayna Purple"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-JOHAYNA-GREEN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Johayna Green",
+      "name": "Johayna Green",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Johayna Green",
+        "Khadlaj Johayna Green"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-OUD-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Oud & Musk",
+      "name": "Oud & Musk",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Oud & Musk",
+        "Khadlaj Oud & Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-PURE-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Pure Musk",
+      "name": "Pure Musk",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Pure Musk",
+        "Khadlaj Pure Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-KAYAAN-SILVER",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Kayaan Silver",
+      "name": "Kayaan Silver",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Kayaan Silver",
+        "Khadlaj Kayaan Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-MALIKA-GREEN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Malika Green",
+      "name": "Malika Green",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Malika Green",
+        "Khadlaj Malika Green"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-MALIKA-RED",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Malika Red",
+      "name": "Malika Red",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Malika Red",
+        "Khadlaj Malika Red"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-PURPLE-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Purple Musk",
+      "name": "Purple Musk",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Purple Musk",
+        "Khadlaj Purple Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-PINK-MUSK",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Pink Musk",
+      "name": "Pink Musk",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Pink Musk",
+        "Khadlaj Pink Musk"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HAREEM-AL-SULTAN-BLUE",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Hareem Al Sultan Blue",
+      "name": "Hareem Al Sultan Blue",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Hareem Al Sultan Blue",
+        "Khadlaj Hareem Al Sultan Blue"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
+      "formats_ml": [
+        35
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-KAYAAN-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Kayaan Gold",
+      "name": "Kayaan Gold",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Kayaan Gold",
+        "Khadlaj Kayaan Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HAREEM-AL-SULTAN-SILVER",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Hareem Al Sultan Silver",
+      "name": "Hareem Al Sultan Silver",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Hareem Al Sultan Silver",
+        "Khadlaj Hareem Al Sultan Silver"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        35
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-JAMEEL",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Jameel",
+      "name": "Jameel",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Jameel",
+        "Khadlaj Jameel"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        25
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HANEEN-ROSE-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Haneen Rose Gold",
+      "name": "Haneen Rose Gold",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Haneen Rose Gold",
+        "Khadlaj Haneen Rose Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ROOHI-WA-ROOHAK-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Roohi Wa Roohak Gold",
+      "name": "Roohi Wa Roohak Gold",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Roohi Wa Roohak Gold",
+        "Khadlaj Roohi Wa Roohak Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HANEEN-GOLD",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Haneen Gold",
+      "name": "Haneen Gold",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Haneen Gold",
+        "Khadlaj Haneen Gold"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ALF-WARDAT",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Alf Wardat",
+      "name": "Alf Wardat",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Alf Wardat",
+        "Khadlaj Alf Wardat",
+        "Alf Wardaat"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        30
+      ],
+      "concentration": "Perfume Oil"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-AL-RIYAN",
+      "brand": "Khadlaj",
+      "brand_name": "Khadlaj",
+      "canonical_name": "Al Riyan",
+      "name": "Al Riyan",
+      "family_id": "khadlaj_perfume_oils",
+      "family_name": "Khadlaj Perfume Oils",
+      "aliases": [
+        "Al Riyan",
+        "Khadlaj Al Riyan"
+      ],
+      "identity_status": "source_listed_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-best-sellers",
+      "formats_ml": [
+        17
+      ],
+      "concentration": "Perfume Oil"
     }
   ],
   "variants": [
@@ -39158,6 +39571,226 @@
       "aliases": [
         "Zenobia 100 ml",
         "Maison Asrar Zenobia 100 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ANABIA-RED",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-ANABIA-RED-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Anabia Red 20 ml",
+        "Khadlaj Anabia Red 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ANABIA-BLUE",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-ANABIA-BLUE-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Anabia Blue 20 ml",
+        "Khadlaj Anabia Blue 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-JOHAYNA-PURPLE",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-JOHAYNA-PURPLE-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Johayna Purple 20 ml",
+        "Khadlaj Johayna Purple 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-JOHAYNA-GREEN",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-JOHAYNA-GREEN-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Johayna Green 20 ml",
+        "Khadlaj Johayna Green 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-OUD-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-OUD-MUSK-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Oud & Musk 20 ml",
+        "Khadlaj Oud & Musk 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-PURE-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-PURE-MUSK-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Pure Musk 20 ml",
+        "Khadlaj Pure Musk 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-KAYAAN-SILVER",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-KAYAAN-SILVER-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Kayaan Silver 20 ml",
+        "Khadlaj Kayaan Silver 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-MALIKA-GREEN",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-MALIKA-GREEN-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Malika Green 20 ml",
+        "Khadlaj Malika Green 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-MALIKA-RED",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-MALIKA-RED-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Malika Red 20 ml",
+        "Khadlaj Malika Red 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-PURPLE-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-PURPLE-MUSK-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Purple Musk 20 ml",
+        "Khadlaj Purple Musk 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-PINK-MUSK",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-PINK-MUSK-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Pink Musk 20 ml",
+        "Khadlaj Pink Musk 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HAREEM-AL-SULTAN-BLUE",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-HAREEM-AL-SULTAN-BLUE-35-000",
+      "size_ml": 35,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Hareem Al Sultan Blue 35 ml",
+        "Khadlaj Hareem Al Sultan Blue 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-KAYAAN-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-KAYAAN-GOLD-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Kayaan Gold 20 ml",
+        "Khadlaj Kayaan Gold 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HAREEM-AL-SULTAN-SILVER",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-HAREEM-AL-SULTAN-SILVER-35-000",
+      "size_ml": 35,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Hareem Al Sultan Silver 35 ml",
+        "Khadlaj Hareem Al Sultan Silver 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-JAMEEL",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-JAMEEL-25-000",
+      "size_ml": 25,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Jameel 25 ml",
+        "Khadlaj Jameel 25 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HANEEN-ROSE-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-HANEEN-ROSE-GOLD-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Haneen Rose Gold 20 ml",
+        "Khadlaj Haneen Rose Gold 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ROOHI-WA-ROOHAK-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-ROOHI-WA-ROOHAK-GOLD-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Roohi Wa Roohak Gold 20 ml",
+        "Khadlaj Roohi Wa Roohak Gold 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-HANEEN-GOLD",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-HANEEN-GOLD-20-000",
+      "size_ml": 20,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Haneen Gold 20 ml",
+        "Khadlaj Haneen Gold 20 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-ALF-WARDAT",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-ALF-WARDAT-30-000",
+      "size_ml": 30,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Alf Wardat 30 ml",
+        "Khadlaj Alf Wardat 30 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-OIL-AL-RIYAN",
+      "variant_id": "SHV-SH-KHADLAJ-OIL-AL-RIYAN-17-000",
+      "size_ml": 17,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Al Riyan 17 ml",
+        "Khadlaj Al Riyan 17 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-f492c4b4",
+      "variant_id": "SHV-SH-KHADLAJ-HAREEM-AL-SULTAN-GOLD-35-OIL",
+      "size_ml": 35,
+      "concentration": "Perfume Oil",
+      "aliases": [
+        "Hareem Al Sultan Gold 35 ml",
+        "Khadlaj Hareem Al Sultan Gold 35 ml"
+      ]
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-059",
+      "variant_id": "SHV-SH-KHADLAJ-HAREEM-AL-SULTAN-75-EDP",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Hareem Al Sultan 75 ml",
+        "Khadlaj Hareem Al Sultan 75 ml"
       ]
     }
   ]
