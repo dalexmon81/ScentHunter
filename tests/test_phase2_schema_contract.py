@@ -25,7 +25,7 @@ def test_canonical_identity_is_separate_from_retailer_offers():
     assert "external_product_id" not in ProductVariant.__table__.columns
 
 def test_variant_attributes_and_fixed_precision_prices():
-    for field in ("concentration", "size_ml", "is_tester", "is_refill", "is_gift_set", "gtin"):
+    for field in ("concentration", "product_form", "size_ml", "is_tester", "is_refill", "is_gift_set", "gtin"):
         assert field in ProductVariant.__table__.columns
     assert str(Offer.__table__.c.price.type) == "NUMERIC(12, 2)"
     assert str(PriceHistory.__table__.c.price.type) == "NUMERIC(12, 2)"
@@ -35,7 +35,7 @@ def test_required_offer_and_catalog_indexes_exist():
     indexes = {index.name for table in Base.metadata.tables.values() for index in table.indexes}
     assert {
         "ix_product_variants_gtin", "ix_product_variants_size_ml",
-        "ix_product_variants_concentration", "ix_offers_status",
+        "ix_product_variants_concentration", "ix_product_variants_product_form", "ix_offers_status",
         "ix_offers_captured_at", "ix_offers_price",
         "ix_offers_store_external_product", "ix_offers_store_id",
         "ix_offers_product_variant_id", "ix_fragrances_name",
