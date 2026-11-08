@@ -383,3 +383,28 @@ Official source pages:
 - https://www.pariscornerperfumes.com/products/oravea
 - https://www.pariscornerperfumes.com/products/rawq
 - https://www.pariscornerperfumes.com/products/the-show-magnifique
+
+
+### Paris Corner: eleven additional official detail pages (8 November 2026)
+
+The official Paris Corner "New Arrivals Offer" collection linked directly to individual product pages for these fragrances. Eleven existing collection-level records were upgraded to source_verified_name, and explicit variants were added. One item, Ministry of Oud - Thailand Oud in Cairo, was present in the family registry but absent from the canonical product seed; it was added as one new canonical identity.
+
+| Canonical identity | Official product page | Size | Concentration stated |
+|---|---|---:|---|
+| Tawaaq | https://www.pariscornerperfumes.com/products/tawaaq | 100 ml | Not stated |
+| Lueur d'Espoir Noche | https://www.pariscornerperfumes.com/products/lueur-noche | 100 ml | Not stated |
+| Lueur d'Espoir Arena | https://www.pariscornerperfumes.com/products/lueur-arena | 100 ml | Eau de Parfum |
+| Lueur d'Espoir Ambre | https://www.pariscornerperfumes.com/products/lueur-ambre | 100 ml | Not stated |
+| North Stag Neuf IX | https://www.pariscornerperfumes.com/products/north-stag-neuf-ix | 100 ml | Extrait de Parfum |
+| North Stag Sept VII | https://www.pariscornerperfumes.com/products/north-stag-sept-vii | 100 ml | Extrait de Parfum |
+| Rose de Nuit | https://www.pariscornerperfumes.com/products/rose-de-nuit | 100 ml | Eau de Parfum |
+| Super Crush Emir | https://www.pariscornerperfumes.com/products/super-crush-emir | 75 ml | Not stated |
+| Ministry of Oud - Thailand Oud in Cairo | https://www.pariscornerperfumes.com/products/ministry-of-oud-thailand-oud-in-cairo | 100 ml | Not stated |
+| Charuto Mysterious Tobacco | https://www.pariscornerperfumes.com/products/paris-corner-perfumes | 100 ml | Eau de Parfum |
+| North Stag Huit VIII | https://www.pariscornerperfumes.com/products/north-stag-huit-viii | 100 ml | Extrait de Parfum |
+
+Concentration is intentionally blank where the detail page did not state it explicitly. The 75 ml size for Super Crush Emir is retained as a distinct variant, not normalized to 100 ml. The Ministry of Oud item is treated as a Paris Corner sub-line, matching its existing family-registry entry.
+
+Paris Corner now has 246 canonical identities: 26 individually detail-verified and 220 listing-level. The full seed now has 2,061 canonical identities and 266 explicit variants. Across the 20 requested brands, the count is 2,058 identities: 176 individually verified and 1,882 listing-level.
+
+Official collection context: https://www.pariscornerperfumes.com/collections/new-arrivals-offer
