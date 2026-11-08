@@ -7,10 +7,10 @@ This branch rebases the Khadlaj work onto `catalog/mykonos-rebased-99-102-2026-1
 ## Reconciled catalog
 
 - 210 Khadlaj canonical identities.
-- 199 explicit variants.
+- 212 explicit variants.
 - 96 visible official perfume-spray cards reconciled from the official collection.
 - 36 visible official concentrated-oil products represented.
-- 36 visible La Fede EDP products represented.
+- 42 official La Fede EDP collection products represented.
 - 147 Fragrantica name records retained as identity leads; Fragrantica is not used as evidence for sizes or concentrations.
 - 8 Shiyaaka identities remain grouped as a separate line.
 
@@ -29,6 +29,6 @@ Every variant row has a `source_evidence_url`. Product-level URLs are not treate
 
 ## Incomplete official collection coverage
 
-The current official store snapshot shows 101 spray products, 43 concentrated oils and 42 La Fede EDP products. This draft reconciles 96, 36 and 36 visible entries respectively. Five sprays, seven oils and six La Fede entries remain to be surfaced and verified. Three legacy La Fede names remain family-registry-only pending direct product evidence.
+The current official store snapshot shows 101 spray products, 43 concentrated oils and 42 La Fede EDP products. This draft reconciles 96, 36 and 36 visible entries respectively. Five spray entries and seven oil entries remain to be surfaced and verified. All 42 products in the official La Fede EDP collection are represented; three additional La Fede line products are also catalogued.
 
 See [KHADLAJ_CATALOG_AUDIT_2026-11-08.md](KHADLAJ_CATALOG_AUDIT_2026-11-08.md) for the detailed audit, variant decisions and source links.
