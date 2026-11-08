@@ -494,10 +494,6 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("concentration", matching[0])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
     def test_khadlaj_hareem_al_sultan_gold_35ml_official_oil_page_is_verified(self):
         row = next(
             (
@@ -527,3 +523,7 @@ if __name__ == "__main__":
         # perfume oil, not an EDP/Extrait spray concentration.
         self.assertNotIn("concentration", row)
         self.assertNotIn("concentration", matching[0])
+
+
+if __name__ == "__main__":
+    unittest.main()
