@@ -17,7 +17,8 @@
     "games_of_spades_hierarchy": "Games of Spades is the fragrance collection/brand label used in ScentHunter; Jo Milano Paris is the manufacturer. Gift sets/coffrets are excluded as separate canonical fragrances. Concentration variants such as Rouge Extrait are not separate canonical fragrance identities unless product model requires it.",
     "brand_line_hierarchy": "Where the requested catalog line is distinct from the manufacturer, keep the requested line as brand/collection and store the parent house separately as manufacturer. Aromatix is cataloged as Aromatix, with French Avenue as manufacturer.",
     "games_of_spades_unverified_registry_entry": "Jack remains in the family registry as a discovery-only/historical candidate, but is not imported into the canonical product seed because no current official Jo Milano Paris listing or product detail page was verified in this pass.",
-    "pending_candidates": "Bujairami Hectic and Arabiyat Prestige Mahd Al Dhahab Extrait remain discovery candidates only. Their retailer evidence is recorded, but neither was imported into the canonical seed because official brand-level identity evidence and/or concentration modeling is unresolved."
+    "pending_candidates": "Bujairami Hectic and Arabiyat Prestige Mahd Al Dhahab Extrait remain discovery candidates only. Their retailer evidence is recorded, but neither was imported into the canonical seed because official brand-level identity evidence and/or concentration modeling is unresolved.",
+    "bujairami_hectic": "Hectic is now admitted as a source-verified canonical name from the official Bujairami product page. Concentration, volume and GTIN are not imported because the official detail page omits them and retailer sources conflict."
   },
   "summary": {
     "product_name_candidates": 173,
@@ -1343,20 +1344,20 @@
     {
       "brand": "Bujairami",
       "fragrance_name": "Hectic",
-      "evidence_source": "Azmara",
-      "source_url": "https://azmara-perfumes.com/collections/alle-produkte",
-      "evidence_level": "authorized_retailer_listing_pending_brand_source",
-      "variant_details": "do not import yet: Luxembourg retailer title/URL disagree on concentration; verify official brand product detail and UPC before canonical/variant creation.",
+      "evidence_source": "Bujairami official product detail page",
+      "source_url": "https://bujairami.com.au/products/hectic-inspired-by-louis-vuitton-imagination-extrait",
+      "evidence_level": "official_product_detail",
+      "variant_details": "Name confirmed on official brand page. Retailer/authorized EU sources identify Hectic as Extrait de Parfum, but official detail page does not state concentration or size; do not create variant row or infer concentration.",
       "cross_check_sources": [
-        {
-          "url": "https://bujairamiperfumes.eu/",
-          "publisher": "FragranceGems, authorized EU retailer (not the official brand site)",
-          "note": "Lists Hectic Extrait de Parfum and explicitly identifies the site as an independent authorized retailer."
-        },
         {
           "url": "https://perfumemarket.lu/en/products/bujairami-hectic-100ml-edp",
           "publisher": "PerfumeMarket Luxembourg",
-          "note": "Retail product page lists Bujairami Hectic 100 ml and UPC 9362014000157; title says Extrait while URL slug says EDP, so concentration conflict must be resolved before variant modeling."
+          "note": "Retailer page identifies Hectic as 100 ml Extrait and gives UPC 9362014000157, but URL slug says EDP; concentration conflict retained as unresolved."
+        },
+        {
+          "url": "https://bujairamiperfumes.eu/",
+          "publisher": "FragranceGems authorized EU retailer (not official brand website)",
+          "note": "Lists Hectic among its best-selling Extrait de Parfum fragrances."
         }
       ]
     },
