@@ -33722,6 +33722,177 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-BELLE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Belle",
+      "name": "Belle",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Belle",
+      "aliases": [
+        "Belle",
+        "Gulf Orchid Belle"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/belle",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-AMOUR",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Amour",
+      "name": "Amour",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Amour",
+      "aliases": [
+        "Amour",
+        "Gulf Orchid Amour"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/amour",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CHIC",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Chic",
+      "name": "Chic",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Chic",
+      "aliases": [
+        "Chic",
+        "Gulf Orchid Chic"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/chic",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cloud 9",
+      "name": "Cloud 9",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Cloud 9",
+      "aliases": [
+        "Cloud 9",
+        "Gulf Orchid Cloud 9"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/cloud-9",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-PHANTOM",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Phantom",
+      "name": "Phantom",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Phantom",
+      "aliases": [
+        "Phantom",
+        "Gulf Orchid Phantom"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/phantom",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-FLAMMA",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Flamma",
+      "name": "Flamma",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Flamma",
+      "aliases": [
+        "Flamma",
+        "Gulf Orchid Flamma"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/flamma",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VORTEX",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Vortex",
+      "name": "Vortex",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Vortex",
+      "aliases": [
+        "Vortex",
+        "Gulf Orchid Vortex"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/vortex",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ROSALIA",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Rosalia",
+      "name": "Rosalia",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Rosalia",
+      "aliases": [
+        "Rosalia",
+        "Gulf Orchid Rosalia"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/rosalia",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MAESTRO",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Maestro",
+      "name": "Maestro",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Maestro",
+      "aliases": [
+        "Maestro",
+        "Gulf Orchid Maestro"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/maestro",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36654,6 +36825,96 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-BELLE",
+      "variant_id": "SHV-SH-GULF-ORCHID-BELLE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Belle 100 ml",
+        "Gulf Orchid Belle 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-AMOUR",
+      "variant_id": "SHV-SH-GULF-ORCHID-AMOUR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Amour 100 ml",
+        "Gulf Orchid Amour 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CHIC",
+      "variant_id": "SHV-SH-GULF-ORCHID-CHIC-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Chic 100 ml",
+        "Gulf Orchid Chic 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "variant_id": "SHV-SH-GULF-ORCHID-CLOUD-9-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud 9 100 ml",
+        "Gulf Orchid Cloud 9 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-PHANTOM",
+      "variant_id": "SHV-SH-GULF-ORCHID-PHANTOM-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Phantom 100 ml",
+        "Gulf Orchid Phantom 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-FLAMMA",
+      "variant_id": "SHV-SH-GULF-ORCHID-FLAMMA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Flamma 100 ml",
+        "Gulf Orchid Flamma 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VORTEX",
+      "variant_id": "SHV-SH-GULF-ORCHID-VORTEX-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Vortex 100 ml",
+        "Gulf Orchid Vortex 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ROSALIA",
+      "variant_id": "SHV-SH-GULF-ORCHID-ROSALIA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Rosalia 100 ml",
+        "Gulf Orchid Rosalia 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MAESTRO",
+      "variant_id": "SHV-SH-GULF-ORCHID-MAESTRO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Maestro 100 ml",
+        "Gulf Orchid Maestro 100ml"
+      ],
+      "concentration": "Eau de Parfum"
     }
   ]
 }
