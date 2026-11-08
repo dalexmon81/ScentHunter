@@ -3610,18 +3610,12 @@
           "canonical_name": "Attractus",
           "aliases": [
             "Attractus",
-            "Paris Corner Attractus"
+            "Paris Corner Attractus",
+            "Attratus",
+            "Paris Corner Attratus"
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Attratus",
-          "aliases": [
-            "Attratus",
-            "Paris Corner Attratus",
-            "Paris Corner Attratus"
           ]
         },
         {
@@ -4048,17 +4042,6 @@
           "aliases": [
             "Green Bet",
             "Paris Corner Green Bet"
-          ]
-        },
-        {
-          "canonical_name": "Harrier Absoulte",
-          "aliases": [
-            "Harrier Absoulte",
-            "Paris Corner Harrier Absoulte",
-            "Paris Corner Harrier Absoulte"
-          ],
-          "formats_ml": [
-            100
           ]
         },
         {
@@ -5439,7 +5422,12 @@
           "canonical_name": "Harrier Absolute",
           "aliases": [
             "Harrier Absolute",
-            "Paris Corner Harrier Absolute"
+            "Paris Corner Harrier Absolute",
+            "Harrier Absoulte",
+            "Paris Corner Harrier Absoulte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
