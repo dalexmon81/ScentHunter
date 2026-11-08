@@ -1608,3 +1608,15 @@ GitHub Actions run **#42420558957** for test commit **f0c4b4872d8faf1208f4237538
 - The 26 additions are canonical name identities, not a claim that every historic/discontinued Game of Spades release is represented.
 - The new test `backend/tests/test_games_of_spades_catalog.py` asserts catalog/registry consistency, unique IDs and brand/name pairs, and that no commercial offer fields or unverified variants are added.
 - GitHub Actions must pass on the latest PR head before this pass is called CI-verified.
+
+
+## Pass 30 — Lattafa official product-detail gap closure (2026-11-08)
+
+- A product-by-product comparison found two official Lattafa fragrance names present in the family registry or source discovery but missing from the canonical product seed: **Queen of Arabia** and **Musamam Black Intense**.
+- Both names were confirmed on Lattafa's official product pages:
+  - https://lattafa.com/product/queen-of-arabia/
+  - https://lattafa.com/product/musamam-black-intense/
+- Added both canonical product identities to `backend/product_catalog.json` and synchronized the Lattafa family registry. Musamam Black Intense already existed in the family registry; Queen of Arabia was added there as well.
+- No variants were created. The Queen of Arabia page displays 100 ml, but no size variant row was created in this pass; Musamam Black Intense's page identifies it as Eau de Parfum without a verified size in the extracted source. No GTIN, price, stock, shipping or retailer offer was added.
+- Added `backend/tests/test_lattafa_catalog.py` for official source URL, identity status, registry parity and no-offer assertions.
+- Catalog totals after Games of Spades and Lattafa additions: **1,919 canonical identities; 245 explicit variants**. CI status remains pending verification on the latest PR head.
