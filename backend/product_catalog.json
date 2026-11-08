@@ -32871,8 +32871,8 @@
         "Khadlaj Sensuos Night"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/sensous-night-edp-spray-shop-online-best-price-in-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/sensous-night-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/flash-sale/products/sensous-night-edp-spray-shop-online-best-price-in-dubai-uae",
       "formats_ml": [
         100
       ],
@@ -33485,7 +33485,8 @@
         35
       ],
       "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml",
-      "collection_name": "Concentrated Perfume Oils"
+      "collection_name": "Concentrated Perfume Oils",
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-HAREEM-AL-SULTAN-SILVER",
@@ -33642,7 +33643,8 @@
         20
       ],
       "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
-      "collection_name": "Concentrated Perfume Oils"
+      "collection_name": "Concentrated Perfume Oils",
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-MOCHA-LATTE",
@@ -34968,94 +34970,6 @@
       "source_product_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae"
     },
     {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-MARRON-OUD",
-      "brand": "Khadlaj",
-      "brand_name": "Khadlaj",
-      "canonical_name": "La Fede Code Marron Oud",
-      "name": "La Fede Code Marron Oud",
-      "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
-      "aliases": [
-        "La Fede Code Marron Oud",
-        "Khadlaj La Fede Code Marron Oud",
-        "Code Marron Oud",
-        "Khadlaj Code Marron Oud"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
-      "formats_ml": [
-        100
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-ROUGE-AMOUR",
-      "brand": "Khadlaj",
-      "brand_name": "Khadlaj",
-      "canonical_name": "La Fede Code Rouge Amour",
-      "name": "La Fede Code Rouge Amour",
-      "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
-      "aliases": [
-        "La Fede Code Rouge Amour",
-        "Khadlaj La Fede Code Rouge Amour",
-        "Code Rouge Amour",
-        "Khadlaj Code Rouge Amour"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
-      "formats_ml": [
-        100
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-VERDE-SUBLIME",
-      "brand": "Khadlaj",
-      "brand_name": "Khadlaj",
-      "canonical_name": "La Fede Code Verde Sublime",
-      "name": "La Fede Code Verde Sublime",
-      "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
-      "aliases": [
-        "La Fede Code Verde Sublime",
-        "Khadlaj La Fede Code Verde Sublime",
-        "Code Verde Sublime",
-        "Khadlaj Code Verde Sublime"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
-      "formats_ml": [
-        100
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-UNO-INTIMO",
-      "brand": "Khadlaj",
-      "brand_name": "Khadlaj",
-      "canonical_name": "La Fede Uno Intimo",
-      "name": "La Fede Uno Intimo",
-      "family_id": "khadlaj_la_fede",
-      "family_name": "La Fede",
-      "aliases": [
-        "La Fede Uno Intimo",
-        "Khadlaj La Fede Uno Intimo",
-        "Uno Intimo",
-        "Khadlaj Uno Intimo"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
-      "formats_ml": [
-        100
-      ],
-      "concentration": "Eau de Parfum"
-    },
-    {
       "product_id": "SH-KHADLAJ-573938bc",
       "brand": "Khadlaj",
       "brand_name": "Khadlaj",
@@ -35114,8 +35028,8 @@
         "LA FEDE LAVISH LUNA"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-edp-spray-100-ml",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-edp-spray-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-edp-spray-100-ml",
       "formats_ml": [
         100
       ],
@@ -35137,8 +35051,8 @@
         "LA FEDE LAVISH ROUGE"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-rouge-edp-spray-100-ml",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-rouge-edp-spray-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-rouge-edp-spray-100-ml",
       "formats_ml": [
         100
       ],
@@ -35160,8 +35074,8 @@
         "LA FEDE LAVISH BLUSH"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-lavish-blush-edp-spray-100-ml",
+      "source_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-blush-edp-spray-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-best-sellers-edp-signature-scents/products/la-fede-lavish-blush-edp-spray-100-ml",
       "formats_ml": [
         100
       ],
@@ -35276,7 +35190,7 @@
       "brand_name": "Khadlaj",
       "canonical_name": "La Fede Aura Vanilla Milk",
       "name": "La Fede Aura Vanilla Milk",
-      "family_id": "khadlaj_la_fede",
+      "family_id": "khadlaj_catalog",
       "family_name": "La Fede Aura Vanilla Milk",
       "aliases": [
         "La Fede Aura Vanilla Milk",
@@ -46362,7 +46276,9 @@
       "family_name": "Code Marron Oud",
       "aliases": [
         "Code Marron Oud",
-        "Khadlaj Code Marron Oud"
+        "Khadlaj Code Marron Oud",
+        "La Fede Code Marron Oud",
+        "Khadlaj La Fede Code Marron Oud"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
@@ -46383,7 +46299,9 @@
       "family_name": "Code Rouge Amour",
       "aliases": [
         "Code Rouge Amour",
-        "Khadlaj Code Rouge Amour"
+        "Khadlaj Code Rouge Amour",
+        "La Fede Code Rouge Amour",
+        "Khadlaj La Fede Code Rouge Amour"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
@@ -46404,7 +46322,9 @@
       "family_name": "Code Verde Sublime",
       "aliases": [
         "Code Verde Sublime",
-        "Khadlaj Code Verde Sublime"
+        "Khadlaj Code Verde Sublime",
+        "La Fede Code Verde Sublime",
+        "Khadlaj La Fede Code Verde Sublime"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
@@ -46470,7 +46390,8 @@
       "aliases": [
         "Uno Intimo",
         "Khadlaj Uno Intimo",
-        "La Fede Uno Intimo"
+        "La Fede Uno Intimo",
+        "Khadlaj La Fede Uno Intimo"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
@@ -51021,7 +50942,8 @@
         "Khadlaj Hareem Al Sultan Blue"
       ],
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfume-oils-new-launches/perfume-oil",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml"
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-discover-more/products/hareem-al-sultan-blue-35ml",
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-HAREEM-AL-SULTAN-SILVER",
@@ -51111,7 +51033,8 @@
         "Khadlaj Maya"
       ],
       "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
-      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae"
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-maya-20-ml-alcohol-free-perfume-attars-online-dubai-uae",
+      "concentration": "Perfume Oil"
     },
     {
       "product_id": "SH-KHADLAJ-MOCHA-LATTE",
@@ -52898,70 +52821,6 @@
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/la-fede-miss-premeire-spray-shop-online-best-price-in-dubai-uae"
     },
     {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-MARRON-OUD",
-      "variant_id": "VAR-SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-MARRON-OUD-100-EDP",
-      "size_ml": 100,
-      "concentration": "Eau de Parfum",
-      "aliases": [
-        "La Fede Code Marron Oud 100 ml",
-        "Khadlaj La Fede Code Marron Oud 100 ml",
-        "Code Marron Oud 100 ml",
-        "Khadlaj Code Marron Oud 100ml",
-        "Code Marron Oud",
-        "Khadlaj Code Marron Oud",
-        "La Fede Code Marron Oud"
-      ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae"
-    },
-    {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-ROUGE-AMOUR",
-      "variant_id": "VAR-SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-ROUGE-AMOUR-100-EDP",
-      "size_ml": 100,
-      "concentration": "Eau de Parfum",
-      "aliases": [
-        "La Fede Code Rouge Amour 100 ml",
-        "Khadlaj La Fede Code Rouge Amour 100 ml",
-        "Code Rouge Amour 100 ml",
-        "Khadlaj Code Rouge Amour 100ml",
-        "Code Rouge Amour",
-        "Khadlaj Code Rouge Amour",
-        "La Fede Code Rouge Amour"
-      ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae"
-    },
-    {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-VERDE-SUBLIME",
-      "variant_id": "VAR-SH-KHADLAJ-LAFEDE-LA-FEDE-CODE-VERDE-SUBLIME-100-EDP",
-      "size_ml": 100,
-      "concentration": "Eau de Parfum",
-      "aliases": [
-        "La Fede Code Verde Sublime 100 ml",
-        "Khadlaj La Fede Code Verde Sublime 100 ml",
-        "Code Verde Sublime 100 ml",
-        "Khadlaj Code Verde Sublime 100ml",
-        "Code Verde Sublime",
-        "Khadlaj Code Verde Sublime",
-        "La Fede Code Verde Sublime"
-      ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae"
-    },
-    {
-      "product_id": "SH-KHADLAJ-LAFEDE-LA-FEDE-UNO-INTIMO",
-      "variant_id": "VAR-SH-KHADLAJ-LAFEDE-LA-FEDE-UNO-INTIMO-100-EDP",
-      "size_ml": 100,
-      "concentration": "Eau de Parfum",
-      "aliases": [
-        "La Fede Uno Intimo 100 ml",
-        "Khadlaj La Fede Uno Intimo 100 ml",
-        "Uno Intimo 100 ml",
-        "Khadlaj Uno Intimo 100ml",
-        "Uno Intimo",
-        "Khadlaj Uno Intimo",
-        "La Fede Uno Intimo"
-      ],
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae"
-    },
-    {
       "product_id": "SH-KHADLAJ-573938bc",
       "variant_id": "SHV-SH-KHADLAJ-573938bc-100-000",
       "size_ml": 100,
@@ -54452,7 +54311,13 @@
       "size_ml": 100,
       "aliases": [
         "Code Marron Oud 100 ml",
-        "Khadlaj Code Marron Oud 100 ml"
+        "Khadlaj Code Marron Oud 100 ml",
+        "La Fede Code Marron Oud 100 ml",
+        "Khadlaj La Fede Code Marron Oud 100 ml",
+        "Khadlaj Code Marron Oud 100ml",
+        "Code Marron Oud",
+        "Khadlaj Code Marron Oud",
+        "La Fede Code Marron Oud"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-marron-oud-spray-shop-online-best-price-in-dubai-uae",
       "concentration": "Eau de Parfum",
@@ -54464,7 +54329,13 @@
       "size_ml": 100,
       "aliases": [
         "Code Rouge Amour 100 ml",
-        "Khadlaj Code Rouge Amour 100 ml"
+        "Khadlaj Code Rouge Amour 100 ml",
+        "La Fede Code Rouge Amour 100 ml",
+        "Khadlaj La Fede Code Rouge Amour 100 ml",
+        "Khadlaj Code Rouge Amour 100ml",
+        "Code Rouge Amour",
+        "Khadlaj Code Rouge Amour",
+        "La Fede Code Rouge Amour"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-rouge-amour-spray-shop-online-best-price-in-dubai-uae",
       "concentration": "Eau de Parfum",
@@ -54476,7 +54347,13 @@
       "size_ml": 100,
       "aliases": [
         "Code Verde Sublime 100 ml",
-        "Khadlaj Code Verde Sublime 100 ml"
+        "Khadlaj Code Verde Sublime 100 ml",
+        "La Fede Code Verde Sublime 100 ml",
+        "Khadlaj La Fede Code Verde Sublime 100 ml",
+        "Khadlaj Code Verde Sublime 100ml",
+        "Code Verde Sublime",
+        "Khadlaj Code Verde Sublime",
+        "La Fede Code Verde Sublime"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/code-verde-sublime-spray-shop-online-best-price-in-dubai-uae",
       "concentration": "Eau de Parfum",
@@ -54512,7 +54389,13 @@
       "size_ml": 100,
       "aliases": [
         "Uno Intimo 100 ml",
-        "Khadlaj Uno Intimo 100 ml"
+        "Khadlaj Uno Intimo 100 ml",
+        "La Fede Uno Intimo 100 ml",
+        "Khadlaj La Fede Uno Intimo 100 ml",
+        "Khadlaj Uno Intimo 100ml",
+        "Uno Intimo",
+        "Khadlaj Uno Intimo",
+        "La Fede Uno Intimo"
       ],
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
       "concentration": "Eau de Parfum",
