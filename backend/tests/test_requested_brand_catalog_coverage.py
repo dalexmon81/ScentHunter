@@ -690,5 +690,65 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(soft_hour.get("formats_ml"), [100])
         self.assertEqual(soft_hour.get("concentration"), "Extrait de Parfum")
 
+
+    def test_velixir_official_catalog_has_all_28_perfumes_and_four_confirmed_sizes(self):
+        expected_concentrations = {
+            "Adonis": "Eau de Parfum",
+            "Aphrodite": "Eau de Parfum",
+            "Apollo": "Eau de Parfum",
+            "Ares": "Eau de Parfum",
+            "Artemis": "Eau de Parfum",
+            "Asteria": "Eau de Parfum",
+            "Athena": "Eau de Parfum",
+            "Comus": "Extrait de Parfum",
+            "Concordia": "Eau de Parfum",
+            "Demeter": "Eau de Parfum",
+            "Ether": "Extrait de Parfum",
+            "Galatea": "Eau de Parfum",
+            "Harmonia": "Eau de Parfum",
+            "Helios": "Eau de Parfum",
+            "Hera": "Eau de Parfum",
+            "Himeros": "Eau de Parfum",
+            "Icarus": "Eau de Parfum",
+            "Morpheus": "Eau de Parfum",
+            "Narcisus": "Eau de Parfum",
+            "Nyx": "Eau de Parfum",
+            "Orion": "Eau de Parfum",
+            "Orpheus": "Extrait de Parfum",
+            "Paladin": "Eau de Parfum",
+            "Panacea": "Extrait de Parfum",
+            "Persephone": "Eau de Parfum",
+            "Poseidon": "Eau de Parfum",
+            "Selene": "Eau de Parfum",
+            "Uranus": "Eau de Parfum",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Velixir"
+        }
+        variants = CATALOG.get("variants", [])
+        expected_sizes = {2, 3, 35, 100}
+        self.assertEqual(set(products), set(expected_concentrations))
+        self.assertEqual(len(products), 28)
+        for name, concentration in expected_concentrations.items():
+            with self.subTest(name=name):
+                product = products[name]
+                self.assertEqual(product.get("concentration"), concentration)
+                self.assertEqual(set(product.get("formats_ml", [])), expected_sizes)
+                matched = [v for v in variants if v.get("product_id") == product["product_id"]]
+                self.assertEqual({v.get("size_ml") for v in matched}, expected_sizes)
+                self.assertEqual(len(matched), 4)
+                self.assertTrue(all(v.get("concentration") == concentration for v in matched))
+                self.assertTrue(all(v.get("source_evidence_url") == "https://velixir.co.uk/collections/all" for v in matched))
+
+    def test_velixir_discovery_sets_and_bundles_are_not_canonical_fragrances(self):
+        products = {
+            row.get("canonical_name")
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Velixir"
+        }
+        self.assertTrue({"Discovery Set", "The Sacred Four Bundle", "JTC Bundle"}.isdisjoint(products))
+
 if __name__ == "__main__":
     unittest.main()
