@@ -25633,14 +25633,15 @@
       "product_id": "SH-ARABIYAT-PRESTIGE-c19b90f0",
       "brand": "Arabiyat Prestige",
       "brand_name": "Arabiyat Prestige",
-      "canonical_name": "Bois Blanc",
-      "name": "Bois Blanc",
+      "canonical_name": "Bóis Blanc",
+      "name": "Bóis Blanc",
       "family_id": "arabiyat_prestige_catalog",
       "family_name": "Arabiyat Prestige",
       "aliases": [
         "Bois Blanc",
         "Arabiyat Prestige Bois Blanc",
-        "Bóis Blanc"
+        "Bóis Blanc",
+        "Arabiyat Prestige Bóis Blanc"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/bois-blanc",
