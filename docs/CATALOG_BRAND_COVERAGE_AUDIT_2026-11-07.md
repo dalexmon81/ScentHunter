@@ -1633,3 +1633,7 @@ GitHub Actions run **#42420558957** for test commit **f0c4b4872d8faf1208f4237538
 - Jasmere and Safari Breeze pages explicitly state EDP 100 ml; this pass records the product identities only and does not create variant rows. Amber Empire is recorded by official product name only. No GTIN, price, stock, shipping or retailer offer was imported.
 - Updated the dated name-harvest overlay with the official detail URLs and added `backend/tests/test_french_avenue_catalog.py` for provenance, uniqueness, registry parity and no fabricated commercial fields.
 - Catalog totals after Games of Spades, Lattafa and French Avenue additions: **1,922 canonical identities; 245 explicit variants**. CI remains unverified on the latest PR head.
+
+
+### Correction to Games of Spades pass 29 — Jack remains discovery-only (2026-11-08)
+A final source check found that **Jack** was present in the pre-existing family registry but could not be confirmed in the current Jo Milano Paris official product listings or individual product pages reviewed for this pass. It has therefore been removed from the canonical product seed and from the official-listing harvest candidates. The registry entry is retained as a discovery-only candidate pending authoritative product evidence. The Games of Spades canonical count is **29**, not 30. The regression test now requires canonical identities to be a subset of the broader family registry, allowing unverified discovery names to remain outside the canonical seed.
