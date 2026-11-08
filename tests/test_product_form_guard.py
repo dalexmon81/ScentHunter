@@ -60,7 +60,13 @@ class ProductFormGuardTests(unittest.TestCase):
         self.assertIsNone(normalize_product_form("Beauty"))
         self.assertEqual(detect_product_form("Amber & Leather perfumed deodorant spray"), "deodorant")
         self.assertEqual(detect_product_form("Discovery Set"), "discovery_set")
+        self.assertEqual(detect_product_form("Perfumed Deodorant Stick"), "deodorant")
+        self.assertEqual(detect_product_form("Rose Hair Mist"), "hair_mist")
+        self.assertEqual(detect_product_form("Body Splash"), "body_mist")
+        self.assertEqual(detect_product_form("Vanilla Body Butter"), "body_care")
+        self.assertEqual(detect_product_form("Oud Room Spray"), "home_fragrance")
         self.assertEqual(detect_product_form("Amber & Leather 100 ml"), None)
+        self.assertEqual(detect_product_form("Amber & Leather Spray"), None)
 
     def test_normalizer_detects_deodorant_and_honors_explicit_form(self):
         inferred = normalize_offer(
