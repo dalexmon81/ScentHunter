@@ -4170,8 +4170,14 @@
         "Lemon Souffle",
         "Al Wataniah Lemon Souffle"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/lemon-souffle",
+      "source_product_url": "https://www.alwataniah.com/products/lemon-souffle",
+      "source_evidence_url": "https://www.alwataniah.com/products/lemon-souffle",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-5acf0b9a",
@@ -4185,8 +4191,14 @@
         "Choco Truffle",
         "Al Wataniah Choco Truffle"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/choco-truffle",
+      "source_product_url": "https://www.alwataniah.com/products/choco-truffle",
+      "source_evidence_url": "https://www.alwataniah.com/products/choco-truffle",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-2df06238",
@@ -29959,6 +29971,26 @@
         "Swiss Arabian Primal Code 100ml"
       ],
       "variant_id": "SHV-SH-SWISS-ARABIAN-5a798367-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ccc7d2db",
+      "size_ml": 100,
+      "aliases": [
+        "Lemon Souffle 100 ml",
+        "Al Wataniah Lemon Souffle 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ccc7d2db-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-5acf0b9a",
+      "size_ml": 100,
+      "aliases": [
+        "Choco Truffle 100 ml",
+        "Al Wataniah Choco Truffle 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-5acf0b9a-100-000",
       "concentration": "Eau de Parfum"
     }
   ]
