@@ -1,4 +1,4 @@
-"""Regression tests for French Avenue official product identity additions."""
+"""Regression tests for French Avenue listing-level identity evidence."""
 import json
 import unittest
 from pathlib import Path
@@ -8,14 +8,14 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
 EXPECTED = {
-    "Jasmere": "https://frenchavenue.com/products/jasmere",
-    "Amber Empire": "https://frenchavenue.com/products/amber-empire",
-    "Safari Breeze": "https://sa.frenchavenue.com/products/safari-breeze",
+    "Jasmere": "https://frenchavenue.com/collections/all",
+    "Amber Empire": "https://frenchavenue.com/collections/all",
+    "Safari Breeze": "https://www.fragrantica.com/designers/French-Avenue.html",
 }
 
 
 class FrenchAvenueCatalogTests(unittest.TestCase):
-    def test_official_fragrance_identities_and_sources_exist(self):
+    def test_listed_fragrance_identities_keep_their_actual_source_level(self):
         products = {
             p["canonical_name"]: p for p in CATALOG["products"]
             if p.get("brand") == "French Avenue"
@@ -24,9 +24,9 @@ class FrenchAvenueCatalogTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIn(name, products)
                 self.assertEqual(products[name]["source_url"], url)
-                self.assertEqual(products[name]["identity_status"], "source_verified_name")
+                self.assertEqual(products[name]["identity_status"], "source_listed_name")
 
-    def test_family_registry_matches_new_catalog_identities(self):
+    def test_family_registry_covers_new_catalog_identities(self):
         family = next(
             f for f in REGISTRY["families"]
             if f["family_id"] == "french_avenue_catalog"
