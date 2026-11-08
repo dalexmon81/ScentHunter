@@ -351,6 +351,54 @@ EXPECTED = {
     "Sugar Rush": [
         "Munchies",
         "https://www.alwataniah.com/collections/munchies"
+    ],
+    "The Crest": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Onyx": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Polo Estate Navy Gold": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Kayaan Extrait": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Everest": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Emerald Plume": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Emerald Ascot": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Attar Al Wesal Ice Blue": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Sabah Al Ward Pearl": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Attar Al Wesal Intense": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Blush Papillon": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
+    ],
+    "Cashmere Ivory": [
+        "Launching Soon",
+        "https://www.alwataniah.com/"
     ]
 }
 
@@ -361,7 +409,7 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             p["canonical_name"]: p for p in CATALOG["products"]
             if p.get("brand") == "Al Wataniah"
         }
-        self.assertEqual(len(products), 86)
+        self.assertEqual(len(products), 98)
         self.assertEqual(set(products), set(EXPECTED))
         for name, (collection, listing_url) in EXPECTED.items():
             with self.subTest(product=name):
@@ -392,6 +440,23 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
             {"Lemon Souffle", "Choco Truffle"},
         )
+
+
+    def test_launching_soon_names_are_listed_without_inferred_variants(self):
+        launch_names = ["The Crest","Onyx","Polo Estate Navy Gold","Kayaan Extrait","Everest","Emerald Plume","Emerald Ascot","Attar Al Wesal Ice Blue","Sabah Al Ward Pearl","Attar Al Wesal Intense","Blush Papillon","Cashmere Ivory"]
+        products = {
+            p["canonical_name"]: p for p in CATALOG["products"]
+            if p.get("brand") == "Al Wataniah"
+        }
+        for name in launch_names:
+            with self.subTest(product=name):
+                product = products[name]
+                self.assertEqual(product.get("identity_status"), "source_listed_name")
+                self.assertEqual(product.get("collection_name"), "Launching Soon")
+                self.assertEqual(product.get("source_url"), "https://www.alwataniah.com/")
+                self.assertNotIn("formats_ml", product)
+        ids = {products[name]["product_id"] for name in launch_names}
+        self.assertFalse(any(v.get("product_id") in ids for v in CATALOG["variants"]))
 
 
 if __name__ == "__main__":
