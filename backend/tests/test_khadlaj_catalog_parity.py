@@ -49,14 +49,80 @@ class KhadlajCatalogParityTests(unittest.TestCase):
         )
         catalog_family_ids = {p["family_id"] for p in self.products}
         self.assertIn(sprays["family_id"], catalog_family_ids)
-        self.assertEqual(len([p for p in self.products if p["family_id"] == sprays["family_id"]]), 61)
+        self.assertEqual(len([p for p in self.products if p["family_id"] == sprays["family_id"]]), 62)
         self.assertGreater(len(sprays["products"]), 0)
 
     def test_perfume_oil_identity_is_not_recast_as_a_spray_variant(self):
-        maya = next(p for p in next(f for f in self.families if f["family_id"] == "khadlaj_catalog")["products"] if p["canonical_name"] == "Maya")
+        maya = next(p for p in self.products if p["canonical_name"] == "Maya")
         self.assertEqual(maya.get("formats_ml"), [20])
-        self.assertFalse(any(p["canonical_name"] == "Maya" for p in self.products))
+        self.assertEqual(maya.get("concentration"), "Perfume Oil")
+        self.assertTrue(any(v.get("product_id") == maya["product_id"] and v.get("size_ml") == 20 and v.get("concentration") == "Perfume Oil" for v in CATALOG["variants"]))
 
+
+
+    def test_reconciled_khadlaj_totals_and_variant_provenance(self):
+        product_ids = {p["product_id"] for p in self.products}
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") in product_ids]
+        self.assertEqual(len(self.products), 210)
+        self.assertEqual(len(variants), 199)
+        self.assertTrue(all(v.get("source_evidence_url") for v in variants))
+        self.assertFalse(any("fragrantica.com" in v["source_evidence_url"].lower() for v in variants))
+
+    def test_visible_official_perfume_oil_range_is_present(self):
+        expected = (
+            "Maya", "Johayna Purple", "Amber Pure", "Arabian Treasure", "Anabia Red",
+            "Anabia Blue", "Oud & Musk", "Pure Musk", "Johayna Green", "Kayaan Silver",
+            "Kayaan Gold", "Pink Musk", "Purple Musk", "Malika Red", "Malika Green",
+            "Hareem Al Sultan Blue", "Hareem Al Sultan Gold", "Hareem Al Sultan Silver",
+            "Mukhalath Ma'a Ward Taiba", "Rimaal Brown", "Rimaal Green", "Haneen Gold",
+            "Haneen Rose Gold", "Jameel", "Zainab", "Roohi Wa Roohak Gold", "Shamookh Gold",
+            "Alf Wardaat", "Al Riyan", "Ibhaar", "Roohi Wa Roohak Silver", "Ghazlaan",
+            "Mibraak", "Raniya", "Shamookh Silver", "Aaliya",
+        )
+        names = {normalized(p["canonical_name"]) for p in self.products}
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(normalized(name), names)
+
+    def test_visible_la_fede_collection_range_is_present(self):
+        expected = (
+            "La Fede Intoxicate Mystique", "La Fede Edge Intense", "La Fede Edge Original",
+            "La Fede Symbol of Love", "La Fede Symbol of Power", "La Fede Choco Brown",
+            "La Fede White Forest Strawberry", "La Fede Celeste Toffee", "La Fede Celeste Fluer",
+            "La Fede Celeste Joice", "La Fede Celeste Aqua", "La Fede Intoxicate Blue Elixir",
+            "La Fede Intoxicate", "La Fede Aura Manga Splash", "La Fede Aura Pista Dessert",
+            "La Fede Opera Noir L'Or", "La Fede Opera Rose L'Or", "La Fede Crystallia Imperio",
+            "La Fede Crystallia Primaso", "La Fede Magnum Extreme Blue", "La Fede Magnum Wild Green",
+            "La Fede Magnum Gold Edition", "La Fede Magnum Silver Edition", "La Fede Aura Kiss of Rose",
+            "La Fede Aura Crisp Flower", "La Fede Belle Reve Segrato Viola",
+            "La Fede Bella Reve Dolce Flore", "La Fede Statesman", "La Fede First Lady",
+            "La Fede Kingsman", "La Fede Miss Premiere", "La Fede Code Marron Oud",
+            "La Fede Code Rouge Amour", "La Fede Code Verde Sublime", "Code Viola Nectar",
+            "La Fede Uno Intimo",
+        )
+        names = {normalized(p["canonical_name"]) for p in self.products}
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIn(normalized(name), names)
+
+    def test_hareem_al_sultan_gold_is_an_oil_not_a_spray(self):
+        product = next(p for p in self.products if p["canonical_name"] == "Hareem Al Sultan Gold")
+        self.assertEqual(product.get("concentration"), "Perfume Oil")
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") == product["product_id"]]
+        self.assertTrue(any(v.get("size_ml") == 35 and v.get("concentration") == "Perfume Oil" and v.get("source_evidence_url") for v in variants))
+
+    def test_saqr_al_badiya_concentration_is_not_guessed(self):
+        product = next(p for p in self.products if p["canonical_name"] == "Saqr Al Badiya")
+        self.assertIsNone(product.get("concentration"))
+        variants = [v for v in CATALOG["variants"] if v.get("product_id") == product["product_id"]]
+        self.assertTrue(any(v.get("size_ml") == 100 and not v.get("concentration") for v in variants))
+
+    def test_private_blend_tobac_extra_is_distinct_from_private_blend(self):
+        private_blend = next(p for p in self.products if p["canonical_name"] == "Private Blend")
+        tobac = next(p for p in self.products if p["canonical_name"] == "Private Blend Tobac Extra")
+        self.assertNotEqual(private_blend["product_id"], tobac["product_id"])
+        self.assertTrue(any(v.get("product_id") == tobac["product_id"] and v.get("size_ml") == 100 and v.get("concentration") == "Extrait de Parfum" for v in CATALOG["variants"]))
+        self.assertFalse(any(v.get("product_id") == private_blend["product_id"] and v.get("size_ml") == 100 and v.get("concentration") == "Extrait de Parfum" for v in CATALOG["variants"]))
 
 if __name__ == "__main__":
     unittest.main()
