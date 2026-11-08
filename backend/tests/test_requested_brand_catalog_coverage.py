@@ -13,7 +13,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
-    "Maison Asrar": 125,
+    "Maison Asrar": 126,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -468,6 +468,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
     def test_maison_asrar_fragrantica_only_names_are_catalogued_without_guessed_variants(self):
         expected = {
             "Asala": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Asala-89546.html",
+            "Amal": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Amal-107408.html",
             "Red Carpet": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Red-Carpet-114918.html",
             "Runway Girl": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Runway-Girl-127367.html",
             "Shaheen Black": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Shaheen-Black-119847.html",
