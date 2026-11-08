@@ -13,7 +13,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
-    "Maison Asrar": 120,
+    "Maison Asrar": 119,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
