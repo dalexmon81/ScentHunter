@@ -3818,6 +3818,106 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Addiction",
+          "aliases": [
+            "Addiction",
+            "Bujairami Addiction"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Adore",
+          "aliases": [
+            "Adore",
+            "Bujairami Adore"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Adversary",
+          "aliases": [
+            "Adversary",
+            "Bujairami Adversary"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aethera",
+          "aliases": [
+            "Aethera",
+            "Bujairami Aethera"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Affectionate",
+          "aliases": [
+            "Affectionate",
+            "Bujairami Affectionate"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Affinity",
+          "aliases": [
+            "Affinity",
+            "Bujairami Affinity"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "After Dark",
+          "aliases": [
+            "After Dark",
+            "Bujairami After Dark"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Afterglow",
+          "aliases": [
+            "Afterglow",
+            "Bujairami Afterglow"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Afternoon Bliss",
+          "aliases": [
+            "Afternoon Bliss",
+            "Bujairami Afternoon Bliss"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aftershock",
+          "aliases": [
+            "Aftershock",
+            "Bujairami Aftershock"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
