@@ -13,7 +13,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
-    "Maison Asrar": 120,
+    "Maison Asrar": 125,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -463,6 +463,33 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matching), 1)
                 self.assertNotIn("concentration", row)
                 self.assertNotIn("concentration", matching[0])
+
+
+    def test_maison_asrar_fragrantica_only_names_are_catalogued_without_guessed_variants(self):
+        expected = {
+            "Asala": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Asala-89546.html",
+            "Red Carpet": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Red-Carpet-114918.html",
+            "Runway Girl": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Runway-Girl-127367.html",
+            "Shaheen Black": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Shaheen-Black-119847.html",
+            "Smokey Eyes": "https://www.fragrantica.com/perfume/MAISON-ASRAR/Smokey-Eyes-127365.html",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertFalse(
+                    any(v.get("product_id") == row["product_id"] for v in variants),
+                    "Do not infer size or concentration from a Fragrantica page without product-format evidence",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
