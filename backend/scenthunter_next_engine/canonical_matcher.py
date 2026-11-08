@@ -103,6 +103,16 @@ def _retailer_title_core(value: str) -> str:
     return core
 
 
+def _strip_product_form_suffix(value: str) -> str:
+    """Remove only explicit trailing form descriptors, preserving concentration words."""
+    core = normalize_identity_text(value)
+    core = _SIZE_SUFFIX_RE.sub("", core).strip()
+    for suffix in _PRODUCT_FORM_TITLE_SUFFIXES:
+        if core.endswith(" " + suffix):
+            return core[: -(len(suffix) + 1)].strip()
+    return core
+
+
 _BRAND_ALIASES = {
     # Retailer feeds commonly use the parent brand while the catalog stores
     # the product brand. Exact alias only: do not collapse Emporio Armani.
@@ -598,7 +608,7 @@ class CanonicalMatcher:
         # Brand-stripped forms are useful for matching aliases, but must not
         # make "Code" equivalent in priority to the canonical title
         # "Armani Code". Otherwise short titles can create false collisions.
-        normalized_offer_title = _retailer_title_core(offer.raw_name)
+        normalized_offer_title = _strip_product_form_suffix(offer.raw_name)
 
         strict_canonical_ids = {
             product.product_id
