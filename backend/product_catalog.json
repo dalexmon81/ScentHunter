@@ -30886,8 +30886,11 @@
         "First Night",
         "Assaf First Night"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/first-night-1",
+      "formats_ml": [
+        150
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-038",
@@ -31126,8 +31129,11 @@
         "Frankel Imagination",
         "Assaf Frankel Imagination"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/frankel-imagination-200",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-054",
@@ -31355,8 +31361,11 @@
         "I'm Here Enable",
         "Assaf I'm Here Enable"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/edp-im-here-enable-150ml",
+      "formats_ml": [
+        150
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-069",
@@ -31688,8 +31697,11 @@
         "Noble",
         "Assaf Noble"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/noble-2",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-091",
@@ -46937,6 +46949,50 @@
       "variant_id": "SHV-SH-ASSAF-HARVEST-015-125-000",
       "source_url": "https://assaf.ae/products/attacks",
       "source_evidence_url": "https://assaf.ae/products/attacks"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-037",
+      "size_ml": 150,
+      "aliases": [
+        "First Night 150 ml",
+        "Assaf First Night 150ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-037-150-000",
+      "source_url": "https://assaf.ae/products/first-night-1",
+      "source_evidence_url": "https://assaf.ae/products/first-night-1"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-090",
+      "size_ml": 200,
+      "aliases": [
+        "Noble 200 ml",
+        "Assaf Noble 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-090-200-000",
+      "source_url": "https://assaf.ae/products/noble-2",
+      "source_evidence_url": "https://assaf.ae/products/noble-2"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-068",
+      "size_ml": 150,
+      "aliases": [
+        "I'm Here Enable 150 ml",
+        "Assaf I'm Here Enable 150ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-068-150-000",
+      "source_url": "https://assaf.ae/products/edp-im-here-enable-150ml",
+      "source_evidence_url": "https://assaf.ae/products/edp-im-here-enable-150ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-053",
+      "size_ml": 200,
+      "aliases": [
+        "Frankel Imagination 200 ml",
+        "Assaf Frankel Imagination 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-053-200-000",
+      "source_url": "https://assaf.ae/products/frankel-imagination-200",
+      "source_evidence_url": "https://assaf.ae/products/frankel-imagination-200"
     }
   ]
 }
