@@ -150,5 +150,27 @@ class AlWataniahDetailEvidenceTests(unittest.TestCase):
                 self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
                 self.assertEqual(variants[0].get("source_evidence_url"), url)
 
+
+    def test_six_consolidated_identities_have_official_100ml_edp_evidence(self):
+        expected = {
+            "Abyat": "https://www.alwataniah.com/products/abyat",
+            "Al Layl": "https://www.alwataniah.com/products/al-layl",
+            "Alya": "https://www.alwataniah.com/products/alya",
+            "Ameeri": "https://www.alwataniah.com/products/ameeri",
+            "Baraa": "https://www.alwataniah.com/products/baraa",
+            "Sultan Al Lail": "https://www.alwataniah.com/products/sultan-al-lail",
+        }
+        for name, url in expected.items():
+            with self.subTest(product=name):
+                product = next(p for p in self.products if p.get("brand_name") == "Al Wataniah" and p.get("canonical_name") == name)
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), url)
+                self.assertEqual(product.get("source_product_url"), url)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertIn(100, product.get("formats_ml", []))
+                variants = [v for v in self.variants if v.get("product_id") == product["product_id"] and v.get("size_ml") == 100]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0].get("source_evidence_url"), url)
+
 if __name__ == "__main__":
     unittest.main()
