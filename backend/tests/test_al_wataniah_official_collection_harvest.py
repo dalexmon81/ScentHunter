@@ -369,7 +369,7 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                 self.assertEqual(product.get("collection_name"), collection)
                 self.assertEqual(product.get("brand_name"), "Al Wataniah")
                 self.assertIn(product.get("identity_status"), {"source_listed_name", "source_verified_name"})
-                detail_verified = {"Lemon Souffle", "Choco Truffle", "Ameeri", "Sultan Al Lail"}
+                detail_verified = {"Lemon Souffle", "Choco Truffle", "Ameeri", "Sultan Al Lail", "Abyat", "Ameerati", "Baraa", "Al Layl", "Alya"}
                 if name in detail_verified:
                     self.assertEqual(product.get("identity_status"), "source_verified_name")
                     self.assertTrue("/products/" in product.get("source_url", ""))
@@ -391,10 +391,10 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             if p.get("brand") == "Al Wataniah"
         }
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in alwataniah_ids]
-        self.assertEqual(len(variants), 4)
+        self.assertEqual(len(variants), 9)
         self.assertEqual(
             {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
-            {"Lemon Souffle", "Choco Truffle", "Ameeri", "Sultan Al Lail"},
+            {"Lemon Souffle", "Choco Truffle", "Ameeri", "Sultan Al Lail", "Abyat", "Ameerati", "Baraa", "Al Layl", "Alya"},
         )
 
 
