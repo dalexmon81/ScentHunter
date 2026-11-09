@@ -9085,6 +9085,9 @@
           "aliases": [
             "Spirito Mystic",
             "French Avenue Spirito Mystic"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9620,6 +9623,16 @@
           "aliases": [
             "Eclair Affair",
             "French Avenue Eclair Affair"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Papa Yeah",
+          "aliases": [
+            "Papa Yeah",
+            "French Avenue Papa Yeah"
           ],
           "formats_ml": [
             100
