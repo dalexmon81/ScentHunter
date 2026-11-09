@@ -6,7 +6,7 @@ from pathlib import Path
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "product_catalog.json"
 AL_HARAMAIN = ["Haramain Musk Orchid","Haramain Xplore Sapphire","Azlan Oud Bleu Edition","Amber Oud Ultra Violet","Azlan Oud Saffron Edition","Amber Oud Tobacco Edition","L'Aventure Grapefruit","L'Aventure Fraiche","L'Aventure Ciel","Azlan Oud Amber Edition","Portfolio Cupid's Rose","Portfolio Portrait Sandal","Portfolio Oriental Forest","Mystique Musk Spray","Amber Oud Gold Edition","Portfolio Euphoric Roots","Azlan Oud Charcoal Edition","Detour Noir Exclusif","Junoon Noir","Oud Cambodi","Maryam","Urbanist Femme","Mystique Femme","Mystique Homme","Detour Nasr","Musk","Detour Noir Intense","L'Aventure Rose","L'Aventure Blanche","Solitaire Musk","Musk Collection","Rawaa","Night Dreams","Khulasat Al Oud","Fall In Love Orange","Fall In Love Pink","Junoon Rose","Maze","Opposite Pink","Manege Blanche","Rafia Gold","Amber Musk","Opulent Sapphire","Royal Musk","Etoiles Silver","Madinah","Portfolio Floral Sculpture","Manege Rouge","Jameela","Musk Maliki","Oyuny","Chateau De La Haramain Argent","Das Ziel","Mystique","Treasure","Oudh Patchouli","Farasha","Asrar Khafiya","Urbanist Prive Silver","Mena","Areej Al Oud"]
-GULF_ORCHID = ["Sweet Like Candy","Sweet Heaven Extreme 20ML","Piña Colada Musk"]
+GULF_ORCHID = ["Vanilla Addiction","Mango Ice","Cotton Candy Musk","Tahara Vanilla Musk","Sweet Heaven","Pink Marshmallow","Coco Blanco","Exotic Oud","Vanilla Latte","Cookie Bite","Sweet Like Candy","Sweet Heaven Extreme","Piña Colada Musk"]
 
 class OfficialStoreRangeHarvestTests(unittest.TestCase):
     @classmethod
@@ -40,12 +40,35 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
         pairs = [(p.get("brand"), p["canonical_name"].casefold()) for p in self.products]
         self.assertEqual(len(pairs), len(set(pairs)))
 
-    def test_harvest_rows_have_no_invented_variants(self):
+    def test_al_haramain_harvest_rows_have_no_invented_variants(self):
         for product in self.products:
-            if product["product_id"].startswith(("SH-AL-HARAMAIN-STORE-", "SH-GULF-ORCHID-STORE-")):
+            if product["product_id"].startswith("SH-AL-HARAMAIN-STORE-"):
                 self.assertEqual(product["identity_status"], "source_listed_name")
                 self.assertNotIn("concentration", product)
                 self.assertNotIn("formats_ml", product)
+
+    def test_gulf_orchid_store_harvest_rows_have_official_size_variants(self):
+        expected = {
+            "Sweet Like Candy": [100],
+            "Sweet Heaven Extreme": [20, 100],
+            "Piña Colada Musk": [60],
+        }
+        variants = self.catalog.get("variants", [])
+        for name, sizes in expected.items():
+            with self.subTest(name=name):
+                product = next(
+                    p for p in self.products
+                    if p.get("brand") == "Gulf Orchid"
+                    and p.get("canonical_name") == name
+                )
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), sizes)
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(sorted(v.get("size_ml") for v in matching), sizes)
 
 if __name__ == "__main__":
     unittest.main()
