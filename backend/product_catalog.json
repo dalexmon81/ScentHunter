@@ -34219,6 +34219,25 @@
         30,
         10
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-CAMELLIA",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Camellia",
+      "name": "Haramain Camellia",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Camellia",
+      "aliases": [
+        "Haramain Camellia",
+        "Al Haramain Haramain Camellia"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-camellia-extrait-de-parfum.html",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37795,6 +37814,18 @@
       "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-CAMELLIA",
+      "size_ml": 100,
+      "variant_name": "Haramain Camellia 100 ml Extrait de Parfum",
+      "aliases": [
+        "Al Haramain Haramain Camellia 100 ml",
+        "Haramain Camellia 100ml Extrait"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-CAMELLIA-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-camellia-extrait-de-parfum.html"
     }
   ]
 }
