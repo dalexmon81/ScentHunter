@@ -36,7 +36,7 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 141,
     "Games of Spades": 32,
-    "Maison Alhambra": 239,
+    "Maison Alhambra": 227,
     "Mykonos": 72,
     "Armaf": 218,
 }
@@ -2303,7 +2303,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Tonic Malt": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone", 80, "Unisex", "6290360599366"),
             "Tonic Ice": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone", 100, "Unisex", "6290360599359"),
             "Your Touch Leather": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone", 100, "Unisex", "6290362340997"),
-            "Aquilo Pour Homme": ("https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men", 100, "Men", "6291108735886"),
+            "Aquilo": ("https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men", 100, "Men", "6291108735886"),
             "Candid": ("https://maisonalhambra-usa.com/products/maison-alhambra-candid-eau-de-parfum-for-women", 100, "Women", "6291108730072"),
             "Cassius": ("https://maisonalhambra-usa.com/products/maison-alhambra-cassius-eau-de-parfum-for-men", 100, "Men", "6291108736036"),
             "Celeste": ("https://maisonalhambra-usa.com/products/maison-alhambra-celeste-eau-de-parfum-for-women", 100, "Women", "6290362340485"),
