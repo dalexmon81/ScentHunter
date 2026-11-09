@@ -17429,7 +17429,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-dark-roses",
       "source_product_url": "https://www.pariscornerperfumes.com/products/magic-oud-dark-roses",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-dark-roses"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-dark-roses",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-PURE-ZAFFRON",
@@ -17446,7 +17449,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-in-pure-zaffron",
       "source_product_url": "https://www.pariscornerperfumes.com/products/magic-oud-in-pure-zaffron",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-in-pure-zaffron"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-in-pure-zaffron",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAGIC-OUD-KALIMATH",
@@ -17463,7 +17469,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-kalimath",
       "source_product_url": "https://www.pariscornerperfumes.com/products/magic-oud-kalimath",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-kalimath"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-kalimath",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAGIC-OUD-KASHMIR-MUSK",
@@ -17480,7 +17489,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-kashmir-musk",
       "source_product_url": "https://www.pariscornerperfumes.com/products/magic-oud-kashmir-musk",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-kashmir-musk"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-kashmir-musk",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAGIC-OUD-SANDAL-WOOD",
@@ -17497,7 +17509,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood",
       "source_product_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MANAAL",
@@ -40101,6 +40116,61 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/miel-obscura",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/miel-obscura"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-DARK-ROSES",
+      "variant_id": "SHV-PARIS-CORNER-MAGIC-OUD-DARK-ROSES-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Magic Oud Dark Roses 100 ml",
+        "Paris Corner Magic Oud Dark Roses 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-dark-roses",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-dark-roses"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-PURE-ZAFFRON",
+      "variant_id": "SHV-PARIS-CORNER-MAGIC-OUD-IN-PURE-ZAFFRON-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Magic Oud In Pure Zaffron 100 ml",
+        "Paris Corner Magic Oud In Pure Zaffron 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-in-pure-zaffron",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-in-pure-zaffron"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-KALIMATH",
+      "variant_id": "SHV-PARIS-CORNER-MAGIC-OUD-KALIMATH-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Magic Oud Kalimath 100 ml",
+        "Paris Corner Magic Oud Kalimath 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-kalimath",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-kalimath"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-KASHMIR-MUSK",
+      "variant_id": "SHV-PARIS-CORNER-MAGIC-OUD-KASHMIR-MUSK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Magic Oud Kashmir Musk 100 ml",
+        "Paris Corner Magic Oud Kashmir Musk 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-kashmir-musk",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-kashmir-musk"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-SANDAL-WOOD",
+      "variant_id": "SHV-PARIS-CORNER-MAGIC-OUD-SANDAL-WOOD-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Magic Oud Sandal Wood 100 ml",
+        "Paris Corner Magic Oud Sandal Wood 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood"
     }
   ]
 }
