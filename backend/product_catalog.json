@@ -22291,9 +22291,14 @@
         "Stardust",
         "Afnan Stardust"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.afnaneurope.com/products/stardust",
+      "source_evidence_url": "https://www.afnaneurope.com/products/stardust",
+      "source_product_url": "https://www.afnaneurope.com/products/stardust",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-SUPREMACY-IN-OUD-LUXURY-COLLECTION",
@@ -38604,6 +38609,17 @@
       "variant_id": "SHV-SH-AFNAN-TURATHI-RED-90-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.fr.afnan.com/products/turathi-red-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-STARDUST",
+      "size_ml": 100,
+      "aliases": [
+        "Stardust 100 ml",
+        "Afnan Stardust 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-STARDUST-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.afnaneurope.com/products/stardust"
     }
   ]
 }

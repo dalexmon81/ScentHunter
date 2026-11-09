@@ -250,5 +250,37 @@ class AfnanLattafaOfficialHarvestTests(unittest.TestCase):
                 self.assertEqual(variants[0].get("concentration"), evidence["type"])
                 self.assertEqual(variants[0].get("source_evidence_url"), evidence["url"])
 
+
+    def test_afnan_stardust_official_detail_page_and_100ml_extrait_variant_are_verified(self):
+        product = next(
+            p for p in self.catalog["products"]
+            if p.get("product_id") == "SH-AFNAN-STARDUST"
+        )
+        source = "https://www.afnaneurope.com/products/stardust"
+        self.assertEqual(product.get("canonical_name"), "Stardust")
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), source)
+        self.assertEqual(product.get("source_product_url"), source)
+        self.assertEqual(product.get("source_evidence_url"), source)
+        self.assertEqual(product.get("concentration"), "Extrait de Parfum")
+        self.assertIn(100, product.get("formats_ml", []))
+        variants = [
+            v for v in self.catalog["variants"]
+            if v.get("product_id") == product["product_id"]
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("variant_id"), "SHV-SH-AFNAN-STARDUST-100-000")
+        self.assertEqual(variants[0].get("size_ml"), 100)
+        self.assertEqual(variants[0].get("concentration"), "Extrait de Parfum")
+        self.assertEqual(variants[0].get("source_evidence_url"), source)
+
+        family_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with family_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        afnan = next(f for f in registry["families"] if f.get("family_id") == "afnan_catalog")
+        family_product = next(p for p in afnan["products"] if p.get("canonical_name") == "Stardust")
+        self.assertIn(100, family_product.get("formats_ml", []))
+
+
 if __name__ == "__main__":
     unittest.main()
