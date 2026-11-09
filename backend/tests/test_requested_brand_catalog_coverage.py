@@ -518,6 +518,8 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(row.get("identity_status"), "source_verified_name")
         self.assertEqual(row.get("source_url"), "https://armaf.com/products/uniq-effects-of-uniq-spr")
         self.assertEqual(row.get("gender"), "Men")
+        self.assertEqual(row.get("product_id"), "SH-ARMAF-UNIQ-EFFECTS-OF-UNIQ")
+        self.assertEqual(row.get("concentration"), "Eau de Parfum")
         self.assertNotIn("formats_ml", row)
         self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
 
@@ -527,6 +529,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         row = rows[0]
         self.assertEqual(row.get("identity_status"), "source_verified_name")
         self.assertEqual(row.get("source_url"), "https://lattafa.com/product/asad-polar/")
+        self.assertEqual(row.get("product_id"), "SH-LATTAFA-ASAD-POLAR")
         self.assertIn(100, row.get("formats_ml", []))
         self.assertNotIn("concentration", row)
         variants = [v for v in CATALOG.get("variants", []) if v.get("product_id") == row["product_id"]]
@@ -539,8 +542,9 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row.get("product_id"), "SH-ARABIYAT-PRESTIGE-0b061839")
+        self.assertEqual(matches[0].get("variant_id"), "SH-ARABIYAT-PRESTIGE-0b061839-V-100-EDP")
         self.assertEqual(row.get("identity_status"), "source_verified_name")
-        self.assertEqual(row.get("source_url"), "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex")
+        self.assertEqual(row.get("source_url"), "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex")
         self.assertEqual(row.get("concentration"), "Eau de Parfum")
         matches = [v for v in CATALOG.get("variants", []) if v.get("product_id") == row["product_id"]]
         self.assertEqual(len(matches), 1)
