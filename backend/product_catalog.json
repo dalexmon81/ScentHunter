@@ -7196,7 +7196,8 @@
       "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-aqua-dubai-100ml-extrait-de-parfum.html",
       "concentration": "Extrait de Parfum",
       "formats_ml": [
-        100
+        100,
+        200
       ]
     },
     {
@@ -46910,6 +46911,18 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://shop.alharamainperfumes.com/eu/haramain-baqat-zuhoor-aswad-100ml-eau-de-parfum.html",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-baqat-zuhoor-aswad-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6c00b776",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Aqua Dubai 200 ml",
+        "Al Haramain Amber Oud Aqua Dubai 200ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-200-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html"
     }
   ]
 }
