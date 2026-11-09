@@ -707,9 +707,10 @@
         "Faris Al Arab",
         "Maison Asrar Faris Al Arab"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/faris-al-arab",
+      "source_evidence_url": "https://maisonasrar.com/products/faris-al-arab",
+      "source_product_url": "https://maisonasrar.com/products/faris-al-arab"
     },
     {
       "product_id": "SH-MAISON-ASRAR-19d98178",
@@ -723,9 +724,11 @@
         "Vanilla Voyage",
         "Maison Asrar Vanilla Voyage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+      "source_product_url": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6d0c1431",
@@ -1887,9 +1890,11 @@
         "Gold Noir",
         "Maison Asrar Gold Noir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum",
+      "source_product_url": "https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-9b703ddc",
@@ -2020,9 +2025,10 @@
         "Hilm",
         "Maison Asrar Hilm"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/hilm",
+      "source_evidence_url": "https://maisonasrar.com/products/hilm",
+      "source_product_url": "https://maisonasrar.com/products/hilm"
     },
     {
       "product_id": "SH-MAISON-ASRAR-7766d769",
