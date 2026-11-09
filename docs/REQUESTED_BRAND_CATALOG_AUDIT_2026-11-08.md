@@ -495,3 +495,12 @@ The sixth and seventh pages of Maison Asrar's official New Arrivals collection w
 All 20 identities now have `source_verified_name` status and individual official product-page URLs. The readable product-page content inspected in this pass did not expose explicit size/concentration specifications. Although some URL handles contain “100ml” or “90ml”, those hints were not treated as variant evidence; no size or concentration fields and no variants were added.
 
 Bonita was already verified in the previous page batch and was not duplicated or re-added. Regression coverage checks all 20 official product URLs and enforces the deliberate absence of unsupported size/concentration data.
+
+
+### Armaf: Uniq Oud Forever individual official-page provenance (9 November 2026)
+
+The existing canonical identity `SH-ARMAF-f650f6a8` was retained and upgraded from the official all-perfumes collection URL to its individual brand-owned product page:
+
+- Uniq Oud Forever — https://armaf.com/products/uniq-oud-forever-spr
+
+The individual page confirms the standalone fragrance name and identifies it as unisex. The page title includes Eau de Parfum spray wording, but the inspected specification does not expose a structured size/concentration field. The catalog therefore records individual-page identity provenance only; no concentration or size variant is inferred. No duplicate canonical identity or variant was created.
