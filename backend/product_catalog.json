@@ -34863,6 +34863,234 @@
       "identity_status": "source_verified_name",
       "source_url": "https://lattafa.com/product/al-narjis/",
       "source_evidence_url": "https://lattafa.com/product/al-narjis/"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-DOMINATE-ABSOLU",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Dominate Absolu",
+      "name": "Dominate Absolu",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Dominate Absolu",
+        "Maison Alhambra Dominate Absolu"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/dominate-absolu",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-LA-ROUGE-BAROQUE-EXTREME",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "La Rouge Baroque Extreme",
+      "name": "La Rouge Baroque Extreme",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "La Rouge Baroque Extreme",
+        "Maison Alhambra La Rouge Baroque Extreme"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/la-rouge-baroque-extreme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-LA-ROUGE-BAROQUE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "La Rouge Baroque",
+      "name": "La Rouge Baroque",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "La Rouge Baroque",
+        "Maison Alhambra La Rouge Baroque"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/la-rouge-baroque",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SALVO",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Salvo",
+      "name": "Salvo",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Salvo",
+        "Maison Alhambra Salvo"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/salvo",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-MARSHMALLOW-DREAM",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Sugar Me Marshmallow Dream",
+      "name": "Sugar Me Marshmallow Dream",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Sugar Me Marshmallow Dream",
+        "Maison Alhambra Sugar Me Marshmallow Dream"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/sugar-me-marshmallow-dream",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-JEAN-LOWE-MAITRE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Jean Lowe Maitre",
+      "name": "Jean Lowe Maitre",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Jean Lowe Maitre",
+        "Maison Alhambra Jean Lowe Maitre"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-maitre",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-DULCE-DE-LECHE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Sugar Me Dulce De Leche",
+      "name": "Sugar Me Dulce De Leche",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Sugar Me Dulce De Leche",
+        "Maison Alhambra Sugar Me Dulce De Leche"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/sugar-me-dulce-de-leche",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-KISMET-MAGIC",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Kismet Magic",
+      "name": "Kismet Magic",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Kismet Magic",
+        "Maison Alhambra Kismet Magic"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/kismet-magic",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-CARROT-CAKE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Sugar Me Carrot Cake",
+      "name": "Sugar Me Carrot Cake",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Sugar Me Carrot Cake",
+        "Maison Alhambra Sugar Me Carrot Cake"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/sugar-me-carrot-cake",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-UNKNOWN-DEEP-WOODS",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Unknown Deep Woods",
+      "name": "Unknown Deep Woods",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Unknown Deep Woods",
+        "Maison Alhambra Unknown Deep Woods"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/unknown-deep-woods",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-PISTACHIO-CHOCOLATE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Sugar Me Pistachio Chocolate",
+      "name": "Sugar Me Pistachio Chocolate",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Sugar Me Pistachio Chocolate",
+        "Maison Alhambra Sugar Me Pistachio Chocolate"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/sugar-me-pistachio-chocolate",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-CREME-BRULEE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Sugar Me Creme Brulee",
+      "name": "Sugar Me Creme Brulee",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Sugar Me Creme Brulee",
+        "Maison Alhambra Sugar Me Creme Brulee"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/sugar-me-creme-brulee",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -38339,6 +38567,126 @@
         "Lattafa Al Narjis 100 ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-083-100-000"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-DOMINATE-ABSOLU",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-DOMINATE-ABSOLU-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Dominate Absolu 100 ml",
+        "Maison Alhambra Dominate Absolu 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-LA-ROUGE-BAROQUE-EXTREME",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-LA-ROUGE-BAROQUE-EXTREME-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Rouge Baroque Extreme 100 ml",
+        "Maison Alhambra La Rouge Baroque Extreme 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-LA-ROUGE-BAROQUE",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-LA-ROUGE-BAROQUE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "La Rouge Baroque 100 ml",
+        "Maison Alhambra La Rouge Baroque 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SALVO",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-SALVO-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Salvo 100 ml",
+        "Maison Alhambra Salvo 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-MARSHMALLOW-DREAM",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-SUGAR-ME-MARSHMALLOW-DREAM-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sugar Me Marshmallow Dream 100 ml",
+        "Maison Alhambra Sugar Me Marshmallow Dream 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-JEAN-LOWE-MAITRE",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-JEAN-LOWE-MAITRE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Jean Lowe Maitre 100 ml",
+        "Maison Alhambra Jean Lowe Maitre 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-DULCE-DE-LECHE",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-SUGAR-ME-DULCE-DE-LECHE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sugar Me Dulce De Leche 100 ml",
+        "Maison Alhambra Sugar Me Dulce De Leche 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-KISMET-MAGIC",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-KISMET-MAGIC-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Kismet Magic 100 ml",
+        "Maison Alhambra Kismet Magic 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-CARROT-CAKE",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-SUGAR-ME-CARROT-CAKE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sugar Me Carrot Cake 100 ml",
+        "Maison Alhambra Sugar Me Carrot Cake 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-UNKNOWN-DEEP-WOODS",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-UNKNOWN-DEEP-WOODS-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Unknown Deep Woods 100 ml",
+        "Maison Alhambra Unknown Deep Woods 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-PISTACHIO-CHOCOLATE",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-SUGAR-ME-PISTACHIO-CHOCOLATE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sugar Me Pistachio Chocolate 100 ml",
+        "Maison Alhambra Sugar Me Pistachio Chocolate 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-SUGAR-ME-CREME-BRULEE",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-SUGAR-ME-CREME-BRULEE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Sugar Me Creme Brulee 100 ml",
+        "Maison Alhambra Sugar Me Creme Brulee 100ml"
+      ]
     }
   ]
 }
