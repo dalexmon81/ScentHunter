@@ -386,3 +386,25 @@ The official product title spells the name **Plantine Blanc**. The existing prod
 **Ora** and **Roza** remain at `source_listed_name` confidence using the existing Notino discovery listing. I did not find individual official French Avenue product pages for those two names in this pass, so their concentration and size remain unspecified and no variants were created. The official current collection page lists ten individual perfumes, while the existing catalog has twelve identities; this audit does not claim that Ora and Roza are discontinued or invalid.
 
 Regression tests now check the ten official detail URLs, nine explicit 100 ml concentration variants, Plantine Blanc's deliberate missing variant data, and Ora/Roza's listing-only status.
+
+
+### Maison Asrar: second new-arrivals page individual-detail reconciliation (9 November 2026)
+
+The second page of Maison Asrar's official New Arrivals collection was opened and its 12 displayed perfume cards were matched against existing canonical identities. All 12 already existed; no new identities or variants were created in this pass. The existing product IDs were preserved and their product-level source URLs now point to the individual Maison Asrar detail pages:
+
+- Dubai Milano — https://maisonasrar.com/products/dubai-milano
+- Dubai London — https://maisonasrar.com/products/dubai-london
+- Dubai Miami — https://maisonasrar.com/products/dubai-miami
+- III Thriller — https://maisonasrar.com/products/iii-thriller
+- Milky Way — https://maisonasrar.com/products/milky-way
+- Vanguard — https://maisonasrar.com/products/vanguard
+- Muharib — https://maisonasrar.com/products/muharib
+- Faris Al Arab — https://maisonasrar.com/products/faris-al-arab
+- Vanilla Seduction — https://maisonasrar.com/products/vanilla-seduction
+- Vanilla Aura — https://maisonasrar.com/products/vanilla-aura
+- Throne Eclipse — https://maisonasrar.com/products/throne-eclipse
+- Throne — https://maisonasrar.com/products/throne
+
+The inspected Maison Asrar detail pages confirm the individual product identities, but do not expose explicit size/concentration fields in their page content. Therefore no new variant data was inferred. Vanilla Aura retains its already documented 100 ml Eau de Parfum variant, whose evidence URL remains the Gulf Orchid storefront detail page that explicitly states those variant attributes; the Maison Asrar page is now the product-level identity source.
+
+Regression coverage checks all 12 official URLs, source status, and the deliberate absence of unsupported variants.
