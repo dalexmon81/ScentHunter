@@ -861,5 +861,59 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_paris_corner_official_storefront_batch_b_detail_pages_and_sizes(self):
+        expected = {
+            "Cosmopolitan Newyork": ("https://www.pariscornerperfumes.com/products/cosmopolitan-newyork", None),
+            "Creamy Biscuit": ("https://www.pariscornerperfumes.com/products/creamy-biscuit-100ml", 100),
+            "Dar Al Oud": ("https://www.pariscornerperfumes.com/products/dar-al-oud", 100),
+            "Date Caramel": ("https://www.pariscornerperfumes.com/products/date-caramel", 100),
+            "December Ambar": ("https://www.pariscornerperfumes.com/products/december-ambar", 85),
+            "December Rose": ("https://www.pariscornerperfumes.com/products/dcember-rose", None),
+            "December Vanilla": ("https://www.pariscornerperfumes.com/products/december-vanilla", None),
+            "Doris Pink": ("https://www.pariscornerperfumes.com/products/doris-pink", 100),
+            "Dulzura": ("https://www.pariscornerperfumes.com/products/dulzura", 100),
+            "Dusky Vanilla": ("https://www.pariscornerperfumes.com/products/dusky-vanilla", 100),
+            "Ecstatic Blanc Fleur": ("https://www.pariscornerperfumes.com/products/ecstatic-blanc-fleur", 100),
+            "Elania Emir": ("https://www.pariscornerperfumes.com/products/elania-emir", 100),
+            "English Leather": ("https://www.pariscornerperfumes.com/products/english-leather", 100),
+            "Enormity": ("https://www.pariscornerperfumes.com/products/enormity", 100),
+            "Eshal Musk": ("https://www.pariscornerperfumes.com/products/eshal-musk", 100),
+            "Eshal Vanilla": ("https://www.pariscornerperfumes.com/products/eshal-vanilla", 100),
+            "Eternal Coffee": ("https://www.pariscornerperfumes.com/products/eternal-coffee", None),
+            "Eternal Meadows": ("https://www.pariscornerperfumes.com/products/eternal-meadows", None),
+            "Eternal Musk": ("https://www.pariscornerperfumes.com/products/eternal-musk", None),
+            "Farah": ("https://www.pariscornerperfumes.com/products/farah", 100),
+            "Fascination Emir": ("https://www.pariscornerperfumes.com/products/fascination", None),
+            "Fayora": ("https://www.pariscornerperfumes.com/products/fayora", 100),
+            "Fayora Oshino": ("https://www.pariscornerperfumes.com/products/fayora-oshino", 100),
+            "Fig Fete": ("https://www.pariscornerperfumes.com/products/fig-fete", 100),
+            "Fire Your Desire Emir": ("https://www.pariscornerperfumes.com/products/fire-your-desire-emir", 100),
+            "Forbidden Sugar Emir": ("https://www.pariscornerperfumes.com/products/forbidden-sugar-emir", 100),
+            "Frenetic Delicieuse": ("https://www.pariscornerperfumes.com/products/frenetic-delicieuse", 80),
+            "Frenetic Homme Intense": ("https://www.pariscornerperfumes.com/products/frenetichomme-intense", 80),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
