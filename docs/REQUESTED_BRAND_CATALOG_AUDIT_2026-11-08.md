@@ -311,3 +311,12 @@ The official “Slow Living” detail page explicitly distinguishes 50 ml Eau de
 All 23 existing identities are now marked `source_verified_name`, and their size-specific variant evidence URLs point to their individual product pages. Existing 15 ml travel-size selector variants are retained with their separate evidence and are not altered by this batch.
 
 A regression test checks all 23 individual URLs, concentration handling, size-specific variant evidence and one canonical row per product. Combined with the first two batches, all 53 standalone perfume identities appearing across the current official 54-item all-products collection now have individual brand-owned product-page evidence. The 54th item is the generic Travel Size 15ML selector, not a separate canonical perfume identity. This conclusion is limited to the current official collection and does not prove exhaustive coverage of all historical, regional, or discontinued Mykonos fragrances.
+
+
+### Armaf: Uniq Oud Forever official detail-page provenance (9 November 2026)
+
+The existing canonical identity `SH-ARMAF-f650f6a8` was retained and upgraded from the official all-perfumes collection URL to its individual brand-owned detail page:
+
+- Uniq Oud Forever — https://armaf.com/products/uniq-oud-forever-spr
+
+The individual page confirms the standalone fragrance name and identifies it as unisex. The page's marketing title includes “EAU DE PARFUM Spray”, but its visible product specification does not expose a structured bottle size or concentration field. To avoid promoting title/marketing text into unsupported SKU data, the catalog records only the individual-page identity evidence; concentration and size variants remain unset. No duplicate canonical identity or variant was created.
