@@ -8903,6 +8903,9 @@
           "aliases": [
             "Azzure Aoud",
             "French Avenue Azzure Aoud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8910,6 +8913,9 @@
           "aliases": [
             "Royal Blend",
             "French Avenue Royal Blend"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8917,6 +8923,9 @@
           "aliases": [
             "Spectre Ghost",
             "French Avenue Spectre Ghost"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -8931,6 +8940,9 @@
           "aliases": [
             "Vulcan Feu",
             "French Avenue Vulcan Feu"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8938,6 +8950,9 @@
           "aliases": [
             "Jasmere",
             "French Avenue Jasmere"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8966,13 +8981,9 @@
           "aliases": [
             "Cocoa Morado",
             "French Avenue Cocoa Morado"
-          ]
-        },
-        {
-          "canonical_name": "Dusk Till Dawn",
-          "aliases": [
-            "Dusk Till Dawn",
-            "French Avenue Dusk Till Dawn"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8980,6 +8991,9 @@
           "aliases": [
             "Royal Blend Sequoia",
             "French Avenue Royal Blend Sequoia"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8987,6 +9001,9 @@
           "aliases": [
             "Noble Cedar",
             "French Avenue Noble Cedar"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8994,6 +9011,9 @@
           "aliases": [
             "Atlantis Extrait",
             "French Avenue Atlantis Extrait"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9001,6 +9021,9 @@
           "aliases": [
             "Ambroise Pour Femme",
             "French Avenue Ambroise Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9008,6 +9031,9 @@
           "aliases": [
             "Aether",
             "French Avenue Aether"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9015,6 +9041,9 @@
           "aliases": [
             "Imperial Ocean",
             "French Avenue Imperial Ocean"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9556,6 +9585,10 @@
             "French Avenue Eclipse Nova"
           ]
         }
+      ],
+      "excluded_products": [
+        "Dusk Till Dawn",
+        "French Avenue Dusk Till Dawn"
       ]
     },
     {
