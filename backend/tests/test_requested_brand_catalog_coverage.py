@@ -1211,5 +1211,54 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matching[0].get("concentration"), concentration)
                     self.assertEqual(matching[0].get("source_evidence_url"), source)
 
+
+    def test_maison_asrar_final_three_individual_pages_and_emerald_variant(self):
+        expected = {
+            "Omniya": (
+                "https://maisonasrar.com/products/omniya",
+                None,
+                None,
+            ),
+            "Rose": (
+                "https://maisonasrar.com/products/gulf-orchid-rose-eau-de-parfum",
+                "Eau de Parfum",
+                None,
+            ),
+            "Emerald": (
+                "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml",
+                "Eau de Parfum",
+                110,
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, size) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), concentration)
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                if size is None:
+                    self.assertFalse(product.get("formats_ml"))
+                    self.assertEqual(matching, [])
+                else:
+                    self.assertEqual(product.get("formats_ml"), [size])
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("size_ml"), size)
+                    self.assertEqual(matching[0].get("concentration"), concentration)
+                    self.assertEqual(matching[0].get("source_evidence_url"), source)
+
 if __name__ == "__main__":
     unittest.main()
