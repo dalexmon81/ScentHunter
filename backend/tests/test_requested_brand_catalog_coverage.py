@@ -924,5 +924,78 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
                 self.assertEqual(matching[0].get("source_evidence_url"), source)
 
+
+    def test_maison_asrar_second_official_collection_batch_100ml_edp_variants(self):
+        expected = {
+            "Jawhara Rouge": "https://maisonasrar.com/products/jawhara-rouge-eau-de-perfum-100ml",
+            "Jawhara Black": "https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml",
+            "Petra": "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml",
+            "Casablanca": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml",
+            "Trophy": "https://maisonasrar.com/products/trophy-eau-de-perfum-100ml",
+            "Oscar": "https://maisonasrar.com/products/oscar-eau-de-perfum-100ml",
+            "Fairy Tale": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml",
+            "Magic Night": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+            "Icon": "https://maisonasrar.com/products/icon-eau-de-perfum-100ml",
+            "Desire": "https://maisonasrar.com/products/desire-eau-de-perfum-100ml",
+            "Black Grapefruit": "https://maisonasrar.com/products/black-eau-de-perfum-100ml",
+            "1963": "https://maisonasrar.com/products/1963-eau-de-perfum-100ml",
+            "Zenobia": "https://maisonasrar.com/products/maison-asrar-zenobia-eau-de-parfum-100-ml-for-women",
+            "Fakhama": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+            "Hamsat Ishq": "https://maisonasrar.com/products/maison-asrar-hamsat-ishq-eau-de-parfum-100-ml-for-women",
+            "Hamsat Ghazal": "https://maisonasrar.com/products/maison-asrar-hamsat-ghazal-eau-de-parfum-100-ml-for-women",
+            "Hamsat Hob": "https://maisonasrar.com/products/maison-asrar-hamsat-hob-eau-de-parfum-100-ml-for-women",
+            "Hamsat Gharam": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women",
+            "Pink Crush": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women",
+            "Red Velvet": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women",
+            "Adorable": "https://maisonasrar.com/products/adorable-eau-de-parfum-100-ml-for-women",
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [100])
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), 100)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+    def test_maison_asrar_emessa_official_page_does_not_infer_size(self):
+        source = (
+            "https://maisonasrar.com/products/"
+            "maison-asrar-emessa-eau-de-parfum-for-women"
+        )
+        matches = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+            and row.get("canonical_name") == "Emessa"
+        ]
+        self.assertEqual(len(matches), 1)
+        product = matches[0]
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), source)
+        self.assertEqual(product.get("source_evidence_url"), source)
+        self.assertEqual(product.get("concentration"), "Eau de Parfum")
+        self.assertFalse(product.get("formats_ml"))
+        self.assertFalse([
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == product["product_id"]
+        ])
+
 if __name__ == "__main__":
     unittest.main()
