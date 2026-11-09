@@ -724,5 +724,53 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                         for variant in variants
                     ))
 
+
+    def test_mykonos_second_fifteen_products_have_individual_official_page_provenance(self):
+        expected = {
+            "Enchanted": ("https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml", (50, 100)),
+            "Hawaiian Crush": ("https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml", (50,)),
+            "Imperium": ("https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml", (100,)),
+            "Inception": ("https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml", (50, 100)),
+            "Inferno": ("https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml", (50, 100)),
+            "Luminos": ("https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml", (50,)),
+            "Marbella": ("https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml", (50, 100)),
+            "Matcha Latte": ("https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml", (50,)),
+            "Mayfair": ("https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml", (50, 100)),
+            "Milk Drops": ("https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml", (50,)),
+            "Monaco Royale": ("https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml", (50, 100)),
+            "Moroccan Vanilla": ("https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml", (100,)),
+            "Musk Aura": ("https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml", (100,)),
+            "Nautilus": ("https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml", (100,)),
+            "On The Rocks": ("https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml", (100,)),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Extrait de Parfum")
+                matching_products = [
+                    product for product in CATALOG.get("products", [])
+                    if product.get("brand_name") == "Mykonos"
+                    and product.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matching_products), 1)
+                for size in sizes:
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("concentration"), "Extrait de Parfum")
+                    self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
 if __name__ == "__main__":
     unittest.main()
