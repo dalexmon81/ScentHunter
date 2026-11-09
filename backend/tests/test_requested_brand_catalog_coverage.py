@@ -955,5 +955,61 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_paris_corner_official_storefront_batch_c_detail_pages_and_sizes(self):
+        expected = {
+            "Frenetic Men": ("https://www.pariscornerperfumes.com/products/frenetic-men", 100),
+            "Frenetic Red Tempt": ("https://www.pariscornerperfumes.com/products/frenetic-red-tempt", 80),
+            "Frenetic Tobacco Honey": ("https://www.pariscornerperfumes.com/products/frenetic-tobacco-honey", 100),
+            "Harrier Absolute": ("https://www.pariscornerperfumes.com/products/harrier-absoulte", 100),
+            "Hidden Halo": ("https://www.pariscornerperfumes.com/products/hidden-halo", 100),
+            "Honeyed Fantasy": ("https://www.pariscornerperfumes.com/products/honeyed-fantasy", 100),
+            "Hurriya": ("https://www.pariscornerperfumes.com/products/hurriya", 100),
+            "Ibisco Nirvana": ("https://www.pariscornerperfumes.com/products/ibisco-nirvana", None),
+            "Identity Oud Crescent": ("https://www.pariscornerperfumes.com/products/identity-oud-crescent", 100),
+            "Identity Rose & Leather": ("https://www.pariscornerperfumes.com/products/identity-rose-leather", 100),
+            "Identity Unique Portrait": ("https://www.pariscornerperfumes.com/products/identity-unique-portrait", 100),
+            "Indomitable": ("https://www.pariscornerperfumes.com/products/indomitable", 100),
+            "Intense Oud": ("https://www.pariscornerperfumes.com/products/intense-oud-arabian", 100),
+            "Intense Oud Saffron": ("https://www.pariscornerperfumes.com/products/intense-oud-saffron", 100),
+            "Intense Wayfarer": ("https://www.pariscornerperfumes.com/products/intense-wayfarer", None),
+            "Intima Red": ("https://www.pariscornerperfumes.com/products/intima-red", 100),
+            "Jardin des Papillons": ("https://www.pariscornerperfumes.com/products/jardin-des-papillons", 100),
+            "Juicy Melange": ("https://www.pariscornerperfumes.com/products/juicy-melange", None),
+            "Just Bergamot Emir Factory Edition": ("https://www.pariscornerperfumes.com/products/just-bergamot-emir-factory-edition", 100),
+            "Kaheela Platinum": ("https://www.pariscornerperfumes.com/products/kaheela-platinum", None),
+            "Khair": ("https://www.pariscornerperfumes.com/products/khair", None),
+            "Khair Confection": ("https://www.pariscornerperfumes.com/products/khair-confection", None),
+            "Khair Felicity": ("https://www.pariscornerperfumes.com/products/khair-felicity-100ml", None),
+            "Khair Fusion": ("https://www.pariscornerperfumes.com/products/khair-fusion", None),
+            "Khair Peach Delulu": ("https://www.pariscornerperfumes.com/products/khair-peach-delulu", 100),
+            "Khair Pistachio": ("https://www.pariscornerperfumes.com/products/khair-pistachio", None),
+            "Khayal": ("https://www.pariscornerperfumes.com/products/khayal-100ml", 100),
+            "La Nuit Pendora": ("https://www.pariscornerperfumes.com/products/la-nuit-pendora", 100),
+            "La Serpiente Emir": ("https://www.pariscornerperfumes.com/products/la-serpiente-emir", 100),
+            "Le Charme": ("https://www.pariscornerperfumes.com/products/la-charme-emir", 100),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
