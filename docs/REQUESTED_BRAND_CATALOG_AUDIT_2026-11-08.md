@@ -465,3 +465,33 @@ Six further identities are confirmed as **Maison Asrar**, not Gulf Orchid. The M
 The six products were restored to the Maison Asrar brand and family registry. Their product-level source URLs point to Maison Asrar detail pages; size/concentration variant evidence points to the individual Gulf Orchid storefront detail pages, which explicitly label Maison Asrar as the product brand. One 100/110 ml Eau de Parfum variant was added per identity. The Masterpiece Collection bundle remains excluded as a separate perfume identity.
 
 The catalog's Gulf Orchid count therefore remains 16 and Maison Asrar count remains 121; the previous temporary reattribution of these six items to Gulf Orchid was reversed after checking the product-page brand labels. Regression tests enforce the corrected brand ownership and all six explicit size variants.
+
+
+### Maison Asrar: sixth and seventh New Arrivals pages reconciled to individual detail pages (9 November 2026)
+
+The sixth and seventh pages of Maison Asrar's official New Arrivals collection were reviewed. Twenty existing identities were matched to individual Maison Asrar product pages; no new canonical rows were appended:
+
+- Lily — https://maisonasrar.com/products/lily-eau-de-parfum-100ml
+- Rosé Absolute — https://maisonasrar.com/products/absolute-eau-de-perfum-100ml
+- Trophy — https://maisonasrar.com/products/trophy-eau-de-perfum-100ml
+- Oscar — https://maisonasrar.com/products/oscar-eau-de-perfum-100ml
+- Fairy Tale — https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml
+- Magic Night — https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml
+- Desire — https://maisonasrar.com/products/desire-eau-de-perfum-100ml
+- Rosé Bouquet — https://maisonasrar.com/products/bouquet-eau-de-perfum-100ml
+- Jawhara Rouge — https://maisonasrar.com/products/jawhara-rouge-eau-de-perfum-100ml
+- Jawhara Black — https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml
+- Patchouli with Love — https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml
+- Fresh Iris — https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml
+- Vanilla Rouge — https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml
+- Dear Jasmine — https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml
+- Petra — https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml
+- Casablanca — https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml
+- Night in Paris — https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml
+- Sunset in Capri — https://maisonasrar.com/products/sunset-in-capri-maison-asrar-eau-de-perfum-90ml
+- Never Forget Me — https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml
+- Kiss My Lips — https://maisonasrar.com/products/kiss-my-lips-maison-asrar-eau-de-perfum-90ml
+
+All 20 identities now have `source_verified_name` status and individual official product-page URLs. The readable product-page content inspected in this pass did not expose explicit size/concentration specifications. Although some URL handles contain “100ml” or “90ml”, those hints were not treated as variant evidence; no size or concentration fields and no variants were added.
+
+Bonita was already verified in the previous page batch and was not duplicated or re-added. Regression coverage checks all 20 official product URLs and enforces the deliberate absence of unsupported size/concentration data.
