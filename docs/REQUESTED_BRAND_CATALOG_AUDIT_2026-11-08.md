@@ -292,3 +292,30 @@ A name-by-name comparison of the authorized EU retailer's 90-entry exploration p
 These are **discovery leads only**, not approved canonical products. The retailer's page explicitly identifies itself as not the official Mykonos site. A targeted search of the brand-owned domain did not surface matching individual product pages for these names during this pass. Some entries are collaborations, some may be alternate editions or naming variants, and some are described without concentration or product detail. They must not be imported as 19 new products merely to make the catalog count match the retailer's 90-item headline.
 
 Next verification step: resolve each candidate against an individual brand-owned product page or a second reliable brand/distributor source; collapse aliases and editions only when product identity evidence supports it. No candidate from this queue was added to the product catalog.
+
+
+### Maison Asrar: official product-page and variant expansion (9 November 2026)
+
+A second pass through the brand-owned perfume-sprays collection found 12 more existing catalog identities with individual official product pages that explicitly identify their EDP format and bottle size. These were upgraded from generic collection-level provenance and given one matching variant each:
+
+- **Bloom Bloom** — 100 ml Eau de Parfum
+- **Lolita** — 100 ml Eau de Parfum
+- **Bonita** — 100 ml Eau de Parfum
+- **Lily** — 100 ml Eau de Parfum
+- **Kiss My Lips** — 90 ml Eau de Parfum
+- **Never Forget Me** — 90 ml Eau de Parfum
+- **Night in Paris** — 90 ml Eau de Parfum
+- **Sunset in Capri** — 90 ml Eau de Parfum
+- **Dear Jasmine** — 100 ml Eau de Parfum
+- **Patchouli with Love** — 100 ml Eau de Parfum
+- **Fresh Iris** — 100 ml Eau de Parfum
+- **Vanilla Rouge** — 100 ml Eau de Parfum
+
+The 19 previously individual-page-verified Maison Asrar records also now have explicit product-level evidence and product URLs populated. Together with the three Gulf Orchid-hosted Maison Asrar items, the seed now has **34 individually sourced Maison Asrar identities**, including **15 structured Maison Asrar variants** (12 newly added official EDP variants plus the three existing Gulf Orchid 100 ml EDP variants). The Maison Asrar canonical identity count remains 120; no duplicate products were added.
+
+The other **86** Maison Asrar identities remain at collection-listing confidence and still need individual-page reconciliation. The official perfume-sprays collection currently exposes **74 products**; this is a changing storefront view, not a claim that all 120 seed identities are current or that every item in the 129-product all-products collection is a standalone perfume.
+
+Sources:
+- Official Maison Asrar perfume-sprays collection: https://maisonasrar.com/collections/perfume-sprays
+- Individual official product pages linked from that collection for the 12 additions above.
+- Existing official individual pages for the 19 previously verified identities.
