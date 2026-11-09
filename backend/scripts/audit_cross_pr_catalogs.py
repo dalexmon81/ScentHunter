@@ -174,6 +174,7 @@ def audit() -> int:
             registry_addition_sources[entry].add(source)
 
     findings: list[str] = []
+    overlaps: list[str] = []
     for identity, ids_to_sources in sorted(products_by_identity.items()):
         if len(ids_to_sources) > 1:
             sources = sorted({src for values in ids_to_sources.values() for src in values})
@@ -204,19 +205,19 @@ def audit() -> int:
 
     for pair, sources_set in sorted(product_addition_sources.items(), key=lambda item: str(item[0])):
         if len(sources_set) > 1:
-            findings.append(
+            overlaps.append(
                 f"IDENTICAL PRODUCT ADDITION SHARED {pair}: sources={sorted(sources_set)}"
             )
 
     for pair, sources_set in sorted(variant_addition_sources.items(), key=lambda item: str(item[0])):
         if len(sources_set) > 1:
-            findings.append(
+            overlaps.append(
                 f"IDENTICAL VARIANT ADDITION SHARED {pair}: sources={sorted(sources_set)}"
             )
 
     for entry, sources_set in sorted(registry_addition_sources.items()):
         if len(sources_set) > 1:
-            findings.append(
+            overlaps.append(
                 f"FAMILY REGISTRY ENTRY SHARED {entry}: sources={sorted(sources_set)}"
             )
 
@@ -230,13 +231,18 @@ def audit() -> int:
         f"variants={len(baseline.get('variants', []))}, "
         f"families={len(baseline_registry.get('families', []))}"
     )
+    if overlaps:
+        print(f"INFO: {len(overlaps)} identical additions shared across PRs; these are reported but do not block.")
+        for overlap in overlaps:
+            print(f" - {overlap}")
+
     if findings:
-        print(f"BLOCKED: {len(findings)} cross-PR collision(s) detected.")
+        print(f"BLOCKED: {len(findings)} conflicting product/variant identity collision(s) detected.")
         for finding in findings:
             print(f" - {finding}")
         return 1
 
-    print("PASS: no cross-PR product, variant or family-registry overlaps detected.")
+    print("PASS: no conflicting product or variant identities detected.")
     return 0
 
 
