@@ -1,11 +1,19 @@
 """Regression guard for the user-requested fragrance brand coverage."""
 import json
+import re
+import unicodedata
 import unittest
 from collections import Counter
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+
+
+def normalize_catalog_name(value):
+    value = unicodedata.normalize("NFKD", str(value or "").casefold())
+    value = "".join(char for char in value if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", " ", value).strip()
 
 # Lower bounds from the reconciled 2026-11-08 catalog snapshot. These are
 # canonical fragrance identities, not SKU/variant counts or claims of
@@ -698,7 +706,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         registered = {
             (
                 str(family.get("brand") or "").strip(),
-                str(product.get("canonical_name") or "").strip().casefold(),
+                normalize_catalog_name(product.get("canonical_name")),
             )
             for family in registry.get("families", [])
             for product in family.get("products", [])
@@ -709,7 +717,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         for index, row in enumerate(CATALOG.get("products", [])):
             key = (
                 str(row.get("brand_name") or row.get("brand") or "").strip(),
-                str(row.get("canonical_name") or row.get("name") or "").strip().casefold(),
+                normalize_catalog_name(row.get("canonical_name") or row.get("name")),
             )
             with self.subTest(product=index):
                 self.assertIn(row.get("family_id"), family_ids)
