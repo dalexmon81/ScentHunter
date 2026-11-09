@@ -225,3 +225,14 @@ Three additional standalone fragrances were added from individual official produ
 - **Rouge Extrait** — Extrait de Parfum; 100 ml, 30 ml and 10 ml
 
 Gift sets and coffrets remain excluded as standalone perfume identities. Other Jo Milano Paris lines outside the Games of Spades family were not added in this focused pass.
+
+
+### Official product-detail reconciliation correction — 9 November 2026
+
+A cross-PR comparison against the latest consolidated requested-brand seed found that the earlier isolated draft had been prepared from an older base. The identities for **Armaf — Uniq Effects of Uniq** and **Lattafa — Asad Polar** were already introduced by concurrent catalog work, and **Arabiyat Prestige — Lychee Musk** already had its 100 ml EDP variant. This reconciliation therefore preserves the canonical records already present in the latest seed rather than adding competing IDs:
+
+- Armaf — Uniq Effects of Uniq keeps product ID `SH-ARMAF-UNIQ-EFFECTS-OF-UNIQ`; the official detail evidence supports recording Eau de Parfum. No size or variant is inferred.
+- Lattafa — Asad Polar keeps product ID `SH-LATTAFA-ASAD-POLAR` and variant ID `SH-LATTAFA-ASAD-POLAR-V-100-UNSPECIFIED`. Its 100 ml size remains recorded; concentration remains unspecified.
+- Arabiyat Prestige — Lychee Musk keeps product ID `SH-ARABIYAT-PRESTIGE-0b061839` and existing 100 ml EDP variant ID `SH-ARABIYAT-PRESTIGE-0b061839-V-100-EDP`. Only the official source URL/evidence URL is refreshed to the current product detail page.
+
+No duplicate canonical identities or variants are added. This correction supersedes the earlier draft wording above that described Armaf Uniq Effects of Uniq and Asad Polar as new identities, or Lychee Musk as a newly created variant. No price, stock, retailer offer or shipping data is inferred.
