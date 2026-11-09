@@ -390,3 +390,38 @@ The current PR branch was fetched and parsed after the Mykonos storefront update
 - All catalog identities remain represented in the family registry.
 
 The new Mykonos test module is included in `.github/workflows/catalog-seed-validation.yml`. Its CI result must be checked on the final PR head before calling this block fully validated. The catalog totals did not change because this pass upgraded provenance for existing identities and corrected an uncertain concentration field; it did not add new fragrance identities or variants.
+
+### Al Wataniah: official storefront detail-page reconciliation (9 November 2026)
+
+The brand-owned Al Wataniah UAE storefront was checked across its All Products collection (103 listings) and the Classic, Eternal, Niche, Munchies, Perfumed Body Mist and Air Freshener collection navigation. Nineteen existing canonical fragrance identities were upgraded to individual product-page provenance:
+
+- Kayaan Classic
+- Kayaan Terra
+- Special Oud
+- Sabah Al Ward
+- Kayaan Gold
+- Kayaan Midnight
+- Ain Emarat
+- Royal Oak I
+- Al Daiem
+- Arya Peony Rose
+- Arya
+- Ain Emarat Extrait
+- Sabah Al Ward Sugar
+- Royal Oak II
+- Al Daiem Elixir
+- Ameerati
+- Attar Al Wesal
+- Praline Toffee
+- Rose Eclat
+
+Each now points to its own official `/products/` page and is marked `source_verified_name`. Existing identities and IDs were retained; no new canonical names or variants were invented in this pass. Ain Emarat and Ain Emarat Extrait remain separate identities. Existing individually verified Lemon Souffle and Choco Truffle records were preserved.
+
+The official storefront separates Perfumed Body Mist and Air Freshener into distinct collections. Those categories were not imported as standalone fragrance identities. The All Products page also includes products not yet present in this seed; these remain candidates for further page-by-page review rather than being bulk-added from listing names. No commercial prices or stock data were copied into the catalog.
+
+Primary source:
+- Official All Products collection (103 listings): https://www.alwataniah.com/collections/all-products
+- Official Collections navigation: https://www.alwataniah.com/collections
+- Individual official product pages are recorded in the product catalog.
+
+Regression tests cover all 19 detail-page URLs and verify that Ain Emarat and Ain Emarat Extrait remain distinct. The new test module is included in the catalog-seed GitHub Actions workflow.
