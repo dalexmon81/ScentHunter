@@ -11,3 +11,13 @@ def test_trailing_bottle_volume_does_not_create_a_second_product_identity():
 def test_volume_is_removed_only_from_the_trailing_product_name_suffix():
     row = {"brand": "Example", "canonical_name": "No. 20 Eau de Parfum 100 ml"}
     assert product_identity(row)[1] == "no20eaudeparfum"
+
+
+def test_latest_catalog_prs_are_included_in_cross_pr_audit():
+    from backend.scripts.audit_cross_pr_catalogs import CANDIDATE_PRS
+
+    candidate_numbers = {number for number, _head, _base in CANDIDATE_PRS}
+    # PR #604 adds 32 product-page reconciliations and matching 100 ml EDP variants.
+    assert {562, 565, 599, 603, 604}.issubset(candidate_numbers)
+    assert 578 not in candidate_numbers
+    assert 600 not in candidate_numbers
