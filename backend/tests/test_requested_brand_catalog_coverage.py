@@ -2258,5 +2258,39 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_armaf_lions_club_feroce_and_majestueux_official_pages(self):
+        expected = {
+            "The Lion's Club Feroce": (
+                "https://armaf.eu/products/the-lions-club-feroce", "Men"
+            ),
+            "The Lion's Club Majestueux": (
+                "https://armaf.eu/products/the-lions-club-majestueux", "Unisex"
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, gender) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("gender"), gender)
+                self.assertIn(100, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
