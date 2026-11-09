@@ -30550,8 +30550,11 @@
         "Attacks",
         "Assaf Attacks"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/attacks",
+      "formats_ml": [
+        125
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-016",
@@ -46923,6 +46926,17 @@
       "concentration": "Extrait de Parfum",
       "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-015",
+      "size_ml": 125,
+      "aliases": [
+        "Attacks 125 ml",
+        "Assaf Attacks 125ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-015-125-000",
+      "source_url": "https://assaf.ae/products/attacks",
+      "source_evidence_url": "https://assaf.ae/products/attacks"
     }
   ]
 }
