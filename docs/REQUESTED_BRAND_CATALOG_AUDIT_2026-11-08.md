@@ -81,3 +81,108 @@ The branch `catalog/requested-brand-harvest-2026-11-08` was re-read after the hi
 - Structural checks: **0** duplicate product IDs, **0** duplicate variant IDs, **0** duplicate brand/name pairs, **0** orphan variants, and **0** variants with missing or invalid sizes.
 
 These totals supersede earlier intermediate totals (including 266 and 273 variants) wherever those numbers were presented as the current catalog total. Historical passages above are retained as a dated audit trail and should not be read as the latest snapshot. The catalog remains a source-backed identity seed; these structural checks do not prove exhaustive coverage of every brand's current or historical fragrance range.
+
+
+### Al Haramain: five additional official New Launches detail pages (9 November 2026)
+
+The official EU New Launches collection (63 entries) was reconciled against the existing 101 Al Haramain identities. Five distinct fragrance identities absent from the seed were verified on individual product-detail pages:
+
+- Haramain Camellia — https://shop.alharamainperfumes.com/eu/haramain-camellia.html
+- Amber Oud Smell Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html
+- Sameera — https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html
+- Empire Aromatique Ombre — https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html
+- Leif — https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html
+
+Four detail pages explicitly state 100 ml and concentration; one 100 ml variant was added for each. Camellia's individual page confirms the perfume and Extrait de Parfum concentration but does not state a bottle size, so no size or variant was inferred. Other entries in the 63-item collection include bukhoor tablets and 30 ml × 12 multipacks; these were not treated as individual perfume identities. Ayaat Malika Gold was not promoted because the product title says Extrait de Parfum while its detail metadata says Eau de Parfum. Sameera Noir and Olaf remain leads until their individual pages can be independently checked.
+
+This update adds five canonical identities and four explicit variants. All rows retain first-party product-detail URLs. No prices, stock, or retailer offers were copied into the canonical seed.
+
+### Al Haramain: two further verified product-detail pages (9 November 2026)
+
+Two additional identities absent from the current 106-product Al Haramain catalog were checked against individual first-party detail pages and added with explicit 100 ml variants:
+
+- Sameera Noir — https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum; SKU AHP2005)
+- Olaf — https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html (100 ml, Eau de Parfum; SKU AHP2090)
+
+Sameera Noir's EU listing is visible in the official 63-item New Launches collection, while its individual verified product detail was accessible on Al Haramain's official US store. Olaf's EU detail page explicitly confirms 100 ml and Eau de Parfum. No prices, stock, or retailer offers were copied into the catalog.
+
+### Khadlaj: two additional verified perfume sprays (9 November 2026)
+
+- Muse — https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women — official product detail identifies a 100 ml Eau de Parfum spray (SKU 6298043072748).
+- Onyx Galaxy — https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men — official product detail identifies a 100 ml Eau de Parfum spray (SKU 6298043072762).
+
+Both names were already present as listing-level identities; their records were upgraded using individual first-party detail pages and each received one explicitly evidenced 100 ml variant. No retailer price or availability data was imported.
+
+### Al Haramain: four additional verified product-detail pages (9 November 2026)
+
+- Harmony — https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html — 100 ml Eau de Parfum, SKU AHP2086.
+- Freya — https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html — 100 ml Eau de Parfum, SKU AHP2085.
+- L'Aventure Extreme — https://shop.alharamainperfumes.com/eu/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html — 100 ml Extrait de Parfum, SKU AHP2096.
+- Amber Oud Gold Lux — https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html — 100 ml Extrait de Parfum, SKU AHP2094.
+
+Each name was absent from the Al Haramain canonical identities and is now added with one explicit 100 ml variant. The Gold Mine candidate was deliberately held back: the official page title and product details identify Gold Mine, but its URL slug says "sport", so it needs a clean canonical product URL before ingestion. No prices or stock values were copied.
+
+### Verified product-detail upgrades and additions (9 November 2026)
+
+New Al Haramain identities, each with a first-party detail page confirming name, concentration, and 100 ml size:
+- Oud Nomad — https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html (Eau de Parfum, 100 ml, SKU AHP2088)
+- Conception — https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html (Eau de Parfum, 100 ml, SKU AHP2087)
+
+Existing Khadlaj listing-level identities upgraded with individual official product detail evidence and explicit 100 ml variants:
+- Icon — https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men (Eau de Parfum, SKU 6298043071215)
+- Island Vanilla Dunes — https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men (Extrait de Parfum, SKU 6291107979748)
+- Cloud Candy — https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae (Extrait de Parfum, SKU 6291107979557)
+- Caffe Latte — https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray (Extrait de Parfum, SKU 6291107979311)
+
+All entries are individual perfume sprays, not oils, home fragrance, or multipacks. No prices or stock data were imported.
+
+### Al Haramain: four additional verified fragrance launches (9 November 2026)
+
+- Amber Oud Imagine Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP2072)
+- Amber Oud Future Dubai — https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP2071)
+- Emotion Irisee — https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP1429)
+- Emotion Antique — https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP1428)
+
+Each individual first-party detail page identifies the fragrance, concentration, and liquid volume; all four names were absent from the current Al Haramain canonical identities. Each was added with one explicit 100 ml variant. No retailer price or stock information was copied.
+
+### Al Haramain: five additional verified fragrances (9 November 2026)
+
+- CAJU — https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2063)
+- CACAU — https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2064)
+- CUPUACU — https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2068)
+- Taj Malaki Velvet — https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2067)
+- Taj Malaki Noir — https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2066)
+
+All five individual official product pages identify the fragrance, Eau de Parfum concentration, and 100 ml volume. These names were absent from the Al Haramain catalog and were added with explicit 100 ml variants. No prices or availability data were imported.
+
+### Al Haramain: additional verified 200 ml variant (9 November 2026)
+
+- Amber Oud Aqua Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html (200 ml, Extrait de Parfum, SKU AHP2109)
+
+The first-party detail page confirms the existing fragrance identity, Extrait de Parfum concentration, and 200 ml liquid volume. Added a 200 ml variant to the existing canonical product; no duplicate product identity was created. No price or stock data was imported.
+
+### Khadlaj: three more official detail-page upgrades (9 November 2026)
+
+- Island Sun — https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum (100 ml, Extrait de Parfum, SKU 6298043073080)
+- Karus Gold Absolu — https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray (100 ml, Eau de Parfum, SKU 6298043072458)
+- Fursan White — https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae (100 ml, Eau de Parfum, SKU 6291107977751)
+
+These three Khadlaj listing-level identities already had one 100 ml variant each. The official detail pages confirm the same size and concentration, so only provenance/status were upgraded; no duplicate products or variants were created. Sara was not upgraded because the official product page heading says Extrait de Parfum while other collection-card text labels it EDP; that discrepancy needs reconciliation before changing the catalog.
+
+### Aromatix: ten official signature-collection variants (9 November 2026)
+
+The official Aromatix Signature Collection page lists ten collaboration fragrances, each explicitly labelled Eau de Parfum and 100 ml:
+- Teas Me
+- Frostbite
+- Naughty Dates
+- Sun Kissed
+- Forbidden Fruit
+- Magnetiq
+- Platine Blanc
+- X Xandal
+- Royal Taboo
+- Carnal Desire
+
+Source: https://shoparomatix.com/pages/aromatic-collection
+
+All ten identities already existed in the catalog as Aromatix names. Their records now carry the first-party collection source, explicit Eau de Parfum concentration, and one 100 ml variant each. They remain listing-level evidence because the cited source is a collection page rather than individual detail pages. No prices or availability data were imported.

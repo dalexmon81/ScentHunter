@@ -28,7 +28,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
         catalog_names = {p["canonical_name"].casefold() for p in self.products}
         registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 101)
+        self.assertEqual(len(self.products), 123)
 
     def test_all_products_use_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "al_haramain_catalog" for p in self.products))
@@ -47,7 +47,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
             "L'Aventure Grapefruit": ("Extrait de Parfum", {100}),
             "L'Aventure Iris": ("Extrait de Parfum", {100}),
             "L'Aventure Ciel": ("Extrait de Parfum", {100}),
-            "Amber Oud Aqua Dubai": ("Extrait de Parfum", {100}),
+            "Amber Oud Aqua Dubai": ("Extrait de Parfum", {100, 200}),
         }
         for name, (concentration, sizes) in expected.items():
             with self.subTest(product=name):

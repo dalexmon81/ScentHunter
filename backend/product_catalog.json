@@ -3211,12 +3211,13 @@
         "Fursan White",
         "Khadlaj Fursan White"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-78fd361a",
@@ -3230,12 +3231,13 @@
         "Cloud Candy",
         "Khadlaj Cloud Candy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -3249,12 +3251,13 @@
         "Island Vanilla Dunes",
         "Khadlaj Island Vanilla Dunes"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
     },
     {
       "product_id": "SH-KHADLAJ-04832397",
@@ -3287,12 +3290,13 @@
         "Caffe Latte",
         "Khadlaj Caffe Latte"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray"
     },
     {
       "product_id": "SH-KHADLAJ-dd1434f1",
@@ -3382,12 +3386,13 @@
         "Karus Gold Absolu",
         "Khadlaj Karus Gold Absolu"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-a1c6306a",
@@ -3458,12 +3463,13 @@
         "Island Sun",
         "Khadlaj Island Sun"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-7ecbb58c",
@@ -5426,8 +5432,12 @@
         "Aromatix Carnal Desire"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-17e61069",
@@ -5442,8 +5452,12 @@
         "Aromatix Forbidden Fruit"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-7f0d8a66",
@@ -5458,8 +5472,12 @@
         "Aromatix Frostbite"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-c6528f4e",
@@ -5474,8 +5492,12 @@
         "Aromatix Magnetiq"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-631ddd97",
@@ -5490,8 +5512,12 @@
         "Aromatix Naughty Dates"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-76ef1806",
@@ -5524,8 +5550,12 @@
         "Aromatix Plantine Blanc"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-2f9332cc",
@@ -5540,8 +5570,12 @@
         "Aromatix Royal Taboo"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-c491f510",
@@ -5572,8 +5606,12 @@
         "Aromatix Sun Kissed"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-c1bc4bf5",
@@ -5588,8 +5626,12 @@
         "Aromatix Teas Me"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AROMATIX-672bf656",
@@ -5604,8 +5646,12 @@
         "Aromatix X Xandal"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://www.notino.be/french-avenue/aromatix/",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html"
+      "source_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-f56224de",
@@ -6887,7 +6933,8 @@
       "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-aqua-dubai-100ml-extrait-de-parfum.html",
       "concentration": "Extrait de Parfum",
       "formats_ml": [
-        100
+        100,
+        200
       ]
     },
     {
@@ -18519,9 +18566,13 @@
         "Onyx Galaxy",
         "Khadlaj Onyx Galaxy"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-MUSE",
@@ -18535,9 +18586,13 @@
         "Muse",
         "Khadlaj Muse"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SUENO",
@@ -18631,9 +18686,13 @@
         "Icon",
         "Khadlaj Icon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-2000",
@@ -33722,6 +33781,432 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-e467333a",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Camellia",
+      "name": "Haramain Camellia",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Camellia",
+      "aliases": [
+        "Haramain Camellia",
+        "Al Haramain Haramain Camellia"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-camellia.html",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4bb326b2",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Smell Dubai",
+      "name": "Amber Oud Smell Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Smell Dubai",
+      "aliases": [
+        "Amber Oud Smell Dubai",
+        "Al Haramain Amber Oud Smell Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f9b2f5a7",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Sameera",
+      "name": "Sameera",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Sameera",
+      "aliases": [
+        "Sameera",
+        "Al Haramain Sameera"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-deeba57e",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Empire Aromatique Ombre",
+      "name": "Empire Aromatique Ombre",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Empire Aromatique Ombre",
+      "aliases": [
+        "Empire Aromatique Ombre",
+        "Al Haramain Empire Aromatique Ombre"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-65854121",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Leif",
+      "name": "Leif",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Leif",
+      "aliases": [
+        "Leif",
+        "Al Haramain Leif"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3cdea5e5",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Sameera Noir",
+      "name": "Sameera Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Sameera Noir",
+      "aliases": [
+        "Sameera Noir",
+        "Al Haramain Sameera Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1235a7a1",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Olaf",
+      "name": "Olaf",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Olaf",
+      "aliases": [
+        "Olaf",
+        "Al Haramain Olaf"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-386fe9f5",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Harmony",
+      "name": "Harmony",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Harmony",
+      "aliases": [
+        "Harmony",
+        "Al Haramain Harmony"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-fbc56fc6",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Freya",
+      "name": "Freya",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Freya",
+      "aliases": [
+        "Freya",
+        "Al Haramain Freya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ffd1ae96",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "L'Aventure Extreme",
+      "name": "L'Aventure Extreme",
+      "family_id": "al_haramain_catalog",
+      "family_name": "L'Aventure Extreme",
+      "aliases": [
+        "L'Aventure Extreme",
+        "Al Haramain L'Aventure Extreme"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4b3d18b7",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Gold Lux",
+      "name": "Amber Oud Gold Lux",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Gold Lux",
+      "aliases": [
+        "Amber Oud Gold Lux",
+        "Al Haramain Amber Oud Gold Lux"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-a5846dd4",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Oud Nomad",
+      "name": "Oud Nomad",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Oud Nomad",
+      "aliases": [
+        "Oud Nomad",
+        "Al Haramain Oud Nomad"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6e94c97b",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Conception",
+      "name": "Conception",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Conception",
+      "aliases": [
+        "Conception",
+        "Al Haramain Conception"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-659c2efd",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Imagine Dubai",
+      "name": "Amber Oud Imagine Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Imagine Dubai",
+      "aliases": [
+        "Amber Oud Imagine Dubai",
+        "Al Haramain Amber Oud Imagine Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-14bc55ee",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Future Dubai",
+      "name": "Amber Oud Future Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Future Dubai",
+      "aliases": [
+        "Amber Oud Future Dubai",
+        "Al Haramain Amber Oud Future Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3a4991cb",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Emotion Irisee",
+      "name": "Emotion Irisee",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Emotion Irisee",
+      "aliases": [
+        "Emotion Irisee",
+        "Al Haramain Emotion Irisee"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-20e8170f",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Emotion Antique",
+      "name": "Emotion Antique",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Emotion Antique",
+      "aliases": [
+        "Emotion Antique",
+        "Al Haramain Emotion Antique"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-c0b5bc70",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "CAJU",
+      "name": "CAJU",
+      "family_id": "al_haramain_catalog",
+      "family_name": "CAJU",
+      "aliases": [
+        "CAJU",
+        "Al Haramain CAJU"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3d4e138c",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "CACAU",
+      "name": "CACAU",
+      "family_id": "al_haramain_catalog",
+      "family_name": "CACAU",
+      "aliases": [
+        "CACAU",
+        "Al Haramain CACAU"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-436e8631",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "CUPUACU",
+      "name": "CUPUACU",
+      "family_id": "al_haramain_catalog",
+      "family_name": "CUPUACU",
+      "aliases": [
+        "CUPUACU",
+        "Al Haramain CUPUACU"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-8447ca45",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Taj Malaki Velvet",
+      "name": "Taj Malaki Velvet",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Taj Malaki Velvet",
+      "aliases": [
+        "Taj Malaki Velvet",
+        "Al Haramain Taj Malaki Velvet"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-e9eea477",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Taj Malaki Noir",
+      "name": "Taj Malaki Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Taj Malaki Noir",
+      "aliases": [
+        "Taj Malaki Noir",
+        "Al Haramain Taj Malaki Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -33762,7 +34247,8 @@
         "Khadlaj Fursan White 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-cdaa81f2-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-04832397",
@@ -33782,7 +34268,8 @@
         "Khadlaj Caffe Latte 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-263fcf43-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray"
     },
     {
       "product_id": "SH-KHADLAJ-dd1434f1",
@@ -33832,7 +34319,8 @@
         "Khadlaj Karus Gold Absolu 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-baaea0ac-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-a1c6306a",
@@ -33872,7 +34360,8 @@
         "Khadlaj Island Sun 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-93c5a51d-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-20646841",
@@ -34146,7 +34635,8 @@
         "Khadlaj Island Vanilla Dunes 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-47b079b3-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
     },
     {
       "product_id": "SH-KHADLAJ-78fd361a",
@@ -34156,7 +34646,8 @@
         "Khadlaj Cloud Candy 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-78fd361a-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae"
     },
     {
       "product_id": "SH-AFNAN-823a97f5",
@@ -36654,6 +37145,391 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4bb326b2",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Smell Dubai 100 ml",
+        "Al Haramain Amber Oud Smell Dubai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4bb326b2-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f9b2f5a7",
+      "size_ml": 100,
+      "aliases": [
+        "Sameera 100 ml",
+        "Al Haramain Sameera 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-f9b2f5a7-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-deeba57e",
+      "size_ml": 100,
+      "aliases": [
+        "Empire Aromatique Ombre 100 ml",
+        "Al Haramain Empire Aromatique Ombre 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-deeba57e-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-65854121",
+      "size_ml": 100,
+      "aliases": [
+        "Leif 100 ml",
+        "Al Haramain Leif 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-65854121-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3cdea5e5",
+      "size_ml": 100,
+      "aliases": [
+        "Sameera Noir 100 ml",
+        "Al Haramain Sameera Noir 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-3cdea5e5-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1235a7a1",
+      "size_ml": 100,
+      "aliases": [
+        "Olaf 100 ml",
+        "Al Haramain Olaf 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1235a7a1-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MUSE",
+      "size_ml": 100,
+      "aliases": [
+        "Muse 100 ml",
+        "Khadlaj Muse 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-MUSE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ONYX-GALAXY",
+      "size_ml": 100,
+      "aliases": [
+        "Onyx Galaxy 100 ml",
+        "Khadlaj Onyx Galaxy 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-386fe9f5",
+      "size_ml": 100,
+      "aliases": [
+        "Harmony 100 ml",
+        "Al Haramain Harmony 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-386fe9f5-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-fbc56fc6",
+      "size_ml": 100,
+      "aliases": [
+        "Freya 100 ml",
+        "Al Haramain Freya 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-fbc56fc6-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ffd1ae96",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Extreme 100 ml",
+        "Al Haramain L'Aventure Extreme 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-ffd1ae96-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4b3d18b7",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Gold Lux 100 ml",
+        "Al Haramain Amber Oud Gold Lux 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4b3d18b7-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-a5846dd4",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Nomad 100 ml",
+        "Al Haramain Oud Nomad 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-a5846dd4-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6e94c97b",
+      "size_ml": 100,
+      "aliases": [
+        "Conception 100 ml",
+        "Al Haramain Conception 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6e94c97b-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ICON",
+      "size_ml": 100,
+      "aliases": [
+        "Icon 100 ml",
+        "Khadlaj Icon 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ICON-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-659c2efd",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Imagine Dubai 100 ml",
+        "Al Haramain Amber Oud Imagine Dubai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-659c2efd-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-14bc55ee",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Future Dubai 100 ml",
+        "Al Haramain Amber Oud Future Dubai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-14bc55ee-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3a4991cb",
+      "size_ml": 100,
+      "aliases": [
+        "Emotion Irisee 100 ml",
+        "Al Haramain Emotion Irisee 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-3a4991cb-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-20e8170f",
+      "size_ml": 100,
+      "aliases": [
+        "Emotion Antique 100 ml",
+        "Al Haramain Emotion Antique 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-20e8170f-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-c0b5bc70",
+      "size_ml": 100,
+      "aliases": [
+        "CAJU 100 ml",
+        "Al Haramain CAJU 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-c0b5bc70-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3d4e138c",
+      "size_ml": 100,
+      "aliases": [
+        "CACAU 100 ml",
+        "Al Haramain CACAU 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-3d4e138c-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-436e8631",
+      "size_ml": 100,
+      "aliases": [
+        "CUPUACU 100 ml",
+        "Al Haramain CUPUACU 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-436e8631-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-8447ca45",
+      "size_ml": 100,
+      "aliases": [
+        "Taj Malaki Velvet 100 ml",
+        "Al Haramain Taj Malaki Velvet 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-8447ca45-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-e9eea477",
+      "size_ml": 100,
+      "aliases": [
+        "Taj Malaki Noir 100 ml",
+        "Al Haramain Taj Malaki Noir 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-e9eea477-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6c00b776",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Aqua Dubai 200 ml",
+        "Al Haramain Amber Oud Aqua Dubai 200ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-200-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AROMATIX-c1bc4bf5",
+      "size_ml": 100,
+      "aliases": [
+        "Teas Me 100 ml",
+        "Aromatix Teas Me 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-c1bc4bf5-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-7f0d8a66",
+      "size_ml": 100,
+      "aliases": [
+        "Frostbite 100 ml",
+        "Aromatix Frostbite 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-7f0d8a66-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-631ddd97",
+      "size_ml": 100,
+      "aliases": [
+        "Naughty Dates 100 ml",
+        "Aromatix Naughty Dates 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-631ddd97-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-5cc0e8bf",
+      "size_ml": 100,
+      "aliases": [
+        "Sun Kissed 100 ml",
+        "Aromatix Sun Kissed 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-5cc0e8bf-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-17e61069",
+      "size_ml": 100,
+      "aliases": [
+        "Forbidden Fruit 100 ml",
+        "Aromatix Forbidden Fruit 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-17e61069-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-c6528f4e",
+      "size_ml": 100,
+      "aliases": [
+        "Magnetiq 100 ml",
+        "Aromatix Magnetiq 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-c6528f4e-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-3bc29bed",
+      "size_ml": 100,
+      "aliases": [
+        "Platine Blanc 100 ml",
+        "Aromatix Platine Blanc 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-3bc29bed-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-672bf656",
+      "size_ml": 100,
+      "aliases": [
+        "X Xandal 100 ml",
+        "Aromatix X Xandal 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-672bf656-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-2f9332cc",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Taboo 100 ml",
+        "Aromatix Royal Taboo 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-2f9332cc-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
+    },
+    {
+      "product_id": "SH-AROMATIX-e1d337d3",
+      "size_ml": 100,
+      "aliases": [
+        "Carnal Desire 100 ml",
+        "Aromatix Carnal Desire 100ml"
+      ],
+      "variant_id": "SHV-SH-AROMATIX-e1d337d3-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shoparomatix.com/pages/aromatic-collection"
     }
   ]
 }

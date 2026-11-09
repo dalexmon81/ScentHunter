@@ -11,6 +11,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/al-haramain-new-launches-2026-11-09
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -18,6 +19,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/al-haramain-new-launches-2026-11-09
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
@@ -72,4 +74,9 @@ jobs:
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
+          backend.tests.test_al_haramain_new_launches
+          backend.tests.test_khadlaj_verified_detail_additions
+          backend.tests.test_verified_detail_page_additions
+          backend.tests.test_aromatix_signature_collection
+          backend.tests.test_al_haramain_detail_additions
           -v
