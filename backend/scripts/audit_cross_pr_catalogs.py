@@ -30,7 +30,7 @@ CANDIDATE_PRS = (
     (585, "catalog/gulf-orchid-reconciled-combined-v2-2026-11-08", "catalog/gulf-orchid-source-reconciliation-2026-11-08"),
     (587, "catalog/gulf-orchid-official-audit-2026-11-08", "catalog/velixir-official-audit-2026-11-08"),
     (588, "catalog/verified-new-launches-2026-11-09", "catalog/consolidated-brand-catalog-2026-11-08"),
-    (590, "catalog/family-registry-verified-launches-2026-11-09", "catalog/consolidated-brand-catalog-2026-11-08"),
+    (590, "catalog/family-registry-verified-launches-2026-11-09", "catalog/verified-new-launches-2026-11-09"),
     (555, "catalog/lattafa-official-new-launches-2026-11-08", "catalog/gulf-orchid-official-new-arrivals-2026-11-08"),
     (558, "catalog/armaf-official-detail-audit-2026-11-08", "catalog/armaf-official-new-exclusive-2026-11-08"),
     (562, "catalog/lattafa-four-official-products-2026-11-08", "catalog/lattafa-mishlah-official-page-2026-11-08"),
