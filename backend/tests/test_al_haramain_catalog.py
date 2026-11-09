@@ -28,7 +28,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
         catalog_names = {p["canonical_name"].casefold() for p in self.products}
         registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 127)
+        self.assertEqual(len(self.products), 139)
 
     def test_all_products_use_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "al_haramain_catalog" for p in self.products))
@@ -221,6 +221,39 @@ class AlHaramainCatalogTests(unittest.TestCase):
                         self.assertEqual(matches[0].get("concentration"), concentration)
                 else:
                     self.assertNotIn("formats_ml", product)
+
+
+    def test_thirteen_additional_al_haramain_pages_and_variants_are_verified(self):
+        expected = {
+            "Haramain Gold Crystal Sapphire": ("https://us.alharamainperfumes.com/en/haramain-gold-crystal-sapphire-spray-100ml.html", "Extrait de Parfum", 100),
+            "L'Aventure Fraiche": ("https://us.alharamainperfumes.com/en/haramain-l-aventure-fraiche-spray.html", "Extrait de Parfum", 100),
+            "Haramain Emotion Irisee": ("https://us.alharamainperfumes.com/en/haramain-emotion-irisee-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Haramain CACAU": ("https://us.alharamainperfumes.com/en/haramain-cacau-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Haramain CAJU": ("https://us.alharamainperfumes.com/en/haramain-caju-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Haramain Habibi Dubai Desert": ("https://us.alharamainperfumes.com/en/haramain-habibi-duabi-desert-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Haramain Habibi Dubai Night": ("https://us.alharamainperfumes.com/en/haramain-habibi-duabi-night-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Artisan De Haramain Noir": ("https://us.alharamainperfumes.com/en/artisan-de-haramain-noir-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Artisan De Haramain": ("https://us.alharamainperfumes.com/en/artisan-de-haramain-100ml-extrait-de-parfum.html", None, 100),
+            "Haramain Empire Aromatique Lumen": ("https://us.alharamainperfumes.com/en/haramain-empire-aromatique-lumen-100ml-extrait-de-parfum.html", None, 100),
+            "Haramain Ayaat Malika": ("https://us.alharamainperfumes.com/en/haramain-ayaat-malika-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Haramain Green Dubai": ("https://us.alharamainperfumes.com/en/haramain-green-dubai-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Haramain Miracle Dubai": ("https://us.alharamainperfumes.com/en/haramain-miracle-dubai-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+        }
+        for name, (source, concentration, size) in expected.items():
+            with self.subTest(product=name):
+                product = self.products_by_name[name]
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_url"], source)
+                self.assertEqual(product["source_evidence_url"], source)
+                self.assertIn(size, product.get("formats_ml", []))
+                if concentration:
+                    self.assertEqual(product.get("concentration"), concentration)
+                matches = [v for v in self.variants_for(product) if v.get("size_ml") == size]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("source_url"), source)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+                if concentration:
+                    self.assertEqual(matches[0].get("concentration"), concentration)
 
 
 if __name__ == "__main__":
