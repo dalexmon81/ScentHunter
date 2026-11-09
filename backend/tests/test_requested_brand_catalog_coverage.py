@@ -2368,5 +2368,35 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_assaf_additional_official_pages_and_sizes_are_verified(self):
+        expected = {
+            "First Night": ("https://assaf.ae/products/first-night-1", 150),
+            "Noble": ("https://assaf.ae/products/noble-2", 200),
+            "I'm Here Enable": ("https://assaf.ae/products/edp-im-here-enable-150ml", 150),
+            "Frankel Imagination": ("https://assaf.ae/products/frankel-imagination-200", 200),
+        }
+        products = {
+            product.get("canonical_name"): product
+            for product in CATALOG.get("products", [])
+            if product.get("brand_name") == "Assaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertIn(size_ml, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("source_url"), source)
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
