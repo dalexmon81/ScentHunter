@@ -17218,9 +17218,13 @@
         "Vanilla Addiction",
         "Gulf Orchid Vanilla Addiction"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-MANGO-ICE",
@@ -17234,9 +17238,13 @@
         "Mango Ice",
         "Gulf Orchid Mango Ice"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-COTTON-CANDY-MUSK",
@@ -17250,7 +17258,7 @@
         "Cotton Candy Musk",
         "Gulf Orchid Cotton Candy Musk"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy",
       "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy"
     },
@@ -17266,7 +17274,7 @@
         "Tahara Vanilla Musk",
         "Gulf Orchid Tahara Vanilla Musk"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
       "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
     },
@@ -17282,9 +17290,13 @@
         "Sweet Heaven 20ML",
         "Gulf Orchid Sweet Heaven 20ML"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml",
-      "source_evidence_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml"
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        20
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-PINK-MARSHMALLOW",
@@ -17298,9 +17310,13 @@
         "Pink Marshmallow",
         "Gulf Orchid Pink Marshmallow"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/pink-marshmallow",
-      "source_evidence_url": "https://shop-gulforchid.com/products/pink-marshmallow"
+      "source_evidence_url": "https://shop-gulforchid.com/products/pink-marshmallow",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-COCO-BLANCO",
@@ -17314,9 +17330,13 @@
         "Coco Blanco",
         "Gulf Orchid Coco Blanco"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/coco-blanco",
-      "source_evidence_url": "https://shop-gulforchid.com/products/coco-blanco"
+      "source_evidence_url": "https://shop-gulforchid.com/products/coco-blanco",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-EXOTIC-OUD",
@@ -17330,9 +17350,13 @@
         "Exotic Oud",
         "Gulf Orchid Exotic Oud"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-VANILLA-LATTE",
@@ -17346,9 +17370,13 @@
         "Vanilla Latte",
         "Gulf Orchid Vanilla Latte"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-COOKIE-BITE",
@@ -17362,9 +17390,13 @@
         "Cookie Bite",
         "Gulf Orchid Cookie Bite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/cookie-bite",
-      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite"
+      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ACADIA-INTENSO-EMIR",
@@ -31069,8 +31101,12 @@
         "Sweet Like Candy",
         "Gulf Orchid Sweet Like Candy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-STORE-002",
@@ -31084,8 +31120,12 @@
         "Sweet Heaven Extreme 20ML",
         "Gulf Orchid Sweet Heaven Extreme 20ML"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        20
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-STORE-003",
@@ -31099,8 +31139,12 @@
         "Piña Colada Musk",
         "Gulf Orchid Piña Colada Musk"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections/gulf-orchid-perfume"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-001",
@@ -37976,6 +38020,127 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-MARYAM-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://us.alharamainperfumes.com/en/maryam-spray.html"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VANILLA-ADDICTION",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Addiction 100 ml",
+        "Gulf Orchid Vanilla Addiction 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-VANILLA-ADDICTION-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MANGO-ICE",
+      "size_ml": 100,
+      "aliases": [
+        "Mango Ice 100 ml",
+        "Gulf Orchid Mango Ice 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-MANGO-ICE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-20ML",
+      "size_ml": 20,
+      "aliases": [
+        "Sweet Heaven 20ML 20 ml",
+        "Gulf Orchid Sweet Heaven 20ML 20ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-SWEET-HEAVEN-20ML-20-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-PINK-MARSHMALLOW",
+      "size_ml": 100,
+      "aliases": [
+        "Pink Marshmallow 100 ml",
+        "Gulf Orchid Pink Marshmallow 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-PINK-MARSHMALLOW-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/pink-marshmallow"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-COCO-BLANCO",
+      "size_ml": 100,
+      "aliases": [
+        "Coco Blanco 100 ml",
+        "Gulf Orchid Coco Blanco 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-COCO-BLANCO-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/coco-blanco"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-EXOTIC-OUD",
+      "size_ml": 100,
+      "aliases": [
+        "Exotic Oud 100 ml",
+        "Gulf Orchid Exotic Oud 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-EXOTIC-OUD-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VANILLA-LATTE",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Latte 100 ml",
+        "Gulf Orchid Vanilla Latte 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-VANILLA-LATTE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-COOKIE-BITE",
+      "size_ml": 100,
+      "aliases": [
+        "Cookie Bite 100 ml",
+        "Gulf Orchid Cookie Bite 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-COOKIE-BITE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-STORE-001",
+      "size_ml": 100,
+      "aliases": [
+        "Sweet Like Candy 100 ml",
+        "Gulf Orchid Sweet Like Candy 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-STORE-001-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-STORE-002",
+      "size_ml": 20,
+      "aliases": [
+        "Sweet Heaven Extreme 20ML 20 ml",
+        "Gulf Orchid Sweet Heaven Extreme 20ML 20ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-STORE-002-20-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-STORE-003",
+      "size_ml": 60,
+      "aliases": [
+        "Piña Colada Musk 60 ml",
+        "Gulf Orchid Piña Colada Musk 60ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-STORE-003-60-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada"
     }
   ]
 }
