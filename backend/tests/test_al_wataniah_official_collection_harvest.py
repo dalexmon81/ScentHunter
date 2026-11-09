@@ -355,6 +355,8 @@ EXPECTED = {
 }
 
 VERIFIED_DETAIL_URLS = {
+    "Lemon Souffle": "https://www.alwataniah.com/products/lemon-souffle",
+    "Choco Truffle": "https://www.alwataniah.com/products/choco-truffle",
     "Kayaan Midnight": "https://www.alwataniah.com/products/kayaan-midnight",
     "Sabah Al Ward": "https://www.alwataniah.com/products/sabah-al-ward",
     "Sabah Al Ward Sugar": "https://www.alwataniah.com/products/saba-al-ward-sugar",
