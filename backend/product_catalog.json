@@ -37938,6 +37938,231 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-de5c3297",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Queenstown Intense",
+      "name": "Queenstown Intense",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Queenstown Intense",
+      "aliases": [
+        "Queenstown Intense",
+        "Maison Alhambra Queenstown Intense"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-queenstown-intense-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-queenstown-intense-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-queenstown-intense-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340911"
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-4fac94b6",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Vogue Night",
+      "name": "Vogue Night",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Vogue Night",
+      "aliases": [
+        "Vogue Night",
+        "Maison Alhambra Vogue Night"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-night-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-night-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-night-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290360598673"
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-ea526366",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Vogue Rouge",
+      "name": "Vogue Rouge",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Vogue Rouge",
+      "aliases": [
+        "Vogue Rouge",
+        "Maison Alhambra Vogue Rouge"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-rouge-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-rouge-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-rouge-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290360598697"
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-aebf244f",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Pink Eclipse",
+      "name": "Pink Eclipse",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Pink Eclipse",
+      "aliases": [
+        "Pink Eclipse",
+        "Maison Alhambra Pink Eclipse"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-pink-eclipse-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-pink-eclipse-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-pink-eclipse-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340577"
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-0fbbf166",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "True Word",
+      "name": "True Word",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "True Word",
+      "aliases": [
+        "True Word",
+        "Maison Alhambra True Word"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-true-word-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-true-word-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-true-word-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340959"
+      ],
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-3d6140bd",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Galactic Elixir",
+      "name": "Galactic Elixir",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Galactic Elixir",
+      "aliases": [
+        "Galactic Elixir",
+        "Maison Alhambra Galactic Elixir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-elixir-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-elixir-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-elixir-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340522"
+      ],
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-f9eb83b3",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Tonic Malt",
+      "name": "Tonic Malt",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Tonic Malt",
+      "aliases": [
+        "Tonic Malt",
+        "Maison Alhambra Tonic Malt"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ],
+      "gtins": [
+        "6290360599366"
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-b7e63f00",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Tonic Ice",
+      "name": "Tonic Ice",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Tonic Ice",
+      "aliases": [
+        "Tonic Ice",
+        "Maison Alhambra Tonic Ice"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290360599359"
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-08e505ef",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Your Touch Leather",
+      "name": "Your Touch Leather",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Your Touch Leather",
+      "aliases": [
+        "Your Touch Leather",
+        "Maison Alhambra Your Touch Leather"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340997"
+      ],
+      "gender": "Unisex"
     }
   ],
   "variants": [
@@ -46040,6 +46265,123 @@
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://armaf.eu/products/the-lions-club-majestueux",
       "source_url": "https://armaf.eu/products/the-lions-club-majestueux"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-de5c3297",
+      "size_ml": 100,
+      "aliases": [
+        "Queenstown Intense 100 ml",
+        "Maison Alhambra Queenstown Intense 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-de5c3297-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340911",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-queenstown-intense-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-queenstown-intense-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-4fac94b6",
+      "size_ml": 100,
+      "aliases": [
+        "Vogue Night 100 ml",
+        "Maison Alhambra Vogue Night 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-4fac94b6-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360598673",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-night-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-night-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-ea526366",
+      "size_ml": 100,
+      "aliases": [
+        "Vogue Rouge 100 ml",
+        "Maison Alhambra Vogue Rouge 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-ea526366-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360598697",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-rouge-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-rouge-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-aebf244f",
+      "size_ml": 100,
+      "aliases": [
+        "Pink Eclipse 100 ml",
+        "Maison Alhambra Pink Eclipse 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-aebf244f-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340577",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-pink-eclipse-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-pink-eclipse-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-0fbbf166",
+      "size_ml": 100,
+      "aliases": [
+        "True Word 100 ml",
+        "Maison Alhambra True Word 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-0fbbf166-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340959",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-true-word-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-true-word-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-3d6140bd",
+      "size_ml": 100,
+      "aliases": [
+        "Galactic Elixir 100 ml",
+        "Maison Alhambra Galactic Elixir 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-3d6140bd-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340522",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-elixir-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-elixir-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-f9eb83b3",
+      "size_ml": 80,
+      "aliases": [
+        "Tonic Malt 80 ml",
+        "Maison Alhambra Tonic Malt 80 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-f9eb83b3-80-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360599366",
+      "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-b7e63f00",
+      "size_ml": 100,
+      "aliases": [
+        "Tonic Ice 100 ml",
+        "Maison Alhambra Tonic Ice 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-b7e63f00-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360599359",
+      "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-08e505ef",
+      "size_ml": 100,
+      "aliases": [
+        "Your Touch Leather 100 ml",
+        "Maison Alhambra Your Touch Leather 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-08e505ef-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340997",
+      "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone"
     }
   ]
 }
