@@ -12657,9 +12657,16 @@
         "Club de Nuit Intense Man",
         "Armaf Club de Nuit Intense Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-for-man",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-for-man",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        200,
+        30,
+        250
+      ]
     },
     {
       "product_id": "SH-ARMAF-96ab7130",
@@ -12673,9 +12680,14 @@
         "Club de Nuit Elite",
         "Armaf Club de Nuit Elite"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-elite-1",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-elite-1",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-ebaced44",
@@ -12689,9 +12701,14 @@
         "Club de Nuit Intense Overdose",
         "Armaf Club de Nuit Intense Overdose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-overdose",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-overdose",
+      "concentration": "Extrait de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-b6b77ff6",
@@ -12738,9 +12755,17 @@
         "Odyssey Mandarin Sky",
         "Armaf Odyssey Mandarin Sky"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-mega-for-men",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-for-men",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        200,
+        100,
+        60,
+        10
+      ]
     },
     {
       "product_id": "SH-ARMAF-909fec22",
@@ -12754,9 +12779,11 @@
         "Club de Nuit Intense Man Extrait de Parfum",
         "Armaf Club de Nuit Intense Man Extrait de Parfum"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr",
+      "concentration": "Extrait de Parfum",
+      "gender": "Men"
     },
     {
       "product_id": "SH-ARMAF-58e48fd1",
@@ -12865,9 +12892,17 @@
         "Club de Nuit Blue Iconic",
         "Armaf Club de Nuit Blue Iconic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        200,
+        105,
+        30,
+        10
+      ]
     },
     {
       "product_id": "SH-ARMAF-b3967c31",
@@ -12897,9 +12932,14 @@
         "Club de Nuit Bling Gold",
         "Armaf Club de Nuit Bling Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-bling-gold",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling-gold",
+      "concentration": "Eau de Parfum",
+      "gender": "Women",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-ARMAF-224191af",
@@ -42668,6 +42708,188 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-black-origami-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-black-origami-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-ARMAF-f0af9d9d",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Intense Man 200 ml",
+        "Armaf Club de Nuit Intense Man 200 ml",
+        "Armaf Club de Nuit Intense Man 200ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-f0af9d9d-200-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-for-man",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-for-man"
+    },
+    {
+      "product_id": "SH-ARMAF-f0af9d9d",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Intense Man 30 ml",
+        "Armaf Club de Nuit Intense Man 30 ml",
+        "Armaf Club de Nuit Intense Man 30ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-f0af9d9d-30-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-for-man",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-for-man"
+    },
+    {
+      "product_id": "SH-ARMAF-f0af9d9d",
+      "size_ml": 250,
+      "aliases": [
+        "Club de Nuit Intense Man 250 ml",
+        "Armaf Club de Nuit Intense Man 250 ml",
+        "Armaf Club de Nuit Intense Man 250ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-f0af9d9d-250-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-for-man",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-for-man"
+    },
+    {
+      "product_id": "SH-ARMAF-96ab7130",
+      "size_ml": 100,
+      "aliases": [
+        "Club de Nuit Elite 100 ml",
+        "Armaf Club de Nuit Elite 100 ml",
+        "Armaf Club de Nuit Elite 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-96ab7130-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-elite-1",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-elite-1"
+    },
+    {
+      "product_id": "SH-ARMAF-ebaced44",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Intense Overdose 105 ml",
+        "Armaf Club de Nuit Intense Overdose 105 ml",
+        "Armaf Club de Nuit Intense Overdose 105ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-ebaced44-105-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-overdose",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-overdose"
+    },
+    {
+      "product_id": "SH-ARMAF-2b05e041",
+      "size_ml": 200,
+      "aliases": [
+        "Odyssey Mandarin Sky 200 ml",
+        "Armaf Odyssey Mandarin Sky 200 ml",
+        "Armaf Odyssey Mandarin Sky 200ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-2b05e041-200-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-for-men",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-for-men"
+    },
+    {
+      "product_id": "SH-ARMAF-2b05e041",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Mandarin Sky 100 ml",
+        "Armaf Odyssey Mandarin Sky 100 ml",
+        "Armaf Odyssey Mandarin Sky 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-2b05e041-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-for-men",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-for-men"
+    },
+    {
+      "product_id": "SH-ARMAF-2b05e041",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Mandarin Sky 60 ml",
+        "Armaf Odyssey Mandarin Sky 60 ml",
+        "Armaf Odyssey Mandarin Sky 60ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-2b05e041-60-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-for-men",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-for-men"
+    },
+    {
+      "product_id": "SH-ARMAF-2b05e041",
+      "size_ml": 10,
+      "aliases": [
+        "Odyssey Mandarin Sky 10 ml",
+        "Armaf Odyssey Mandarin Sky 10 ml",
+        "Armaf Odyssey Mandarin Sky 10ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-2b05e041-10-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-for-men",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-for-men"
+    },
+    {
+      "product_id": "SH-ARMAF-25bad71e",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Blue Iconic 200 ml",
+        "Armaf Club de Nuit Blue Iconic 200 ml",
+        "Armaf Club de Nuit Blue Iconic 200ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-25bad71e-200-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-ARMAF-25bad71e",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Blue Iconic 105 ml",
+        "Armaf Club de Nuit Blue Iconic 105 ml",
+        "Armaf Club de Nuit Blue Iconic 105ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-25bad71e-105-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-ARMAF-25bad71e",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Blue Iconic 30 ml",
+        "Armaf Club de Nuit Blue Iconic 30 ml",
+        "Armaf Club de Nuit Blue Iconic 30ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-25bad71e-30-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-ARMAF-25bad71e",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Blue Iconic 10 ml",
+        "Armaf Club de Nuit Blue Iconic 10 ml",
+        "Armaf Club de Nuit Blue Iconic 10ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-25bad71e-10-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+    },
+    {
+      "product_id": "SH-ARMAF-91877071",
+      "size_ml": 75,
+      "aliases": [
+        "Club de Nuit Bling Gold 75 ml",
+        "Armaf Club de Nuit Bling Gold 75 ml",
+        "Armaf Club de Nuit Bling Gold 75ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-91877071-75-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-bling-gold",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling-gold"
     }
   ]
 }
