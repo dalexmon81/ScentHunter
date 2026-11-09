@@ -28,7 +28,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
         catalog_names = {p["canonical_name"].casefold() for p in self.products}
         registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 101)
+        self.assertEqual(len(self.products), 102)
 
     def test_all_products_use_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "al_haramain_catalog" for p in self.products))
@@ -62,6 +62,23 @@ class AlHaramainCatalogTests(unittest.TestCase):
                 )
                 self.assertTrue(sizes.issubset(set(product["formats_ml"])))
                 self.assertTrue(all(v.get("concentration") == concentration for v in self.variants_for(product)))
+
+
+    def test_haramain_camellia_official_detail_page_and_100ml_extrait_variant(self):
+        product = self.products_by_name["Haramain Camellia"]
+        source = "https://us.alharamainperfumes.com/en/haramain-camellia-extrait-de-parfum.html"
+        self.assertEqual(product["identity_status"], "source_verified_name")
+        self.assertEqual(product["source_url"], source)
+        self.assertEqual(product["concentration"], "Extrait de Parfum")
+        self.assertEqual(product["formats_ml"], [100])
+        matches = self.variants_for(product)
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["size_ml"], 100)
+        self.assertEqual(matches[0]["concentration"], "Extrait de Parfum")
+        self.assertEqual(matches[0]["source_evidence_url"], source)
+        registry_names = {p["canonical_name"] for p in self.family["products"]}
+        self.assertIn("Haramain Camellia", registry_names)
+
 
     def test_unverified_amber_oud_sizes_are_not_invented(self):
         gold = self.products_by_name["Amber Oud Gold Edition Extreme"]
