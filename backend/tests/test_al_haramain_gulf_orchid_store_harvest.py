@@ -6,7 +6,7 @@ from pathlib import Path
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "product_catalog.json"
 AL_HARAMAIN = ["Haramain Musk Orchid","Haramain Xplore Sapphire","Azlan Oud Bleu Edition","Amber Oud Ultra Violet","Azlan Oud Saffron Edition","Amber Oud Tobacco Edition","L'Aventure Grapefruit","L'Aventure Fraiche","L'Aventure Ciel","Azlan Oud Amber Edition","Portfolio Cupid's Rose","Portfolio Portrait Sandal","Portfolio Oriental Forest","Mystique Musk Spray","Amber Oud Gold Edition","Portfolio Euphoric Roots","Azlan Oud Charcoal Edition","Detour Noir Exclusif","Junoon Noir","Oud Cambodi","Maryam","Urbanist Femme","Mystique Femme","Mystique Homme","Detour Nasr","Musk","Detour Noir Intense","L'Aventure Rose","L'Aventure Blanche","Solitaire Musk","Musk Collection","Rawaa","Night Dreams","Khulasat Al Oud","Fall In Love Orange","Fall In Love Pink","Junoon Rose","Maze","Opposite Pink","Manege Blanche","Rafia Gold","Amber Musk","Opulent Sapphire","Royal Musk","Etoiles Silver","Madinah","Portfolio Floral Sculpture","Manege Rouge","Jameela","Musk Maliki","Oyuny","Chateau De La Haramain Argent","Das Ziel","Mystique","Treasure","Oudh Patchouli","Farasha","Asrar Khafiya","Urbanist Prive Silver","Mena","Areej Al Oud"]
-GULF_ORCHID = ["Sweet Like Candy","Sweet Heaven Extreme 20ML","Piña Colada Musk","Al Qasr","Hikma","Riwaya"]
+GULF_ORCHID = ["Al Qasr","Hikma","Riwaya","Vanilla Addiction","Mango Ice","Cotton Candy Musk","Tahara Vanilla Musk","Sweet Heaven 20ML","Pink Marshmallow","Coco Blanco","Exotic Oud","Vanilla Latte","Cookie Bite","Sweet Like Candy","Sweet Heaven Extreme 20ML","Piña Colada Musk","Emerald","Gold Noir","Silver Elixer","Flair","Timeless","Masterpiece"]
 GULF_ORCHID_DETAIL_VERIFIED = {
     "Vanilla Addiction": ("https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum", 100, "Eau de Parfum"),
     "Mango Ice": ("https://shop-gulforchid.com/products/mango_ice_eau_de_parfum", 100, "Eau de Parfum"),
@@ -21,6 +21,12 @@ GULF_ORCHID_DETAIL_VERIFIED = {
     "Sweet Like Candy": ("https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum", 100, "Eau de Parfum"),
     "Sweet Heaven Extreme 20ML": ("https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml", 20, "Eau de Parfum"),
     "Piña Colada Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada", 60, "Eau de Parfum"),
+    "Emerald": ("https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml", 110, "Eau de Parfum"),
+    "Gold Noir": ("https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum", None, None),
+    "Silver Elixer": ("https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum", None, None),
+    "Flair": ("https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum", None, None),
+    "Timeless": ("https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum", None, None),
+    "Masterpiece": ("https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum", None, None),
 }
 
 MAISON_ASRAR_REATTRIBUTED = {
