@@ -708,11 +708,13 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(row.get("identity_status"), "source_verified_name")
                 self.assertEqual(row.get("source_url"), source_url)
                 self.assertEqual(row.get("concentration"), concentration)
-                self.assertEqual(row.get("product_id"), next(
-                    product.get("product_id") for product in CATALOG.get("products", [])
+                matching_products = [
+                    product for product in CATALOG.get("products", [])
                     if product.get("brand_name") == "Mykonos"
                     and product.get("canonical_name") == name
-                ))
+                ]
+                self.assertEqual(len(matching_products), 1)
+                self.assertEqual(row.get("product_id"), matching_products[0].get("product_id"))
                 for size in sizes:
                     self.assertIn(size, row.get("formats_ml", []))
                     self.assertTrue(any(
