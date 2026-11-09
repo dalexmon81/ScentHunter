@@ -47,7 +47,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
             "L'Aventure Grapefruit": ("Extrait de Parfum", {100}),
             "L'Aventure Iris": ("Extrait de Parfum", {100}),
             "L'Aventure Ciel": ("Extrait de Parfum", {100}),
-            "Amber Oud Aqua Dubai": ("Extrait de Parfum", {100}),
+            "Amber Oud Aqua Dubai": ("Extrait de Parfum", {100, 200}),
         }
         for name, (concentration, sizes) in expected.items():
             with self.subTest(product=name):
