@@ -291,3 +291,18 @@ Primary source pages:
 - Vortex: https://shop-gulforchid.com/products/vortex
 - Rosalia: https://shop-gulforchid.com/products/rosalia
 - Maestro: https://shop-gulforchid.com/products/maestro
+
+## Post-Gulf Orchid authoritative snapshot — 9 November 2026
+
+After the Gulf Orchid official-page harvest, the catalog and family registry were fetched again from the branch and independently revalidated. This snapshot supersedes the earlier 2,081 / 358 totals above:
+
+- Canonical fragrance identities: **2,090**
+- Explicit variants: **372**
+- Fragrance families: **34**
+- Identities across the 20 requested brands: **2,087**
+- Gulf Orchid: **32 identities**, of which **14** have individual product-page evidence and **14** have explicit size variants
+- Duplicate product IDs, duplicate variant IDs, duplicate normalized brand/name pairs: **0**
+- Orphan variants, invalid/missing variant sizes, missing requested-brand source URLs, unsupported requested-brand identity statuses: **0**
+- Identities not represented in the family registry: **0**
+
+The three identities outside the requested 20 brands remain Giorgio Armani (1) and Al Ambra (2). The catalog remains an identity seed, not an offer inventory. A failed CI run occurred on the intermediate catalog-only commit before the matching family-registry and regression-test updates landed; subsequent runs on the completed data/test changes are the relevant validation.
