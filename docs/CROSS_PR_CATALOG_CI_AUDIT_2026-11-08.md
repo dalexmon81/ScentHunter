@@ -194,3 +194,27 @@ PR #605 is added to the direct-change candidate set. It upgrades two existing Al
 - Cross-PR collision validation is pending this audit branch's CI run.
 
 No source PR is merged or modified by this audit update.
+
+
+## Latest catalog PR chain — 2026-11-09
+
+The candidate set is extended from 27 to **39 open catalog PRs**. The additional direct-change branches are:
+
+| PR | Head branch | Actual base branch |
+|---:|---|---|
+| #606 | `catalog/lattafa-official-launches-2026-11-09` | `catalog/requested-brand-harvest-2026-11-08` |
+| #609 | `catalog/al-wataniah-reconciled-40-variants-2026-11-09` | `catalog/al-wataniah-ameeri-sultan-details-2026-11-09` |
+| #610 | `catalog/afnan-9-series-official-details-2026-11-09` | `catalog/al-wataniah-reconciled-40-variants-2026-11-09` |
+| #611 | `catalog/al-wataniah-consolidated-40-details-2026-11-09` | `catalog/al-wataniah-twelve-official-details-2026-11-09` |
+| #612 | `catalog/afnan-stardust-detail-variant-2026-11-09` | `catalog/afnan-9-series-official-details-2026-11-09` |
+| #613 | `catalog/source-reconciliation-followup-2026-11-09` | `catalog/requested-brand-harvest-2026-11-08` |
+| #614 | `work/lattafa-nine-launches-2026-11-09` | `catalog/afnan-stardust-detail-variant-2026-11-09` |
+| #615 | `work/alwataniah-ten-details-2026-11-09` | `work/lattafa-nine-launches-2026-11-09` |
+| #616 | `work/alwataniah-twenty-details-2026-11-09` | `work/alwataniah-ten-details-2026-11-09` |
+| #617 | `work/paris-corner-eleven-details-2026-11-09` | `work/alwataniah-ten-details-2026-11-09` |
+| #618 | `work/alwataniah-evidence-batch-2026-11-09` | `work/alwataniah-twenty-details-2026-11-09` |
+| #619 | `work/paris-corner-four-details-2026-11-09` | `work/paris-corner-eleven-details-2026-11-09` |
+
+The audit uses each PR's declared base branch, so inherited records are not counted as direct additions. It is read-only and will report conflicting product/variant IDs without choosing winners automatically.
+
+**CI result for this 39-PR candidate set:** pending on the audit branch; no merge is performed.
