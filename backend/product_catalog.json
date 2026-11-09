@@ -4569,8 +4569,8 @@
     },
     {
       "product_id": "SH-GULF-ORCHID-2e9b4429",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
       "canonical_name": "Vanilla Aura",
       "name": "Vanilla Aura",
       "family_id": "gulf_orchid_catalog",
@@ -4579,8 +4579,12 @@
         "Vanilla Aura",
         "Gulf Orchid Vanilla Aura"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/products/vanilla-aura"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-dd53546f",
@@ -12952,14 +12956,18 @@
         "Al Qasr",
         "Gulf Orchid Al Qasr"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "source_evidence_url": "https://shop-gulforchid.com/collections",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-93df94e2",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
       "canonical_name": "Asala",
       "name": "Asala",
       "family_id": "gulf_orchid_catalog",
@@ -12969,13 +12977,13 @@
         "Gulf Orchid Asala"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
+      "source_url": "https://shop-gulforchid.com/collections/asala-collection",
       "source_evidence_url": "https://shop-gulforchid.com/collections"
     },
     {
       "product_id": "SH-GULF-ORCHID-fdd3dac0",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
       "canonical_name": "Hamsat",
       "name": "Hamsat",
       "family_id": "gulf_orchid_catalog",
@@ -12985,7 +12993,7 @@
         "Gulf Orchid Hamsat"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
+      "source_url": "https://shop-gulforchid.com/collections/hamsat-collection",
       "source_evidence_url": "https://shop-gulforchid.com/collections"
     },
     {
@@ -13000,14 +13008,18 @@
         "Hikma",
         "Gulf Orchid Hikma"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/hikma-by-gulf-orchid-eau-de-parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/collections",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        110
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-bbaba4ee",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
       "canonical_name": "Jawhara",
       "name": "Jawhara",
       "family_id": "gulf_orchid_catalog",
@@ -13017,13 +13029,13 @@
         "Gulf Orchid Jawhara"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
+      "source_url": "https://shop-gulforchid.com/collections/jawhara-collection",
       "source_evidence_url": "https://shop-gulforchid.com/collections"
     },
     {
       "product_id": "SH-GULF-ORCHID-aca1784d",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
       "canonical_name": "Jewel",
       "name": "Jewel",
       "family_id": "gulf_orchid_catalog",
@@ -13033,7 +13045,7 @@
         "Gulf Orchid Jewel"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
+      "source_url": "https://shop-gulforchid.com/collections/jewel-collection",
       "source_evidence_url": "https://shop-gulforchid.com/collections"
     },
     {
@@ -13048,14 +13060,18 @@
         "Riwaya",
         "Gulf Orchid Riwaya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/riwaya_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/collections",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-1a6e26f4",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
       "canonical_name": "Turath",
       "name": "Turath",
       "family_id": "gulf_orchid_catalog",
@@ -13064,14 +13080,18 @@
         "Turath",
         "Gulf Orchid Turath"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml",
+      "source_evidence_url": "https://shop-gulforchid.com/collections",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-0aca84c2",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
+      "brand": "Maison Asrar",
+      "brand_name": "Maison Asrar",
       "canonical_name": "Vanilla Voyage",
       "name": "Vanilla Voyage",
       "family_id": "gulf_orchid_catalog",
@@ -13080,8 +13100,8 @@
         "Vanilla Voyage",
         "Gulf Orchid Vanilla Voyage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
       "source_evidence_url": "https://shop-gulforchid.com/collections"
     },
     {
@@ -38141,6 +38161,61 @@
       "variant_id": "SHV-SH-GULF-ORCHID-STORE-003-60-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-4133b3ae",
+      "size_ml": 100,
+      "aliases": [
+        "Al Qasr 100 ml",
+        "Gulf Orchid Al Qasr 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-4133b3ae-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-6f46ab28",
+      "size_ml": 110,
+      "aliases": [
+        "Hikma 110 ml",
+        "Gulf Orchid Hikma 110ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-6f46ab28-110-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/hikma-by-gulf-orchid-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-e2e348cd",
+      "size_ml": 100,
+      "aliases": [
+        "Riwaya 100 ml",
+        "Gulf Orchid Riwaya 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-e2e348cd-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/riwaya_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-1a6e26f4",
+      "size_ml": 100,
+      "aliases": [
+        "Turath 100 ml",
+        "Maison Asrar Turath 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-1a6e26f4-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-2e9b4429",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Aura 100 ml",
+        "Maison Asrar Vanilla Aura 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-2e9b4429-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla-aura"
     }
   ]
 }
