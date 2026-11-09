@@ -48,6 +48,7 @@ class MaisonAsrarLockAndKeyTests(unittest.TestCase):
         self.assertEqual(black_grapefruit[0]["source_url"], "https://maisonasrar.com/products/black-eau-de-perfum-100ml")
         self.assertIn("Black", black_grapefruit[0]["aliases"])
         self.assertEqual(black_grapefruit[0]["formats_ml"], [100])
+        self.assertFalse(any(p["canonical_name"] == "Black" for p in products))
 
         # The official listing calls this fragrance "Bloom Bloom", not "Bloom".
         self.assertFalse(any(p["canonical_name"] == "Bloom" for p in products))
