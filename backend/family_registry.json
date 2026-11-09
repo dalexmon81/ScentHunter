@@ -14626,6 +14626,126 @@
           "aliases": [
             "Sceptre Oceana"
           ]
+        },
+        {
+          "canonical_name": "Dominate Absolu",
+          "aliases": [
+            "Dominate Absolu"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "La Rouge Baroque Extreme",
+          "aliases": [
+            "La Rouge Baroque Extreme"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "La Rouge Baroque",
+          "aliases": [
+            "La Rouge Baroque"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Salvo",
+          "aliases": [
+            "Salvo"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Sugar Me Marshmallow Dream",
+          "aliases": [
+            "Sugar Me Marshmallow Dream"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Jean Lowe Maitre",
+          "aliases": [
+            "Jean Lowe Maitre"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Sugar Me Dulce De Leche",
+          "aliases": [
+            "Sugar Me Dulce De Leche"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Kismet Magic",
+          "aliases": [
+            "Kismet Magic"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Sugar Me Carrot Cake",
+          "aliases": [
+            "Sugar Me Carrot Cake"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Unknown Deep Woods",
+          "aliases": [
+            "Unknown Deep Woods"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Sugar Me Pistachio Chocolate",
+          "aliases": [
+            "Sugar Me Pistachio Chocolate"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Sugar Me Creme Brulee",
+          "aliases": [
+            "Sugar Me Creme Brulee"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         }
       ]
     },
