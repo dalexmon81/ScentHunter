@@ -338,3 +338,19 @@ Primary sources:
 - Sun Kissed: https://frenchavenue.com/products/aromatix-sunkissed
 
 Regression tests were added to the catalog-seed validation workflow for all ten individual page URLs, explicit concentration/size fields, and the exclusion of gift sets.
+
+## Latest structural snapshot after Aromatix reconciliation — 9 November 2026
+
+The current branch catalog and family registry were parsed again after the Aromatix updates:
+
+- Canonical identities: **2,090**
+- Explicit variants: **381**
+- Fragrance families: **34**
+- Requested-brand identities: **2,087**
+- Aromatix: **12 identities**, 10 with individual official product-page evidence; nine explicit 100 ml variants added in this pass
+- Gulf Orchid: **32 identities**, 14 individually verified with 14 explicit variants
+- Duplicate product IDs, variant IDs and normalized brand/name pairs: **0**
+- Orphan variants, invalid sizes, missing requested-brand source URLs, invalid requested-brand evidence statuses: **0**
+- Catalog identities missing from the family registry: **0**
+
+The three identities outside the 20 requested brands remain Giorgio Armani (1) and Al Ambra (2). These are structural and provenance checks, not a claim of exhaustive worldwide or historical catalog completeness.
