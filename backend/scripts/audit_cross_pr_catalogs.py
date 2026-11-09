@@ -21,6 +21,7 @@ FAMILY_REGISTRY_PATH = "backend/family_registry.json"
 
 # (PR number, head branch, actual PR base branch)
 # Canonical product identity excludes trailing bottle volume; size remains variant metadata.
+# Stacked candidate branches must be refreshed against their declared base before collision analysis.
 CANDIDATE_PRS = (
     (539, "catalog/mykonos-detail-evidence-2026-11-08", BASE_REF),
     (546, "catalog/cumulative-source-reconciled-2026-11-08", "catalog/cumulative-requested-brands-2026-11-08"),
