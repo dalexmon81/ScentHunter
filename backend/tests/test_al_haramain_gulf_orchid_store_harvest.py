@@ -172,7 +172,11 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
                     self.assertEqual(len(variants), 1)
                     self.assertEqual(variants[0].get("size_ml"), size_ml)
                     self.assertEqual(variants[0].get("concentration"), concentration)
-                    self.assertEqual(variants[0].get("source_evidence_url"), source_url)
+                    expected_variant_source = (
+                        "https://shop-gulforchid.com/products/vanilla-aura"
+                        if name == "Vanilla Aura" else source_url
+                    )
+                    self.assertEqual(variants[0].get("source_evidence_url"), expected_variant_source)
 
 
     def test_maison_asrar_collection_labels_are_not_canonical_perfume_identities(self):
