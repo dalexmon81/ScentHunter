@@ -400,3 +400,17 @@ A further review of the fourth and fifth pages of the official perfume-sprays co
 For the 16 pages with explicit EDP size evidence, the catalog now contains one matching variant each. For the other eight, only product identity and source provenance were upgraded; no size, concentration or variant was guessed.
 
 The Maison Asrar count after this batch is **120 canonical identities, 80 individually sourced identities, 40 still at collection-listing confidence, and 52 structured variants**. No canonical products were added or duplicated.
+
+
+### Maison Asrar: final official collection pages (9 November 2026)
+
+The sixth and seventh pages of the brand-owned perfume-sprays collection were checked. Most products on those pages already had individual official provenance from earlier passes. Four additional existing identities were newly matched to direct official pages:
+
+- III Thriller
+- Dubai Milano
+- Dubai London
+- Dubai Miami
+
+Their product identity and source URLs are now verified. The linked product pages do not explicitly state a bottle size or concentration in the URL, so no variants or concentration values were inferred for these four.
+
+The official collection has 74 fragrance listings across its seven pages. The catalog remains broader (120 Maison Asrar identities) because it includes historical and other regional/listing evidence. This pass verifies four more existing identities; it does not claim all 120 are current products in this one storefront collection.
