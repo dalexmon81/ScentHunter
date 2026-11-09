@@ -27,6 +27,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-official-detail-verification-2026-11-09
+      - catalog/gulf-orchid-official-detail-harvest-2026-11-09
 
 permissions:
   contents: read
