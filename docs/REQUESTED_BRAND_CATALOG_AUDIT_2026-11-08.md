@@ -354,3 +354,24 @@ The current branch catalog and family registry were parsed again after the Aroma
 - Catalog identities missing from the family registry: **0**
 
 The three identities outside the 20 requested brands remain Giorgio Armani (1) and Al Ambra (2). These are structural and provenance checks, not a claim of exhaustive worldwide or historical catalog completeness.
+
+### Mykonos: official storefront product-page reconciliation (9 November 2026)
+
+The official MYKONOS `/collections/all` storefront reports 54 listings across four pages. Fifty-three are standalone named fragrance products; the remaining listing is a shared **Travel Size 15ML** product page with selectable fragrance options, not a separate fragrance identity. All 53 named current-storefront fragrances were matched to their existing canonical identities and upgraded to individual product-page provenance. Nineteen additional Mykonos seed identities were retained as historical/listing-level records and were not falsely upgraded.
+
+The 53 reconciled identities are: Aphrodite, Baby Love, Black Opera, Bonfire Vanilla, Cafe Drops, California Blue, California Club, California, Caramel Fudge Cookie, Coconut Dreams, Conquer, Constantine, Crimson, Dark Secret, Dreamscape, Enchanted, Hawaiian Crush, Imperium, Inception, Inferno, Luminos, Marbella, Matcha Latte, Mayfair, Milk Drops, Monaco Royale, Moroccan Vanilla, Musk Aura, Nautilus, On The Rocks, Paradise, Penthouse, Pink Beach, Pink Drops, Reflection Elixir, Reflection, Royal Ispahan, Satin Blanc, Senja, Silent Whisper, Slow Living, Sorrento, Sparkling Rosé, Stilettos, Untamed, Utopia, Vanilla Clouds, Verve, Xoxo Rosy, MyEgo, Empire x RRQ, Glitch and Invade.
+
+All 53 product rows now use their own official product-detail URL as source, and existing 50 ml / 100 ml variant records are linked to the corresponding detail page. The shared 15 ml travel-size page explicitly lists selectable options including Dark Secret, Satin Blanc, Sparkling Rose, Sansa, Musk Aura, Black Opera, Moroccan Vanilla, Affair, Utopia, Tea Poetry, Hawaiian Crush, On The Rocks, Royal Ispahan, Crimson, California, California Blue, Penthouse and Monaco Royale. Existing 15 ml variants are retained only against this explicit option list and keep the shared travel-size page as their evidence URL.
+
+Two source-page inconsistencies were deliberately not guessed away:
+- **Vanilla Clouds:** the page title and URL call it Extrait de Parfum, but the product-description text calls it EDP. Its identity and 50 ml size are verified; concentration has been left unset pending authoritative clarification.
+- **Slow Living:** the product page title explicitly distinguishes 50 ml EDP from 100 ml Extrait de Parfum. The two concentrations are represented at variant level, not flattened into one concentration for the whole identity.
+
+The catalog still contains 72 Mykonos identities: 53 current named storefront fragrances and 19 retained older/listing-level identities. The official storefront reports all 54 listings out of stock at the time checked; no prices or live availability were copied into ScentHunter's canonical identity seed.
+
+Primary source:
+- Official all-products collection (54 listings): https://officialmykonos.com/collections/all
+- Official 15 ml travel-size options: https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml
+- Official collection pagination: https://officialmykonos.com/collections/all?page=2 ; https://officialmykonos.com/collections/all?page=3 ; https://officialmykonos.com/collections/all?page=4
+
+Regression coverage verifies the 53 individual source URLs, identity status, source evidence for variants, the shared 15 ml options, and the unresolved Vanilla Clouds concentration conflict.
