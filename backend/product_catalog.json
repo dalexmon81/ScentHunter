@@ -32560,10 +32560,15 @@
         "Ameeri",
         "Al Wataniah Ameeri"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/ameeri",
+      "source_evidence_url": "https://www.alwataniah.com/products/ameeri",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/ameeri",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-OUD-MYSTERY-INTENSE",
@@ -32628,10 +32633,15 @@
         "Sultan Al Lail",
         "Al Wataniah Sultan Al Lail"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/sultan-al-lail",
+      "source_evidence_url": "https://www.alwataniah.com/products/sultan-al-lail",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/sultan-al-lail",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-LAYL",
@@ -37705,6 +37715,28 @@
       "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-EXTRAIT-10-EXTRAIT",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AMEERI",
+      "size_ml": 100,
+      "aliases": [
+        "Ameeri 100 ml",
+        "Al Wataniah Ameeri 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AMEERI-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/ameeri"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SULTAN-AL-LAIL",
+      "size_ml": 100,
+      "aliases": [
+        "Sultan Al Lail 100 ml",
+        "Al Wataniah Sultan Al Lail 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SULTAN-AL-LAIL-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/sultan-al-lail"
     }
   ]
 }
