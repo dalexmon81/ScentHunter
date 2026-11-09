@@ -33882,7 +33882,7 @@
       ]
     },
     {
-      "product_id": "SH-GULF-ORCHID-AL-QASR",
+      "product_id": "SH-GULF-ORCHID-4133b3ae",
       "brand": "Gulf Orchid",
       "brand_name": "Gulf Orchid",
       "canonical_name": "Al Qasr",
@@ -34584,7 +34584,7 @@
       ]
     },
     {
-      "product_id": "SH-GULF-ORCHID-RIWAYA",
+      "product_id": "SH-GULF-ORCHID-e2e348cd",
       "brand": "Gulf Orchid",
       "brand_name": "Gulf Orchid",
       "canonical_name": "Riwaya",
@@ -38082,13 +38082,13 @@
       "source_evidence_url": "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum"
     },
     {
-      "product_id": "SH-GULF-ORCHID-AL-QASR",
+      "product_id": "SH-GULF-ORCHID-4133b3ae",
       "size_ml": 100,
       "aliases": [
         "Al Qasr 100 ml",
         "Gulf Orchid Al Qasr 100ml"
       ],
-      "variant_id": "SHV-SH-GULF-ORCHID-AL-QASR-100-000",
+      "variant_id": "SHV-SH-GULF-ORCHID-4133b3ae-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver"
     },
@@ -38456,13 +38456,13 @@
       "source_evidence_url": "https://shop-gulforchid.com/products/riwaya_chapter_1_brown_eau_de_parfum"
     },
     {
-      "product_id": "SH-GULF-ORCHID-RIWAYA",
+      "product_id": "SH-GULF-ORCHID-e2e348cd",
       "size_ml": 100,
       "aliases": [
         "Riwaya 100 ml",
         "Gulf Orchid Riwaya 100ml"
       ],
-      "variant_id": "SHV-SH-GULF-ORCHID-RIWAYA-100-000",
+      "variant_id": "SHV-SH-GULF-ORCHID-e2e348cd-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/riwaya_eau_de_parfum"
     },
