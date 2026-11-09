@@ -16,6 +16,7 @@ on:
       - catalog/afnan-stardust-detail-variant-2026-11-09
       - work/lattafa-nine-launches-2026-11-09
       - work/alwataniah-ten-details-2026-11-09
+      - work/paris-corner-eleven-details-2026-11-09
       - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
@@ -26,6 +27,7 @@ on:
     branches:
       - work/alwataniah-ten-details-2026-11-09
       - work/lattafa-nine-launches-2026-11-09
+      - work/paris-corner-eleven-details-2026-11-09
       - catalog/afnan-stardust-detail-variant-2026-11-09
       - catalog/afnan-9-series-official-details-2026-11-09
       - catalog/al-wataniah-five-more-details-2026-11-09
@@ -86,3 +88,7 @@ jobs:
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_velixir_official_storefront
           -v
+
+      - name: Validate Paris Corner eleven official detail variants
+        if: github.head_ref == 'work/paris-corner-eleven-details-2026-11-09'
+        run: python -m unittest backend.tests.test_paris_corner_eleven_official_details -v
