@@ -832,5 +832,72 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("concentration"), concentration)
                     self.assertEqual(matches[0].get("source_evidence_url"), source_url)
 
+
+    def test_aromatix_official_french_avenue_detail_pages_and_100ml_variants(self):
+        expected = {
+            "Carnal Desire": ("https://frenchavenue.com/products/carnal-desire", "Eau de Parfum"),
+            "Forbidden Fruit": ("https://frenchavenue.com/products/aromatix-forbidden-fruit", "Eau de Parfum"),
+            "Frostbite": ("https://frenchavenue.com/products/aromatix-frostbite", "Extrait de Parfum"),
+            "Magnetiq": ("https://frenchavenue.com/products/aromatix-magnetiq", "Eau de Parfum"),
+            "Naughty Dates": ("https://frenchavenue.com/products/aromatix-naughty-dates", "Eau de Parfum"),
+            "Royal Taboo": ("https://frenchavenue.com/products/royal-taboo", "Extrait de Parfum"),
+            "Sun Kissed": ("https://frenchavenue.com/products/aromatix-sunkissed", "Eau de Parfum"),
+            "Teas Me": ("https://frenchavenue.com/products/aromatix-teas-me", "Eau de Parfum"),
+            "X Xandal": ("https://frenchavenue.com/products/aromatix-x-xandal", "Extrait de Parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Aromatix"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("concentration"), concentration)
+                self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
+    def test_aromatix_plantine_blanc_official_identity_without_unsupported_variant(self):
+        rows = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Aromatix"
+            and row.get("canonical_name") == "Plantine Blanc"
+        ]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://frenchavenue.com/products/aromatix-plantine-blanc")
+        self.assertIn("Platine Blanc", row.get("aliases", []))
+        self.assertNotIn("concentration", row)
+        self.assertNotIn("formats_ml", row)
+        self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
+
+    def test_aromatix_ora_and_roza_remain_listing_level_until_official_detail_pages_are_found(self):
+        for name in ("Ora", "Roza"):
+            with self.subTest(name=name):
+                rows = [
+                    row for row in CATALOG.get("products", [])
+                    if row.get("brand_name") == "Aromatix"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(rows), 1)
+                row = rows[0]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("source_url"), "https://www.notino.be/french-avenue/aromatix/")
+                self.assertNotIn("concentration", row)
+                self.assertNotIn("formats_ml", row)
+                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
+
 if __name__ == "__main__":
     unittest.main()
