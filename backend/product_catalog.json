@@ -4261,10 +4261,11 @@
         "Kayaan Classic",
         "Al Wataniah Kayaan Classic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-classic",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-classic",
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-classic"
     },
     {
       "product_id": "SH-AL-WATANIAH-72f22b5d",
@@ -4278,10 +4279,11 @@
         "Kayaan Terra",
         "Al Wataniah Kayaan Terra"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-terra",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-terra",
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-terra"
     },
     {
       "product_id": "SH-AL-WATANIAH-aa339eab",
@@ -4295,10 +4297,11 @@
         "Kayaan Gold",
         "Al Wataniah Kayaan Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-gold",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-gold",
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-gold"
     },
     {
       "product_id": "SH-AL-WATANIAH-22a0e569",
@@ -4312,10 +4315,11 @@
         "Kayaan Midnight",
         "Al Wataniah Kayaan Midnight"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/kayaan-midnight",
       "collection_name": "Eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-midnight",
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-midnight"
     },
     {
       "product_id": "SH-AL-WATANIAH-ccc7d2db",
@@ -4373,10 +4377,11 @@
         "Rose Eclat",
         "Al Wataniah Rose Eclat"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/munchies",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/rose-eclat",
       "collection_name": "Munchies",
-      "source_evidence_url": "https://www.alwataniah.com/collections/munchies"
+      "source_evidence_url": "https://www.alwataniah.com/products/rose-eclat",
+      "source_product_url": "https://www.alwataniah.com/products/rose-eclat"
     },
     {
       "product_id": "SH-AL-WATANIAH-3546ccd8",
@@ -32565,10 +32570,11 @@
         "Sabah Al Ward",
         "Al Wataniah Sabah Al Ward"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/sabah-al-ward",
+      "source_evidence_url": "https://www.alwataniah.com/products/sabah-al-ward",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/sabah-al-ward"
     },
     {
       "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-SUGAR",
@@ -32582,10 +32588,11 @@
         "Sabah Al Ward Sugar",
         "Al Wataniah Sabah Al Ward Sugar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/saba-al-ward-sugar",
+      "source_evidence_url": "https://www.alwataniah.com/products/saba-al-ward-sugar",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/saba-al-ward-sugar"
     },
     {
       "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL",
@@ -32599,10 +32606,11 @@
         "Attar Al Wesal",
         "Al Wataniah Attar Al Wesal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/attar-al-wesal",
+      "source_evidence_url": "https://www.alwataniah.com/products/attar-al-wesal",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/attar-al-wesal"
     },
     {
       "product_id": "SH-AL-WATANIAH-SPECIAL-OUD",
@@ -32616,10 +32624,11 @@
         "Special Oud",
         "Al Wataniah Special Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/special-oud",
+      "source_evidence_url": "https://www.alwataniah.com/products/special-oud",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/special-oud"
     },
     {
       "product_id": "SH-AL-WATANIAH-DURRAT-AL-AROOS",
@@ -32701,10 +32710,11 @@
         "Ameerati",
         "Al Wataniah Ameerati"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/ameerati",
+      "source_evidence_url": "https://www.alwataniah.com/products/ameerati",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/ameerati"
     },
     {
       "product_id": "SH-AL-WATANIAH-AMEERI",
@@ -33604,10 +33614,11 @@
         "Ain Emarat",
         "Al Wataniah Ain Emarat"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/ain-emarat",
+      "source_evidence_url": "https://www.alwataniah.com/products/ain-emarat",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/ain-emarat"
     },
     {
       "product_id": "SH-AL-WATANIAH-AIN-EMARAT-EXTRAIT",
@@ -33621,10 +33632,11 @@
         "Ain Emarat Extrait",
         "Al Wataniah Ain Emarat Extrait"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/ain-emarat-extrait",
+      "source_evidence_url": "https://www.alwataniah.com/products/ain-emarat-extrait",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/ain-emarat-extrait"
     },
     {
       "product_id": "SH-AL-WATANIAH-ARYA",
@@ -33638,10 +33650,11 @@
         "Arya",
         "Al Wataniah Arya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/arya",
+      "source_evidence_url": "https://www.alwataniah.com/products/arya",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/arya"
     },
     {
       "product_id": "SH-AL-WATANIAH-ARYA-PEONY-ROSE",
@@ -33655,10 +33668,11 @@
         "Arya Peony Rose",
         "Al Wataniah Arya Peony Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/arya-peony-rose",
+      "source_evidence_url": "https://www.alwataniah.com/products/arya-peony-rose",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/arya-peony-rose"
     },
     {
       "product_id": "SH-AL-WATANIAH-ROYAL-OAK-I",
@@ -33672,10 +33686,11 @@
         "Royal Oak I",
         "Al Wataniah Royal Oak I"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/royal-oak-i",
+      "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-i",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/royal-oak-i"
     },
     {
       "product_id": "SH-AL-WATANIAH-ROYAL-OAK-II",
@@ -33689,10 +33704,11 @@
         "Royal Oak II",
         "Al Wataniah Royal Oak II"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/royal-oak-ii",
+      "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-ii",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/royal-oak-ii"
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-DAIEM",
@@ -33706,10 +33722,11 @@
         "Al Daiem",
         "Al Wataniah Al Daiem"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/al-daiem",
+      "source_evidence_url": "https://www.alwataniah.com/products/al-daiem",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/al-daiem"
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-DAIEM-ELIXIR",
@@ -33723,10 +33740,11 @@
         "Al Daiem Elixir",
         "Al Wataniah Al Daiem Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/al-daiem-elixir",
+      "source_evidence_url": "https://www.alwataniah.com/products/al-daiem-elixir",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/al-daiem-elixir"
     },
     {
       "product_id": "SH-AL-WATANIAH-MASSAD-ROYALE",
@@ -33757,10 +33775,11 @@
         "Praline Toffee",
         "Al Wataniah Praline Toffee"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/munchies",
-      "source_evidence_url": "https://www.alwataniah.com/collections/munchies",
-      "collection_name": "Munchies"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/praline-toffee",
+      "source_evidence_url": "https://www.alwataniah.com/products/praline-toffee",
+      "collection_name": "Munchies",
+      "source_product_url": "https://www.alwataniah.com/products/praline-toffee"
     },
     {
       "product_id": "SH-AL-WATANIAH-GOLDEN-HONEY",
