@@ -414,3 +414,10 @@ The sixth and seventh pages of the brand-owned perfume-sprays collection were ch
 Their product identity and source URLs are now verified. The linked product pages do not explicitly state a bottle size or concentration in the URL, so no variants or concentration values were inferred for these four.
 
 The official collection has 74 fragrance listings across its seven pages. The catalog remains broader (120 Maison Asrar identities) because it includes historical and other regional/listing evidence. This pass verifies four more existing identities; it does not claim all 120 are current products in this one storefront collection.
+
+
+### Maison Asrar duplicate identity reconciliation: Black / Black Grapefruit (9 November 2026)
+
+The source review exposed two catalog identities for the same fragrance: **Black** (retailer/listing provenance) and **Black Grapefruit** (official collection listing). The official collection links Black Grapefruit to the individual Maison Asrar product page titled **BLACK**; the page's scent profile explicitly names grapefruit, lavender and tonka, matching the collection card. The independent retailer's Black page also reproduces the brand's same note pyramid.
+
+The duplicate canonical **Black** row was removed from both `product_catalog.json` and `family_registry.json`. **Black Grapefruit** remains the canonical product, with **Black** retained as an alias and its official 100 ml EDP variant. This reduces Maison Asrar from 120 to **119 distinct canonical identities** without losing a fragrance or variant.
