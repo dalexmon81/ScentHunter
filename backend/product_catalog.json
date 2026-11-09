@@ -3990,8 +3990,13 @@
         "90s",
         "Assaf 90s"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/90s-perfume",
+      "source_evidence_url": "https://assaf.ae/products/90s-perfume",
+      "source_product_url": "https://assaf.ae/products/90s-perfume",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ASSAF-10bfc454",
@@ -4039,8 +4044,13 @@
         "Alexandra",
         "Assaf Alexandra"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/alexandra",
+      "source_evidence_url": "https://assaf.ae/products/alexandra",
+      "source_product_url": "https://assaf.ae/products/alexandra",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ASSAF-bc16d798",
@@ -4054,8 +4064,13 @@
         "Arkle",
         "Assaf Arkle"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arkle",
+      "source_evidence_url": "https://assaf.ae/products/arkle",
+      "source_product_url": "https://assaf.ae/products/arkle",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-78a3a8a3",
@@ -4088,8 +4103,13 @@
         "Tobacco Jam 60",
         "Assaf Tobacco Jam 60"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/tobacco-jam-60",
+      "source_evidence_url": "https://assaf.ae/products/tobacco-jam-60",
+      "source_product_url": "https://assaf.ae/products/tobacco-jam-60",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ASSAF-df03f113",
@@ -4103,8 +4123,14 @@
         "Tobacco Pacha",
         "Assaf Tobacco Pacha"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/tobacco-pacha-100ml",
+      "source_evidence_url": "https://assaf.ae/products/tobacco-pacha-100ml",
+      "source_product_url": "https://assaf.ae/products/tobacco-pacha-100ml",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ASSAF-4a0cf8d6",
@@ -4118,8 +4144,13 @@
         "Tobacco Rage 32",
         "Assaf Tobacco Rage 32"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/tobacco-rage-32",
+      "source_evidence_url": "https://assaf.ae/products/tobacco-rage-32",
+      "source_product_url": "https://assaf.ae/products/tobacco-rage-32",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ASSAF-1e1edc5e",
@@ -4151,8 +4182,15 @@
         "Wanted Lady",
         "Assaf Wanted Lady"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/edp-wanted-lady-100-ml",
+      "source_evidence_url": "https://assaf.ae/products/edp-wanted-lady-100-ml",
+      "source_product_url": "https://assaf.ae/products/edp-wanted-lady-100-ml",
+      "gender": "Women",
+      "formats_ml": [
+        100,
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-0bc20939",
@@ -4166,8 +4204,13 @@
         "Warrior",
         "Assaf Warrior"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/warrior",
+      "source_evidence_url": "https://assaf.ae/products/warrior",
+      "source_product_url": "https://assaf.ae/products/warrior",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-05c40179",
@@ -48542,6 +48585,105 @@
       "variant_id": "SHV-SH-BUJAIRAMI-LYCHEE-100-000",
       "source_url": "https://bujairami.ae/products/lychee-inspired-by-sparkling-lychee-eden-39-from-kayali-fragrances",
       "source_evidence_url": "https://bujairami.ae/products/lychee-inspired-by-sparkling-lychee-eden-39-from-kayali-fragrances"
+    },
+    {
+      "product_id": "SH-ASSAF-9c4d699d",
+      "size_ml": 100,
+      "aliases": [
+        "90s 100 ml",
+        "Assaf 90s 100 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-9c4d699d-100-000",
+      "source_url": "https://assaf.ae/products/90s-perfume",
+      "source_evidence_url": "https://assaf.ae/products/90s-perfume"
+    },
+    {
+      "product_id": "SH-ASSAF-004d8117",
+      "size_ml": 100,
+      "aliases": [
+        "Alexandra 100 ml",
+        "Assaf Alexandra 100 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-004d8117-100-000",
+      "source_url": "https://assaf.ae/products/alexandra",
+      "source_evidence_url": "https://assaf.ae/products/alexandra"
+    },
+    {
+      "product_id": "SH-ASSAF-bc16d798",
+      "size_ml": 200,
+      "aliases": [
+        "Arkle 200 ml",
+        "Assaf Arkle 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-bc16d798-200-000",
+      "source_url": "https://assaf.ae/products/arkle",
+      "source_evidence_url": "https://assaf.ae/products/arkle"
+    },
+    {
+      "product_id": "SH-ASSAF-f67c896e",
+      "size_ml": 100,
+      "aliases": [
+        "Tobacco Jam 60 100 ml",
+        "Assaf Tobacco Jam 60 100 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-f67c896e-100-000",
+      "source_url": "https://assaf.ae/products/tobacco-jam-60",
+      "source_evidence_url": "https://assaf.ae/products/tobacco-jam-60"
+    },
+    {
+      "product_id": "SH-ASSAF-df03f113",
+      "size_ml": 100,
+      "aliases": [
+        "Tobacco Pacha 100 ml",
+        "Assaf Tobacco Pacha 100 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-df03f113-100-000",
+      "source_url": "https://assaf.ae/products/tobacco-pacha-100ml",
+      "source_evidence_url": "https://assaf.ae/products/tobacco-pacha-100ml"
+    },
+    {
+      "product_id": "SH-ASSAF-4a0cf8d6",
+      "size_ml": 100,
+      "aliases": [
+        "Tobacco Rage 32 100 ml",
+        "Assaf Tobacco Rage 32 100 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-4a0cf8d6-100-000",
+      "source_url": "https://assaf.ae/products/tobacco-rage-32",
+      "source_evidence_url": "https://assaf.ae/products/tobacco-rage-32"
+    },
+    {
+      "product_id": "SH-ASSAF-d981a71a",
+      "size_ml": 100,
+      "aliases": [
+        "Wanted Lady 100 ml",
+        "Assaf Wanted Lady 100 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-d981a71a-100-000",
+      "source_url": "https://assaf.ae/products/edp-wanted-lady-100-ml",
+      "source_evidence_url": "https://assaf.ae/products/edp-wanted-lady-100-ml"
+    },
+    {
+      "product_id": "SH-ASSAF-d981a71a",
+      "size_ml": 200,
+      "aliases": [
+        "Wanted Lady 200 ml",
+        "Assaf Wanted Lady 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-d981a71a-200-000",
+      "source_url": "https://assaf.ae/products/wanted-lady",
+      "source_evidence_url": "https://assaf.ae/products/wanted-lady"
+    },
+    {
+      "product_id": "SH-ASSAF-0bc20939",
+      "size_ml": 200,
+      "aliases": [
+        "Warrior 200 ml",
+        "Assaf Warrior 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-0bc20939-200-000",
+      "source_url": "https://assaf.ae/products/warrior",
+      "source_evidence_url": "https://assaf.ae/products/warrior"
     }
   ]
 }
