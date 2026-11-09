@@ -8905,6 +8905,26 @@
             "Uniq Effects of Uniq",
             "Armaf Uniq Effects of Uniq"
           ]
+        },
+        {
+          "canonical_name": "Dunescape Dubai",
+          "aliases": [
+            "Dunescape Dubai"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Extrait de Parfum"
+        },
+        {
+          "canonical_name": "Check Mate White Knight",
+          "aliases": [
+            "Check Mate White Knight"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         }
       ]
     },
