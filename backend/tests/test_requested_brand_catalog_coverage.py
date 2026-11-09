@@ -724,5 +724,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertIn(key, registered)
 
 
+    def test_maison_alhambra_avant_official_page_and_100ml_variant(self):
+        self._assert_maison_alhambra_verified_variant(
+            "Avant",
+            "https://maisonalhambra-usa.com/products/maison-alhambra-avant-eau-de-parfum-for-everyone",
+            "6291107459110",
+        )
+
+    def test_maison_alhambra_camille_official_page_and_100ml_variant(self):
+        self._assert_maison_alhambra_verified_variant(
+            "Camille",
+            "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+            "6290360599236",
+        )
+
+    def _assert_maison_alhambra_verified_variant(self, name, source_url, gtin):
+        rows = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+            and row.get("canonical_name") == name
+        ]
+        self.assertEqual(len(rows), 1)
+        product = rows[0]
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), source_url)
+        self.assertEqual(product.get("concentration"), "Eau de Parfum")
+        self.assertIn(100, product.get("formats_ml", []))
+        matches = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == product["product_id"]
+            and row.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(matches[0].get("gtin"), gtin)
+        self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
+
 if __name__ == "__main__":
     unittest.main()
