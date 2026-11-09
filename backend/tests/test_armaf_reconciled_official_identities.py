@@ -44,6 +44,7 @@ class ArmafReconciledOfficialIdentityTests(unittest.TestCase):
         french = next(p for p in CATALOG["products"] if p.get("product_id") == EXPECTED["Odyssey French Kiss"][0])
         self.assertIn("https://cz.armaf.eu/products/odyssey-french-kiss", french["source_evidence_url"])
         check = next(p for p in CATALOG["products"] if p.get("product_id") == EXPECTED["Check Mate White Knight"][0])
+        self.assertIn("Check Mate White Knight", check["aliases"])
         self.assertIn("Check Mate White - Knight", check["aliases"])
 
     def test_family_registry_has_one_entry_per_new_identity(self):
