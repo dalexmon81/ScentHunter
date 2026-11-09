@@ -408,3 +408,25 @@ The second page of Maison Asrar's official New Arrivals collection was opened an
 The inspected Maison Asrar detail pages confirm the individual product identities, but do not expose explicit size/concentration fields in their page content. Therefore no new variant data was inferred. Vanilla Aura retains its already documented 100 ml Eau de Parfum variant, whose evidence URL remains the Gulf Orchid storefront detail page that explicitly states those variant attributes; the Maison Asrar page is now the product-level identity source.
 
 Regression coverage checks all 12 official URLs, source status, and the deliberate absence of unsupported variants.
+
+
+### Maison Asrar: third new-arrivals page individual-detail reconciliation (9 November 2026)
+
+The third page of the official Maison Asrar New Arrivals collection was opened. Its 12 perfume cards were matched to existing canonical identities, and all 12 now point to their individual Maison Asrar product pages with `source_verified_name` status:
+
+- Khayyal — https://maisonasrar.com/products/khayyal
+- Mohra — https://maisonasrar.com/products/mohrab
+- Hikaya — https://maisonasrar.com/products/hikaya
+- Hilm — https://maisonasrar.com/products/hilm
+- Cascade — https://maisonasrar.com/products/cascade
+- Tornado — https://maisonasrar.com/products/tornado
+- Wadi — https://maisonasrar.com/products/wadi
+- DXB — https://maisonasrar.com/products/dxb
+- Legacy — https://maisonasrar.com/products/legacy
+- Vanilla Voyage — https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum
+- Vision — https://maisonasrar.com/products/vision
+- Oh Honey! — https://maisonasrar.com/products/oh-honey-eau-de-parfum
+
+These individual detail pages confirm the product identities, but the inspected page content did not explicitly expose size/concentration. No variants or concentration fields were inferred. Existing product IDs and variant counts are unchanged. Vanilla Voyage's previous retailer-backed identity URL was replaced by the brand's own product page; it still has no variant because no size was explicitly confirmed in the inspected page.
+
+Regression coverage checks the 12 official URLs and ensures no unsupported sizes or concentrations are introduced.
