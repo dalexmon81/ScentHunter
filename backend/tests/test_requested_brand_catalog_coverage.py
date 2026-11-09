@@ -1566,5 +1566,47 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("gtin"), gtin)
 
 
+    def test_maison_alhambra_official_storefront_batch_a_pages_gtins_and_variants(self):
+        expected = {
+            "Afro Leather": ("https://maisonalhambra-usa.com/products/maison-alhambra-afro-leather-eau-de-parfum-for-everyone", 80, "6291108736081"),
+            "Alpine Homme Sport": ("https://maisonalhambra-usa.com/products/maison-alhambra-alpine-homme-sport-eau-de-parfum-for-men", 100, "6291108735879"),
+            "Anarch": ("https://maisonalhambra-usa.com/products/maison-alhambra-anarch-eau-de-parfum-for-everyone", 100, "6291107459080"),
+            "Anchor Black": ("https://maisonalhambra-usa.com/products/maison-alhambra-anchor-black-eau-de-parfum-for-men", 100, "6291108730058"),
+            "Aquilo": ("https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men", 100, "6291108735886"),
+            "Aromatic Rouge": ("https://maisonalhambra-usa.com/products/maison-alhambra-aromatic-rouge-eau-de-parfum-for-women", 100, "6291107459097"),
+            "Athena": ("https://maisonalhambra-usa.com/products/maison-alhambra-athena-eau-de-parfum-for-women", 100, "6290360599243"),
+            "Aura D'Eclat": ("https://maisonalhambra-usa.com/products/maison-alhambra-aura-declat-eau-de-parfum-for-women", 100, "6291107459103"),
+            "Avant Ruby": ("https://maisonalhambra-usa.com/products/maison-alhambra-avant-ruby-eau-de-parfum-for-women", 100, "6290362343134"),
+            "Avant Silk": ("https://maisonalhambra-usa.com/products/maison-alhambra-avant-silk-eau-de-parfum-for-everyone", 100, "6290362340768"),
+            "Baroque Satin Oud": ("https://maisonalhambra-usa.com/products/maison-alhambra-baroque-satin-oud-eau-de-parfum-for-everyone", 100, "6291108736050"),
+            "Berlinetta": ("https://maisonalhambra-usa.com/products/maison-alhambra-berlinetta-eau-de-parfum-for-everyone", 100, "6291107459158"),
+            "Black Origami": ("https://maisonalhambra-usa.com/products/maison-alhambra-black-origami-eau-de-parfum-for-everyone", 100, "6291108730065"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size, gtin) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertIn(size, row.get("formats_ml", []))
+                self.assertIn(gtin, row.get("gtins", []))
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                    and variant.get("size_ml") == size
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("gtin"), gtin)
+                self.assertEqual(matches[0].get("source_url"), source)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
