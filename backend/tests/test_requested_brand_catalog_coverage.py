@@ -36,9 +36,9 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 141,
     "Games of Spades": 32,
-    "Maison Alhambra": 214,
+    "Maison Alhambra": 226,
     "Mykonos": 72,
-    "Armaf": 217,
+    "Armaf": 218,
 }
 
 
@@ -2289,6 +2289,45 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(matching), 1)
                 self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
+    def test_maison_alhambra_nine_official_new_product_pages_and_variants(self):
+        expected = {
+            "Queenstown Intense": ("https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-queenstown-intense-eau-de-parfum-for-women", 100, "Women", "6290362340911"),
+            "Vogue Night": ("https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-night-eau-de-parfum-for-women", 100, "Women", "6290360598673"),
+            "Vogue Rouge": ("https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-vogue-rouge-eau-de-parfum-for-women", 100, "Women", "6290360598697"),
+            "Pink Eclipse": ("https://maisonalhambra-usa.com/collections/fragrances-for-her/products/maison-alhambra-pink-eclipse-eau-de-parfum-for-women", 100, "Women", "6290362340577"),
+            "True Word": ("https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-true-word-eau-de-parfum-for-men", 100, "Men", "6290362340959"),
+            "Galactic Elixir": ("https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-elixir-eau-de-parfum-for-men", 100, "Men", "6290362340522"),
+            "Tonic Malt": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone", 80, "Unisex", "6290360599366"),
+            "Tonic Ice": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone", 100, "Unisex", "6290360599359"),
+            "Your Touch Leather": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone", 100, "Unisex", "6290362340997"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size, gender, gtin) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("gender"), gender)
+                self.assertIn(size, row.get("formats_ml", []))
+                self.assertIn(gtin, row.get("gtins", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("gtin"), gtin)
                 self.assertEqual(matching[0].get("source_evidence_url"), source)
 
 
