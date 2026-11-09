@@ -15677,6 +15677,10 @@
           "aliases": [
             "L'Aventure Gold",
             "Al Haramain L'Aventure Gold"
+          ],
+          "formats_ml": [
+            100,
+            200
           ]
         },
         {
@@ -16556,6 +16560,26 @@
           "aliases": [
             "Haramain Miracle Dubai",
             "Al Haramain Miracle Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain ACAI",
+          "aliases": [
+            "Haramain ACAI",
+            "Al Haramain ACAI"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain L'Aventure Sport",
+          "aliases": [
+            "Haramain L'Aventure Sport",
+            "Al Haramain L'Aventure Sport"
           ],
           "formats_ml": [
             100
