@@ -13,8 +13,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
-    # Corrected 2026-11-09 after the multi-brand storefront audit moved six Gulf Orchid products out of Maison Asrar.
-    "Maison Asrar": 115,
+    "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -24,8 +23,8 @@ MINIMUM_BRAND_COUNTS = {
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
     # Corrected 2026-11-09: 16 standalone Gulf Orchid identities remain after moving Maison Asrar products and removing collection labels from the old 23-row storefront harvest.
-    # Corrected 2026-11-09 after six additional Gulf Orchid identities were verified on the Maison Asrar multi-brand storefront.
-    "Gulf Orchid": 22,
+    # Corrected 2026-11-09 after the multi-brand storefront audit removed collection labels and moved Maison Asrar products back to their owner.
+    "Gulf Orchid": 16,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 115,
@@ -1020,6 +1019,39 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     variant.get("product_id") == row["product_id"]
                     for variant in variants
                 ))
+
+
+    def test_maison_asrar_six_products_have_explicit_100_or_110ml_edp_variants(self):
+        expected = {
+            "Emerald": ("https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml", 110, "https://shop-gulforchid.com/products/maison-asrar-emerald-eau-de-parfum-110ml"),
+            "Gold Noir": ("https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum", 110, "https://shop-gulforchid.com/products/gulf-orchid-gold-noir-eau-de-parfum"),
+            "Silver Elixer": ("https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum", 110, "https://shop-gulforchid.com/products/gulf-orchid-silver-elixer-eau-de-parfum"),
+            "Flair": ("https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum", 100, "https://shop-gulforchid.com/products/gulf-orchid-flaire-eau-de-parfum"),
+            "Timeless": ("https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum", 100, "https://shop-gulforchid.com/products/gulf-orchid-timeless-eau-de-parfum"),
+            "Masterpiece": ("https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum", 100, "https://shop-gulforchid.com/products/gulf-orchid-masterpiece-eau-de-parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, variant_url) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matches[0].get("source_evidence_url"), variant_url)
 
 if __name__ == "__main__":
     unittest.main()
