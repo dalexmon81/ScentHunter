@@ -36,7 +36,7 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 141,
     "Games of Spades": 32,
-    "Maison Alhambra": 226,
+    "Maison Alhambra": 227,
     "Mykonos": 72,
     "Armaf": 218,
 }
@@ -2303,6 +2303,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Tonic Malt": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-malt-eau-de-parfum-for-everyone", 80, "Unisex", "6290360599366"),
             "Tonic Ice": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone", 100, "Unisex", "6290360599359"),
             "Your Touch Leather": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone", 100, "Unisex", "6290362340997"),
+            "Aquilo Pour Homme": ("https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men", 100, "Men", "6291108735886"),
         }
         products = {
             row.get("canonical_name"): row
