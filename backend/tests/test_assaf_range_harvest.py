@@ -185,6 +185,11 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Addict Blue",
             "Arrogate Addict",
             "Arrogate Pink Rose",
+            "Attacks",
+            "First Night",
+            "Noble",
+            "I'm Here Enable",
+            "Frankel Imagination",
         }
         for product in self.products:
             if product["product_id"].startswith("SH-ASSAF-HARVEST-") and product["canonical_name"] not in detail_verified:
@@ -213,6 +218,11 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Addict Blue": ({"125"}, "https://assaf.ae/products/addict-blue"),
             "Arrogate Addict": ({"200"}, "https://assaf.ae/products/arrogate-addict-200ml"),
             "Arrogate Pink Rose": ({"150"}, "https://assaf.ae/products/arrogate-pink-rose"),
+            "Attacks": ({"125"}, "https://assaf.ae/products/attacks"),
+            "First Night": ({"150"}, "https://assaf.ae/products/first-night-1"),
+            "Noble": ({"200"}, "https://assaf.ae/products/noble-2"),
+            "I'm Here Enable": ({"150"}, "https://assaf.ae/products/edp-im-here-enable-150ml"),
+            "Frankel Imagination": ({"200"}, "https://assaf.ae/products/frankel-imagination-200"),
         }
         variants = self.catalog["variants"]
         for name, (sizes, source_url) in expected.items():
