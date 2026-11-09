@@ -198,7 +198,7 @@ No source PR is merged or modified by this audit update.
 
 ## Latest catalog PR chain — 2026-11-09
 
-The candidate set is extended from 27 to **39 open catalog PRs**. The additional direct-change branches are:
+The candidate set is extended from 28 to **40 open catalog PRs**. The additional direct-change branches are:
 
 | PR | Head branch | Actual base branch |
 |---:|---|---|
@@ -217,4 +217,4 @@ The candidate set is extended from 27 to **39 open catalog PRs**. The additional
 
 The audit uses each PR's declared base branch, so inherited records are not counted as direct additions. It is read-only and will report conflicting product/variant IDs without choosing winners automatically.
 
-**CI result for this 39-PR candidate set:** pending on the audit branch; no merge is performed.
+**CI result for this 40-PR candidate set:** pending on the audit branch; no merge is performed.
