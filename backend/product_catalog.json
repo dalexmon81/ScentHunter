@@ -8663,9 +8663,17 @@
         "Desirable Addiction",
         "Maison Alhambra Desirable Addiction"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-desirable-addiction-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-desirable-addiction-eau-de-parfum-for-women",
+      "gender": "Women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340805"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-9d939a88",
@@ -9440,9 +9448,17 @@
         "Imperium",
         "Maison Alhambra Imperium"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-imperium-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-imperium-eau-de-parfum-for-everyone",
+      "gender": "Unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290360599274"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-b76e8edf",
@@ -10725,9 +10741,17 @@
         "Narissa Et Moi",
         "Maison Alhambra Narissa Et Moi"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-narissa-et-moi-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-narissa-et-moi-eau-de-parfum-for-women",
+      "gender": "Women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340874"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-97376490",
@@ -43006,6 +43030,48 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/odyssey-dubai-chocolat-copy",
       "source_evidence_url": "https://armaf.com/products/odyssey-dubai-chocolat-copy"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-ee49d273",
+      "size_ml": 100,
+      "aliases": [
+        "Desirable Addiction 100 ml",
+        "Maison Alhambra Desirable Addiction 100 ml",
+        "Maison Alhambra Desirable Addiction 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-ee49d273-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-desirable-addiction-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-desirable-addiction-eau-de-parfum-for-women",
+      "gtin": "6290362340805"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-b771c2de",
+      "size_ml": 100,
+      "aliases": [
+        "Narissa Et Moi 100 ml",
+        "Maison Alhambra Narissa Et Moi 100 ml",
+        "Maison Alhambra Narissa Et Moi 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-b771c2de-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-narissa-et-moi-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-narissa-et-moi-eau-de-parfum-for-women",
+      "gtin": "6290362340874"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-17657c61",
+      "size_ml": 100,
+      "aliases": [
+        "Imperium 100 ml",
+        "Maison Alhambra Imperium 100 ml",
+        "Maison Alhambra Imperium 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-17657c61-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-imperium-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-imperium-eau-de-parfum-for-everyone",
+      "gtin": "6290360599274"
     }
   ]
 }
