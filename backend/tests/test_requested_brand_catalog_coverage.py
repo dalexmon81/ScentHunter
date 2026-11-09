@@ -626,6 +626,55 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matching[0].get("source_evidence_url"), source)
         self.assertNotIn("concentration", matching[0])
 
+    def test_khadlaj_island_dreams_official_page_and_100ml_extrait_variant(self):
+        row = next(
+            (
+                product for product in CATALOG.get("products", [])
+                if product.get("brand_name") == "Khadlaj"
+                and product.get("canonical_name") == "Island Dreams"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        source = "https://khadlaj-perfumes.com/products/island-dreams-100-ml-extrait-de-parfum"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), source)
+        self.assertEqual(row.get("concentration"), "Extrait de Parfum")
+        self.assertIn(100, row.get("formats_ml", []))
+        matches = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+            and variant.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("concentration"), "Extrait de Parfum")
+        self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+    def test_khadlaj_onyx_galaxy_official_100ml_edp_variant(self):
+        row = next(
+            (
+                product for product in CATALOG.get("products", [])
+                if product.get("brand_name") == "Khadlaj"
+                and product.get("canonical_name") == "Onyx Galaxy"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        source = "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), source)
+        self.assertEqual(row.get("concentration"), "Eau de Parfum")
+        self.assertEqual(row.get("gender"), "Men")
+        self.assertIn(100, row.get("formats_ml", []))
+        matches = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+            and variant.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(matches[0].get("source_evidence_url"), source)
+
 
 if __name__ == "__main__":
     unittest.main()
