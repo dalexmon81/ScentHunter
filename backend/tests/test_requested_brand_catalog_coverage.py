@@ -888,5 +888,38 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     if variant.get("product_id") == row["product_id"]
                 ])
 
+    def test_maison_asrar_third_new_arrival_page_has_individual_provenance(self):
+        expected = {
+            "Khayyal": "https://maisonasrar.com/products/khayyal",
+            "Mohra": "https://maisonasrar.com/products/mohrab",
+            "Hikaya": "https://maisonasrar.com/products/hikaya",
+            "Hilm": "https://maisonasrar.com/products/hilm",
+            "Cascade": "https://maisonasrar.com/products/cascade",
+            "Tornado": "https://maisonasrar.com/products/tornado",
+            "Wadi": "https://maisonasrar.com/products/wadi",
+            "DXB": "https://maisonasrar.com/products/dxb",
+            "Vanilla Voyage": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+            "Vision": "https://maisonasrar.com/products/vision",
+            "Oh Honey!": "https://maisonasrar.com/products/oh-honey-eau-de-parfum",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertFalse(row.get("concentration"))
+                self.assertFalse(row.get("formats_ml"))
+                self.assertFalse([
+                    variant for variant in CATALOG.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ])
+
 if __name__ == "__main__":
     unittest.main()
