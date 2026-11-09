@@ -163,13 +163,22 @@ PR #604 adds no new canonical identities. It upgrades 32 existing Al Wataniah id
 - Arya
 - Ain Emarat Extrait
 - Nada
+- Al Daiem Elixir
+- Ameerati
+- Attar Al Wesal
+- Rose Eclat
+- Oud Mystery Intense
+- Sahari
+- Rose Mystery Intense
+- Golden Honey
+- Bareeq Al Dhahab
+- Brownie Bite
 
-The original product IDs are preserved. The family registry and two Al Wataniah regression modules were updated to recognize the verified detail pages and the expanded set of explicit variants. CI initially exposed stale assertions that assumed only two Al Wataniah variants existed; those assertions were updated to distinguish detail-verified identities from collection-only identities.
+The original product IDs are preserved. The family registry and two Al Wataniah regression modules were updated to recognize the verified detail pages and explicit variants. CI initially exposed stale assertions that assumed only two Al Wataniah variants existed; those assertions were corrected to distinguish detail-verified identities from collection-only identities.
 
-- Catalog validation after the full 22-product reconciliation: [run 42628827009](https://github.com/dalexmon81/ScentHunter/actions/runs/42628324185)
+- Catalog validation: [run 42628827009](https://github.com/dalexmon81/ScentHunter/actions/runs/42628827009)
 - Result: **PASS — 145 tests, OK**.
 - Al Wataniah individual-page evidence now covers 34 of the 86 identities in the baseline snapshot (the original two plus 32 upgrades); 52 remain collection-backed.
-- Cross-PR audit: [run 42628477527](https://github.com/dalexmon81/ScentHunter/actions/runs/42628477527); **PASS — 27 candidate PRs, zero conflicting product or variant identities**.
-- Audit regression suite: 136 tests, OK.
+- Cross-PR audit candidate set includes PR #604 (27 candidates total); the latest audit run is recorded below after it completes.
 
 No new product IDs, retailer offers, prices, stock, shipping or deployment changes are included.
