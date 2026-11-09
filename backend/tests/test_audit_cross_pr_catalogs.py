@@ -17,6 +17,6 @@ def test_latest_catalog_prs_are_included_in_cross_pr_audit():
     from backend.scripts.audit_cross_pr_catalogs import CANDIDATE_PRS
 
     candidate_numbers = {number for number, _head, _base in CANDIDATE_PRS}
-    assert {562, 599, 603}.issubset(candidate_numbers)
+    assert {562, 565, 599, 603}.issubset(candidate_numbers)
     assert 578 not in candidate_numbers
     assert 600 not in candidate_numbers
