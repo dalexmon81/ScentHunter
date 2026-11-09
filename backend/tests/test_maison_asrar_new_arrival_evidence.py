@@ -31,6 +31,16 @@ EXPECTED = {
     "Vanilla Aura": "https://maisonasrar.com/products/vanilla-aura",
     "Throne Eclipse": "https://maisonasrar.com/products/throne-eclipse",
     "Throne": "https://maisonasrar.com/products/throne",
+    "Khayyal": "https://maisonasrar.com/products/khayyal",
+    "Hikaya": "https://maisonasrar.com/products/hikaya",
+    "Hilm": "https://maisonasrar.com/products/hilm",
+    "Cascade": "https://maisonasrar.com/products/cascade",
+    "Tornado": "https://maisonasrar.com/products/tornado",
+    "Wadi": "https://maisonasrar.com/products/wadi",
+    "DXB": "https://maisonasrar.com/products/dxb",
+    "Vanilla Voyage": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+    "Vision": "https://maisonasrar.com/products/vision",
+    "Oh Honey!": "https://maisonasrar.com/products/oh-honey-eau-de-parfum",
 }
 
 
