@@ -446,3 +446,16 @@ Coffee Blend, Soirée, Date Night, Oh Honey!, Nada, Qamar, Joy, Rosé Absolute, 
 All 26 now have individual official product provenance. Six product URLs explicitly include **100 ml Eau de Parfum** and therefore gained a matching variant: Joy, Rosé Absolute, Luna, Rey, Hunter and Leo. The remaining 20 retain identity-level verification only. Where the URL identifies Eau de Parfum but omits the size, concentration is recorded but no size or variant is invented.
 
 Maison Asrar now has **119 canonical identities, 114 individually sourced identities, 5 still at collection-listing confidence, and 58 structured variants**. The five remaining listing-only identities require more precise product evidence or a determination that they are historical/discontinued entries.
+
+
+### Maison Asrar: final three direct pages and remaining listing-only identities (9 November 2026)
+
+Exact-name research surfaced official individual pages for three of the five remaining listing-level identities:
+
+- **Omniya** — official individual product page; no size or concentration inferred
+- **Rose** — official individual product page identifies Eau de Parfum; size not stated
+- **Emerald** — official individual product page explicitly identifies **110 ml Eau de Parfum**, so a 110 ml EDP variant was added
+
+The only Maison Asrar identities still at collection-listing confidence are now **Pomme Rouge** and **Haven**. No matching individual product pages were found on the brand domain in this pass; they remain in the catalog as listing-level identities rather than being deleted or assigned invented formats.
+
+Maison Asrar now has **119 canonical identities, 117 individually sourced identities, 2 still at collection-listing confidence, and 59 structured variants**.
