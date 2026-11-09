@@ -34167,6 +34167,106 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-20cd91e6",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Avalon",
+      "name": "Avalon",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Avalon",
+      "aliases": [
+        "Avalon",
+        "Al Haramain Avalon"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/avalon-eau-de-parfum-100ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/avalon-eau-de-parfum-100ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1611224a",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Azure Mythique",
+      "name": "Azure Mythique",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Azure Mythique",
+      "aliases": [
+        "Azure Mythique",
+        "Al Haramain Azure Mythique"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/azure-mythique-eau-de-parfum-100ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/azure-mythique-eau-de-parfum-100ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-a219d2c3",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Gold Crystal Oudh",
+      "name": "Gold Crystal Oudh",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Gold Crystal Oudh",
+      "aliases": [
+        "Gold Crystal Oudh",
+        "Al Haramain Gold Crystal Oudh"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-oudh-spray-100ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-oudh-spray-100ml.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-346f8ea5",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Gold Crystal Sapphire",
+      "name": "Gold Crystal Sapphire",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Gold Crystal Sapphire",
+      "aliases": [
+        "Gold Crystal Sapphire",
+        "Al Haramain Gold Crystal Sapphire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-sapphire-spray-100ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-sapphire-spray-100ml.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-575ce58f",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Acai",
+      "name": "Acai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Acai",
+      "aliases": [
+        "Acai",
+        "Al Haramain Acai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-acai-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-acai-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37380,6 +37480,61 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-6c00b776-200-000",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-20cd91e6",
+      "size_ml": 100,
+      "aliases": [
+        "Avalon 100 ml",
+        "Al Haramain Avalon 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-20cd91e6-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/avalon-eau-de-parfum-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1611224a",
+      "size_ml": 100,
+      "aliases": [
+        "Azure Mythique 100 ml",
+        "Al Haramain Azure Mythique 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1611224a-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/azure-mythique-eau-de-parfum-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-a219d2c3",
+      "size_ml": 100,
+      "aliases": [
+        "Gold Crystal Oudh 100 ml",
+        "Al Haramain Gold Crystal Oudh 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-a219d2c3-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-oudh-spray-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-346f8ea5",
+      "size_ml": 100,
+      "aliases": [
+        "Gold Crystal Sapphire 100 ml",
+        "Al Haramain Gold Crystal Sapphire 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-346f8ea5-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-sapphire-spray-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-575ce58f",
+      "size_ml": 100,
+      "aliases": [
+        "Acai 100 ml",
+        "Al Haramain Acai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-575ce58f-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-acai-100ml-eau-de-parfum.html"
     }
   ]
 }

@@ -168,3 +168,15 @@ The first-party detail page confirms the existing fragrance identity, Extrait de
 - Fursan White — https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae (100 ml, Eau de Parfum, SKU 6291107977751)
 
 These three Khadlaj listing-level identities already had one 100 ml variant each. The official detail pages confirm the same size and concentration, so only provenance/status were upgraded; no duplicate products or variants were created. Sara was not upgraded because the official product page heading says Extrait de Parfum while other collection-card text labels it EDP; that discrepancy needs reconciliation before changing the catalog.
+
+### Al Haramain: five additional verified fragrance variants (9 November 2026)
+
+Five further identities from the official EU new-launch range were absent from the current seed and verified on their individual product pages:
+
+- Avalon — 100 ml Eau de Parfum
+- Azure Mythique — 100 ml Eau de Parfum
+- Gold Crystal Oudh — 100 ml Extrait de Parfum
+- Gold Crystal Sapphire — 100 ml Extrait de Parfum
+- Acai — 100 ml Eau de Parfum
+
+Each has a first-party source URL and one explicit 100 ml variant. No prices, stock or retailer offers were copied into the catalog.
