@@ -2344,5 +2344,29 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("source_evidence_url"), source)
 
 
+    def test_assaf_attacks_official_product_page_and_125ml_variant_are_verified(self):
+        row = next(
+            (
+                product for product in CATALOG.get("products", [])
+                if product.get("brand_name") == "Assaf"
+                and product.get("canonical_name") == "Attacks"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        source = "https://assaf.ae/products/attacks"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), source)
+        self.assertIn(125, row.get("formats_ml", []))
+        matches = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+            and variant.get("size_ml") == 125
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("source_url"), source)
+        self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
