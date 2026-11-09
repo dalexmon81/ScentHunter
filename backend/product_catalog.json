@@ -14216,9 +14216,11 @@
         "Uniq Oud Forever",
         "Armaf Uniq Oud Forever"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/uniq-oud-forever-spr",
+      "source_evidence_url": "https://armaf.com/products/uniq-oud-forever-spr",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-3eb5a44e",
@@ -35802,6 +35804,112 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-ARMAF-ETER-DESERT-BREEZE-20261109",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Desert Breeze",
+      "name": "Eter Desert Breeze",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Desert Breeze",
+      "aliases": [
+        "Eter Desert Breeze",
+        "Armaf Eter Desert Breeze"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/eter-desert-breeze",
+      "source_evidence_url": "https://armaf.com/products/eter-desert-breeze",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-ETER-DESERT-NIGHT-20261109",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Desert Night",
+      "name": "Eter Desert Night",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Desert Night",
+      "aliases": [
+        "Eter Desert Night",
+        "Armaf Eter Desert Night"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/eter-desert-night",
+      "source_evidence_url": "https://armaf.com/products/eter-desert-night",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-ETER-PERFUME-OASIS-20261109",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Perfume Oasis",
+      "name": "Eter Perfume Oasis",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Perfume Oasis",
+      "aliases": [
+        "Eter Perfume Oasis",
+        "Armaf Eter Perfume Oasis"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/eter-perfume-oasis",
+      "source_evidence_url": "https://armaf.com/products/eter-perfume-oasis",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-ETER-MAGICAL-OUD-20261109",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Eter Magical Oud",
+      "name": "Eter Magical Oud",
+      "family_id": "armaf_catalog",
+      "family_name": "Eter Magical Oud",
+      "aliases": [
+        "Eter Magical Oud",
+        "Armaf Eter Magical Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/eter-magical-oud",
+      "source_evidence_url": "https://armaf.com/products/eter-magical-oud",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-DUBAI-NIGHTS-MIDNIGHT-20261109",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Dubai Nights Midnight",
+      "name": "Dubai Nights Midnight",
+      "family_id": "armaf_catalog",
+      "family_name": "Dubai Nights Midnight",
+      "aliases": [
+        "Dubai Nights Midnight",
+        "Armaf Dubai Nights Midnight"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/dubai-nights-midnight-spr",
+      "source_evidence_url": "https://armaf.com/products/dubai-nights-midnight-spr",
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-ARMAF-DUBAI-NIGHTS-UMBRA-20261109",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Dubai Nights Umbra",
+      "name": "Dubai Nights Umbra",
+      "family_id": "armaf_catalog",
+      "family_name": "Dubai Nights Umbra",
+      "aliases": [
+        "Dubai Nights Umbra",
+        "Armaf Dubai Nights Umbra"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/dubai-nights-umbra-spr",
+      "source_evidence_url": "https://armaf.com/products/dubai-nights-umbra-spr",
+      "gender": "Unisex"
     }
   ],
   "variants": [
