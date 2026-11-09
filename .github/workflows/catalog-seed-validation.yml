@@ -6,6 +6,7 @@ on:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
       - "backend/tests/**"
+      - "backend/scripts/**"
       - ".github/workflows/catalog-seed-validation.yml"
   push:
 
@@ -18,10 +19,16 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch candidate catalog branches
+        run: git fetch origin '+refs/heads/*:refs/remotes/origin/*'
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Audit cross-PR catalog collisions
+        run: python backend/scripts/audit_cross_pr_catalogs.py
       - name: Validate recovered catalog seed
         run: >-
           python -m unittest
