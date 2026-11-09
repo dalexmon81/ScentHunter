@@ -27,8 +27,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Audit cross-PR catalog collisions
-        run: python backend/scripts/audit_cross_pr_catalogs.py
       - name: Validate recovered catalog seed
         run: >-
           python -m unittest
@@ -64,3 +62,5 @@ jobs:
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
           -v
+      - name: Audit cross-PR catalog collisions
+        run: python backend/scripts/audit_cross_pr_catalogs.py
