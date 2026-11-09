@@ -1270,5 +1270,64 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_maison_alhambra_new_official_pages_have_verified_100ml_or_60ml_variants(self):
+        expected = {
+            "Jubilant Vitality": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-jubilant-vitality-eau-de-parfum-for-everyone",
+                100, "6290362343530",
+            ),
+            "In Perfect Harmony": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-in-perfect-harmony-eau-de-parfum-for-everyone",
+                60, "6290362340676",
+            ),
+            "Sceptre Desert": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-desert-eau-de-parfum-for-everyone",
+                100, "6290362340621",
+            ),
+            "Eclat De Lune": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-eclat-de-lune-eau-de-parfum-for-women",
+                100, "6290360599212",
+            ),
+            "Lava": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-lava-eau-de-parfum-for-everyone",
+                100, "6290360599267",
+            ),
+            "La Charmante": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-la-charmante-eau-de-parfum-for-everyone",
+                100, "6290362340164",
+            ),
+            "La Charmante Eclatant": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-la-charmante-eclatant-eau-de-parfum-for-everyone",
+                100, "6290362340171",
+            ),
+            "Victorioso Heroic": (
+                "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men",
+                100, "6290362340584",
+            ),
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, gtin) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                product = products[name]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source_url)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == product["product_id"]
+                    and variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("gtin"), gtin)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertIn("/products/", matching[0].get("source_evidence_url", ""))
+
+
 if __name__ == "__main__":
     unittest.main()
