@@ -36,6 +36,7 @@ jobs:
           backend.tests.test_catalog_seed_recovery
           backend.tests.test_catalog_family_registry_coverage
           backend.tests.test_catalog_source_confidence
+          backend.tests.test_audit_cross_pr_catalogs
           backend.tests.test_bujairami_originals
           backend.tests.test_bujairami_catalog
           backend.tests.test_armaf_detail_evidence
