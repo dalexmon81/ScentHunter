@@ -404,7 +404,27 @@ VERIFIED_DETAIL_URLS = {
     "Tibyan": "https://www.alwataniah.com/products/tibyan",
     "Ghala": "https://www.alwataniah.com/products/ghala",
     "Sevilla": "https://www.alwataniah.com/products/sevilla",
-    "Kenz Al Malik": "https://www.alwataniah.com/products/kenz-al-malik"
+    "Kenz Al Malik": "https://www.alwataniah.com/products/kenz-al-malik",
+    "Nawal Alexandrite": "https://www.alwataniah.com/products/nawal-alexandrite",
+    "Watani Noir": "https://www.alwataniah.com/products/watani-noir",
+    "Fikrah": "https://www.alwataniah.com/products/fikrah",
+    "Hayat": "https://www.alwataniah.com/products/hayat",
+    "Marjaan": "https://www.alwataniah.com/products/marjaan",
+    "Muheeb": "https://www.alwataniah.com/products/muheeb",
+    "Shagaf Al Ward": "https://www.alwataniah.com/products/shagaf-al-ward",
+    "Hala": "https://www.alwataniah.com/products/hala",
+    "Nawal Bronzite": "https://www.alwataniah.com/products/nawal-bronzite",
+    "Nawal Tanzanite": "https://www.alwataniah.com/products/nawal-tanzanite",
+    "Nawal Fluorite": "https://www.alwataniah.com/products/nawal-fluorite",
+    "Da'im": "https://www.alwataniah.com/products/da-im",
+    "Duha": "https://www.alwataniah.com/products/duha",
+    "Eqaab": "https://www.alwataniah.com/products/eqaab",
+    "Tiara Pink": "https://www.alwataniah.com/products/tiara-pink",
+    "Watani Intense Gold": "https://www.alwataniah.com/products/watani-intense-gold",
+    "Shagaf Al Ward Gardenia": "https://www.alwataniah.com/products/shagaf-al-ward-gardenia",
+    "Sabah Al Ward Garden of Eden": "https://www.alwataniah.com/products/sabah-al-ward-garden-of-eden",
+    "Attar Al Wesal Elixir": "https://www.alwataniah.com/products/attar-al-wesal-elixir",
+    "Ziyana": "https://www.alwataniah.com/products/ziyana"
 }
 
 

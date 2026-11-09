@@ -61,6 +61,29 @@ NEW_EXPECTED = {
     "Kenz Al Malik": "https://www.alwataniah.com/products/kenz-al-malik"
 }
 
+ADDITIONAL_EXPECTED = {
+    "Nawal Alexandrite": "https://www.alwataniah.com/products/nawal-alexandrite",
+    "Watani Noir": "https://www.alwataniah.com/products/watani-noir",
+    "Fikrah": "https://www.alwataniah.com/products/fikrah",
+    "Hayat": "https://www.alwataniah.com/products/hayat",
+    "Marjaan": "https://www.alwataniah.com/products/marjaan",
+    "Muheeb": "https://www.alwataniah.com/products/muheeb",
+    "Shagaf Al Ward": "https://www.alwataniah.com/products/shagaf-al-ward",
+    "Hala": "https://www.alwataniah.com/products/hala",
+    "Nawal Bronzite": "https://www.alwataniah.com/products/nawal-bronzite",
+    "Nawal Tanzanite": "https://www.alwataniah.com/products/nawal-tanzanite",
+    "Nawal Fluorite": "https://www.alwataniah.com/products/nawal-fluorite",
+    "Da'im": "https://www.alwataniah.com/products/da-im",
+    "Duha": "https://www.alwataniah.com/products/duha",
+    "Eqaab": "https://www.alwataniah.com/products/eqaab",
+    "Tiara Pink": "https://www.alwataniah.com/products/tiara-pink",
+    "Watani Intense Gold": "https://www.alwataniah.com/products/watani-intense-gold",
+    "Shagaf Al Ward Gardenia": "https://www.alwataniah.com/products/shagaf-al-ward-gardenia",
+    "Sabah Al Ward Garden of Eden": "https://www.alwataniah.com/products/sabah-al-ward-garden-of-eden",
+    "Attar Al Wesal Elixir": "https://www.alwataniah.com/products/attar-al-wesal-elixir",
+    "Ziyana": "https://www.alwataniah.com/products/ziyana"
+}
+
 class AlWataniahDetailEvidenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -96,6 +119,38 @@ class AlWataniahDetailEvidenceTests(unittest.TestCase):
         family = next(f for f in registry["families"] if f.get("family_id") == "al_wataniah_catalog")
 
         for name, url in NEW_EXPECTED.items():
+            with self.subTest(product=name):
+                product = next(
+                    p for p in self.products
+                    if p.get("brand_name") == "Al Wataniah" and p.get("canonical_name") == name
+                )
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), url)
+                self.assertEqual(product.get("source_product_url"), url)
+                self.assertEqual(product.get("source_evidence_url"), url)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [100])
+
+                variants = [v for v in self.variants if v.get("product_id") == product["product_id"]]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0].get("variant_id"), f"SHV-{product['product_id']}-100-000")
+                self.assertEqual(variants[0].get("size_ml"), 100)
+                self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(variants[0].get("source_evidence_url"), url)
+
+                family_product = next(p for p in family["products"] if p.get("canonical_name") == name)
+                self.assertEqual(family_product.get("aliases"), product.get("aliases"))
+                self.assertEqual(family_product.get("formats_ml"), [100])
+
+
+
+    def test_twenty_additional_existing_identities_have_official_100ml_edp_variants(self):
+        family_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with family_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        family = next(f for f in registry["families"] if f.get("family_id") == "al_wataniah_catalog")
+
+        for name, url in ADDITIONAL_EXPECTED.items():
             with self.subTest(product=name):
                 product = next(
                     p for p in self.products
