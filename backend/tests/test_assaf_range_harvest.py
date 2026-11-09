@@ -1,8 +1,7 @@
-"""Regression checks for the Assaf range harvest.
+"""Regression checks for the Assaf range harvest and official detail upgrades.
 
-The 140-name independent index is discovery evidence, not official product-page
-verification. New records deliberately remain source_listed_name and have no
-inferred concentration, size, GTIN, price, stock or retailer offer.
+The 140-name independent index is discovery evidence; only products with
+matching official detail pages are promoted to source_verified_name.
 """
 import json
 import unittest
@@ -176,6 +175,13 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Gris Erik",
             "Miss Arrogate",
             "Rebel Enable",
+            "Arrogate Girl",
+            "Arrogate Colt",
+            "Arrogate Comete",
+            "Arrogate Addict Elixir",
+            "Arrogate Euphoria",
+            "Arrogate Blue de Elixir",
+            "Arrogate Blue Exclusive",
         }
         for product in self.products:
             if product["product_id"].startswith("SH-ASSAF-HARVEST-") and product["canonical_name"] not in detail_verified:
@@ -185,7 +191,7 @@ class AssafRangeHarvestTests(unittest.TestCase):
                     self.assertNotIn("concentration", product)
                     self.assertNotIn("formats_ml", product)
 
-    def test_official_detail_pages_upgrade_seven_existing_identities(self):
+    def test_official_detail_pages_upgrade_fourteen_existing_identities(self):
         expected = {
             "Arrogate Pink": ({"200"}, "https://assaf.ae/products/arrogate-pink-200ml"),
             "Arrogate Pink Diva": ({"200"}, "https://assaf.ae/products/arrogate-pink-diva"),
@@ -194,6 +200,13 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Miss Arrogate": ({"200"}, "https://assaf.ae/products/miss-arrogate"),
             "Rebel Enable": ({"150"}, "https://assaf.ae/products/edp-rebel-enable-150ml"),
             "Wild Colt Elixir": ({"200"}, "https://assaf.ae/products/edp-wild-colt-elixer-200ml"),
+            "Arrogate Girl": ({"200"}, "https://assaf.ae/products/arrogate-girl"),
+            "Arrogate Colt": ({"200"}, "https://assaf.ae/products/arrogate-colt"),
+            "Arrogate Comete": ({"200"}, "https://assaf.ae/products/edp-arrogate-comete-200ml-copy"),
+            "Arrogate Addict Elixir": ({"150"}, "https://assaf.ae/products/edp-arogate-addict-elixir-150ml"),
+            "Arrogate Euphoria": ({"150"}, "https://assaf.ae/products/arrogate-euphoria-150ml"),
+            "Arrogate Blue de Elixir": ({"200"}, "https://assaf.ae/products/arrogate-blue-de-elixir-200ml"),
+            "Arrogate Blue Exclusive": ({"200"}, "https://assaf.ae/products/arrogate-blue-exclusive"),
         }
         variants = self.catalog["variants"]
         for name, (sizes, source_url) in expected.items():
