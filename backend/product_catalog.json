@@ -34196,6 +34196,165 @@
         30,
         10
       ]
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah Mira",
+      "name": "Khamrah Mira",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Khamrah Mira",
+        "Lattafa Khamrah Mira"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum",
+      "source_product_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-GIVE-ME-GOURMAND-MATCHA-SWIRL",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Give Me Gourmand Matcha Swirl",
+      "name": "Give Me Gourmand Matcha Swirl",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Give Me Gourmand Matcha Swirl",
+        "Lattafa Give Me Gourmand Matcha Swirl"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml",
+      "source_product_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Beyond Precious",
+      "name": "Beyond Precious",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Beyond Precious",
+        "Lattafa Beyond Precious"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml",
+      "source_product_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Canyon",
+      "name": "Atlas Canyon",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Atlas Canyon",
+        "Lattafa Atlas Canyon"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml",
+      "source_product_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-GIVE-ME-GOURMAND-HARLEQUIN-CREAM",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Give Me Gourmand Harlequin Cream",
+      "name": "Give Me Gourmand Harlequin Cream",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Give Me Gourmand Harlequin Cream",
+        "Lattafa Give Me Gourmand Harlequin Cream"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml",
+      "source_product_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Glacial Valley",
+      "name": "Atlas Glacial Valley",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Atlas Glacial Valley",
+        "Lattafa Atlas Glacial Valley"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml",
+      "source_product_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Amethyst Fusion",
+      "name": "Badee Al Oud Amethyst Fusion",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion",
+        "Lattafa Badee Al Oud Amethyst Fusion"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion",
+      "source_product_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raghad",
+      "name": "Raghad",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Raghad",
+        "Lattafa Raghad"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/raghad",
+      "source_product_url": "https://www.lattafa-usa.com/products/raghad",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/raghad"
+    },
+    {
+      "product_id": "SH-LATTAFA-PETRA-VIOLA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Petra Viola",
+      "name": "Petra Viola",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa",
+      "aliases": [
+        "Petra Viola",
+        "Lattafa Petra Viola"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "source_product_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola"
     }
   ],
   "variants": [
@@ -37705,6 +37864,102 @@
       "variant_id": "SHV-SH-GAMES-OF-SPADES-ROUGE-EXTRAIT-10-EXTRAIT",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://jomilanoparis.com/products/game-of-spades-rouge-extrait"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
+      "size_ml": 100,
+      "aliases": [
+        "Khamrah Mira 100 ml",
+        "Lattafa Khamrah Mira 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KHAMRAH-MIRA-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-GIVE-ME-GOURMAND-MATCHA-SWIRL",
+      "size_ml": 75,
+      "aliases": [
+        "Give Me Gourmand Matcha Swirl 75 ml",
+        "Lattafa Give Me Gourmand Matcha Swirl 75 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-GIVE-ME-GOURMAND-MATCHA-SWIRL-75-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
+      "size_ml": 100,
+      "aliases": [
+        "Beyond Precious 100 ml",
+        "Lattafa Beyond Precious 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BEYOND-PRECIOUS-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Canyon 55 ml",
+        "Lattafa Atlas Canyon 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-CANYON-55-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-GIVE-ME-GOURMAND-HARLEQUIN-CREAM",
+      "size_ml": 75,
+      "aliases": [
+        "Give Me Gourmand Harlequin Cream 75 ml",
+        "Lattafa Give Me Gourmand Harlequin Cream 75 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-GIVE-ME-GOURMAND-HARLEQUIN-CREAM-75-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Glacial Valley 55 ml",
+        "Lattafa Atlas Glacial Valley 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-GLACIAL-VALLEY-55-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
+      "size_ml": 100,
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion 100 ml",
+        "Lattafa Badee Al Oud Amethyst Fusion 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION-100-UNK",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD",
+      "size_ml": 100,
+      "aliases": [
+        "Raghad 100 ml",
+        "Lattafa Raghad 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-RAGHAD-100-UNK",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/raghad"
+    },
+    {
+      "product_id": "SH-LATTAFA-PETRA-VIOLA",
+      "size_ml": 100,
+      "aliases": [
+        "Petra Viola 100 ml",
+        "Lattafa Petra Viola 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-PETRA-VIOLA-100-UNK",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola"
     }
   ]
 }
