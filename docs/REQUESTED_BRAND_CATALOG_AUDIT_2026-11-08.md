@@ -430,3 +430,38 @@ The third page of the official Maison Asrar New Arrivals collection was opened. 
 These individual detail pages confirm the product identities, but the inspected page content did not explicitly expose size/concentration. No variants or concentration fields were inferred. Existing product IDs and variant counts are unchanged. Vanilla Voyage's previous retailer-backed identity URL was replaced by the brand's own product page; it still has no variant because no size was explicitly confirmed in the inspected page.
 
 Regression coverage checks the 12 official URLs and ensures no unsupported sizes or concentrations are introduced.
+
+
+### Maison Asrar: fourth and fifth New Arrivals pages, multi-brand ownership and variant reconciliation (9 November 2026)
+
+The fourth and fifth pages of Maison Asrar's official New Arrivals collection were reviewed. The two pages show 24 cards; Oh Honey was already verified in the preceding page audit, and Majesty, Imperial and Monarch already had individual official-page provenance. The remaining 20 existing identities were reconciled to their individual product pages: 14 Maison Asrar identities and six additional Maison Asrar products whose variant evidence is also visible on the Gulf Orchid multi-brand storefront.
+
+Fourteen existing Maison Asrar identities received individual official-page provenance:
+- Date Night — https://maisonasrar.com/products/date-night
+- Larimar — https://maisonasrar.com/products/larimar
+- Rubellite — https://maisonasrar.com/products/rubellite
+- Nada — https://maisonasrar.com/products/nada
+- Omniya — https://maisonasrar.com/products/omniya
+- Coffee Blend — https://maisonasrar.com/products/coffee-blend-eau-de-parfum
+- Lumiere — https://maisonasrar.com/products/lumiere
+- Soirée — https://maisonasrar.com/products/soiree
+- Rey — https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar
+- Leo — https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml
+- Hunter — https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml
+- Bloom Bloom — https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml
+- Lolita — https://maisonasrar.com/products/lolita-eau-de-parfum-100ml
+- Bonita — https://maisonasrar.com/products/bonita-eau-de-parfum-100ml
+
+The inspected Maison Asrar detail pages confirm individual identities. For these 14 pages, size/concentration were not explicitly exposed in the inspected product-page content, so no new variant or concentration data was inferred, even when a URL handle contains a size string.
+
+Six further identities are confirmed as **Maison Asrar**, not Gulf Orchid. The Maison Asrar individual pages verify their product identities; the Gulf Orchid storefront's product detail pages display the Maison Asrar brand and explicit size/concentration:
+- Emerald — Maison Asrar identity page https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml; variant evidence https://shop-gulforchid.com/products/maison-asrar-emerald-eau-de-parfum-110ml — 110 ml EDP
+- Gold Noir — https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-gold-noir-eau-de-parfum — 110 ml EDP
+- Silver Elixer — https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-silver-elixer-eau-de-parfum — 110 ml EDP
+- Flair — https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-flaire-eau-de-parfum — 100 ml EDP
+- Timeless — https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-timeless-eau-de-parfum — 100 ml EDP
+- Masterpiece — https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-masterpiece-eau-de-parfum — 100 ml EDP
+
+The six products were restored to the Maison Asrar brand and family registry. Their product-level source URLs point to Maison Asrar detail pages; size/concentration variant evidence points to the individual Gulf Orchid storefront detail pages, which explicitly label Maison Asrar as the product brand. One 100/110 ml Eau de Parfum variant was added per identity. The Masterpiece Collection bundle remains excluded as a separate perfume identity.
+
+The catalog's Gulf Orchid count therefore remains 16 and Maison Asrar count remains 121; the previous temporary reattribution of these six items to Gulf Orchid was reversed after checking the product-page brand labels. Regression tests enforce the corrected brand ownership and all six explicit size variants.
