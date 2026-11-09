@@ -168,3 +168,19 @@ The official Bujairami EU storefront's Shop page identifies four original fragra
 - Sunrise in Sydney — https://bujairami.eu/product/sunrise-in-sydney/
 
 The concentration labels for Gold Coast Shiraz, Midnight in Melbourne, and Sunrise in Sydney are stated on the official Shop page; their individual detail pages confirm the 100 ml size. G’Day's individual page explicitly states Extrait de Parfum with 35% essence and 100 ml. No price or stock data was copied into the catalog. This is a focused verification of four original fragrances, not a full reconciliation of the much larger Bujairami inspired-fragrance assortment.
+
+
+### Bujairami UAE: eight recent arrivals upgraded to individual product-page evidence (9 November 2026)
+
+The brand-owned Bujairami UAE homepage highlights eight recent arrivals. All eight names were already present in the catalog, so the existing canonical identities were upgraded in place to their individual product pages. The official product-page titles confirm the Bujairami product names; the three cards explicitly marked Extrait are recorded as Extrait de Parfum. The accessible individual pages do not state bottle sizes, so no variants were added.
+
+- Tea Splash — https://bujairami.ae/products/tea-splash-inspired-by-rain-tea-louis-vuitton
+- V-Luxe — https://bujairami.ae/products/v-luxe-inspired-by-libre-vanille-couture-yves-saint-laurent
+- ACE — https://bujairami.ae/products/ace-inspired-by-uomo-born-in-roma-coral-fantasy-valentino
+- Last Kingdom — https://bujairami.ae/products/last-kingdom-inspired-by-argentina-memo-paris-extrait (Extrait de Parfum)
+- Darkwood — https://bujairami.ae/products/darkwood-inspired-by-chandigarh-express-ex-nihilo-extrait (Extrait de Parfum)
+- Chic Wood — https://bujairami.ae/products/chic-wood-inspired-by-cedar-chic-carolina-herrera
+- Delulu — https://bujairami.ae/products/delulu-inspired-by-the-hedonist-extrait-de-parfum-ex-nihilo-extrait (Extrait de Parfum)
+- Suns Out — https://bujairami.ae/products/suns-out-inspired-by-my-way-sunny-vanilla-giorgio-armani
+
+No bottle size, concentration beyond the three explicit Extrait labels, price or stock status was inferred. The product descriptions' "inspired by" references are retained as marketing context, not treated as equivalence to the referenced designer fragrances.
