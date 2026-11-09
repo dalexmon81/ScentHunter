@@ -320,3 +320,22 @@ The existing canonical identity `SH-ARMAF-f650f6a8` was retained and upgraded fr
 - Uniq Oud Forever — https://armaf.com/products/uniq-oud-forever-spr
 
 The individual page confirms the standalone fragrance name and identifies it as unisex. The page's marketing title includes “EAU DE PARFUM Spray”, but its visible product specification does not expose a structured bottle size or concentration field. To avoid promoting title/marketing text into unsupported SKU data, the catalog records only the individual-page identity evidence; concentration and size variants remain unset. No duplicate canonical identity or variant was created.
+
+
+### Maison Asrar: second new-arrivals page provenance upgrades (9 November 2026)
+
+The second page of the brand-owned New Arrivals collection was checked. Eleven existing canonical identities were matched to their individual Maison Asrar product pages and upgraded in place:
+
+- Dubai Milano — https://maisonasrar.com/products/dubai-milano
+- Dubai London — https://maisonasrar.com/products/dubai-london
+- Dubai Miami — https://maisonasrar.com/products/dubai-miami
+- III Thriller — https://maisonasrar.com/products/iii-thriller
+- Milky Way — https://maisonasrar.com/products/milky-way
+- Muharib — https://maisonasrar.com/products/muharib
+- Faris Al Arab — https://maisonasrar.com/products/faris-al-arab
+- Vanilla Seduction — https://maisonasrar.com/products/vanilla-seduction
+- Vanilla Aura — https://maisonasrar.com/products/vanilla-aura
+- Throne Eclipse — https://maisonasrar.com/products/throne-eclipse
+- Throne — https://maisonasrar.com/products/throne
+
+All eleven names were already present in the canonical seed. Their existing product IDs were preserved. The accessible official detail pages confirm the individual product names but do not expose explicit size or concentration fields; no variants or concentration values were added. Vanguard was already individually verified in the earlier pass and was not changed. This is a second-page sample, not a complete audit of the 81-item New Arrivals collection.
