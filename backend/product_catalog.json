@@ -34594,6 +34594,279 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ANGEL-MUSK",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Angel Musk",
+      "name": "Angel Musk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Angel Musk",
+        "Gulf Orchid Angel Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel",
+      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel",
+      "source_product_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cloud 9",
+      "name": "Cloud 9",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Cloud 9",
+        "Gulf Orchid Cloud 9"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/cloud-9",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9",
+      "source_product_url": "https://shop-gulforchid.com/products/cloud-9",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-NAUGHTY-VANILLA",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Naughty Vanilla",
+      "name": "Naughty Vanilla",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Naughty Vanilla",
+        "Gulf Orchid Naughty Vanilla"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/naughty-vanilla",
+      "source_evidence_url": "https://shop-gulforchid.com/products/naughty-vanilla",
+      "source_product_url": "https://shop-gulforchid.com/products/naughty-vanilla",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-YACHT-CLUB",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Yacht Club",
+      "name": "Yacht Club",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Yacht Club",
+        "Gulf Orchid Yacht Club"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/yacht_club_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/yacht_club_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/yacht_club_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-CHERRY",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Sweet Heaven Cherry",
+      "name": "Sweet Heaven Cherry",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Sweet Heaven Cherry",
+        "Gulf Orchid Sweet Heaven Cherry"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        20
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CANDY-BITE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Candy Bite",
+      "name": "Candy Bite",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Candy Bite",
+        "Gulf Orchid Candy Bite"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/candy-bite",
+      "source_evidence_url": "https://shop-gulforchid.com/products/candy-bite",
+      "source_product_url": "https://shop-gulforchid.com/products/candy-bite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-CHERRY-KISS",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Sweet Cherry Kiss",
+      "name": "Sweet Cherry Kiss",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Sweet Cherry Kiss",
+        "Gulf Orchid Sweet Cherry Kiss"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CREAMY-PISTACHIO",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Creamy Pistachio",
+      "name": "Creamy Pistachio",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Creamy Pistachio",
+        "Gulf Orchid Creamy Pistachio"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MARSHMALLOW",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Marshmallow",
+      "name": "Marshmallow",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Marshmallow",
+        "Gulf Orchid Marshmallow"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/marshmallow",
+      "source_evidence_url": "https://shop-gulforchid.com/products/marshmallow",
+      "source_product_url": "https://shop-gulforchid.com/products/marshmallow",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-ICE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Sweet Heaven Ice",
+      "name": "Sweet Heaven Ice",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Sweet Heaven Ice",
+        "Gulf Orchid Sweet Heaven Ice"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CREME-CARAMEL",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Crème Caramel",
+      "name": "Crème Caramel",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Crème Caramel",
+        "Gulf Orchid Crème Caramel"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MYSTERIOUS-TAHARA-MUSK",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Mysterious Tahara Musk",
+      "name": "Mysterious Tahara Musk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Mysterious Tahara Musk",
+        "Gulf Orchid Mysterious Tahara Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara",
+      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara",
+      "source_product_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-POMEGRANATE-MUSK",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Pomegranate Musk",
+      "name": "Pomegranate Musk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Gulf Orchid",
+      "aliases": [
+        "Pomegranate Musk",
+        "Gulf Orchid Pomegranate Musk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml",
+      "source_evidence_url": "https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml",
+      "source_product_url": "https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
     }
   ],
   "variants": [
@@ -39015,6 +39288,149 @@
       ],
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ANGEL-MUSK",
+      "variant_id": "SHV-SH-GULF-ORCHID-ANGEL-MUSK-60-EDP",
+      "size_ml": 60,
+      "aliases": [
+        "Angel Musk 60 ml",
+        "Gulf Orchid Angel Musk 60 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "variant_id": "SHV-SH-GULF-ORCHID-CLOUD-9-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud 9 100 ml",
+        "Gulf Orchid Cloud 9 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-NAUGHTY-VANILLA",
+      "variant_id": "SHV-SH-GULF-ORCHID-NAUGHTY-VANILLA-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Naughty Vanilla 100 ml",
+        "Gulf Orchid Naughty Vanilla 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/naughty-vanilla"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-YACHT-CLUB",
+      "variant_id": "SHV-SH-GULF-ORCHID-YACHT-CLUB-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Yacht Club 100 ml",
+        "Gulf Orchid Yacht Club 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/yacht_club_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-CHERRY",
+      "variant_id": "SHV-SH-GULF-ORCHID-SWEET-HEAVEN-CHERRY-20-EDP",
+      "size_ml": 20,
+      "aliases": [
+        "Sweet Heaven Cherry 20 ml",
+        "Gulf Orchid Sweet Heaven Cherry 20 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CANDY-BITE",
+      "variant_id": "SHV-SH-GULF-ORCHID-CANDY-BITE-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Candy Bite 100 ml",
+        "Gulf Orchid Candy Bite 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/candy-bite"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-CHERRY-KISS",
+      "variant_id": "SHV-SH-GULF-ORCHID-SWEET-CHERRY-KISS-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Sweet Cherry Kiss 100 ml",
+        "Gulf Orchid Sweet Cherry Kiss 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CREAMY-PISTACHIO",
+      "variant_id": "SHV-SH-GULF-ORCHID-CREAMY-PISTACHIO-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Creamy Pistachio 100 ml",
+        "Gulf Orchid Creamy Pistachio 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MARSHMALLOW",
+      "variant_id": "SHV-SH-GULF-ORCHID-MARSHMALLOW-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Marshmallow 100 ml",
+        "Gulf Orchid Marshmallow 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/marshmallow"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-ICE",
+      "variant_id": "SHV-SH-GULF-ORCHID-SWEET-HEAVEN-ICE-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Sweet Heaven Ice 100 ml",
+        "Gulf Orchid Sweet Heaven Ice 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CREME-CARAMEL",
+      "variant_id": "SHV-SH-GULF-ORCHID-CREME-CARAMEL-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Crème Caramel 100 ml",
+        "Gulf Orchid Crème Caramel 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MYSTERIOUS-TAHARA-MUSK",
+      "variant_id": "SHV-SH-GULF-ORCHID-MYSTERIOUS-TAHARA-MUSK-60-EDP",
+      "size_ml": 60,
+      "aliases": [
+        "Mysterious Tahara Musk 60 ml",
+        "Gulf Orchid Mysterious Tahara Musk 60 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-POMEGRANATE-MUSK",
+      "variant_id": "SHV-SH-GULF-ORCHID-POMEGRANATE-MUSK-60-EDP",
+      "size_ml": 60,
+      "aliases": [
+        "Pomegranate Musk 60 ml",
+        "Gulf Orchid Pomegranate Musk 60 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml"
     }
   ]
 }
