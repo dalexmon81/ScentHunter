@@ -354,6 +354,23 @@ EXPECTED = {
     ]
 }
 
+VERIFIED_DETAIL_URLS = {
+    "Lemon Souffle": "https://www.alwataniah.com/products/lemon-souffle",
+    "Choco Truffle": "https://www.alwataniah.com/products/choco-truffle",
+    "Kayaan Midnight": "https://www.alwataniah.com/products/kayaan-midnight",
+    "Sabah Al Ward": "https://www.alwataniah.com/products/sabah-al-ward",
+    "Sabah Al Ward Sugar": "https://www.alwataniah.com/products/saba-al-ward-sugar",
+    "Special Oud": "https://www.alwataniah.com/products/special-oud",
+    "Emiran": "https://www.alwataniah.com/products/emiran",
+    "Cloud": "https://www.alwataniah.com/products/cloud",
+    "Castilla": "https://www.alwataniah.com/products/castilla",
+    "Fayroz": "https://www.alwataniah.com/products/fayroz",
+    "Layali": "https://www.alwataniah.com/products/layali",
+    "Praline Toffee": "https://www.alwataniah.com/products/praline-toffee",
+    "Turquois": "https://www.alwataniah.com/products/turquois",
+    "Royal Oak II": "https://www.alwataniah.com/products/royal-oak-ii",
+}
+
 
 class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
     def test_all_official_collection_fragrances_are_present_once(self):
@@ -369,7 +386,12 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                 self.assertEqual(product.get("collection_name"), collection)
                 self.assertEqual(product.get("brand_name"), "Al Wataniah")
                 self.assertIn(product.get("identity_status"), {"source_listed_name", "source_verified_name"})
-                if name not in {"Lemon Souffle", "Choco Truffle"}:
+                if name in VERIFIED_DETAIL_URLS:
+                    self.assertEqual(product.get("identity_status"), "source_verified_name")
+                    self.assertEqual(product.get("source_url"), VERIFIED_DETAIL_URLS[name])
+                    self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                    self.assertIn(100, product.get("formats_ml", []))
+                else:
                     self.assertEqual(product.get("identity_status"), "source_listed_name")
                     self.assertEqual(product.get("source_url"), listing_url)
 
@@ -387,11 +409,16 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             if p.get("brand") == "Al Wataniah"
         }
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in alwataniah_ids]
-        self.assertEqual(len(variants), 2)
-        self.assertEqual(
-            {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
-            {"Lemon Souffle", "Choco Truffle"},
-        )
+        variant_names = {
+            next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"])
+            for v in variants
+        }
+        self.assertEqual(len(variants), len(VERIFIED_DETAIL_URLS))
+        self.assertEqual(variant_names, set(VERIFIED_DETAIL_URLS))
+        for variant in variants:
+            with self.subTest(variant=variant.get("variant_id")):
+                self.assertEqual(variant.get("size_ml"), 100)
+                self.assertEqual(variant.get("concentration"), "Eau de Parfum")
 
 
 if __name__ == "__main__":
