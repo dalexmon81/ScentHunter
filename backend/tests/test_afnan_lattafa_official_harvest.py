@@ -124,5 +124,81 @@ class AfnanLattafaOfficialHarvestTests(unittest.TestCase):
             )
             self.assertEqual(product.get("concentration"), "Eau de Parfum")
 
+
+    def test_afnan_supremacy_official_pages_and_explicit_variants_are_verified(self):
+        expected = {
+        "Supremacy Gold": {
+                "url": "https://www.fr.afnan.com/en/products/supremacy-gold",
+                "type": "Eau de Parfum",
+                "sizes": [
+                        100
+                ]
+        },
+        "Supremacy Silver": {
+                "url": "https://www.fr.afnan.com/en/products/supremacy-silver",
+                "type": "Eau de Parfum",
+                "sizes": [
+                        100,
+                        150
+                ]
+        },
+        "Supremacy Collector's Edition": {
+                "url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition",
+                "type": "Eau de Parfum",
+                "sizes": [
+                        100
+                ]
+        },
+        "Supremacy Pink": {
+                "url": "https://www.fr.afnan.com/en/products/supremacy-pink",
+                "type": "Eau de Parfum",
+                "sizes": [
+                        100
+                ]
+        },
+        "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION": {
+                "url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge",
+                "type": "Extrait de Parfum",
+                "sizes": [
+                        90
+                ]
+        },
+        "Supremacy Not Only Intense": {
+                "url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense",
+                "type": "Extrait de Parfum",
+                "sizes": [
+                        100,
+                        150
+                ]
+        },
+        "Supremacy Purple": {
+                "url": "https://www.fr.afnan.com/en/products/supremacy-purple",
+                "type": "Eau de Parfum",
+                "sizes": [
+                        100
+                ]
+        }
+}
+        for name, evidence in expected.items():
+            with self.subTest(name=name):
+                product = next(
+                    p for p in self.catalog["products"]
+                    if p.get("brand") == "Afnan" and p.get("canonical_name") == name
+                )
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), evidence["url"])
+                self.assertEqual(product.get("source_product_url"), evidence["url"])
+                self.assertEqual(product.get("source_evidence_url"), evidence["url"])
+                self.assertEqual(product.get("concentration"), evidence["type"])
+                self.assertEqual(sorted(product.get("formats_ml", [])), sorted(evidence["sizes"]))
+                variants = [
+                    v for v in self.catalog["variants"]
+                    if v.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(sorted(v.get("size_ml") for v in variants), sorted(evidence["sizes"]))
+                for variant in variants:
+                    self.assertEqual(variant.get("concentration"), evidence["type"])
+                    self.assertEqual(variant.get("source_evidence_url"), evidence["url"])
+
 if __name__ == "__main__":
     unittest.main()
