@@ -852,5 +852,38 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             if variant.get("product_id") == product["product_id"]
         ])
 
+    def test_maison_asrar_second_new_arrival_page_has_individual_provenance(self):
+        expected = {
+            "Dubai Milano": "https://maisonasrar.com/products/dubai-milano",
+            "Dubai London": "https://maisonasrar.com/products/dubai-london",
+            "Dubai Miami": "https://maisonasrar.com/products/dubai-miami",
+            "III Thriller": "https://maisonasrar.com/products/iii-thriller",
+            "Milky Way": "https://maisonasrar.com/products/milky-way",
+            "Muharib": "https://maisonasrar.com/products/muharib",
+            "Faris Al Arab": "https://maisonasrar.com/products/faris-al-arab",
+            "Vanilla Seduction": "https://maisonasrar.com/products/vanilla-seduction",
+            "Vanilla Aura": "https://maisonasrar.com/products/vanilla-aura",
+            "Throne Eclipse": "https://maisonasrar.com/products/throne-eclipse",
+            "Throne": "https://maisonasrar.com/products/throne",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertFalse(row.get("concentration"))
+                self.assertFalse(row.get("formats_ml"))
+                self.assertFalse([
+                    variant for variant in CATALOG.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ])
+
 if __name__ == "__main__":
     unittest.main()
