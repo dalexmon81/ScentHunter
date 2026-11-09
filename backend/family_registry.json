@@ -8598,6 +8598,13 @@
             "Futura La Homme",
             "Armaf Futura La Homme"
           ]
+        },
+        {
+          "canonical_name": "Uniq Effects of Uniq",
+          "aliases": [
+            "Uniq Effects of Uniq",
+            "Armaf Uniq Effects of Uniq"
+          ]
         }
       ]
     },
@@ -9579,6 +9586,9 @@
           "aliases": [
             "Lychee Musk",
             "Arabiyat Prestige Lychee Musk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -11764,6 +11774,16 @@
           "aliases": [
             "Ajwad Pink to Pink",
             "Lattafa Ajwad Pink to Pink"
+          ]
+        },
+        {
+          "canonical_name": "Asad Polar",
+          "aliases": [
+            "Asad Polar",
+            "Lattafa Asad Polar"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]

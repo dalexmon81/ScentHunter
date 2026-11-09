@@ -19,13 +19,13 @@ MINIMUM_BRAND_COUNTS = {
     "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
-    "Armaf": 190,
+    "Armaf": 191,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
     "Gulf Orchid": 23,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
-    "Lattafa": 114,
+    "Lattafa": 115,
     "Afnan": 87,
     "Aromatix": 12,
     "Maison Alhambra": 203,
@@ -510,6 +510,43 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "https://armaf.com/products/uniq-oud-forever-spr",
             "Promote only in a dedicated provenance update after page fields are rechecked.",
         )
+
+    def test_armaf_uniq_effects_of_uniq_official_fragrance_identity(self):
+        rows = [row for row in CATALOG.get("products", []) if row.get("brand_name") == "Armaf" and row.get("canonical_name") == "Uniq Effects of Uniq"]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://armaf.com/products/uniq-effects-of-uniq-spr")
+        self.assertEqual(row.get("gender"), "Men")
+        self.assertNotIn("formats_ml", row)
+        self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
+
+    def test_lattafa_asad_polar_official_100ml_identity(self):
+        rows = [row for row in CATALOG.get("products", []) if row.get("brand_name") == "Lattafa" and row.get("canonical_name") == "Asad Polar"]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://lattafa.com/product/asad-polar/")
+        self.assertIn(100, row.get("formats_ml", []))
+        self.assertNotIn("concentration", row)
+        variants = [v for v in CATALOG.get("variants", []) if v.get("product_id") == row["product_id"]]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("size_ml"), 100)
+        self.assertNotIn("concentration", variants[0])
+
+    def test_lychee_musk_official_page_provenance_and_variant(self):
+        rows = [row for row in CATALOG.get("products", []) if row.get("brand_name") == "Arabiyat Prestige" and row.get("canonical_name") == "Lychee Musk"]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.get("product_id"), "SH-ARABIYAT-PRESTIGE-0b061839")
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex")
+        self.assertEqual(row.get("concentration"), "Eau de Parfum")
+        matches = [v for v in CATALOG.get("variants", []) if v.get("product_id") == row["product_id"]]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("size_ml"), 100)
+        self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(matches[0].get("source_evidence_url"), row["source_url"])
 
     def test_lychee_musk_is_already_present_and_must_not_be_duplicated(self):
         rows = [

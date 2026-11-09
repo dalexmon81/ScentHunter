@@ -97,3 +97,15 @@ A focused reconciliation compared selected current official pages against the ex
 - **Lattafa and Arabiyat Prestige:** the official current pages show new items such as Asad Polar and Lychee Musk. Existing product presence, region-specific listings, and page variants need reconciliation before changes; third-party listings remain discovery evidence only and must not silently replace first-party proof.
 
 The audit deliberately leaves candidate rows unmodified in this pass. The next catalog change should be a separate, small harvest PR that adds only the individually confirmed absent identities (after checking all existing aliases/families), and a separate provenance-only PR for existing rows. No prices, stock, or retailer offers are inferred from brand pages.
+
+
+### Catalog delta — three official-page reconciliations (9 November 2026)
+
+This block adds two missing fragrance identities and upgrades one existing identity using individual brand-owned detail pages:
+
+- **Armaf — Uniq Effects of Uniq:** added once from https://armaf.com/products/uniq-effects-of-uniq-spr. The page explicitly labels it as a fragrance and identifies it for men. The US storefront page does not expose bottle size or concentration in its accessible product text; no variant or concentration is inferred. The regional UAE storefront separately describes an EDP 100 ml version, but that regional specification is not mixed into the US-source record.
+- **Lattafa — Asad Polar:** added once from https://lattafa.com/product/asad-polar/. The official product detail explicitly states 100 ML and fragrance type Men. The accessible official detail does not state concentration, so the product and 100 ml variant remain without a concentration value.
+- **Arabiyat Prestige — Lychee Musk:** the existing identity `SH-ARABIYAT-PRESTIGE-0b061839` was retained and its provenance upgraded to https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex. The official detail explicitly states Eau De Parfum, 100 ML and Unisex. One 100 ml EDP variant was added; no second canonical identity was created.
+
+No prices, stock status, retailer offers, or shipping claims are copied into the catalog. Transient sales information is not product identity data.
+

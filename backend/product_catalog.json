@@ -26359,9 +26359,13 @@
         "Lychee Musk",
         "Arabiyat Prestige Lychee Musk"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-b648108e",
@@ -33722,6 +33726,40 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-ARMAF-UNIQ-EFFECTS-OF-UNIQ",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Uniq Effects of Uniq",
+      "name": "Uniq Effects of Uniq",
+      "family_id": "armaf_catalog",
+      "family_name": "Uniq Effects of Uniq",
+      "aliases": [
+        "Uniq Effects of Uniq",
+        "Armaf Uniq Effects of Uniq"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/uniq-effects-of-uniq-spr",
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad Polar",
+      "name": "Asad Polar",
+      "family_id": "lattafa_catalog",
+      "family_name": "Asad Polar",
+      "aliases": [
+        "Asad Polar",
+        "Lattafa Asad Polar"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad-polar/",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36654,6 +36692,23 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "variant_id": "SH-LATTAFA-ASAD-POLAR-V-100-UNSPECIFIED",
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
+      "brand": "Lattafa",
+      "canonical_name": "Asad Polar",
+      "size_ml": 100,
+      "source_evidence_url": "https://lattafa.com/product/asad-polar/"
+    },
+    {
+      "variant_id": "SH-ARABIYAT-PRESTIGE-0b061839-V-100-EDP",
+      "product_id": "SH-ARABIYAT-PRESTIGE-0b061839",
+      "brand": "Arabiyat Prestige",
+      "canonical_name": "Lychee Musk",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex"
     }
   ]
 }
