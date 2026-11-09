@@ -92,6 +92,31 @@ class ArmafOfficialFragranceAdditionsTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(matches), 1)
 
+    def test_reconciled_product_ids_and_aliases_are_stable(self):
+        check_mate = next(
+            product for product in self.products
+            if product.get("brand") == "Armaf"
+            and normalized(product.get("canonical_name")) == normalized("Check Mate White Knight")
+        )
+        self.assertEqual(check_mate["product_id"], "SH-ARMAF-CHECK-MATE-WHITE-KNIGHT")
+        aliases = {normalized(alias) for alias in check_mate.get("aliases", [])}
+        self.assertIn(normalized("Check Mate White - Knight"), aliases)
+
+        french_kiss = next(
+            product for product in self.products
+            if product.get("brand") == "Armaf"
+            and normalized(product.get("canonical_name")) == normalized("Odyssey French Kiss")
+        )
+        self.assertEqual(french_kiss["product_id"], "SH-ARMAF-ODYSSEY-FRENCH-KISS")
+        french_variants = [
+            variant for variant in self.variants
+            if variant.get("product_id") == french_kiss["product_id"]
+        ]
+        self.assertEqual(
+            [variant["variant_id"] for variant in french_variants],
+            ["SHV-SH-ARMAF-ODYSSEY-FRENCH-KISS-60-EDP-000"],
+        )
+
     def test_no_duplicate_product_or_variant_ids(self):
         product_ids = [product["product_id"] for product in self.products]
         variant_ids = [variant["variant_id"] for variant in self.variants]
