@@ -66,6 +66,9 @@ class FrenchAvenueCatalogTests(unittest.TestCase):
             "Royal Blend": ("https://frenchavenue.com/products/royal-blend", "Eau de Parfum", 100),
             "Imperial Ocean": ("https://frenchavenue.com/products/imperial-ocean", "Eau de Parfum", 100),
             "Cocoa Morado": ("https://frenchavenue.com/products/cocoa-morado", "Eau de Parfum", 100),
+            "Spectre Wraith": ("https://frenchavenue.com/products/spectre-wraith", "Eau de Parfum", 80),
+            "Eclair Affair": ("https://frenchavenue.com/products/eclair-affair", "Extrait de Parfum", 100),
+            "Royal Blend Nero": ("https://frenchavenue.com/products/royal-blend-nero", "Extrait de Parfum", 100),
         }
         products = {
             p["canonical_name"]: p for p in CATALOG["products"]
