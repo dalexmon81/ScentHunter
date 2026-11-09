@@ -11130,14 +11130,15 @@
         "Aphrodite",
         "Mykonos Aphrodite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-6aff7937",
@@ -11151,13 +11152,14 @@
         "Baby Love",
         "Mykonos Baby Love"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-baby-love-edp-50ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-baby-love-edp-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-baby-love-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-0b2ce9db",
@@ -11171,13 +11173,15 @@
         "Black Opera",
         "Mykonos Black Opera"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-5a82441b",
@@ -11191,13 +11195,14 @@
         "Bonfire Vanilla",
         "Mykonos Bonfire Vanilla"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-b4433062",
@@ -11211,13 +11216,14 @@
         "Cafe Drops",
         "Mykonos Cafe Drops"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-c0079fad",
@@ -11231,14 +11237,16 @@
         "California Blue",
         "Mykonos California Blue"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml",
       "formats_ml": [
         15,
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-a7986b6d",
@@ -11252,13 +11260,14 @@
         "California Club",
         "Mykonos California Club"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-3e5e18c7",
@@ -11272,14 +11281,16 @@
         "California",
         "Mykonos California"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml",
       "formats_ml": [
         15,
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml"
     },
     {
       "product_id": "SH-MYKONOS-087e4a85",
@@ -11293,13 +11304,14 @@
         "Caramel Fudge Cookie",
         "Mykonos Caramel Fudge Cookie"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-cb66aed4",
@@ -11313,13 +11325,14 @@
         "Coconut Dreams",
         "Mykonos Coconut Dreams"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-8bad0f8a",
@@ -11333,14 +11346,15 @@
         "Conquer",
         "Mykonos Conquer"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-ba81e1f1",
@@ -11354,13 +11368,14 @@
         "Constantine",
         "Mykonos Constantine"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-fbaf72fe",
@@ -11374,13 +11389,15 @@
         "Crimson",
         "Mykonos Crimson"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-5ad9e0a7",
@@ -11394,13 +11411,15 @@
         "Dark Secret",
         "Mykonos Dark Secret"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-f3caf502",
@@ -11414,14 +11433,15 @@
         "Dreamscape",
         "Mykonos Dreamscape"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml",
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-789b7773",
@@ -11435,14 +11455,15 @@
         "Enchanted",
         "Mykonos Enchanted"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-dd83e874",
@@ -11456,13 +11477,15 @@
         "Hawaiian Crush",
         "Mykonos Hawaiian Crush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml",
       "formats_ml": [
         15,
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-1713c194",
@@ -11476,13 +11499,15 @@
         "Moroccan Vanilla",
         "Mykonos Moroccan Vanilla"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-dd9e74c4",
@@ -11496,13 +11521,15 @@
         "Musk Aura",
         "Mykonos Musk Aura"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-52459698",
@@ -11516,13 +11543,14 @@
         "Paradise",
         "Mykonos Paradise"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-3207f716",
@@ -11536,13 +11564,14 @@
         "Pink Beach",
         "Mykonos Pink Beach"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-e15a94f5",
@@ -11556,13 +11585,15 @@
         "Sparkling Rosé",
         "Mykonos Sparkling Rosé"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-78b2bc55",
@@ -11576,13 +11607,15 @@
         "Utopia",
         "Mykonos Utopia"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-7de81646",
@@ -11596,13 +11629,13 @@
         "Vanilla Clouds",
         "Mykonos Vanilla Clouds"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "source_product_url": "https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1"
     },
     {
       "product_id": "SH-MYKONOS-2e47d8e0",
@@ -11616,13 +11649,14 @@
         "Xoxo Rosy",
         "Mykonos Xoxo Rosy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-92e7627a",
@@ -11638,14 +11672,15 @@
         "Empire (Mykonos x RRQ)",
         "Mykonos Empire (Mykonos x RRQ)"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-678b254c",
@@ -11659,14 +11694,15 @@
         "Inception",
         "Mykonos Inception"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-24a34991",
@@ -11680,14 +11716,15 @@
         "Sorrento",
         "Mykonos Sorrento"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-0eac5dbd",
@@ -11701,13 +11738,14 @@
         "Slow Living",
         "Mykonos Slow Living"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-slow-living-edp-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-slow-living-edp-50ml",
       "formats_ml": [
         50,
         100
-      ]
+      ],
+      "source_product_url": "https://officialmykonos.com/products/mykonos-slow-living-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-57056cb5",
@@ -11721,13 +11759,14 @@
         "Untamed",
         "Mykonos Untamed"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-12074094",
@@ -11741,14 +11780,15 @@
         "Reflection",
         "Mykonos Reflection"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-c024bc58",
@@ -11764,14 +11804,15 @@
         "Glitch (Mykonos x SetiawanAde)",
         "Mykonos Glitch (Mykonos x SetiawanAde)"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-ae57a514",
@@ -11785,14 +11826,15 @@
         "Inferno",
         "Mykonos Inferno"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-764eda91",
@@ -11806,14 +11848,15 @@
         "Marbella",
         "Mykonos Marbella"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-578b53c8",
@@ -11827,13 +11870,14 @@
         "Milk Drops",
         "Mykonos Milk Drops"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-75d9d117",
@@ -11847,13 +11891,14 @@
         "Pink Drops",
         "Mykonos Pink Drops"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-257f75b0",
@@ -11867,13 +11912,14 @@
         "Luminos",
         "Mykonos Luminos"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-8cbc0859",
@@ -11905,13 +11951,14 @@
         "Reflection Elixir",
         "Mykonos Reflection Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-39050fe8",
@@ -11925,13 +11972,14 @@
         "Nautilus",
         "Mykonos Nautilus"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-133fd300",
@@ -11945,14 +11993,16 @@
         "Penthouse",
         "Mykonos Penthouse"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-991a7472",
@@ -11966,14 +12016,16 @@
         "Royal Ispahan",
         "Mykonos Royal Ispahan"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         15,
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-dd8264d1",
@@ -11987,13 +12039,15 @@
         "On The Rocks",
         "Mykonos On The Rocks"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-1b298ff6",
@@ -12299,13 +12353,14 @@
         "Verve",
         "Mykonos Verve"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml"
     },
     {
       "product_id": "SH-ARMAF-88c7f40b",
@@ -13142,13 +13197,14 @@
         "Matcha Latte",
         "Mykonos Matcha Latte"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=2",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-16ea96ab",
@@ -13162,13 +13218,14 @@
         "Imperium",
         "Mykonos Imperium"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=2",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-732c1b84",
@@ -13182,14 +13239,15 @@
         "Mayfair",
         "Mykonos Mayfair"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=2",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-f5abaed8",
@@ -13203,14 +13261,16 @@
         "Monaco Royale",
         "Mykonos Monaco Royale"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=2",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         15,
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-ddcc2bfa",
@@ -13224,13 +13284,15 @@
         "Satin Blanc",
         "Mykonos Satin Blanc"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml",
       "formats_ml": [
         15,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-8673a3b0",
@@ -13244,13 +13306,14 @@
         "Senja",
         "Mykonos Senja"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=3",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-senja-edp-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-senja-edp-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-senja-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-a710c3ee",
@@ -13264,14 +13327,15 @@
         "Silent Whisper",
         "Mykonos Silent Whisper"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=3",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-536a8dd8",
@@ -13285,13 +13349,14 @@
         "Stilettos",
         "Mykonos Stilettos"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=3",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-stilettos-edp-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-stilettos-edp-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-stilettos-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-335746a0",
@@ -13307,14 +13372,15 @@
         "MyEgo (Mykonos x AlterEgo)",
         "Mykonos MyEgo (Mykonos x AlterEgo)"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=4",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml",
       "formats_ml": [
         50,
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-1947e7e8",
@@ -13330,13 +13396,14 @@
         "Invade (Mykonos x SetiawanAde)",
         "Mykonos Invade (Mykonos x SetiawanAde)"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://officialmykonos.com/collections/all?page=4",
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4",
+      "identity_status": "source_verified_name",
+      "source_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml",
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml",
       "formats_ml": [
         50
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-ARMAF-cb6f0532",
@@ -35246,7 +35313,8 @@
       "aliases": [
         "Aphrodite 50 ml",
         "Mykonos Aphrodite 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-d6ce21fb",
@@ -35256,7 +35324,8 @@
       "aliases": [
         "Aphrodite 100 ml",
         "Mykonos Aphrodite 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-6aff7937",
@@ -35266,7 +35335,8 @@
       "aliases": [
         "Baby Love 50 ml",
         "Mykonos Baby Love 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-baby-love-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-0b2ce9db",
@@ -35276,7 +35346,8 @@
       "aliases": [
         "Black Opera 100 ml",
         "Mykonos Black Opera 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-5a82441b",
@@ -35286,7 +35357,8 @@
       "aliases": [
         "Bonfire Vanilla 50 ml",
         "Mykonos Bonfire Vanilla 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-b4433062",
@@ -35296,7 +35368,8 @@
       "aliases": [
         "Cafe Drops 50 ml",
         "Mykonos Cafe Drops 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-c0079fad",
@@ -35306,7 +35379,8 @@
       "aliases": [
         "California Blue 50 ml",
         "Mykonos California Blue 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-c0079fad",
@@ -35316,7 +35390,8 @@
       "aliases": [
         "California Blue 100 ml",
         "Mykonos California Blue 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-a7986b6d",
@@ -35326,7 +35401,8 @@
       "aliases": [
         "California Club 50 ml",
         "Mykonos California Club 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-3e5e18c7",
@@ -35336,7 +35412,8 @@
       "aliases": [
         "California 50 ml",
         "Mykonos California 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml"
     },
     {
       "product_id": "SH-MYKONOS-3e5e18c7",
@@ -35346,7 +35423,8 @@
       "aliases": [
         "California 100 ml",
         "Mykonos California 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-california-signature-50ml"
     },
     {
       "product_id": "SH-MYKONOS-087e4a85",
@@ -35356,7 +35434,8 @@
       "aliases": [
         "Caramel Fudge Cookie 50 ml",
         "Mykonos Caramel Fudge Cookie 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-cb66aed4",
@@ -35366,7 +35445,8 @@
       "aliases": [
         "Coconut Dreams 50 ml",
         "Mykonos Coconut Dreams 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-8bad0f8a",
@@ -35376,7 +35456,8 @@
       "aliases": [
         "Conquer 50 ml",
         "Mykonos Conquer 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-8bad0f8a",
@@ -35386,7 +35467,8 @@
       "aliases": [
         "Conquer 100 ml",
         "Mykonos Conquer 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-ba81e1f1",
@@ -35396,7 +35478,8 @@
       "aliases": [
         "Constantine 50 ml",
         "Mykonos Constantine 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-fbaf72fe",
@@ -35406,7 +35489,8 @@
       "aliases": [
         "Crimson 100 ml",
         "Mykonos Crimson 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-5ad9e0a7",
@@ -35416,7 +35500,8 @@
       "aliases": [
         "Dark Secret 100 ml",
         "Mykonos Dark Secret 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-f3caf502",
@@ -35426,7 +35511,8 @@
       "aliases": [
         "Dreamscape 50 ml",
         "Mykonos Dreamscape 50 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-f3caf502",
@@ -35436,7 +35522,8 @@
       "aliases": [
         "Dreamscape 100 ml",
         "Mykonos Dreamscape 100 ml"
-      ]
+      ],
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-c024bc58",
@@ -35447,7 +35534,7 @@
         "Glitch 50 ml",
         "Mykonos Glitch 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-c024bc58",
@@ -35458,7 +35545,7 @@
         "Glitch 100 ml",
         "Mykonos Glitch 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-92e7627a",
@@ -35469,7 +35556,7 @@
         "Empire x RRQ 50 ml",
         "Mykonos Empire x RRQ 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-92e7627a",
@@ -35480,7 +35567,7 @@
         "Empire x RRQ 100 ml",
         "Mykonos Empire x RRQ 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-78b2bc55",
@@ -35491,7 +35578,7 @@
         "Utopia 100 ml",
         "Mykonos Utopia 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-e15a94f5",
@@ -35502,7 +35589,7 @@
         "Sparkling Rosé 100 ml",
         "Mykonos Sparkling Rosé 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-24a34991",
@@ -35513,7 +35600,7 @@
         "Sorrento 50 ml",
         "Mykonos Sorrento 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-24a34991",
@@ -35524,7 +35611,7 @@
         "Sorrento 100 ml",
         "Mykonos Sorrento 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-991a7472",
@@ -35535,7 +35622,7 @@
         "Royal Ispahan 50 ml",
         "Mykonos Royal Ispahan 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-991a7472",
@@ -35546,7 +35633,7 @@
         "Royal Ispahan 100 ml",
         "Mykonos Royal Ispahan 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-12074094",
@@ -35557,7 +35644,7 @@
         "Reflection 50 ml",
         "Mykonos Reflection 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-12074094",
@@ -35568,7 +35655,7 @@
         "Reflection 100 ml",
         "Mykonos Reflection 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-dd8264d1",
@@ -35579,7 +35666,7 @@
         "On The Rocks 100 ml",
         "Mykonos On The Rocks 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-133fd300",
@@ -35590,7 +35677,7 @@
         "Penthouse 50 ml",
         "Mykonos Penthouse 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-133fd300",
@@ -35601,7 +35688,7 @@
         "Penthouse 100 ml",
         "Mykonos Penthouse 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-1713c194",
@@ -35612,7 +35699,7 @@
         "Moroccan Vanilla 100 ml",
         "Mykonos Moroccan Vanilla 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-dd9e74c4",
@@ -35623,7 +35710,7 @@
         "Musk Aura 100 ml",
         "Mykonos Musk Aura 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-2e47d8e0",
@@ -35634,7 +35721,7 @@
         "Xoxo Rosy 50 ml",
         "Mykonos Xoxo Rosy 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-accabf2b",
@@ -35645,18 +35732,17 @@
         "Verve 50 ml",
         "Mykonos Verve 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-7de81646",
       "variant_id": "SHV-SH-MYKONOS-7de81646-50-EXDP",
       "size_ml": 50,
-      "concentration": "Extrait de Parfum",
       "aliases": [
         "Vanilla Clouds 50 ml",
         "Mykonos Vanilla Clouds 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1"
     },
     {
       "product_id": "SH-MYKONOS-0eac5dbd",
@@ -35667,7 +35753,7 @@
         "Slow Living 50 ml",
         "Mykonos Slow Living 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-slow-living-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-0eac5dbd",
@@ -35678,7 +35764,7 @@
         "Slow Living 100 ml",
         "Mykonos Slow Living 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/100ml-collection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-slow-living-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-339c777f",
@@ -35689,7 +35775,7 @@
         "Reflection Elixir 50 ml",
         "Mykonos Reflection Elixir 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/50ml-colection"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-789b7773",
@@ -35700,7 +35786,7 @@
         "Enchanted 50 ml",
         "Mykonos Enchanted 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-789b7773",
@@ -35711,7 +35797,7 @@
         "Enchanted 100 ml",
         "Mykonos Enchanted 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-dd83e874",
@@ -35722,7 +35808,7 @@
         "Hawaiian Crush 50 ml",
         "Mykonos Hawaiian Crush 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-16ea96ab",
@@ -35733,7 +35819,7 @@
         "Imperium 100 ml",
         "Mykonos Imperium 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-678b254c",
@@ -35744,7 +35830,7 @@
         "Inception 50 ml",
         "Mykonos Inception 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-678b254c",
@@ -35755,7 +35841,7 @@
         "Inception 100 ml",
         "Mykonos Inception 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-ae57a514",
@@ -35766,7 +35852,7 @@
         "Inferno 50 ml",
         "Mykonos Inferno 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-ae57a514",
@@ -35777,7 +35863,7 @@
         "Inferno 100 ml",
         "Mykonos Inferno 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-257f75b0",
@@ -35788,7 +35874,7 @@
         "Luminos 50 ml",
         "Mykonos Luminos 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-764eda91",
@@ -35799,7 +35885,7 @@
         "Marbella 50 ml",
         "Mykonos Marbella 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-764eda91",
@@ -35810,7 +35896,7 @@
         "Marbella 100 ml",
         "Mykonos Marbella 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-a549ad4f",
@@ -35821,7 +35907,7 @@
         "Matcha Latte 50 ml",
         "Mykonos Matcha Latte 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-732c1b84",
@@ -35832,7 +35918,7 @@
         "Mayfair 50 ml",
         "Mykonos Mayfair 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-732c1b84",
@@ -35843,7 +35929,7 @@
         "Mayfair 100 ml",
         "Mykonos Mayfair 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-578b53c8",
@@ -35854,7 +35940,7 @@
         "Milk Drops 50 ml",
         "Mykonos Milk Drops 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-f5abaed8",
@@ -35865,7 +35951,7 @@
         "Monaco Royale 50 ml",
         "Mykonos Monaco Royale 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-f5abaed8",
@@ -35876,7 +35962,7 @@
         "Monaco Royale 100 ml",
         "Mykonos Monaco Royale 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-39050fe8",
@@ -35887,7 +35973,7 @@
         "Nautilus 100 ml",
         "Mykonos Nautilus 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=2"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-52459698",
@@ -35898,7 +35984,7 @@
         "Paradise 50 ml",
         "Mykonos Paradise 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-3207f716",
@@ -35909,7 +35995,7 @@
         "Pink Beach 50 ml",
         "Mykonos Pink Beach 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-75d9d117",
@@ -35920,7 +36006,7 @@
         "Pink Drops 50 ml",
         "Mykonos Pink Drops 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-MYKONOS-ddcc2bfa",
@@ -35931,7 +36017,7 @@
         "Satin Blanc 100 ml",
         "Mykonos Satin Blanc 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-8673a3b0",
@@ -35942,7 +36028,7 @@
         "Senja 50 ml",
         "Mykonos Senja 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-senja-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-a710c3ee",
@@ -35953,7 +36039,7 @@
         "Silent Whisper 50 ml",
         "Mykonos Silent Whisper 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-a710c3ee",
@@ -35964,7 +36050,7 @@
         "Silent Whisper 100 ml",
         "Mykonos Silent Whisper 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-536a8dd8",
@@ -35975,7 +36061,7 @@
         "Stilettos 50 ml",
         "Mykonos Stilettos 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=3"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-stilettos-edp-50ml"
     },
     {
       "product_id": "SH-MYKONOS-57056cb5",
@@ -35986,7 +36072,7 @@
         "Untamed 100 ml",
         "Mykonos Untamed 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml"
     },
     {
       "product_id": "SH-MYKONOS-335746a0",
@@ -35997,7 +36083,7 @@
         "MyEgo 50 ml",
         "Mykonos MyEgo 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-335746a0",
@@ -36008,7 +36094,7 @@
         "MyEgo 100 ml",
         "Mykonos MyEgo 100 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml"
     },
     {
       "product_id": "SH-MYKONOS-1947e7e8",
@@ -36019,7 +36105,7 @@
         "Invade 50 ml",
         "Mykonos Invade 50 ml"
       ],
-      "source_evidence_url": "https://officialmykonos.com/collections/all?page=4"
+      "source_evidence_url": "https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml"
     },
     {
       "product_id": "SH-LATTAFA-ASAD-001",
