@@ -20785,9 +20785,10 @@
         "Freeze",
         "Bujairami Freeze"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/freeze-inspired-by-y-iced-cologne-ysl",
+      "source_evidence_url": "https://bujairami.ae/products/freeze-inspired-by-y-iced-cologne-ysl",
+      "source_product_url": "https://bujairami.ae/products/freeze-inspired-by-y-iced-cologne-ysl"
     },
     {
       "product_id": "SH-BUJAIRAMI-FULL-THROTTLE",
@@ -20801,9 +20802,10 @@
         "Full Throttle",
         "Bujairami Full Throttle"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/full-throttle-inspired-by-speed-legends-living-on-the-edge-ex-nihilo",
+      "source_evidence_url": "https://bujairami.ae/products/full-throttle-inspired-by-speed-legends-living-on-the-edge-ex-nihilo",
+      "source_product_url": "https://bujairami.ae/products/full-throttle-inspired-by-speed-legends-living-on-the-edge-ex-nihilo"
     },
     {
       "product_id": "SH-BUJAIRAMI-GEM",
@@ -20817,9 +20819,10 @@
         "Gem",
         "Bujairami Gem"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/gem-inspired-by-al-fareed-arabian-oud-extrait",
+      "source_evidence_url": "https://bujairami.ae/products/gem-inspired-by-al-fareed-arabian-oud-extrait",
+      "source_product_url": "https://bujairami.ae/products/gem-inspired-by-al-fareed-arabian-oud-extrait"
     },
     {
       "product_id": "SH-BUJAIRAMI-GLADIATOR",
@@ -20833,9 +20836,14 @@
         "Gladiator",
         "Bujairami Gladiator"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/gladiator-inspired-by-triumph-of-bacchus-from-argos",
+      "source_evidence_url": "https://bujairami.ae/products/gladiator-inspired-by-triumph-of-bacchus-from-argos",
+      "source_product_url": "https://bujairami.ae/products/gladiator-inspired-by-triumph-of-bacchus-from-argos",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-GOLDEN-NIGHT",
@@ -20849,9 +20857,14 @@
         "Golden Night",
         "Bujairami Golden Night"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/golden-night-inspired-by-delina-exclusif-from-parfums-de-marly",
+      "source_evidence_url": "https://bujairami.ae/products/golden-night-inspired-by-delina-exclusif-from-parfums-de-marly",
+      "source_product_url": "https://bujairami.ae/products/golden-night-inspired-by-delina-exclusif-from-parfums-de-marly",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-GRAND-AFFAIR",
@@ -20897,9 +20910,14 @@
         "Hectic",
         "Bujairami Hectic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/hectic-inspired-by-louis-vuitton-imagination-extrait",
+      "source_evidence_url": "https://bujairami.ae/products/hectic-inspired-by-louis-vuitton-imagination-extrait",
+      "source_product_url": "https://bujairami.ae/products/hectic-inspired-by-louis-vuitton-imagination-extrait",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-HELOU",
@@ -20913,9 +20931,13 @@
         "Helou",
         "Bujairami Helou"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/beautiful-lady-inspired-by-copy",
+      "source_evidence_url": "https://bujairami.ae/products/beautiful-lady-inspired-by-copy",
+      "source_product_url": "https://bujairami.ae/products/beautiful-lady-inspired-by-copy",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-HER",
@@ -20945,9 +20967,14 @@
         "High Roller",
         "Bujairami High Roller"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/high-roller",
+      "source_evidence_url": "https://bujairami.ae/products/high-roller",
+      "source_product_url": "https://bujairami.ae/products/high-roller",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-HONCHO",
@@ -48361,6 +48388,61 @@
       "variant_id": "SHV-SH-BUJAIRAMI-BOUJEE-100-000",
       "source_url": "https://bujairami.ae/products/boujee-inspired-by-attrape-reves-from-louis-vuitton",
       "source_evidence_url": "https://bujairami.ae/products/boujee-inspired-by-attrape-reves-from-louis-vuitton"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-GOLDEN-NIGHT",
+      "size_ml": 100,
+      "aliases": [
+        "Golden Night 100 ml",
+        "Bujairami Golden Night 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-GOLDEN-NIGHT-100-000",
+      "source_url": "https://bujairami.ae/products/golden-night-inspired-by-delina-exclusif-from-parfums-de-marly",
+      "source_evidence_url": "https://bujairami.ae/products/golden-night-inspired-by-delina-exclusif-from-parfums-de-marly"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HECTIC",
+      "size_ml": 100,
+      "aliases": [
+        "Hectic 100 ml",
+        "Bujairami Hectic 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-HECTIC-100-000",
+      "source_url": "https://bujairami.ae/products/hectic-inspired-by-louis-vuitton-imagination-extrait",
+      "source_evidence_url": "https://bujairami.ae/products/hectic-inspired-by-louis-vuitton-imagination-extrait"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HELOU",
+      "size_ml": 100,
+      "aliases": [
+        "Helou 100 ml",
+        "Bujairami Helou 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-HELOU-100-000",
+      "source_url": "https://bujairami.ae/products/beautiful-lady-inspired-by-copy",
+      "source_evidence_url": "https://bujairami.ae/products/beautiful-lady-inspired-by-copy"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HIGH-ROLLER",
+      "size_ml": 100,
+      "aliases": [
+        "High Roller 100 ml",
+        "Bujairami High Roller 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-HIGH-ROLLER-100-000",
+      "source_url": "https://bujairami.ae/products/high-roller",
+      "source_evidence_url": "https://bujairami.ae/products/high-roller"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-GLADIATOR",
+      "size_ml": 100,
+      "aliases": [
+        "Gladiator 100 ml",
+        "Bujairami Gladiator 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-GLADIATOR-100-000",
+      "source_url": "https://bujairami.ae/products/gladiator-inspired-by-triumph-of-bacchus-from-argos",
+      "source_evidence_url": "https://bujairami.ae/products/gladiator-inspired-by-triumph-of-bacchus-from-argos"
     }
   ]
 }
