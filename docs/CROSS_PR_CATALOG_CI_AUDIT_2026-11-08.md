@@ -139,7 +139,7 @@ This is a green catalog collision gate and a green isolated architecture CI slic
 
 ### Follow-up verification — 9 November 2026 (Al Wataniah PR #604)
 
-PR #604 adds no new canonical identities. It upgrades 22 existing Al Wataniah identities to their individual brand-owned product pages and adds one explicitly documented 100 ml Eau de Parfum variant to each:
+PR #604 adds no new canonical identities. It upgrades 32 existing Al Wataniah identities to their individual brand-owned product pages and adds one explicitly documented 100 ml Eau de Parfum variant to each:
 
 - Kayaan Midnight
 - Sabah Al Ward
@@ -166,9 +166,9 @@ PR #604 adds no new canonical identities. It upgrades 22 existing Al Wataniah id
 
 The original product IDs are preserved. The family registry and two Al Wataniah regression modules were updated to recognize the verified detail pages and the expanded set of explicit variants. CI initially exposed stale assertions that assumed only two Al Wataniah variants existed; those assertions were updated to distinguish detail-verified identities from collection-only identities.
 
-- Catalog validation after the full 22-product reconciliation: [run 42628324185](https://github.com/dalexmon81/ScentHunter/actions/runs/42628324185)
-- Result: **PASS — 144 tests, OK**.
-- Al Wataniah individual-page evidence now covers 24 of the 86 identities in the baseline snapshot (the original two plus 22 upgrades); 62 remain collection-backed.
+- Catalog validation after the full 22-product reconciliation: [run 42628827009](https://github.com/dalexmon81/ScentHunter/actions/runs/42628324185)
+- Result: **PASS — 145 tests, OK**.
+- Al Wataniah individual-page evidence now covers 34 of the 86 identities in the baseline snapshot (the original two plus 32 upgrades); 52 remain collection-backed.
 - Cross-PR audit: [run 42628477527](https://github.com/dalexmon81/ScentHunter/actions/runs/42628477527); **PASS — 27 candidate PRs, zero conflicting product or variant identities**.
 - Audit regression suite: 136 tests, OK.
 
