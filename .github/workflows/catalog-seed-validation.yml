@@ -12,6 +12,8 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/al-wataniah-ameeri-sultan-details-2026-11-09
+      - catalog/afnan-9-series-official-details-2026-11-09
+      - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -19,6 +21,8 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/afnan-9-series-official-details-2026-11-09
+      - catalog/al-wataniah-five-more-details-2026-11-09
       - catalog/al-wataniah-ameeri-sultan-details-2026-11-09
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
