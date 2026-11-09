@@ -225,3 +225,27 @@ Three additional standalone fragrances were added from individual official produ
 - **Rouge Extrait** — Extrait de Parfum; 100 ml, 30 ml and 10 ml
 
 Gift sets and coffrets remain excluded as standalone perfume identities. Other Jo Milano Paris lines outside the Games of Spades family were not added in this focused pass.
+
+
+### Source-host versus brand attribution follow-up (9 November 2026)
+
+A focused source review confirmed that three Maison Asrar fragrances use the Gulf Orchid storefront as their product host. The host domain alone must not be used to reassign the brand: each individual product page labels the product brand as **Maison Asrar**, and the pages explicitly state **100 ml - EDP**.
+
+- **Plot Twist** — https://shop-gulforchid.com/products/plot-twist
+- **Love Key** — https://shop-gulforchid.com/products/love-key
+- **Unsolved Mystery** — https://shop-gulforchid.com/products/unsolved-mystery
+
+These three existing identities therefore remain Maison Asrar products. Their existing 100 ml Eau de Parfum variants are retained; no duplicate products or variants were added. Regression coverage now checks the brand attribution, individual source URL, 100 ml size and EDP concentration for all three. This prevents a future cleanup from incorrectly treating a retailer's domain as the product's manufacturer.
+
+### Mykonos catalogue reconciliation lead (9 November 2026)
+
+The catalog contains **72** Mykonos canonical identities. The brand-owned Indonesian storefront currently lists **54 products**, while the authorized European retailer's catalogue page describes **90 fragrances**. These figures are not directly interchangeable: the storefronts cover different regional assortments, the retailer catalogue includes collaborations and alternate display names, and historical/discontinued products may remain in the seed.
+
+The 90-item retailer catalogue is a discovery lead, not authority to bulk-import 18 additional identities. Candidate names and collaboration labels must be matched to the brand's own product pages or corroborated by a second reliable source before they are promoted. No Mykonos identities, sizes or concentrations were added in this pass. The comparison is intentionally left as a follow-up rather than inventing a completeness claim from mismatched storefront totals.
+
+Sources reviewed:
+- Brand-owned storefront: https://officialmykonos.com/collections/all
+- Authorized European retailer catalogue (explicitly identifies itself as not the official Mykonos site): https://mykonosperfumes.eu/pages/explore
+- Maison Asrar brand-owned storefront: https://maisonasrar.com/collections/all
+- Maison Asrar perfume-sprays collection: https://maisonasrar.com/collections/perfume-sprays
+- Gulf Orchid retailer pages for the three Maison Asrar fragrances listed above.
