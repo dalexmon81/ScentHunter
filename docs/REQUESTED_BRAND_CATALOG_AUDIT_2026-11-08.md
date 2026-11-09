@@ -225,3 +225,30 @@ Three additional standalone fragrances were added from individual official produ
 - **Rouge Extrait** — Extrait de Parfum; 100 ml, 30 ml and 10 ml
 
 Gift sets and coffrets remain excluded as standalone perfume identities. Other Jo Milano Paris lines outside the Games of Spades family were not added in this focused pass.
+
+## Authoritative catalog reconciliation — 9 November 2026
+
+The catalog JSON and family registry were fetched directly from the exact PR branch and parsed independently. This is the authoritative snapshot for the current branch; the earlier 8 November figures above remain historical checkpoints and are superseded.
+
+- Canonical fragrance identities: **2,081**
+- Explicit variants: **358**
+- Fragrance families: **34**
+- Requested-brand identities across the 20 brands: **2,078**
+- Unique product IDs: **2,081 / 2,081**
+- Unique variant IDs: **358 / 358**
+- Duplicate normalized brand/name pairs: **0**
+- Orphan variants: **0**
+- Variants with missing or non-positive sizes: **0**
+- Requested-brand identities missing `source_url`: **0**
+- Requested-brand identities with an unsupported `identity_status`: **0**
+- Catalog identities not covered by the family registry under accent/punctuation normalization: **0**
+
+Per-brand canonical identity counts:
+- Velixir 28; Mykonos 72; Maison Asrar 120; Khadlaj 116; Bujairami 142
+- Paris Corner 246; Assaf 140; Al Wataniah 86; Armaf 191; French Avenue 119
+- Arabiyat Prestige 118; Gulf Orchid 23; Swiss Arabian 41; Games of Spades 32; Lattafa 115
+- Afnan 87; Aromatix 12; Maison Alhambra 207; Zimaya 76; Al Haramain 107
+
+The 20 requested brands total **2,078** identities. The remaining three identities are outside that requested set (Giorgio Armani 1 and Al Ambra 2). These checks establish internal structural consistency and provenance-field coverage; they do **not** prove that every brand's complete worldwide or historical assortment has been harvested. The catalog remains a canonical identity seed, not a live offer inventory.
+
+The two successful `validate-catalog-seed` Actions runs recorded for catalog commit `f64c61f1558df42ddd50cf6067b70ef0df6c8d4a` validate the unchanged catalog/test snapshot. This documentation-only reconciliation does not modify catalog data or production code.
