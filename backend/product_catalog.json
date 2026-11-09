@@ -21004,9 +21004,14 @@
         "Houdini",
         "Bujairami Houdini"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/houdini-inspired-by",
+      "source_evidence_url": "https://bujairami.ae/products/houdini-inspired-by",
+      "source_product_url": "https://bujairami.ae/products/houdini-inspired-by",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-IBIZA",
@@ -21036,9 +21041,14 @@
         "Inferno",
         "Bujairami Inferno"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/inferno-inspired-by-god-of-fire-from-stephane-humbert-lucas-777",
+      "source_evidence_url": "https://bujairami.ae/products/inferno-inspired-by-god-of-fire-from-stephane-humbert-lucas-777",
+      "source_product_url": "https://bujairami.ae/products/inferno-inspired-by-god-of-fire-from-stephane-humbert-lucas-777",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-KINGSMAN",
@@ -21052,9 +21062,14 @@
         "KingsMan",
         "Bujairami KingsMan"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/kingsman",
+      "source_evidence_url": "https://bujairami.ae/products/kingsman",
+      "source_product_url": "https://bujairami.ae/products/kingsman",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-LAST-KINGDOM",
@@ -21102,9 +21117,14 @@
         "Limonana",
         "Bujairami Limonana"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/limonana-inspired-by-torino21-from-xerjoff",
+      "source_evidence_url": "https://bujairami.ae/products/limonana-inspired-by-torino21-from-xerjoff",
+      "source_product_url": "https://bujairami.ae/products/limonana-inspired-by-torino21-from-xerjoff",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-LYCHEE",
@@ -21118,9 +21138,14 @@
         "Lychee",
         "Bujairami Lychee"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/lychee-inspired-by-sparkling-lychee-eden-39-from-kayali-fragrances",
+      "source_evidence_url": "https://bujairami.ae/products/lychee-inspired-by-sparkling-lychee-eden-39-from-kayali-fragrances",
+      "source_product_url": "https://bujairami.ae/products/lychee-inspired-by-sparkling-lychee-eden-39-from-kayali-fragrances",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-MAD-LOVE",
@@ -21134,9 +21159,11 @@
         "Mad Love",
         "Bujairami Mad Love"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/mad-love-inspired-by-ombre-nomade-louis-vuitton-extrait",
+      "source_evidence_url": "https://bujairami.ae/products/mad-love-inspired-by-ombre-nomade-louis-vuitton-extrait",
+      "source_product_url": "https://bujairami.ae/products/mad-love-inspired-by-ombre-nomade-louis-vuitton-extrait",
+      "gender": "Men"
     },
     {
       "product_id": "SH-BUJAIRAMI-MADAM",
@@ -21150,9 +21177,10 @@
         "Madam",
         "Bujairami Madam"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/madam-inspired-by-chanel-coco-mademoiselle",
+      "source_evidence_url": "https://bujairami.ae/products/madam-inspired-by-chanel-coco-mademoiselle",
+      "source_product_url": "https://bujairami.ae/products/madam-inspired-by-chanel-coco-mademoiselle"
     },
     {
       "product_id": "SH-BUJAIRAMI-MADNESS",
@@ -21166,9 +21194,14 @@
         "Madness",
         "Bujairami Madness"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=2",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/power-inspired-by-le-male-elixir-from-jpg",
+      "source_evidence_url": "https://bujairami.ae/products/power-inspired-by-le-male-elixir-from-jpg",
+      "source_product_url": "https://bujairami.ae/products/power-inspired-by-le-male-elixir-from-jpg",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-MAFIA-BOSS",
@@ -48443,6 +48476,72 @@
       "variant_id": "SHV-SH-BUJAIRAMI-GLADIATOR-100-000",
       "source_url": "https://bujairami.ae/products/gladiator-inspired-by-triumph-of-bacchus-from-argos",
       "source_evidence_url": "https://bujairami.ae/products/gladiator-inspired-by-triumph-of-bacchus-from-argos"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-KINGSMAN",
+      "size_ml": 100,
+      "aliases": [
+        "KingsMan 100 ml",
+        "Bujairami KingsMan 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-KINGSMAN-100-000",
+      "source_url": "https://bujairami.ae/products/kingsman",
+      "source_evidence_url": "https://bujairami.ae/products/kingsman"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-HOUDINI",
+      "size_ml": 100,
+      "aliases": [
+        "Houdini 100 ml",
+        "Bujairami Houdini 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-HOUDINI-100-000",
+      "source_url": "https://bujairami.ae/products/houdini-inspired-by",
+      "source_evidence_url": "https://bujairami.ae/products/houdini-inspired-by"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-INFERNO",
+      "size_ml": 100,
+      "aliases": [
+        "Inferno 100 ml",
+        "Bujairami Inferno 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-INFERNO-100-000",
+      "source_url": "https://bujairami.ae/products/inferno-inspired-by-god-of-fire-from-stephane-humbert-lucas-777",
+      "source_evidence_url": "https://bujairami.ae/products/inferno-inspired-by-god-of-fire-from-stephane-humbert-lucas-777"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-LIMONANA",
+      "size_ml": 100,
+      "aliases": [
+        "Limonana 100 ml",
+        "Bujairami Limonana 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-LIMONANA-100-000",
+      "source_url": "https://bujairami.ae/products/limonana-inspired-by-torino21-from-xerjoff",
+      "source_evidence_url": "https://bujairami.ae/products/limonana-inspired-by-torino21-from-xerjoff"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-MADNESS",
+      "size_ml": 100,
+      "aliases": [
+        "Madness 100 ml",
+        "Bujairami Madness 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-MADNESS-100-000",
+      "source_url": "https://bujairami.ae/products/power-inspired-by-le-male-elixir-from-jpg",
+      "source_evidence_url": "https://bujairami.ae/products/power-inspired-by-le-male-elixir-from-jpg"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-LYCHEE",
+      "size_ml": 100,
+      "aliases": [
+        "Lychee 100 ml",
+        "Bujairami Lychee 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-LYCHEE-100-000",
+      "source_url": "https://bujairami.ae/products/lychee-inspired-by-sparkling-lychee-eden-39-from-kayali-fragrances",
+      "source_evidence_url": "https://bujairami.ae/products/lychee-inspired-by-sparkling-lychee-eden-39-from-kayali-fragrances"
     }
   ]
 }
