@@ -4630,12 +4630,13 @@
         "Afnan 9 PM Night Out"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://de.afnan.com/en/products/9pm-night-out",
-      "source_evidence_url": "https://afnan.com/collections/all",
+      "source_url": "https://www.fr.afnan.com/en/products/9pm-night-out",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9pm-night-out",
       "concentration": "Extrait de Parfum",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_product_url": "https://www.fr.afnan.com/en/products/9pm-night-out"
     },
     {
       "product_id": "SH-AFNAN-ab1ea63f",
@@ -4665,9 +4666,14 @@
         "9 AM",
         "Afnan 9 AM"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-am",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-am",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-5de78540",
@@ -4681,9 +4687,14 @@
         "9 AM Pour Femme",
         "Afnan 9 AM Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-9e3c80fa",
@@ -4697,9 +4708,14 @@
         "9 AM Dive",
         "Afnan 9 AM Dive"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-am-dive",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-dive",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-am-dive",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-816ce12c",
@@ -4767,9 +4783,14 @@
         "9 PM Rebel",
         "Afnan 9 PM Rebel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm-rebel",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-rebel",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm-rebel",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-5cdc0bae",
@@ -4943,14 +4964,14 @@
         "9 PM",
         "Afnan 9 PM"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://www.bjutip.com/men-perfumes",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm",
       "formats_ml": [
         100
       ],
       "concentration": "Eau de Parfum",
-      "source_product_url": "https://uae.afnan.com/products/9-pm-perfume",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm",
       "gtins": [
         "6290171002338"
       ]
@@ -4967,9 +4988,14 @@
         "9 PM Pour Femme",
         "Afnan 9 PM Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-f8622945",
@@ -5335,9 +5361,14 @@
         "9 PM Elixir",
         "Afnan 9 PM Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm-elixir",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-elixir",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm-elixir",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-583391fb",
@@ -34831,7 +34862,8 @@
       ],
       "variant_id": "SHV-SH-AFNAN-823a97f5-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6290171002338"
+      "gtin": "6290171002338",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm"
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -36623,7 +36655,8 @@
       "aliases": [
         "9 PM Night Out 100 ml",
         "Afnan 9 PM Night Out 100ml"
-      ]
+      ],
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9pm-night-out"
     },
     {
       "product_id": "SH-ZIMAYA-KIBRIA-SUPREMO",
@@ -38315,6 +38348,72 @@
       "variant_id": "SHV-SH-AL-WATANIAH-ALYA-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.alwataniah.com/products/alya"
+    },
+    {
+      "product_id": "SH-AFNAN-69527fa0",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Elixir 100 ml",
+        "Afnan 9 PM Elixir 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-69527fa0-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-elixir"
+    },
+    {
+      "product_id": "SH-AFNAN-dec689ab",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Pour Femme 100 ml",
+        "Afnan 9 PM Pour Femme 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-dec689ab-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-be149290",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM 100 ml",
+        "Afnan 9 AM 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-be149290-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am"
+    },
+    {
+      "product_id": "SH-AFNAN-5de78540",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM Pour Femme 100 ml",
+        "Afnan 9 AM Pour Femme 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5de78540-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-9e3c80fa",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM Dive 100 ml",
+        "Afnan 9 AM Dive 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-9e3c80fa-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-dive"
+    },
+    {
+      "product_id": "SH-AFNAN-068d05a5",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Rebel 100 ml",
+        "Afnan 9 PM Rebel 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-068d05a5-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-rebel"
     }
   ]
 }
