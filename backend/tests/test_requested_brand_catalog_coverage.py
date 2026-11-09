@@ -793,11 +793,11 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Lava": ("https://maisonalhambra-usa.com/products/maison-alhambra-lava-eau-de-parfum-for-everyone", 100, "6290360599267"),
             "La Charmante": ("https://maisonalhambra-usa.com/products/maison-alhambra-la-charmante-eau-de-parfum-for-everyone", 100, "6290362340164"),
             "La Charmante Eclatant": ("https://maisonalhambra-usa.com/products/maison-alhambra-la-charmante-eclatant-eau-de-parfum-for-everyone", 100, "6290362340171"),
-            "Your Touch Santal": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-your-touch-santal-eau-de-parfum-for-everyone", 100, "6290362347989"),
-            "Victoria Flower Rosa Lilium": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-victoria-flower-rosa-lilium-eau-de-parfum-for-women", 100, "6290362340966"),
+            "Your Touch Santal": ("https://maisonalhambra-usa.com/products/maison-alhambra-your-touch-santal-eau-de-parfum-for-everyone", 100, "6290362347989"),
+            "Victoria Flower Rosa Lilium": ("https://maisonalhambra-usa.com/products/maison-alhambra-victoria-flower-rosa-lilium-eau-de-parfum-for-women", 100, "6290362340966"),
             "Victorioso Heroic": ("https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men", 100, "6290362340584"),
-            "Rose Origami": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone", 100, "6290362340928"),
-            "Opera Rouge": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone", 100, "6290362340881"),
+            "Rose Origami": ("https://maisonalhambra-usa.com/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone", 100, "6290362340928"),
+            "Opera Rouge": ("https://maisonalhambra-usa.com/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone", 100, "6290362340881"),
         }
         products = {
             row.get("canonical_name"): row
