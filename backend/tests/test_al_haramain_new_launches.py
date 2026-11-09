@@ -1,4 +1,4 @@
-"""Regression tests for five newly verified Al Haramain launches."""
+"""Regression tests for verified Al Haramain new launches."""
 import json
 import unittest
 from pathlib import Path
@@ -9,17 +9,19 @@ REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf
 
 
 class AlHaramainNewLaunchTests(unittest.TestCase):
-    def test_five_new_launches_have_official_product_page_evidence(self):
+    def test_new_launches_have_official_product_page_evidence(self):
         expected = {
             "Haramain Camellia": ("https://shop.alharamainperfumes.com/eu/haramain-camellia.html", "Extrait de Parfum", None),
             "Amber Oud Smell Dubai": ("https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Sameera": ("https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Empire Aromatique Ombre": ("https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Leif": ("https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Sameera Noir": ("https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Olaf": ("https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
         }
         products = {
             p["canonical_name"]: p for p in CATALOG["products"]
-            if p.get("brand_name") == "Al Haramain"
+            if p.get("brand") in {"Al Haramain", "Al-Haramain", "Haramain"}
         }
         variants = CATALOG["variants"]
         for name, (url, concentration, size) in expected.items():
@@ -42,8 +44,17 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
     def test_new_launches_are_registered_in_al_haramain_family(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "al_haramain_catalog")
         names = {p["canonical_name"] for p in family["products"]}
-        for name in ("Haramain Camellia", "Amber Oud Smell Dubai", "Sameera", "Empire Aromatique Ombre", "Leif"):
+        for name in ("Haramain Camellia", "Amber Oud Smell Dubai", "Sameera", "Empire Aromatique Ombre", "Leif", "Sameera Noir", "Olaf"):
             self.assertIn(name, names)
+
+    def test_al_haramain_ids_are_unique_and_variants_are_attached(self):
+        products = [p for p in CATALOG["products"] if p.get("brand") in {"Al Haramain", "Al-Haramain", "Haramain"}]
+        product_ids = [p["product_id"] for p in products]
+        variant_ids = [v["variant_id"] for v in CATALOG["variants"]]
+        self.assertEqual(len(product_ids), len(set(product_ids)))
+        self.assertEqual(len(variant_ids), len(set(variant_ids)))
+        known = set(product_ids)
+        self.assertTrue(all(v["product_id"] in known for v in CATALOG["variants"] if v["product_id"].startswith("SH-AL-HARAMAIN-")))
 
 
 if __name__ == "__main__":

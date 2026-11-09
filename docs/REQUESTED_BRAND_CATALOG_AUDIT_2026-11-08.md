@@ -96,3 +96,12 @@ The official EU New Launches collection (63 entries) was reconciled against the 
 Four detail pages explicitly state 100 ml and concentration; one 100 ml variant was added for each. Camellia's individual page confirms the perfume and Extrait de Parfum concentration but does not state a bottle size, so no size or variant was inferred. Other entries in the 63-item collection include bukhoor tablets and 30 ml × 12 multipacks; these were not treated as individual perfume identities. Ayaat Malika Gold was not promoted because the product title says Extrait de Parfum while its detail metadata says Eau de Parfum. Sameera Noir and Olaf remain leads until their individual pages can be independently checked.
 
 This update adds five canonical identities and four explicit variants. All rows retain first-party product-detail URLs. No prices, stock, or retailer offers were copied into the canonical seed.
+
+### Al Haramain: two further verified product-detail pages (9 November 2026)
+
+Two additional identities absent from the current 106-product Al Haramain catalog were checked against individual first-party detail pages and added with explicit 100 ml variants:
+
+- Sameera Noir — https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum; SKU AHP2005)
+- Olaf — https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html (100 ml, Eau de Parfum; SKU AHP2090)
+
+Sameera Noir's EU listing is visible in the official 63-item New Launches collection, while its individual verified product detail was accessible on Al Haramain's official US store. Olaf's EU detail page explicitly confirms 100 ml and Eau de Parfum. No prices, stock, or retailer offers were copied into the catalog.

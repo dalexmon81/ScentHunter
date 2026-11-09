@@ -33814,6 +33814,44 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3cdea5e5",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Sameera Noir",
+      "name": "Sameera Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Sameera Noir",
+      "aliases": [
+        "Sameera Noir",
+        "Al Haramain Sameera Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1235a7a1",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Olaf",
+      "name": "Olaf",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Olaf",
+      "aliases": [
+        "Olaf",
+        "Al Haramain Olaf"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36790,6 +36828,28 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-65854121-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3cdea5e5",
+      "size_ml": 100,
+      "aliases": [
+        "Sameera Noir 100 ml",
+        "Al Haramain Sameera Noir 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-3cdea5e5-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1235a7a1",
+      "size_ml": 100,
+      "aliases": [
+        "Olaf 100 ml",
+        "Al Haramain Olaf 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1235a7a1-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html"
     }
   ]
 }
