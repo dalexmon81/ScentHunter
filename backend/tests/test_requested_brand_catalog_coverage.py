@@ -1381,5 +1381,40 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_khadlaj_official_detail_pages_and_variants_are_verified(self):
+        expected = {
+            "Hareem Al Sultan Gold": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+            "Panache Angel Dust": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+            "Fursan White": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae",
+            "Island Vanilla Dunes": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men",
+            "Cloud Candy": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
+            "Caffe Latte": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray",
+            "Empire Victor": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+            "Oud Pour Klassik": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/oud-pour-klassik-spray-shop-online-best-price-in-dubai-uae",
+            "Nafais Sharq": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-nafais-sharq-edp-designer-fragrance-for-women-dubai-uae",
+            "Karus Gold Absolu": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/karus-gold-absolu-100-ml-edp-spray",
+            "Ria": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-ria-100-ml-eau-de-parfum-spray-for-women-fruity-sweet-fragrance-for-women",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Khadlaj"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("source_url"), source)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
