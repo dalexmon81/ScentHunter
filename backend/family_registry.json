@@ -12118,6 +12118,9 @@
           "aliases": [
             "9 PM Night Out",
             "Afnan 9 PM Night Out"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12132,6 +12135,9 @@
           "aliases": [
             "9 AM",
             "Afnan 9 AM"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12139,6 +12145,9 @@
           "aliases": [
             "9 AM Pour Femme",
             "Afnan 9 AM Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12146,6 +12155,9 @@
           "aliases": [
             "9 AM Dive",
             "Afnan 9 AM Dive"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12178,6 +12190,9 @@
           "aliases": [
             "9 PM Rebel",
             "Afnan 9 PM Rebel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12265,6 +12280,9 @@
           "aliases": [
             "9 PM Pour Femme",
             "Afnan 9 PM Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12426,6 +12444,9 @@
           "aliases": [
             "9 PM Elixir",
             "Afnan 9 PM Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
