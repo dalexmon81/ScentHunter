@@ -35124,6 +35124,102 @@
       ],
       "source_product_url": "https://lattafaparfum.eu/de-de/products/sugar-me-creme-brulee",
       "source_evidence_url": "https://lattafaparfum.eu/de-de/products/sugar-me-creme-brulee"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-6df7df75",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Victorioso Heroic",
+      "name": "Victorioso Heroic",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Victorioso Heroic",
+      "aliases": [
+        "Victorioso Heroic",
+        "Maison Alhambra Victorioso Heroic"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290362340584"
+      ],
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-b9f1e8eb",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Rose Origami",
+      "name": "Rose Origami",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Rose Origami",
+      "aliases": [
+        "Rose Origami",
+        "Maison Alhambra Rose Origami"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290362340928"
+      ],
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-327c9c77",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Opera Rouge",
+      "name": "Opera Rouge",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Opera Rouge",
+      "aliases": [
+        "Opera Rouge",
+        "Maison Alhambra Opera Rouge"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290362340881"
+      ],
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-87c08c97",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Camille",
+      "name": "Camille",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Camille",
+      "aliases": [
+        "Camille",
+        "Maison Alhambra Camille"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290360599236"
+      ],
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women"
     }
   ],
   "variants": [
@@ -39955,6 +40051,34 @@
         "Maison Alhambra Sugar Me Creme Brulee 100ml"
       ],
       "source_evidence_url": "https://lattafaparfum.eu/de-de/products/sugar-me-creme-brulee"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-6df7df75-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-6df7df75",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-b9f1e8eb-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-b9f1e8eb",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-327c9c77-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-327c9c77",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-87c08c97-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-87c08c97",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women"
     }
   ]
 }

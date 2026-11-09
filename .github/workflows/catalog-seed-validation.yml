@@ -21,6 +21,7 @@ on:
       - work/paris-corner-five-details-2026-11-09
       - work/maison-alhambra-twelve-details-2026-11-09
       - work/maison-alhambra-twelve-new-identities-2026-11-09
+      - work/maison-alhambra-four-launches-2026-11-09
       - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
@@ -36,6 +37,7 @@ on:
       - work/paris-corner-five-details-2026-11-09
       - work/maison-alhambra-twelve-details-2026-11-09
       - work/maison-alhambra-twelve-new-identities-2026-11-09
+      - work/maison-alhambra-four-launches-2026-11-09
       - catalog/afnan-stardust-detail-variant-2026-11-09
       - catalog/afnan-9-series-official-details-2026-11-09
       - catalog/al-wataniah-five-more-details-2026-11-09
@@ -116,3 +118,7 @@ jobs:
       - name: Validate twelve new Maison Alhambra identities
         if: github.head_ref == 'work/maison-alhambra-twelve-new-identities-2026-11-09'
         run: python -m unittest backend.tests.test_maison_alhambra_twelve_new_identities -v
+
+      - name: Validate four Maison Alhambra official launches
+        if: github.head_ref == 'work/maison-alhambra-four-launches-2026-11-09'
+        run: python -m unittest backend.tests.test_maison_alhambra_four_launches -v
