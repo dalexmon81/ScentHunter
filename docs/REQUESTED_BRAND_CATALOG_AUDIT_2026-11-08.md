@@ -105,3 +105,12 @@ Two additional identities absent from the current 106-product Al Haramain catalo
 - Olaf — https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html (100 ml, Eau de Parfum; SKU AHP2090)
 
 Sameera Noir's EU listing is visible in the official 63-item New Launches collection, while its individual verified product detail was accessible on Al Haramain's official US store. Olaf's EU detail page explicitly confirms 100 ml and Eau de Parfum. No prices, stock, or retailer offers were copied into the catalog.
+
+### Khadlaj: two new-launch product-detail reconciliations (9 November 2026)
+
+The official new-launch collection listed Muse and Khadlaj Icon, and both identities already existed in the seed as listing-level rows. Rather than creating duplicates, their existing records were upgraded using individual first-party product pages:
+
+- Muse — https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women (100 ml Eau de Parfum; GTIN 6298043072748)
+- Icon — https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men (100 ml Eau de Parfum; GTIN 6298043071215)
+
+One explicit 100 ml variant was attached to each existing canonical identity. No new canonical identity was created and no price, stock, or retailer offer data was copied.

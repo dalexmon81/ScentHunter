@@ -18,6 +18,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/khadlaj-new-launches-2026-11-09
       - catalog/al-haramain-new-launches-2026-11-09
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
@@ -69,6 +70,7 @@ jobs:
           backend.tests.test_al_haramain_gulf_orchid_store_harvest
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
+          backend.tests.test_khadlaj_new_launches
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
