@@ -276,3 +276,38 @@ The second page of the official all-products collection was reconciled against t
 All 15 official detail pages identify these products as Extrait de Parfum and state the size or size selector. The existing variant rows for the sizes displayed on the respective product pages now point to the corresponding individual detail page as `source_evidence_url`. Pre-existing 15 ml travel-size variants retain their separate selector-page evidence and are not assigned concentration from these detail pages.
 
 A second regression test checks the 15 product URLs, source status, concentration, one canonical identity per name, and the corresponding explicit size variants. Together with the first batch, 30 of the 54 products in the current official Mykonos all-products collection now have individual detail-page provenance. This is not yet a complete audit of every remaining identity or of all legacy/region-specific products.
+
+
+### Mykonos: final current-collection pages reconciled to individual official product pages (9 November 2026)
+
+The third and fourth pages of the brand-owned 54-item all-products collection were opened and reconciled against the seed. The 23 standalone perfume identities below already existed in the catalog and were upgraded in place; no canonical product was duplicated.
+
+- Paradise — https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+- Penthouse — https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Pink Beach — https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml (Eau de Parfum, 50 ml)
+- Pink Drops — https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+- Reflection Elixir — https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+- Reflection — https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Royal Ispahan — https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Satin Blanc — https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Senja — https://officialmykonos.com/products/mykonos-senja-edp-50ml (official page title states Extrait de Parfum, 50 ml; the legacy URL slug contains “edp” but is not used to override the displayed product title)
+- Silent Whisper — https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Slow Living — https://officialmykonos.com/products/mykonos-slow-living-edp-50ml (50 ml Eau de Parfum and 100 ml Extrait de Parfum)
+- Sorrento — https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Sparkling Rosé — https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Stilettos — https://officialmykonos.com/products/mykonos-stilettos-edp-50ml (Eau de Parfum, 50 ml)
+- Untamed — https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Utopia — https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Vanilla Clouds — https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1 (Extrait de Parfum, 50 ml)
+- Verve — https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml (official page title states Extrait de Parfum, 50 ml; the legacy URL slug is not used to override the displayed title)
+- Xoxo Rosy — https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml (Eau de Parfum, 50 ml)
+- MyEgo — https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Empire x RRQ — https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Glitch — https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml and 100 ml)
+- Invade — https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+
+The official “Slow Living” detail page explicitly distinguishes 50 ml Eau de Parfum from 100 ml Extrait de Parfum. Accordingly, concentration remains variant-specific and the product-level concentration is intentionally blank. The Senja and Verve pages have legacy URL slugs containing “edp” but their displayed official product titles say Extrait de Parfum; the catalog follows the title and product detail, not the URL slug.
+
+All 23 existing identities are now marked `source_verified_name`, and their size-specific variant evidence URLs point to their individual product pages. Existing 15 ml travel-size selector variants are retained with their separate evidence and are not altered by this batch.
+
+A regression test checks all 23 individual URLs, concentration handling, size-specific variant evidence and one canonical row per product. Combined with the first two batches, all 53 standalone perfume identities appearing across the current official 54-item all-products collection now have individual brand-owned product-page evidence. The 54th item is the generic Travel Size 15ML selector, not a separate canonical perfume identity. This conclusion is limited to the current official collection and does not prove exhaustive coverage of all historical, regional, or discontinued Mykonos fragrances.
