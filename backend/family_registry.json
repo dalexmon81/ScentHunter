@@ -6617,6 +6617,9 @@
           "aliases": [
             "Kayaan Classic",
             "Al Wataniah Kayaan Classic"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6624,6 +6627,9 @@
           "aliases": [
             "Kayaan Terra",
             "Al Wataniah Kayaan Terra"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6631,6 +6637,9 @@
           "aliases": [
             "Kayaan Gold",
             "Al Wataniah Kayaan Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6702,6 +6711,9 @@
           "aliases": [
             "Al Daiem",
             "Al Wataniah Al Daiem"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6758,6 +6770,9 @@
           "aliases": [
             "Arya",
             "Al Wataniah Arya"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6765,6 +6780,9 @@
           "aliases": [
             "Arya Peony Rose",
             "Al Wataniah Arya Peony Rose"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6988,6 +7006,9 @@
           "aliases": [
             "Nada",
             "Al Wataniah Nada"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7089,6 +7110,9 @@
           "aliases": [
             "Royal Oak I",
             "Al Wataniah Royal Oak I"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7332,6 +7356,9 @@
           "aliases": [
             "Ain Emarat",
             "Al Wataniah Ain Emarat"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7339,6 +7366,9 @@
           "aliases": [
             "Ain Emarat Extrait",
             "Al Wataniah Ain Emarat Extrait"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
