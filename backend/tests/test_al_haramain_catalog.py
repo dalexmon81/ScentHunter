@@ -28,7 +28,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
         catalog_names = {p["canonical_name"].casefold() for p in self.products}
         registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 141)
+        self.assertEqual(len(self.products), 149)
 
     def test_all_products_use_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "al_haramain_catalog" for p in self.products))
@@ -287,6 +287,36 @@ class AlHaramainCatalogTests(unittest.TestCase):
             self.assertEqual(matches[size].get("source_url"), source)
             self.assertEqual(matches[size].get("source_evidence_url"), source)
             self.assertEqual(matches[size].get("concentration"), "Eau de Parfum")
+
+
+    def test_eight_more_eu_store_new_launches_have_verified_detail_pages_and_variants(self):
+        expected = {
+            "Haramain Amber Oud Smell Dubai": ("https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html", "Extrait de Parfum", "Unisex"),
+            "Haramain Leif": ("https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html", "Eau de Parfum", "Unisex"),
+            "Haramain Amber Oud Gold Lux": ("https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html", "Extrait de Parfum", "Unisex"),
+            "Haramain Amber Oud Gold Mine": ("https://shop.alharamainperfumes.com/eu/haramain-amber-oud-sport-100ml-extrait-de-parfum.html", "Extrait de Parfum", "Unisex"),
+            "Haramain Baqat Zuhoor Wardi": ("https://shop.alharamainperfumes.com/eu/haramain-baqat-zuhoor-wardi-100ml-eau-de-parfum.html", "Eau de Parfum", "Women"),
+            "Haramain Baqat Zuhoor Azraq": ("https://shop.alharamainperfumes.com/eu/haramain-baqat-zuhoor-azraq-100ml-eau-de-parfum.html", "Eau de Parfum", "Women"),
+            "Haramain Baqat Zuhoor Abyad": ("https://shop.alharamainperfumes.com/eu/haramain-baqat-zuhoor-abyad-100ml-eau-de-parfum.html", "Eau de Parfum", "Women"),
+            "Haramain Baqat Zuhoor Aswad": ("https://shop.alharamainperfumes.com/eu/haramain-baqat-zuhoor-aswad-100ml-eau-de-parfum.html", "Eau de Parfum", "Men"),
+        }
+        for name, (source, concentration, gender) in expected.items():
+            with self.subTest(product=name):
+                product = self.products_by_name[name]
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_url"], source)
+                self.assertEqual(product["source_evidence_url"], source)
+                self.assertEqual(product["formats_ml"], [100])
+                self.assertEqual(product["concentration"], concentration)
+                self.assertEqual(product["gender"], gender)
+                matches = self.variants_for(product)
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0]["size_ml"], 100)
+                self.assertEqual(matches[0]["concentration"], concentration)
+                self.assertEqual(matches[0]["source_url"], source)
+                self.assertEqual(matches[0]["source_evidence_url"], source)
+                registry_names = {row["canonical_name"] for row in self.family["products"]}
+                self.assertIn(name, registry_names)
 
 
 if __name__ == "__main__":
