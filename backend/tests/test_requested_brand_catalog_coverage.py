@@ -22,7 +22,8 @@ MINIMUM_BRAND_COUNTS = {
     "Armaf": 191,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 23,
+    # Corrected 2026-11-09: 16 standalone Gulf Orchid identities remain after moving Maison Asrar products and removing collection labels from the old 23-row storefront harvest.
+    "Gulf Orchid": 16,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 115,
