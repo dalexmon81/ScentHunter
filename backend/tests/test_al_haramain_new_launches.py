@@ -22,6 +22,16 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
             "Amber Oud Gold Lux": ("https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Sameera Noir": ("https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Olaf": ("https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+        "Oud Nomad": ("https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+        "Avalon": ("https://shop.alharamainperfumes.com/eu/avalon-eau-de-parfum-100ml.html", "Eau de Parfum", 100),
+        "Azure Mythique": ("https://shop.alharamainperfumes.com/eu/azure-mythique-eau-de-parfum-100ml.html", "Eau de Parfum", 100),
+        "Cupuacu": ("https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+        "Taj Malaki Noir": ("https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-noir-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+        "Gold Crystal Oudh": ("https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-oudh-spray-100ml.html", "Extrait de Parfum", 100),
+        "Gold Crystal Sapphire": ("https://shop.alharamainperfumes.com/eu/haramain-gold-crystal-sapphire-spray-100ml.html", "Extrait de Parfum", 100),
+        "Acai": ("https://shop.alharamainperfumes.com/eu/haramain-acai-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+        "Cacau": ("https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+        "Caju": ("https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
         }
         products = {
             p["canonical_name"]: p for p in CATALOG["products"]

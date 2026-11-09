@@ -121,3 +121,20 @@ Both names were already present as listing-level identities; their records were 
 - Amber Oud Gold Lux — https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html — 100 ml Extrait de Parfum, SKU AHP2094.
 
 Each name was absent from the Al Haramain canonical identities and is now added with one explicit 100 ml variant. The Gold Mine candidate was deliberately held back: the official page title and product details identify Gold Mine, but its URL slug says "sport", so it needs a clean canonical product URL before ingestion. No prices or stock values were copied.
+
+### Al Haramain: ten more verified launch products (9 November 2026)
+
+A second reconciliation of the official EU New Launches collection identified ten further identities absent from the seed. Their individual first-party pages confirm 100 ml and concentration:
+
+- Oud Nomad — Eau de Parfum
+- Avalon — Eau de Parfum
+- Azure Mythique — Eau de Parfum
+- Cupuacu — Eau de Parfum
+- Taj Malaki Noir — Eau de Parfum
+- Gold Crystal Oudh — Extrait de Parfum
+- Gold Crystal Sapphire — Extrait de Parfum
+- Acai — Eau de Parfum
+- Cacau — Eau de Parfum
+- Caju — Eau de Parfum
+
+Harmony and Freya were already added in the parent PR and were not duplicated. Conception and Taj Malaki Velvet remain excluded because individual pages could not be independently read; gift/bundle cases and bukhoor products were also excluded. No prices, stock, or retailer offers were copied.
