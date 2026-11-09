@@ -47,7 +47,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
             "L'Aventure Grapefruit": ("Extrait de Parfum", {100}),
             "L'Aventure Iris": ("Extrait de Parfum", {100}),
             "L'Aventure Ciel": ("Extrait de Parfum", {100}),
-            "Amber Oud Aqua Dubai": ("Extrait de Parfum", {100}),
+            "Amber Oud Aqua Dubai": ("Extrait de Parfum", {100, 200}),
         }
         for name, (concentration, sizes) in expected.items():
             with self.subTest(product=name):
@@ -317,6 +317,18 @@ class AlHaramainCatalogTests(unittest.TestCase):
                 self.assertEqual(matches[0]["source_evidence_url"], source)
                 registry_names = {row["canonical_name"] for row in self.family["products"]}
                 self.assertIn(name, registry_names)
+
+
+    def test_amber_oud_aqua_dubai_official_200ml_variant(self):
+        product = self.products_by_name["Amber Oud Aqua Dubai"]
+        source = "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html"
+        self.assertIn(200, product["formats_ml"])
+        matches = [v for v in self.variants_for(product) if v.get("size_ml") == 200]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["variant_id"], f"SHV-{product['product_id']}-200-000")
+        self.assertEqual(matches[0]["concentration"], "Extrait de Parfum")
+        self.assertEqual(matches[0]["source_url"], source)
+        self.assertEqual(matches[0]["source_evidence_url"], source)
 
 
 if __name__ == "__main__":
