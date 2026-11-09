@@ -13056,9 +13056,12 @@
         "Club de Nuit Bling",
         "Armaf Club de Nuit Bling"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-bling",
+      "gender": "Men",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-91877071",
@@ -13157,9 +13160,17 @@
         "Club de Nuit Milestone",
         "Armaf Club de Nuit Milestone"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-milestone",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-milestone",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-milestone",
+      "gender": "Men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        200,
+        105,
+        30
+      ]
     },
     {
       "product_id": "SH-ARMAF-559ea709",
@@ -13301,9 +13312,12 @@
         "Club de Nuit Maleka",
         "Armaf Club de Nuit Maleka"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "gender": "Women",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-dd435afb",
@@ -13397,9 +13411,17 @@
         "Odyssey Aqua",
         "Armaf Odyssey Aqua"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-aqua-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-aqua-edition",
+      "source_product_url": "https://armaf.com/products/odyssey-aqua-edition",
+      "gender": "Men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        200,
+        100,
+        60
+      ]
     },
     {
       "product_id": "SH-ARMAF-a15d6be2",
@@ -13413,9 +13435,18 @@
         "Odyssey Mega",
         "Armaf Odyssey Mega"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-mega-man",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-man",
+      "source_product_url": "https://armaf.com/products/odyssey-mega-man",
+      "gender": "Men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        200,
+        100,
+        60,
+        10
+      ]
     },
     {
       "product_id": "SH-ARMAF-3268844e",
@@ -13903,10 +13934,16 @@
         "Odyssey Mandarin Sky Elixir",
         "Armaf Odyssey Mandarin Sky Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-mandarin-sky-elixir",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mandarin-sky-elixir",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/odyssey-mandarin-sky-elixir",
+      "gender": "Men",
+      "formats_ml": [
+        100,
+        60
+      ]
     },
     {
       "product_id": "SH-ARMAF-d93826a7",
@@ -13920,10 +13957,17 @@
         "Club de Nuit Imperiale",
         "Armaf Club de Nuit Imperiale"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae",
+      "gender": "Unisex",
+      "formats_ml": [
+        200,
+        105,
+        10
+      ]
     },
     {
       "product_id": "SH-ARMAF-681d5bf6",
@@ -13937,10 +13981,12 @@
         "Dunescape",
         "Armaf Dunescape"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/dunescape-1",
+      "source_evidence_url": "https://armaf.com/products/dunescape-1",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/dunescape-1",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-fa82f8c8",
@@ -13954,9 +14000,11 @@
         "Odyssey Artisto",
         "Armaf Odyssey Artisto"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=2",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-artisto",
+      "source_evidence_url": "https://armaf.com/products/odyssey-artisto",
+      "source_product_url": "https://armaf.com/products/odyssey-artisto",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-e1349118",
@@ -43501,6 +43549,186 @@
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-nero-eau-de-parfum-for-men",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-nero-eau-de-parfum-for-men",
       "gtin": "6291108735930"
+    },
+    {
+      "product_id": "SH-ARMAF-6485db14",
+      "variant_id": "SHV-SH-ARMAF-6485db14-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Mandarin Sky Elixir 100 ml",
+        "Armaf Odyssey Mandarin Sky Elixir 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mandarin-sky-elixir",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mandarin-sky-elixir"
+    },
+    {
+      "product_id": "SH-ARMAF-6485db14",
+      "variant_id": "SHV-SH-ARMAF-6485db14-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Mandarin Sky Elixir 60 ml",
+        "Armaf Odyssey Mandarin Sky Elixir 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mandarin-sky-elixir",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mandarin-sky-elixir"
+    },
+    {
+      "product_id": "SH-ARMAF-e4d46951",
+      "variant_id": "SHV-SH-ARMAF-e4d46951-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Milestone 200 ml",
+        "Armaf Club de Nuit Milestone 200ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-milestone",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-milestone"
+    },
+    {
+      "product_id": "SH-ARMAF-e4d46951",
+      "variant_id": "SHV-SH-ARMAF-e4d46951-105-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Milestone 105 ml",
+        "Armaf Club de Nuit Milestone 105ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-milestone",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-milestone"
+    },
+    {
+      "product_id": "SH-ARMAF-e4d46951",
+      "variant_id": "SHV-SH-ARMAF-e4d46951-30-000",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Milestone 30 ml",
+        "Armaf Club de Nuit Milestone 30ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-milestone",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-milestone"
+    },
+    {
+      "product_id": "SH-ARMAF-e8879c24",
+      "variant_id": "SHV-SH-ARMAF-e8879c24-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Odyssey Aqua 200 ml",
+        "Armaf Odyssey Aqua 200ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-aqua-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-aqua-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-e8879c24",
+      "variant_id": "SHV-SH-ARMAF-e8879c24-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Aqua 100 ml",
+        "Armaf Odyssey Aqua 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-aqua-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-aqua-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-e8879c24",
+      "variant_id": "SHV-SH-ARMAF-e8879c24-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Aqua 60 ml",
+        "Armaf Odyssey Aqua 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-aqua-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-aqua-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-d93826a7",
+      "variant_id": "SHV-SH-ARMAF-d93826a7-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Imperiale 200 ml",
+        "Armaf Club de Nuit Imperiale 200ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae"
+    },
+    {
+      "product_id": "SH-ARMAF-d93826a7",
+      "variant_id": "SHV-SH-ARMAF-d93826a7-105-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Imperiale 105 ml",
+        "Armaf Club de Nuit Imperiale 105ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae"
+    },
+    {
+      "product_id": "SH-ARMAF-d93826a7",
+      "variant_id": "SHV-SH-ARMAF-d93826a7-10-000",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Imperiale 10 ml",
+        "Armaf Club de Nuit Imperiale 10ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae"
+    },
+    {
+      "product_id": "SH-ARMAF-a15d6be2",
+      "variant_id": "SHV-SH-ARMAF-a15d6be2-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Odyssey Mega 200 ml",
+        "Armaf Odyssey Mega 200ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-man",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-man"
+    },
+    {
+      "product_id": "SH-ARMAF-a15d6be2",
+      "variant_id": "SHV-SH-ARMAF-a15d6be2-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Mega 100 ml",
+        "Armaf Odyssey Mega 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-man",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-man"
+    },
+    {
+      "product_id": "SH-ARMAF-a15d6be2",
+      "variant_id": "SHV-SH-ARMAF-a15d6be2-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Mega 60 ml",
+        "Armaf Odyssey Mega 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-man",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-man"
+    },
+    {
+      "product_id": "SH-ARMAF-a15d6be2",
+      "variant_id": "SHV-SH-ARMAF-a15d6be2-10-000",
+      "size_ml": 10,
+      "aliases": [
+        "Odyssey Mega 10 ml",
+        "Armaf Odyssey Mega 10ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-mega-man",
+      "source_evidence_url": "https://armaf.com/products/odyssey-mega-man"
     }
   ]
 }

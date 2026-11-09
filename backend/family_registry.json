@@ -7563,6 +7563,11 @@
           "aliases": [
             "Club de Nuit Milestone",
             "Armaf Club de Nuit Milestone"
+          ],
+          "formats_ml": [
+            200,
+            105,
+            30
           ]
         },
         {
@@ -7668,6 +7673,11 @@
           "aliases": [
             "Odyssey Aqua",
             "Armaf Odyssey Aqua"
+          ],
+          "formats_ml": [
+            200,
+            100,
+            60
           ]
         },
         {
@@ -7675,6 +7685,12 @@
           "aliases": [
             "Odyssey Mega",
             "Armaf Odyssey Mega"
+          ],
+          "formats_ml": [
+            200,
+            100,
+            60,
+            10
           ]
         },
         {
@@ -7722,6 +7738,10 @@
           "aliases": [
             "Odyssey Mandarin Sky Elixir",
             "Armaf Odyssey Mandarin Sky Elixir"
+          ],
+          "formats_ml": [
+            100,
+            60
           ]
         },
         {
@@ -7729,6 +7749,11 @@
           "aliases": [
             "Club de Nuit Imperiale",
             "Armaf Club de Nuit Imperiale"
+          ],
+          "formats_ml": [
+            200,
+            105,
+            10
           ]
         },
         {

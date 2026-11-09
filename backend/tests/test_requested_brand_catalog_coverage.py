@@ -1807,5 +1807,74 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("gtin"), gtin)
 
 
+
+    def test_armaf_page_two_official_detail_reconciliation(self):
+        expected = {
+            "Odyssey Mandarin Sky Elixir": (
+                "https://armaf.com/products/odyssey-mandarin-sky-elixir",
+                "Eau de Parfum", "Men", [100, 60],
+            ),
+            "Club de Nuit Milestone": (
+                "https://armaf.com/products/club-de-nuit-milestone",
+                "Eau de Parfum", "Men", [200, 105, 30],
+            ),
+            "Odyssey Aqua": (
+                "https://armaf.com/products/odyssey-aqua-edition",
+                "Eau de Parfum", "Men", [200, 100, 60],
+            ),
+            "Club de Nuit Imperiale": (
+                "https://armaf.com/products/armaf-club-de-nuit-white-imperial-buy-original-perfumes-online-uae",
+                "Eau de Parfum", "Unisex", [200, 105, 10],
+            ),
+            "Club de Nuit Bling": (
+                "https://armaf.com/products/club-de-nuit-bling",
+                "Eau de Parfum", "Men", [],
+            ),
+            "Club de Nuit Maleka": (
+                "https://armaf.com/products/club-de-nuit-maleka",
+                "Eau de Parfum", "Women", [],
+            ),
+            "Dunescape": (
+                "https://armaf.com/products/dunescape-1",
+                "Eau de Parfum", "Unisex", [],
+            ),
+            "Odyssey Artisto": (
+                "https://armaf.com/products/odyssey-artisto",
+                None, "Unisex", [],
+            ),
+            "Odyssey Mega": (
+                "https://armaf.com/products/odyssey-mega-man",
+                "Eau de Parfum", "Men", [200, 100, 60, 10],
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, gender, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("source_product_url"), source)
+                self.assertEqual(row.get("source_evidence_url"), source)
+                self.assertEqual(row.get("gender"), gender)
+                if concentration:
+                    self.assertEqual(row.get("concentration"), concentration)
+                else:
+                    self.assertNotIn("concentration", row)
+                self.assertEqual(row.get("formats_ml", []), sizes)
+                matching = [v for v in variants if v.get("product_id") == row.get("product_id")]
+                self.assertEqual(sorted(v.get("size_ml") for v in matching), sorted(sizes))
+                for size in sizes:
+                    variant = next(v for v in matching if v.get("size_ml") == size)
+                    self.assertEqual(variant.get("source_url"), source)
+                    self.assertEqual(variant.get("source_evidence_url"), source)
+                    self.assertEqual(variant.get("concentration"), concentration)
+
+
 if __name__ == "__main__":
     unittest.main()
