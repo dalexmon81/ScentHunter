@@ -45,7 +45,9 @@ class ArmafReconciledOfficialIdentityTests(unittest.TestCase):
         self.assertIn("https://cz.armaf.eu/products/odyssey-french-kiss", french["source_evidence_url"])
         check = next(p for p in CATALOG["products"] if p.get("product_id") == EXPECTED["Check Mate White Knight"][0])
         self.assertIn("Check Mate White Knight", check["aliases"])
-        self.assertIn("Check Mate White - Knight", check["aliases"])
+        family = next(f for f in REGISTRY["families"] if f["family_id"] == "armaf_catalog")
+        registry_check = next(p for p in family["products"] if p["canonical_name"] == "Check Mate White Knight")
+        self.assertIn("Check Mate White - Knight", registry_check["aliases"])
 
     def test_family_registry_has_one_entry_per_new_identity(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "armaf_catalog")
