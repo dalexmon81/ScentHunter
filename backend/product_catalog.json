@@ -4809,9 +4809,14 @@
         "Turathi Brown Homme",
         "Afnan Turathi Brown Homme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.afnan.com/en/products/turathi-brown-homme",
+      "source_evidence_url": "https://fr.afnan.com/en/products/turathi-brown-homme",
+      "source_product_url": "https://fr.afnan.com/en/products/turathi-brown-homme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-13721551",
@@ -5056,9 +5061,14 @@
         "Turathi Blue",
         "Afnan Turathi Blue"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-dc43e01b",
@@ -5072,9 +5082,14 @@
         "Turathi Electric",
         "Afnan Turathi Electric"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/turathi-electric",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-electric",
+      "source_product_url": "https://www.fr.afnan.com/en/products/turathi-electric",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-d0bee594",
@@ -5264,9 +5279,14 @@
         "Turathi Purple",
         "Afnan Turathi Purple"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-779646c3",
@@ -22773,9 +22793,14 @@
         "TURATHI RED",
         "Afnan TURATHI RED"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=3",
-      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/products/turathi-red-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-red-femme",
+      "source_product_url": "https://www.fr.afnan.com/products/turathi-red-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-VIOLET-BOUQUET",
@@ -38524,6 +38549,61 @@
       "variant_id": "SHV-SH-AFNAN-aa93308c-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-purple"
+    },
+    {
+      "product_id": "SH-AFNAN-5cdc0bae",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Brown Homme 90 ml",
+        "Afnan Turathi Brown Homme 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5cdc0bae-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://fr.afnan.com/en/products/turathi-brown-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-e9bc6ab8",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Blue 90 ml",
+        "Afnan Turathi Blue 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-e9bc6ab8-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-dc43e01b",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Electric 90 ml",
+        "Afnan Turathi Electric 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-dc43e01b-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-electric"
+    },
+    {
+      "product_id": "SH-AFNAN-5971cbd6",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Purple 90 ml",
+        "Afnan Turathi Purple 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5971cbd6-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-TURATHI-RED",
+      "size_ml": 90,
+      "aliases": [
+        "TURATHI RED 90 ml",
+        "Afnan TURATHI RED 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-TURATHI-RED-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-red-femme"
     }
   ]
 }
