@@ -28,6 +28,7 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-official-detail-verification-2026-11-09
 
+# Keep provenance regression modules explicitly listed in the catalog validation command.
 permissions:
   contents: read
 
