@@ -14347,6 +14347,26 @@
           "aliases": [
             "Sceptre Oceana"
           ]
+        },
+        {
+          "canonical_name": "Avant",
+          "aliases": [
+            "Avant",
+            "Maison Alhambra Avant"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Camille",
+          "aliases": [
+            "Camille",
+            "Maison Alhambra Camille"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
