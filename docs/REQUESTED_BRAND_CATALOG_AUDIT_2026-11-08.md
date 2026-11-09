@@ -239,9 +239,9 @@ These three existing identities therefore remain Maison Asrar products. Their ex
 
 ### Mykonos catalogue reconciliation lead (9 November 2026)
 
-The catalog contains **72** Mykonos canonical identities. The brand-owned Indonesian storefront currently lists **54 products**, while the authorized European retailer's catalogue page describes **90 fragrances**. These figures are not directly interchangeable: the storefronts cover different regional assortments, the retailer catalogue includes collaborations and alternate display names, and historical/discontinued products may remain in the seed.
+The catalog contains **72** Mykonos canonical identities. A live check of the brand-owned **/collections/product** page returned **14 products, all sold out (0 in stock)** at the time inspected. This is a specific collection view, not proof that the brand has only 14 fragrances in its full historical or regional assortment. The earlier working figure of 54 products was not reproduced against this current collection view and must not be treated as a verified current count. The authorized European retailer's separate catalogue describes **90 fragrances** and explicitly states that it is not the official Mykonos site.
 
-The 90-item retailer catalogue is a discovery lead, not authority to bulk-import 18 additional identities. Candidate names and collaboration labels must be matched to the brand's own product pages or corroborated by a second reliable source before they are promoted. No Mykonos identities, sizes or concentrations were added in this pass. The comparison is intentionally left as a follow-up rather than inventing a completeness claim from mismatched storefront totals.
+The retailer's 90-item catalogue remains a discovery lead, not authority to bulk-import 18 additional identities. Candidate names and collaboration labels must be matched to brand-owned product pages or corroborated by a second reliable source before promotion. In this pass, 14 existing Mykonos identities were matched to individual brand-owned product pages and upgraded to individual-page provenance; no new canonical identities were added.
 
 Sources reviewed:
 - Brand-owned storefront: https://officialmykonos.com/collections/all
@@ -249,3 +249,17 @@ Sources reviewed:
 - Maison Asrar brand-owned storefront: https://maisonasrar.com/collections/all
 - Maison Asrar perfume-sprays collection: https://maisonasrar.com/collections/perfume-sprays
 - Gulf Orchid retailer pages for the three Maison Asrar fragrances listed above.
+
+
+### Mykonos official product-page reconciliation and variant-source correction (9 November 2026)
+
+Fourteen existing Mykonos identities were matched to their individual product pages on the brand-owned storefront. Their product-level source URL, evidence URL and product URL now point to the exact official page, and their confidence is upgraded from collection-listing evidence to individual-page evidence. The 14 identities are: Xoxo Rosy, Vanilla Clouds, Utopia, Sparkling Rosé, Pink Beach, Paradise, Musk Aura, Moroccan Vanilla, Hawaiian Crush, Enchanted, Caramel Fudge Cookie, California Club, Baby Love and Aphrodite.
+
+The review also found a systematic source-attribution error: multiple 15 ml travel-size variants pointed to the official **Sansa 15 ml** product page, even though those variants belonged to other fragrances. The unsupported 15 ml variants were removed from 17 affected product records in total across this correction sequence; the valid Sansa 15 ml record was retained. No alternative size was inferred. The official product pages support the remaining variants for the 14 reconciled identities, and their variant-level evidence URLs now point to the corresponding product page.
+
+This correction deliberately removes unsupported variant claims rather than preserving apparent catalogue breadth. The official /collections/product page showed all 14 listed items sold out and 0 in stock when checked; this is transient availability context only and is not copied as live offer data.
+
+Sources:
+- Official Mykonos product collection (14 products; 0 in stock): https://officialmykonos.com/collections/product
+- Official individual pages for the 14 products listed above, linked from that collection.
+- Authorized European retailer catalogue (90 fragrance entries; explicitly not the official site): https://mykonosperfumes.eu/pages/explore
