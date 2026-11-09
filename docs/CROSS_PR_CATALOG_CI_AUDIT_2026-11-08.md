@@ -179,6 +179,7 @@ The original product IDs are preserved. The family registry and two Al Wataniah 
 - Catalog validation: [run 42628827009](https://github.com/dalexmon81/ScentHunter/actions/runs/42628827009)
 - Result: **PASS — 145 tests, OK**.
 - Al Wataniah individual-page evidence now covers 34 of the 86 identities in the baseline snapshot (the original two plus 32 upgrades); 52 remain collection-backed.
-- Cross-PR audit candidate set includes PR #604 (27 candidates total); the latest audit run is recorded below after it completes.
+- Cross-PR audit: [run 42628965355](https://github.com/dalexmon81/ScentHunter/actions/runs/42628965355); **PASS — 27 candidate PRs, zero conflicting product or variant identities**.
+- Audit regression suite: 136 tests, OK.
 
 No new product IDs, retailer offers, prices, stock, shipping or deployment changes are included.
