@@ -378,7 +378,17 @@ VERIFIED_DETAIL_URLS = {
     "Arya Peony Rose": "https://www.alwataniah.com/products/arya-peony-rose",
     "Arya": "https://www.alwataniah.com/products/arya",
     "Ain Emarat Extrait": "https://www.alwataniah.com/products/ain-emarat-extrait",
-    "Nada": "https://www.alwataniah.com/products/nada"
+    "Nada": "https://www.alwataniah.com/products/nada",
+    "Al Daiem Elixir": "https://www.alwataniah.com/products/al-daiem-elixir",
+    "Ameerati": "https://www.alwataniah.com/products/ameerati",
+    "Attar Al Wesal": "https://www.alwataniah.com/products/attar-al-wesal",
+    "Rose Eclat": "https://www.alwataniah.com/products/rose-eclat",
+    "Oud Mystery Intense": "https://www.alwataniah.com/products/oud-mystery-intense",
+    "Sahari": "https://www.alwataniah.com/products/sahari",
+    "Rose Mystery Intense": "https://www.alwataniah.com/products/rose-mystery-intense",
+    "Golden Honey": "https://www.alwataniah.com/products/golden-honey",
+    "Bareeq Al Dhahab": "https://www.alwataniah.com/products/bareeq-al-dhahab",
+    "Brownie Bite": "https://www.alwataniah.com/products/brownie-bite"
 }
 
 
