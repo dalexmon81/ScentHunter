@@ -190,6 +190,10 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Noble",
             "I'm Here Enable",
             "Frankel Imagination",
+            "Strike Black",
+            "Troy Enable",
+            "Frankel Blue Elixir",
+            "Lip Stick",
         }
         for product in self.products:
             if product["product_id"].startswith("SH-ASSAF-HARVEST-") and product["canonical_name"] not in detail_verified:
@@ -223,6 +227,9 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Noble": ({"200"}, "https://assaf.ae/products/noble-2"),
             "I'm Here Enable": ({"150"}, "https://assaf.ae/products/edp-im-here-enable-150ml"),
             "Frankel Imagination": ({"200"}, "https://assaf.ae/products/frankel-imagination-200"),
+            "Strike Black": ({"125"}, "https://assaf.ae/products/strike-black"),
+            "Troy Enable": ({"100"}, "https://assaf.ae/products/troy-enable"),
+            "Frankel Blue Elixir": ({"200"}, "https://assaf.ae/products/edp-frankel-blue-elixir-200ml"),
         }
         variants = self.catalog["variants"]
         for name, (sizes, source_url) in expected.items():
@@ -240,6 +247,16 @@ class AssafRangeHarvestTests(unittest.TestCase):
                     self.assertEqual(product.get("concentration"), "Eau de Parfum")
                 else:
                     self.assertNotIn("concentration", product)
+
+
+    def test_lip_stick_official_identity_is_verified_but_conflicting_size_is_not_normalized(self):
+        product = self.by_name["lip stick"]
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), "https://assaf.ae/products/lip-stick-125ml")
+        self.assertNotIn("formats_ml", product)
+        self.assertFalse(
+            any(variant.get("product_id") == product["product_id"] for variant in self.catalog["variants"])
+        )
 
 if __name__ == "__main__":
     unittest.main()
