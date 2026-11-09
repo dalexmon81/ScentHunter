@@ -562,23 +562,6 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex",
         )
 
-    def test_armaf_uniq_effects_of_uniq_is_source_verified_without_unproven_variant(self):
-        rows = [
-            row for row in CATALOG.get("products", [])
-            if row.get("brand_name") == "Armaf"
-            and row.get("canonical_name") == "Uniq Effects of Uniq"
-        ]
-        self.assertEqual(len(rows), 1)
-        row = rows[0]
-        self.assertEqual(row.get("identity_status"), "source_verified_name")
-        self.assertEqual(
-            row.get("source_url"),
-            "https://armaf.com/products/uniq-effects-of-uniq-spr",
-        )
-        # The first-party page says 60 mL EDP, but the current seed has no
-        # explicit variant. Keep this guard identity-only until variant work
-        # is added in a dedicated catalog update.
-
     def test_armaf_uniq_effects_of_uniq_has_documented_60ml_edp_variant(self):
         row = next(
             (
@@ -592,6 +575,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(row.get("identity_status"), "source_verified_name")
         source = "https://armaf.com/products/uniq-effects-of-uniq-spr"
         self.assertEqual(row.get("source_url"), source)
+        self.assertIn(60, row.get("formats_ml", []))
         matches = [
             variant for variant in CATALOG.get("variants", [])
             if variant.get("product_id") == row["product_id"]
@@ -600,7 +584,6 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("size_ml"), 60)
         self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
         self.assertEqual(matches[0].get("source_evidence_url"), source)
-
 
 
 if __name__ == "__main__":
