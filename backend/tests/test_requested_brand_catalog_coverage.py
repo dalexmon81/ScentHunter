@@ -775,6 +775,14 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 {50: "Extrait de Parfum", 100: "Extrait de Parfum"},
             ),
         }
+        travel_url = (
+            "https://officialmykonos.com/products/"
+            "mykonos-sansa-edp-travel-size-15ml"
+        )
+        travel_names = {
+            "Utopia", "Sparkling Rosé", "Musk Aura",
+            "Moroccan Vanilla", "Hawaiian Crush",
+        }
         products = CATALOG.get("products", [])
         variants = CATALOG.get("variants", [])
         for name, (source, expected_sizes) in expected.items():
@@ -794,33 +802,50 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     row for row in variants
                     if row.get("product_id") == product["product_id"]
                 ]
+                regular = [row for row in actual if row.get("size_ml") != 15]
                 self.assertEqual(
-                    {row.get("size_ml"): row.get("concentration") for row in actual},
+                    {row.get("size_ml"): row.get("concentration") for row in regular},
                     expected_sizes,
                 )
-                for variant in actual:
+                travel = [row for row in actual if row.get("size_ml") == 15]
+                if name in travel_names:
+                    self.assertEqual(len(travel), 1)
+                    self.assertEqual(travel[0].get("source_evidence_url"), travel_url)
+                    self.assertNotIn("concentration", travel[0])
+                else:
+                    self.assertEqual(travel, [])
+                for variant in regular:
                     self.assertEqual(variant.get("source_evidence_url"), source)
 
-    def test_mykonos_travel_size_evidence_is_not_reused_across_products(self):
-        wrong_source = (
+    def test_mykonos_travel_size_page_documents_18_selectable_15ml_variants(self):
+        travel_url = (
             "https://officialmykonos.com/products/"
             "mykonos-sansa-edp-travel-size-15ml"
         )
+        expected = {
+            "Dark Secret", "Musk Aura", "Sansa", "Satin Blanc",
+            "Sparkling Rosé", "Black Opera", "Moroccan Vanilla", "Affair",
+            "Utopia", "Tea Poetry", "Hawaiian Crush", "On The Rocks",
+            "Royal Ispahan", "Crimson", "California", "California Blue",
+            "Penthouse", "Monaco Royale",
+        }
         products_by_id = {
             row.get("product_id"): row
             for row in CATALOG.get("products", [])
         }
         linked = [
             variant for variant in CATALOG.get("variants", [])
-            if variant.get("source_evidence_url") == wrong_source
+            if variant.get("source_evidence_url") == travel_url
         ]
-        self.assertEqual(len(linked), 1)
-        self.assertEqual(
-            products_by_id[linked[0]["product_id"]].get("canonical_name"),
-            "Sansa",
-        )
-        self.assertEqual(linked[0].get("size_ml"), 15)
-
+        self.assertEqual(len(linked), 18)
+        names = set()
+        for variant in linked:
+            product = products_by_id[variant["product_id"]]
+            names.add(product.get("canonical_name"))
+            self.assertEqual(variant.get("size_ml"), 15)
+            self.assertNotIn("concentration", variant)
+            self.assertIn(15, product.get("formats_ml", []))
+        self.assertEqual(names, expected)
 
     def test_maison_asrar_official_edp_product_pages_and_variants(self):
         expected = {
