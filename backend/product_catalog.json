@@ -3126,8 +3126,13 @@
         "Dar Al Oud",
         "Paris Corner Dar Al Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/dar-al-oud",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/dar-al-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dar-al-oud",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-807b8de9",
@@ -3141,8 +3146,13 @@
         "Date Caramel",
         "Paris Corner Date Caramel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/date-caramel",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/date-caramel",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/date-caramel",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-a7bb1ce4",
@@ -3156,8 +3166,13 @@
         "December Ambar",
         "Paris Corner December Ambar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/december-ambar",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/december-ambar",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-ambar",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-5239463e",
@@ -3171,8 +3186,10 @@
         "December Rose",
         "Paris Corner December Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose"
     },
     {
       "product_id": "SH-PARIS-CORNER-ef841988",
@@ -3186,8 +3203,10 @@
         "December Vanilla",
         "Paris Corner December Vanilla"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla"
     },
     {
       "product_id": "SH-PARIS-CORNER-f3a6e129",
@@ -3201,8 +3220,13 @@
         "Dulzura",
         "Paris Corner Dulzura"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/dulzura",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/dulzura",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dulzura",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-9a9dbbff",
@@ -16480,8 +16504,10 @@
         "Cosmopolitan Newyork",
         "Paris Corner Cosmopolitan Newyork"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork"
     },
     {
       "product_id": "SH-PARIS-CORNER-CREAMY-BISCUIT",
@@ -16495,8 +16521,13 @@
         "Creamy Biscuit",
         "Paris Corner Creamy Biscuit"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/creamy-biscuit-100ml",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/creamy-biscuit-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/creamy-biscuit-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-DORIS-PINK",
@@ -16510,8 +16541,13 @@
         "Doris Pink",
         "Paris Corner Doris Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/doris-pink",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/doris-pink",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/doris-pink",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-DUSKY-VANILLA",
@@ -16525,8 +16561,13 @@
         "Dusky Vanilla",
         "Paris Corner Dusky Vanilla"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ECSTATIC-BLANC-FLEUR",
@@ -16540,8 +16581,13 @@
         "Ecstatic Blanc Fleur",
         "Paris Corner Ecstatic Blanc Fleur"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ecstatic-blanc-fleur",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ecstatic-blanc-fleur",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ecstatic-blanc-fleur",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ELANIA-EMIR",
@@ -16555,8 +16601,13 @@
         "Elania Emir",
         "Paris Corner Elania Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/elania-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/elania-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/elania-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-EMPIRE-DE-LA-ROUGE",
@@ -16589,8 +16640,14 @@
         "English Leather",
         "Paris Corner English Leather"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/english-leather",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/english-leather",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/english-leather",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ENORMITY",
@@ -16604,8 +16661,13 @@
         "Enormity",
         "Paris Corner Enormity"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/enormity",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/enormity",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/enormity",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ESHAL-MUSK",
@@ -16619,8 +16681,13 @@
         "Eshal Musk",
         "Paris Corner Eshal Musk"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/eshal-musk",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/eshal-musk",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-musk",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ESHAL-VANILLA",
@@ -16634,8 +16701,13 @@
         "Eshal Vanilla",
         "Paris Corner Eshal Vanilla"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
@@ -16649,8 +16721,10 @@
         "Eternal Coffee",
         "Paris Corner Eternal Coffee"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
@@ -16664,8 +16738,10 @@
         "Eternal Meadows",
         "Paris Corner Eternal Meadows"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
@@ -16679,8 +16755,10 @@
         "Eternal Musk",
         "Paris Corner Eternal Musk"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk"
     },
     {
       "product_id": "SH-PARIS-CORNER-FARAH",
@@ -16694,8 +16772,13 @@
         "Farah",
         "Paris Corner Farah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/farah",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/farah",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/farah",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FASCINATION-EMIR",
@@ -16709,8 +16792,10 @@
         "Fascination Emir",
         "Paris Corner Fascination Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fascination",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/fascination",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fascination"
     },
     {
       "product_id": "SH-PARIS-CORNER-FRENETIC-MEN",
@@ -17702,9 +17787,13 @@
         "Fig Fete",
         "Paris Corner Fig Fete"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FATAL-EMBRACE",
@@ -17737,9 +17826,13 @@
         "Fayora",
         "Paris Corner Fayora"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FAYORA-OSHINO",
@@ -17753,9 +17846,13 @@
         "Fayora Oshino",
         "Paris Corner Fayora Oshino"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-GLORIFY",
@@ -23701,9 +23798,13 @@
         "Fire Your Desire Emir",
         "Paris Corner Fire Your Desire Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fire-your-desire-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fire-your-desire-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/fire-your-desire-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-4441115b",
@@ -23717,9 +23818,13 @@
         "Forbidden Sugar Emir",
         "Paris Corner Forbidden Sugar Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/forbidden-sugar-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/forbidden-sugar-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/forbidden-sugar-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-e95558d1",
@@ -23733,9 +23838,13 @@
         "Frenetic Delicieuse",
         "Paris Corner Frenetic Delicieuse"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/frenetic-delicieuse",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetic-delicieuse",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/frenetic-delicieuse",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-e388c2b5",
@@ -23749,9 +23858,13 @@
         "Frenetic Homme Intense",
         "Paris Corner Frenetic Homme Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-cf76693b",
@@ -39176,6 +39289,237 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/cedart-essence-emir",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/cedart-essence-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CREAMY-BISCUIT",
+      "variant_id": "SHV-PARIS-CORNER-CREAMY-BISCUIT-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Creamy Biscuit 100 ml",
+        "Paris Corner Creamy Biscuit 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/creamy-biscuit-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/creamy-biscuit-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-918f26d8",
+      "variant_id": "SHV-PARIS-CORNER-918-26-8-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Dar Al Oud 100 ml",
+        "Paris Corner Dar Al Oud 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/dar-al-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dar-al-oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-807b8de9",
+      "variant_id": "SHV-PARIS-CORNER-807-8-9-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Date Caramel 100 ml",
+        "Paris Corner Date Caramel 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/date-caramel",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/date-caramel"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-a7bb1ce4",
+      "variant_id": "SHV-PARIS-CORNER-7-1-4-85-000",
+      "size_ml": 85,
+      "aliases": [
+        "December Ambar 85 ml",
+        "Paris Corner December Ambar 85ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/december-ambar",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-ambar"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-DORIS-PINK",
+      "variant_id": "SHV-PARIS-CORNER-DORIS-PINK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Doris Pink 100 ml",
+        "Paris Corner Doris Pink 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/doris-pink",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/doris-pink"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-f3a6e129",
+      "variant_id": "SHV-PARIS-CORNER-3-6-129-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Dulzura 100 ml",
+        "Paris Corner Dulzura 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/dulzura",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dulzura"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-DUSKY-VANILLA",
+      "variant_id": "SHV-PARIS-CORNER-DUSKY-VANILLA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Dusky Vanilla 100 ml",
+        "Paris Corner Dusky Vanilla 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ECSTATIC-BLANC-FLEUR",
+      "variant_id": "SHV-PARIS-CORNER-ECSTATIC-BLANC-FLEUR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ecstatic Blanc Fleur 100 ml",
+        "Paris Corner Ecstatic Blanc Fleur 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ecstatic-blanc-fleur",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ecstatic-blanc-fleur"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ELANIA-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-ELANIA-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Elania Emir 100 ml",
+        "Paris Corner Elania Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/elania-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/elania-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ENGLISH-LEATHER",
+      "variant_id": "SHV-PARIS-CORNER-ENGLISH-LEATHER-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "English Leather 100 ml",
+        "Paris Corner English Leather 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/english-leather",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/english-leather"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ENORMITY",
+      "variant_id": "SHV-PARIS-CORNER-ENORMITY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Enormity 100 ml",
+        "Paris Corner Enormity 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/enormity",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/enormity"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ESHAL-MUSK",
+      "variant_id": "SHV-PARIS-CORNER-ESHAL-MUSK-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Eshal Musk 100 ml",
+        "Paris Corner Eshal Musk 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eshal-musk",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-musk"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ESHAL-VANILLA",
+      "variant_id": "SHV-PARIS-CORNER-ESHAL-VANILLA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Eshal Vanilla 100 ml",
+        "Paris Corner Eshal Vanilla 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FARAH",
+      "variant_id": "SHV-PARIS-CORNER-FARAH-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Farah 100 ml",
+        "Paris Corner Farah 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/farah",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/farah"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FAYORA",
+      "variant_id": "SHV-PARIS-CORNER-FAYORA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Fayora 100 ml",
+        "Paris Corner Fayora 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FAYORA-OSHINO",
+      "variant_id": "SHV-PARIS-CORNER-FAYORA-OSHINO-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Fayora Oshino 100 ml",
+        "Paris Corner Fayora Oshino 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FIG-FETE",
+      "variant_id": "SHV-PARIS-CORNER-FIG-FETE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Fig Fete 100 ml",
+        "Paris Corner Fig Fete 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fig-fete"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-2e32400d",
+      "variant_id": "SHV-PARIS-CORNER-2-32400-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Fire Your Desire Emir 100 ml",
+        "Paris Corner Fire Your Desire Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/fire-your-desire-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fire-your-desire-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-4441115b",
+      "variant_id": "SHV-PARIS-CORNER-4441115-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Forbidden Sugar Emir 100 ml",
+        "Paris Corner Forbidden Sugar Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/forbidden-sugar-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/forbidden-sugar-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-e95558d1",
+      "variant_id": "SHV-PARIS-CORNER-95558-1-80-000",
+      "size_ml": 80,
+      "aliases": [
+        "Frenetic Delicieuse 80 ml",
+        "Paris Corner Frenetic Delicieuse 80ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/frenetic-delicieuse",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetic-delicieuse"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-e388c2b5",
+      "variant_id": "SHV-PARIS-CORNER-388-2-5-80-000",
+      "size_ml": 80,
+      "aliases": [
+        "Frenetic Homme Intense 80 ml",
+        "Paris Corner Frenetic Homme Intense 80ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense"
     }
   ]
 }
