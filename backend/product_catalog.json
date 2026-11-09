@@ -14549,10 +14549,17 @@
         "Odyssey Spectra",
         "Armaf Odyssey Spectra"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition",
+      "gender": "Men",
+      "formats_ml": [
+        60,
+        100,
+        200
+      ]
     },
     {
       "product_id": "SH-ARMAF-881dc13b",
@@ -14566,9 +14573,15 @@
         "Old Money",
         "Armaf Old Money"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=7"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/old-money",
+      "source_evidence_url": "https://armaf.com/products/old-money",
+      "source_product_url": "https://armaf.com/products/old-money",
+      "gender": "Unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-8b8e5648",
@@ -14582,10 +14595,12 @@
         "Island Bliss",
         "Armaf Island Bliss"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "source_evidence_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-58334fea",
@@ -14599,10 +14614,12 @@
         "Island Breeze",
         "Armaf Island Breeze"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/island-breeze",
+      "source_evidence_url": "https://armaf.com/products/island-breeze",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/island-breeze",
+      "gender": "Women"
     },
     {
       "product_id": "SH-ARMAF-38048e97",
@@ -14616,9 +14633,11 @@
         "Perle D'Or",
         "Armaf Perle D'Or"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=7",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=7"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/perle-dor",
+      "source_evidence_url": "https://armaf.com/products/perle-dor",
+      "source_product_url": "https://armaf.com/products/perle-dor",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-a001b05d",
@@ -37702,6 +37721,66 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-ARMAF-CRAZE-MAN-PARFUM",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Craze Man Parfum",
+      "name": "Craze Man Parfum",
+      "family_id": "armaf_catalog",
+      "family_name": "Craze Man Parfum",
+      "aliases": [
+        "Craze Man Parfum",
+        "Armaf Craze Man Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-craze",
+      "source_product_url": "https://armaf.com/products/armaf-craze",
+      "source_evidence_url": "https://armaf.com/products/armaf-craze",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-VOYAGE-BROWN-MAN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Voyage Brown Man",
+      "name": "Voyage Brown Man",
+      "family_id": "armaf_catalog",
+      "family_name": "Voyage Brown Man",
+      "aliases": [
+        "Voyage Brown Man",
+        "Armaf Voyage Brown Man"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/voyage-brown",
+      "source_product_url": "https://armaf.com/products/voyage-brown",
+      "source_evidence_url": "https://armaf.com/products/voyage-brown",
+      "concentration": "Eau de Parfum",
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-ARMAF-CHECKMATE-QUEEN",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Checkmate Queen",
+      "name": "Checkmate Queen",
+      "family_id": "armaf_catalog",
+      "family_name": "Checkmate Queen",
+      "aliases": [
+        "Checkmate Queen",
+        "Armaf Checkmate Queen"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/checkmate-queen",
+      "source_product_url": "https://armaf.com/products/checkmate-queen",
+      "source_evidence_url": "https://armaf.com/products/checkmate-queen",
+      "concentration": "Eau de Parfum",
+      "gender": "Women"
     }
   ],
   "variants": [
@@ -45636,6 +45715,66 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba",
       "source_evidence_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba"
+    },
+    {
+      "product_id": "SH-ARMAF-4fc99a50",
+      "variant_id": "SHV-SH-ARMAF-4fc99a50-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Spectra 60 ml",
+        "Armaf Odyssey Spectra 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-4fc99a50",
+      "variant_id": "SHV-SH-ARMAF-4fc99a50-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Spectra 100 ml",
+        "Armaf Odyssey Spectra 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-4fc99a50",
+      "variant_id": "SHV-SH-ARMAF-4fc99a50-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Odyssey Spectra 200 ml",
+        "Armaf Odyssey Spectra 200ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-881dc13b",
+      "variant_id": "SHV-SH-ARMAF-881dc13b-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Old Money 100 ml",
+        "Armaf Old Money 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/old-money",
+      "source_evidence_url": "https://armaf.com/products/old-money"
+    },
+    {
+      "product_id": "SH-ARMAF-CRAZE-MAN-PARFUM",
+      "variant_id": "SHV-SH-ARMAF-CRAZE-MAN-PARFUM-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Craze Man Parfum 100 ml",
+        "Armaf Craze Man Parfum 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-craze",
+      "source_evidence_url": "https://armaf.com/products/armaf-craze"
     }
   ]
 }

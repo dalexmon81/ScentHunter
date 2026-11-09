@@ -7978,6 +7978,11 @@
           "aliases": [
             "Odyssey Spectra",
             "Armaf Odyssey Spectra"
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
           ]
         },
         {
@@ -7985,6 +7990,9 @@
           "aliases": [
             "Old Money",
             "Armaf Old Money"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8974,6 +8982,30 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Craze Man Parfum",
+          "aliases": [
+            "Craze Man Parfum",
+            "Armaf Craze Man Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Voyage Brown Man",
+          "aliases": [
+            "Voyage Brown Man",
+            "Armaf Voyage Brown Man"
+          ]
+        },
+        {
+          "canonical_name": "Checkmate Queen",
+          "aliases": [
+            "Checkmate Queen",
+            "Armaf Checkmate Queen"
           ]
         }
       ]
