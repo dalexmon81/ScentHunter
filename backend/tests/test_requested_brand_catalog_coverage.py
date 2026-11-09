@@ -36,7 +36,7 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 107,
     "Games of Spades": 32,
-    "Maison Alhambra": 217,
+    "Maison Alhambra": 214,
     "Mykonos": 72,
     "Armaf": 201,
 }
@@ -1760,6 +1760,51 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         for name in ("Domino Essence", "Encode Mountain", "Exquisite Club"):
             with self.subTest(name=name):
                 self.assertIn(name, names)
+
+
+    def test_maison_alhambra_fifteen_official_pages_and_100ml_variants_are_verified(self):
+        expected = {
+            "Sceptre Malachite": ("https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-malachite-eau-de-parfum-for-everyone", "6290360591599", "Unisex"),
+            "Your Touch": ("https://maisonalhambra-usa.com/products/maison-alhambra-your-touch-eau-de-parfum-for-men", "6291108730331", "Men"),
+            "Candid Tonight": ("https://maisonalhambra-usa.com/products/maison-alhambra-candid-tonight-eau-de-parfum-for-women", "6291108735251", "Women"),
+            "Delilah": ("https://maisonalhambra-usa.com/products/maison-alhambra-delilah-eau-de-parfum-for-women", "6291107459196", "Women"),
+            "Como Moiselle": ("https://maisonalhambra-usa.com/products/maison-alhambra-como-moiselle-eau-de-parfum-for-women", "6291108730089", "Women"),
+            "Glacier Bella": ("https://maisonalhambra-usa.com/products/maison-alhambra-glacier-bella-eau-de-parfum-for-women", "6290360590646", "Women"),
+            "Glacier Bold": ("https://maisonalhambra-usa.com/products/maison-alhambra-glacier-bold-eau-de-parfum-for-everyone", "6290360590622", "Unisex"),
+            "Glacier Le Noir": ("https://maisonalhambra-usa.com/products/maison-alhambra-glacier-le-noir-eau-de-parfum-for-men", "6290360590592", "Men"),
+            "Glacier Ultra": ("https://maisonalhambra-usa.com/products/maison-alhambra-glacier-ultra-eau-de-parfum-for-men", "6290360590608", "Men"),
+            "Infini Oud": ("https://maisonalhambra-usa.com/products/maison-alhambra-infini-oud-eau-de-parfum-for-everyone", "6291108735428", "Unisex"),
+            "Infini Rose": ("https://maisonalhambra-usa.com/products/maison-alhambra-infini-rose-eau-de-parfum-for-everyone", "6291108735435", "Unisex"),
+            "Philos Rosso": ("https://maisonalhambra-usa.com/products/maison-alhambra-philos-rosso-eau-de-parfum-for-everyone", "6291107459356", "Unisex"),
+            "Salvo Intense": ("https://maisonalhambra-usa.com/products/maison-alhambra-salvo-intense-eau-de-parfum-for-men", "6291108733486", "Men"),
+            "Smoky": ("https://maisonalhambra-usa.com/products/maison-alhambra-smoky-eau-de-parfum-for-everyone", "6291108736319", "Unisex"),
+            "Victorioso Nero": ("https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-nero-eau-de-parfum-for-men", "6291108735930", "Men"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, gtin, gender) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("gender"), gender)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertIn(100, row.get("formats_ml", []))
+                self.assertIn(gtin, row.get("gtins", []))
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("source_url"), source)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+                self.assertEqual(matches[0].get("gtin"), gtin)
 
 
 if __name__ == "__main__":
