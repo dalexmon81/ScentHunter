@@ -105,3 +105,10 @@ Two additional identities absent from the current 106-product Al Haramain catalo
 - Olaf — https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html (100 ml, Eau de Parfum; SKU AHP2090)
 
 Sameera Noir's EU listing is visible in the official 63-item New Launches collection, while its individual verified product detail was accessible on Al Haramain's official US store. Olaf's EU detail page explicitly confirms 100 ml and Eau de Parfum. No prices, stock, or retailer offers were copied into the catalog.
+
+### Khadlaj: two additional verified perfume sprays (9 November 2026)
+
+- Muse — https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women — official product detail identifies a 100 ml Eau de Parfum spray (SKU 6298043072748).
+- Onyx Galaxy — https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men — official product detail identifies a 100 ml Eau de Parfum spray (SKU 6298043072762).
+
+Both names were already present as listing-level identities; their records were upgraded using individual first-party detail pages and each received one explicitly evidenced 100 ml variant. No retailer price or availability data was imported.

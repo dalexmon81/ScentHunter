@@ -74,4 +74,5 @@ jobs:
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_al_haramain_new_launches
+          backend.tests.test_khadlaj_verified_detail_additions
           -v
