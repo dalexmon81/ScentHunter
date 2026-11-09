@@ -5433,9 +5433,12 @@
         "Fahad",
         "Lattafa Fahad"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lattafa-fahad-80-ml/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-LATTAFA-714d697b",
@@ -5449,9 +5452,12 @@
         "Khamrah Waha",
         "Lattafa Khamrah Waha"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/khamrah-waha/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-ab0d850b",
@@ -5465,9 +5471,12 @@
         "Sheikh Al Shuyukh Supreme",
         "Lattafa Sheikh Al Shuyukh Supreme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/sheikh-al-shuyukh-supreme/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-63f6f54f",
@@ -5481,8 +5490,8 @@
         "Jouri",
         "Lattafa Jouri"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/jouri/",
       "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
     },
     {
@@ -5497,9 +5506,12 @@
         "Ana Abiyedh Passion",
         "Lattafa Ana Abiyedh Passion"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ana-abiyedh-passion/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-LATTAFA-33d27bf9",
@@ -5513,9 +5525,12 @@
         "Ameerat Al Arab Sugar Crown",
         "Lattafa Ameerat Al Arab Sugar Crown"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ameerat-al-arab-sugar-crown/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-7eca557a",
@@ -5529,9 +5544,12 @@
         "Mishlah",
         "Lattafa Mishlah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lattafa-mishlah/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-486f7f23",
@@ -5545,9 +5563,12 @@
         "Angham Second Song",
         "Lattafa Angham Second Song"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/angham-second-song/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-7a1f69a0",
@@ -5561,9 +5582,12 @@
         "Maahir Honor",
         "Lattafa Maahir Honor"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/maahir-honor/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-57564860",
@@ -5577,8 +5601,8 @@
         "Dalal",
         "Lattafa Dalal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/dalal/",
       "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
     },
     {
@@ -5593,9 +5617,12 @@
         "Yara Elixir",
         "Lattafa Yara Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
-      "source_evidence_url": "https://lattafa.com/product-category/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/yara-elixir/",
+      "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-9c91c81c",
@@ -5609,8 +5636,8 @@
         "Asad Elixir",
         "Lattafa Asad Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/perfumes/",
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad-elixir/",
       "source_evidence_url": "https://lattafa.com/product-category/perfumes/",
       "formats_ml": [
         100
@@ -40584,6 +40611,105 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/opulentia-inverno-emir",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/opulentia-inverno-emir"
+    },
+    {
+      "product_id": "SH-LATTAFA-6dfb292a",
+      "variant_id": "SHV-LATTAFA-6DFB292A-80-000",
+      "size_ml": 80,
+      "aliases": [
+        "Fahad 80 ml",
+        "Lattafa Fahad 80ml"
+      ],
+      "source_url": "https://lattafa.com/product/lattafa-fahad-80-ml/",
+      "source_evidence_url": "https://lattafa.com/product/lattafa-fahad-80-ml/"
+    },
+    {
+      "product_id": "SH-LATTAFA-714d697b",
+      "variant_id": "SHV-LATTAFA-714D697B-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Khamrah Waha 100 ml",
+        "Lattafa Khamrah Waha 100ml"
+      ],
+      "source_url": "https://lattafa.com/product/khamrah-waha/",
+      "source_evidence_url": "https://lattafa.com/product/khamrah-waha/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ab0d850b",
+      "variant_id": "SHV-LATTAFA-AB0D850B-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Sheikh Al Shuyukh Supreme 100 ml",
+        "Lattafa Sheikh Al Shuyukh Supreme 100ml"
+      ],
+      "source_url": "https://lattafa.com/product/sheikh-al-shuyukh-supreme/",
+      "source_evidence_url": "https://lattafa.com/product/sheikh-al-shuyukh-supreme/"
+    },
+    {
+      "product_id": "SH-LATTAFA-c6a646f7",
+      "variant_id": "SHV-LATTAFA-C6A646F7-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Ana Abiyedh Passion 60 ml",
+        "Lattafa Ana Abiyedh Passion 60ml"
+      ],
+      "source_url": "https://lattafa.com/product/ana-abiyedh-passion/",
+      "source_evidence_url": "https://lattafa.com/product/ana-abiyedh-passion/"
+    },
+    {
+      "product_id": "SH-LATTAFA-33d27bf9",
+      "variant_id": "SHV-LATTAFA-33D27BF9-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ameerat Al Arab Sugar Crown 100 ml",
+        "Lattafa Ameerat Al Arab Sugar Crown 100ml"
+      ],
+      "source_url": "https://lattafa.com/product/ameerat-al-arab-sugar-crown/",
+      "source_evidence_url": "https://lattafa.com/product/ameerat-al-arab-sugar-crown/"
+    },
+    {
+      "product_id": "SH-LATTAFA-7eca557a",
+      "variant_id": "SHV-LATTAFA-7ECA557A-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Mishlah 100 ml",
+        "Lattafa Mishlah 100ml"
+      ],
+      "source_url": "https://lattafa.com/product/lattafa-mishlah/",
+      "source_evidence_url": "https://lattafa.com/product/lattafa-mishlah/"
+    },
+    {
+      "product_id": "SH-LATTAFA-486f7f23",
+      "variant_id": "SHV-LATTAFA-486F7F23-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Angham Second Song 100 ml",
+        "Lattafa Angham Second Song 100ml"
+      ],
+      "source_url": "https://lattafa.com/product/angham-second-song/",
+      "source_evidence_url": "https://lattafa.com/product/angham-second-song/"
+    },
+    {
+      "product_id": "SH-LATTAFA-7a1f69a0",
+      "variant_id": "SHV-LATTAFA-7A1F69A0-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Maahir Honor 100 ml",
+        "Lattafa Maahir Honor 100ml"
+      ],
+      "source_url": "https://lattafa.com/product/maahir-honor/",
+      "source_evidence_url": "https://lattafa.com/product/maahir-honor/"
+    },
+    {
+      "product_id": "SH-LATTAFA-309bfd56",
+      "variant_id": "SHV-LATTAFA-309BFD56-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Yara Elixir 100 ml",
+        "Lattafa Yara Elixir 100ml"
+      ],
+      "source_url": "https://lattafa.com/product/yara-elixir/",
+      "source_evidence_url": "https://lattafa.com/product/yara-elixir/"
     }
   ]
 }
