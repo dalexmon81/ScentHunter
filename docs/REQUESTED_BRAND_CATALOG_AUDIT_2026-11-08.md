@@ -81,3 +81,18 @@ The branch `catalog/requested-brand-harvest-2026-11-08` was re-read after the hi
 - Structural checks: **0** duplicate product IDs, **0** duplicate variant IDs, **0** duplicate brand/name pairs, **0** orphan variants, and **0** variants with missing or invalid sizes.
 
 These totals supersede earlier intermediate totals (including 266 and 273 variants) wherever those numbers were presented as the current catalog total. Historical passages above are retained as a dated audit trail and should not be read as the latest snapshot. The catalog remains a source-backed identity seed; these structural checks do not prove exhaustive coverage of every brand's current or historical fragrance range.
+
+
+### Al Haramain: five additional official New Launches detail pages (9 November 2026)
+
+The official EU New Launches collection (63 entries) was reconciled against the existing 101 Al Haramain identities. Five distinct fragrance identities absent from the seed were verified on individual product-detail pages:
+
+- Haramain Camellia — https://shop.alharamainperfumes.com/eu/haramain-camellia.html
+- Amber Oud Smell Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html
+- Sameera — https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html
+- Empire Aromatique Ombre — https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html
+- Leif — https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html
+
+Four detail pages explicitly state 100 ml and concentration; one 100 ml variant was added for each. Camellia's individual page confirms the perfume and Extrait de Parfum concentration but does not state a bottle size, so no size or variant was inferred. Other entries in the 63-item collection include bukhoor tablets and 30 ml × 12 multipacks; these were not treated as individual perfume identities. Ayaat Malika Gold was not promoted because the product title says Extrait de Parfum while its detail metadata says Eau de Parfum. Sameera Noir and Olaf remain leads until their individual pages can be independently checked.
+
+This update adds five canonical identities and four explicit variants. All rows retain first-party product-detail URLs. No prices, stock, or retailer offers were copied into the canonical seed.

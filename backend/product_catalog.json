@@ -33722,6 +33722,98 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-e467333a",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Camellia",
+      "name": "Haramain Camellia",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Camellia",
+      "aliases": [
+        "Haramain Camellia",
+        "Al Haramain Haramain Camellia"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-camellia.html",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4bb326b2",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Smell Dubai",
+      "name": "Amber Oud Smell Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Smell Dubai",
+      "aliases": [
+        "Amber Oud Smell Dubai",
+        "Al Haramain Amber Oud Smell Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f9b2f5a7",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Sameera",
+      "name": "Sameera",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Sameera",
+      "aliases": [
+        "Sameera",
+        "Al Haramain Sameera"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-deeba57e",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Empire Aromatique Ombre",
+      "name": "Empire Aromatique Ombre",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Empire Aromatique Ombre",
+      "aliases": [
+        "Empire Aromatique Ombre",
+        "Al Haramain Empire Aromatique Ombre"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-65854121",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Leif",
+      "name": "Leif",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Leif",
+      "aliases": [
+        "Leif",
+        "Al Haramain Leif"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36654,6 +36746,50 @@
         "Mykonos Monaco Royale 15 ml"
       ],
       "source_evidence_url": "https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4bb326b2",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Smell Dubai 100 ml",
+        "Al Haramain Amber Oud Smell Dubai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4bb326b2-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f9b2f5a7",
+      "size_ml": 100,
+      "aliases": [
+        "Sameera 100 ml",
+        "Al Haramain Sameera 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-f9b2f5a7-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-deeba57e",
+      "size_ml": 100,
+      "aliases": [
+        "Empire Aromatique Ombre 100 ml",
+        "Al Haramain Empire Aromatique Ombre 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-deeba57e-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-65854121",
+      "size_ml": 100,
+      "aliases": [
+        "Leif 100 ml",
+        "Al Haramain Leif 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-65854121-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html"
     }
   ]
 }
