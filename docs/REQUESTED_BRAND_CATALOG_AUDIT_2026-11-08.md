@@ -338,3 +338,26 @@ Eleven size/concentration combinations were explicitly shown on their product de
 The collection page also shows Sweet Edition and Flirt Edition gift sets; these were intentionally excluded from the fragrance identity count. This pass verifies the 13 current standalone Gulf Orchid products visible in the dedicated perfume collection, not the remaining legacy/regionally listed Gulf Orchid identities already present in the catalog. No prices, availability, or retailer offer data were copied.
 
 Regression tests now cover all 13 individual product URLs, source status, explicit size/concentration variants, deliberate omissions for the two incomplete pages, and variant-ID uniqueness.
+
+
+### Gulf Orchid / Maison Asrar: legacy multi-brand storefront attribution correction (9 November 2026)
+
+A second review of the storefront's named collection pages found that the domain sells both Gulf Orchid and Maison Asrar fragrances. The collection filter and individual product-page brand label were used to correct ownership; the storefront domain alone is not treated as proof that every item is a Gulf Orchid product.
+
+Three additional Gulf Orchid identities were verified from individual product pages and given explicit 100/110 ml Eau de Parfum variants:
+- Al Qasr — https://shop-gulforchid.com/products/al-qasr-silver — 100 ml EDP
+- Hikma — https://shop-gulforchid.com/products/hikma-by-gulf-orchid-eau-de-parfum — 110 ml EDP
+- Riwaya — https://shop-gulforchid.com/products/riwaya_eau_de_parfum — 100 ml EDP
+
+Several records previously filed under Gulf Orchid were corrected to Maison Asrar:
+- **Asala:** the storefront's Asala collection lists an item named Asala under the Maison Asrar brand filter. Its old individual detail URL currently returns 404, so the existing identity is retained only at listing-level confidence, without size or concentration.
+- **Turath:** the individual page https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml explicitly identifies Maison Asrar, 100 ml EDP. It was reconciled into the already-existing Maison Asrar Turath identity, preserving the Maison Asrar product ID and adding one 100 ml EDP variant.
+- **Vanilla Aura:** the individual page https://shop-gulforchid.com/products/vanilla-aura explicitly identifies Maison Asrar, 100 ml EDP. The Gulf Orchid duplicate row was removed; its source and 100 ml variant were merged into the existing Maison Asrar identity.
+- **Vanilla Voyage:** the individual page https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum and its collection listing identify Maison Asrar. The Gulf Orchid duplicate row was removed and the official detail URL was applied to the existing Maison Asrar identity. The inspected detail page did not explicitly expose size/concentration, so no variant was added.
+
+Three other imported labels were confirmed to be collection names rather than standalone perfume identities and removed from the canonical product list:
+- **Hamsat** is a collection containing Hamsat Gharam, Hamsat Hob, Hamsat Ghazal and Hamsat Ishq; those individual Maison Asrar identities already exist.
+- **Jawhara** is a collection containing Jawhara Rouge and Jawhara Black; those individual Maison Asrar identities already exist.
+- **Jewel** is a collection containing Date Night, Red Velvet and Pink Crush (plus a bundle); those individual Maison Asrar identities already exist.
+
+The removed collection-label rows had no variants and were not used as canonical perfume identities. The corresponding existing individual fragrances were preserved. Product IDs for retained records were preserved; the two duplicate Vanilla Aura / Vanilla Voyage rows were merged into their existing Maison Asrar canonical IDs. Regression tests now check these brand assignments, variant facts, duplicate prevention and exclusion of collection labels as products.
