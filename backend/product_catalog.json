@@ -739,9 +739,10 @@
         "III Thriller",
         "Maison Asrar III Thriller"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/iii-thriller",
+      "source_evidence_url": "https://maisonasrar.com/products/iii-thriller",
+      "source_product_url": "https://maisonasrar.com/products/iii-thriller"
     },
     {
       "product_id": "SH-MAISON-ASRAR-f04460d4",
@@ -1667,9 +1668,10 @@
         "Dubai London",
         "Maison Asrar Dubai London"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dubai-london",
+      "source_evidence_url": "https://maisonasrar.com/products/dubai-london",
+      "source_product_url": "https://maisonasrar.com/products/dubai-london"
     },
     {
       "product_id": "SH-MAISON-ASRAR-cec0d89e",
@@ -1683,9 +1685,10 @@
         "Dubai Miami",
         "Maison Asrar Dubai Miami"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dubai-miami",
+      "source_evidence_url": "https://maisonasrar.com/products/dubai-miami",
+      "source_product_url": "https://maisonasrar.com/products/dubai-miami"
     },
     {
       "product_id": "SH-MAISON-ASRAR-67ed859d",
@@ -1699,9 +1702,10 @@
         "Dubai Milano",
         "Maison Asrar Dubai Milano"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dubai-milano",
+      "source_evidence_url": "https://maisonasrar.com/products/dubai-milano",
+      "source_product_url": "https://maisonasrar.com/products/dubai-milano"
     },
     {
       "product_id": "SH-MAISON-ASRAR-256772f2",
