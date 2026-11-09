@@ -3919,7 +3919,11 @@
           "aliases": [
             "Date Caramel",
             "Paris Corner Date Caramel"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "December Ambar",
@@ -3993,6 +3997,9 @@
           "aliases": [
             "Dusky Vanilla",
             "Paris Corner Dusky Vanilla"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4074,6 +4081,9 @@
           "aliases": [
             "Farah",
             "Paris Corner Farah"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4117,6 +4127,9 @@
           "aliases": [
             "Fig Fete",
             "Paris Corner Fig Fete"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4252,7 +4265,11 @@
           "aliases": [
             "Indomitable",
             "Paris Corner Indomitable"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Intense Oud",
@@ -4345,6 +4362,9 @@
           "aliases": [
             "Khair Peach Delulu",
             "Paris Corner Khair Peach Delulu"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4508,6 +4528,9 @@
           "aliases": [
             "Marshmallow Blush",
             "Paris Corner Marshmallow Blush"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4529,7 +4552,11 @@
           "aliases": [
             "Mawj Moscow Mule",
             "Paris Corner Mawj Moscow Mule"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mehwish",
@@ -4578,6 +4605,9 @@
             "Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4586,6 +4616,9 @@
             "Ministry of Oud - Gladiators Oath",
             "Paris Corner Ministry of Oud - Gladiators Oath",
             "Paris Corner Ministry of Oud - Gladiators Oath"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4594,6 +4627,9 @@
             "Ministry of Oud - Maestro's Symphony",
             "Paris Corner Ministry of Oud - Maestro's Symphony",
             "Paris Corner Ministry of Oud - Maestro's Symphony"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4602,6 +4638,9 @@
             "Ministry of Oud - Nile Whispers",
             "Paris Corner Ministry of Oud - Nile Whispers",
             "Paris Corner Ministry of Oud - Nile Whispers"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4610,6 +4649,9 @@
             "Ministry of Oud - Oud Beyond the Wall",
             "Paris Corner Ministry of Oud - Oud Beyond the Wall",
             "Paris Corner Ministry of Oud - Oud Beyond the Wall"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4618,6 +4660,9 @@
             "Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4626,6 +4671,9 @@
             "Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4634,6 +4682,9 @@
             "Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4642,6 +4693,9 @@
             "Ministry of Oud - Romance Reverie",
             "Paris Corner Ministry of Oud - Romance Reverie",
             "Paris Corner Ministry of Oud - Romance Reverie"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4650,6 +4704,9 @@
             "Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4666,6 +4723,9 @@
             "Ministry of Oud Greatest",
             "Paris Corner Ministry of Oud Greatest",
             "Paris Corner Ministry of Oud Greatest"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4705,6 +4765,9 @@
           "aliases": [
             "Molten Caramel",
             "Paris Corner Molten Caramel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4916,7 +4979,11 @@
           "aliases": [
             "Perseviron Fig Hug",
             "Paris Corner Perseviron Fig Hug"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Pinkling",
@@ -5245,6 +5312,9 @@
             "Tiramisu Speculoos",
             "Paris Corner Tiramisu Speculoos",
             "Paris Corner Tiramisu Speculoos"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5693,6 +5763,314 @@
             "Un I Expressions North Stag",
             "Paris Corner Un I Expressions North Stag"
           ]
+        },
+        {
+          "canonical_name": "A Chaos In The Ocean",
+          "aliases": [
+            "A Chaos In The Ocean",
+            "Paris Corner A Chaos In The Ocean"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "A Walk on Dirt",
+          "aliases": [
+            "A Walk on Dirt",
+            "Paris Corner A Walk on Dirt"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Amber Oud",
+          "aliases": [
+            "Amber Oud",
+            "Paris Corner Amber Oud"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Arabian Oryx Intense Oud",
+          "aliases": [
+            "Arabian Oryx Intense Oud",
+            "Paris Corner Arabian Oryx Intense Oud",
+            "Arabian Oryx: Intense Oud"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Arabian Oryx Intense Oud Saffron",
+          "aliases": [
+            "Arabian Oryx Intense Oud Saffron",
+            "Paris Corner Arabian Oryx Intense Oud Saffron",
+            "Arabian Oryx: Intense Oud Saffron"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Aseerah",
+          "aliases": [
+            "Aseerah",
+            "Paris Corner Aseerah"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Autobiography Citron Vanille",
+          "aliases": [
+            "Autobiography Citron Vanille",
+            "Paris Corner Autobiography Citron Vanille",
+            "Autobiography: Citron Vanille"
+          ],
+          "formats_ml": [
+            65
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Autobiography Oh Boy",
+          "aliases": [
+            "Autobiography Oh Boy",
+            "Paris Corner Autobiography Oh Boy",
+            "Autobiography: Oh Boy"
+          ],
+          "formats_ml": [
+            65
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Autobiography Salty Breeze",
+          "aliases": [
+            "Autobiography Salty Breeze",
+            "Paris Corner Autobiography Salty Breeze",
+            "Autobiography: Salty Breeze"
+          ],
+          "formats_ml": [
+            65
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Autobiography Supreme Gold",
+          "aliases": [
+            "Autobiography Supreme Gold",
+            "Paris Corner Autobiography Supreme Gold",
+            "Autobiography: Supreme Gold"
+          ],
+          "formats_ml": [
+            65
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Cedrat Essence",
+          "aliases": [
+            "Cedrat Essence",
+            "Paris Corner Cedrat Essence"
+          ],
+          "formats_ml": [
+            75
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Celestial",
+          "aliases": [
+            "Celestial",
+            "Paris Corner Celestial"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Cloud Born",
+          "aliases": [
+            "Cloud Born",
+            "Paris Corner Cloud Born"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Corazon Bourbon",
+          "aliases": [
+            "Corazon Bourbon",
+            "Paris Corner Corazon Bourbon"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Corazon Le Parfum",
+          "aliases": [
+            "Corazon Le Parfum",
+            "Paris Corner Corazon Le Parfum"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Factory Edition Camp Fire",
+          "aliases": [
+            "Factory Edition Camp Fire",
+            "Paris Corner Factory Edition Camp Fire",
+            "Factory Edition: Camp Fire"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Factory Edition Just Bergamot",
+          "aliases": [
+            "Factory Edition Just Bergamot",
+            "Paris Corner Factory Edition Just Bergamot",
+            "Factory Edition: Just Bergamot"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Factory Edition Rich Santal",
+          "aliases": [
+            "Factory Edition Rich Santal",
+            "Paris Corner Factory Edition Rich Santal",
+            "Factory Edition: Rich Santal"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Factory Edition Ultra Citrus",
+          "aliases": [
+            "Factory Edition Ultra Citrus",
+            "Paris Corner Factory Edition Ultra Citrus",
+            "Factory Edition: Ultra Citrus"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Factory Edition Warm Leather",
+          "aliases": [
+            "Factory Edition Warm Leather",
+            "Paris Corner Factory Edition Warm Leather",
+            "Factory Edition: Warm Leather"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Fascination",
+          "aliases": [
+            "Fascination",
+            "Paris Corner Fascination"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Fire Your Desire",
+          "aliases": [
+            "Fire Your Desire",
+            "Paris Corner Fire Your Desire"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Forbidden Sugar",
+          "aliases": [
+            "Forbidden Sugar",
+            "Paris Corner Forbidden Sugar"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Hurriya Gingerique",
+          "aliases": [
+            "Hurriya Gingerique",
+            "Paris Corner Hurriya Gingerique"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Magic Oud in Dark Roses",
+          "aliases": [
+            "Magic Oud in Dark Roses",
+            "Paris Corner Magic Oud in Dark Roses"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Magic Oud in Kalimath",
+          "aliases": [
+            "Magic Oud in Kalimath",
+            "Paris Corner Magic Oud in Kalimath"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Magic Oud in Sandal Wood",
+          "aliases": [
+            "Magic Oud in Sandal Wood",
+            "Paris Corner Magic Oud in Sandal Wood"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         }
       ]
     },
