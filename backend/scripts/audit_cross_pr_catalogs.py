@@ -51,6 +51,18 @@ CANDIDATE_PRS = (
     (576, "catalog/lattafa-official-launches-2026-11-08", "catalog/verified-incense-fragrances-2026-11-08"),
     (577, "catalog/lattafa-amethyst-petra-2026-11-08", "catalog/lattafa-official-launches-2026-11-08"),
     (579, "catalog/paris-corner-official-pages-2026-11-08", "catalog/lattafa-asad-polar-2026-11-08"),
+    (606, "catalog/lattafa-official-launches-2026-11-09", BASE_REF),
+    (609, "catalog/al-wataniah-reconciled-40-variants-2026-11-09", "catalog/al-wataniah-ameeri-sultan-details-2026-11-09"),
+    (610, "catalog/afnan-9-series-official-details-2026-11-09", "catalog/al-wataniah-reconciled-40-variants-2026-11-09"),
+    (611, "catalog/al-wataniah-consolidated-40-details-2026-11-09", "catalog/al-wataniah-twelve-official-details-2026-11-09"),
+    (612, "catalog/afnan-stardust-detail-variant-2026-11-09", "catalog/afnan-9-series-official-details-2026-11-09"),
+    (613, "catalog/source-reconciliation-followup-2026-11-09", BASE_REF),
+    (614, "work/lattafa-nine-launches-2026-11-09", "catalog/afnan-stardust-detail-variant-2026-11-09"),
+    (615, "work/alwataniah-ten-details-2026-11-09", "work/lattafa-nine-launches-2026-11-09"),
+    (616, "work/alwataniah-twenty-details-2026-11-09", "work/alwataniah-ten-details-2026-11-09"),
+    (617, "work/paris-corner-eleven-details-2026-11-09", "work/alwataniah-ten-details-2026-11-09"),
+    (618, "work/alwataniah-evidence-batch-2026-11-09", "work/alwataniah-twenty-details-2026-11-09"),
+    (619, "work/paris-corner-four-details-2026-11-09", "work/paris-corner-eleven-details-2026-11-09"),
 )
 
 
