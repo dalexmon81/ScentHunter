@@ -2829,5 +2829,43 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matching[0].get("source_evidence_url"), evidence)
 
 
+    def test_assaf_baby_girl_black_lady_and_arrogate_oud_bakhur(self):
+        expected = {
+            "Baby Girl": ("https://assaf.ae/products/baby-girl-1", "Women", {
+                100: "https://assaf.ae/products/baby-girl-1",
+                120: "https://assaf.ae/products/edp-baby-girl-120ml",
+            }),
+            "Black Lady": ("https://assaf.ae/products/black-lady-200-ml", "Women", {
+                200: "https://assaf.ae/products/black-lady-200-ml",
+            }),
+            "Arrogate Oud Bakhur": ("https://assaf.ae/products/oud-bakhur-arrogate", None, {
+                150: "https://assaf.ae/products/oud-bakhur-arrogate",
+            }),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Assaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, gender, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if gender is not None:
+                    self.assertEqual(row.get("gender"), gender)
+                self.assertEqual(set(row.get("formats_ml", [])), set(sizes))
+                for size, evidence in sizes.items():
+                    matching = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("source_evidence_url"), evidence)
+
+
 if __name__ == "__main__":
     unittest.main()
