@@ -3825,7 +3825,11 @@
           "aliases": [
             "Choco Lait",
             "Paris Corner Choco Lait"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ciao Citrus",
@@ -3851,7 +3855,11 @@
             "Confidential",
             "Paris Corner Confidential",
             "Confidential 100ML"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Cornflower Delight",
@@ -3918,7 +3926,11 @@
           "aliases": [
             "December Ambar",
             "Paris Corner December Ambar"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "December Rose",
@@ -3936,7 +3948,11 @@
           "aliases": [
             "December Vanilla",
             "Paris Corner December Vanilla"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Deux II Expressions, North Stag",
@@ -3959,7 +3975,11 @@
           "aliases": [
             "Dulzura",
             "Paris Corner Dulzura"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Dulzura Vanilla Envie",
