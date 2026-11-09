@@ -2576,5 +2576,44 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("source_evidence_url"), source)
 
 
+    def test_lattafa_official_pages_for_seven_more_catalog_identities(self):
+        expected = {
+            "Mohra Silky Rose": ("https://lattafa.com/product/mohra-silky-rose/", None, "Women"),
+            "Raneen": ("https://lattafa.com/product/raneen/", 80, "Women"),
+            "Victoria": ("https://lattafa.com/product/victoria/", 100, None),
+            "Lail Maleki Moroccan Blue": ("https://lattafa.com/product/lail-maleki-moroccan-blue/", 100, "Men"),
+            "Mashrabya": ("https://lattafa.com/product/mashrabya/", 100, "Unisex"),
+            "Mayar Cherry Intense": ("https://lattafa.com/product/mayar-cherry-intense/", None, "Women"),
+            "Afeef": ("https://lattafa.com/product/afeef/", 100, "Unisex"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Lattafa"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size, gender) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if gender is not None:
+                    self.assertEqual(row.get("gender"), gender)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matching = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("source_evidence_url"), source)
+                else:
+                    self.assertFalse(
+                        any(variant.get("product_id") == row["product_id"] for variant in variants)
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()
