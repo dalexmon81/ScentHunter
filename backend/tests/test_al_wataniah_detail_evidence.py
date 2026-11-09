@@ -47,6 +47,20 @@ EXPECTED = {
     "Turquois": "https://www.alwataniah.com/products/turquois"
 }
 
+
+NEW_EXPECTED = {
+    "Milele": "https://www.alwataniah.com/products/milele",
+    "Durrat Al Aroos": "https://www.alwataniah.com/products/durrat-al-aroos",
+    "Thahaani": "https://www.alwataniah.com/products/thahaani",
+    "Crème": "https://www.alwataniah.com/products/creme",
+    "Watani Purple": "https://www.alwataniah.com/products/watani-purple",
+    "Granada": "https://www.alwataniah.com/products/granada",
+    "Tibyan": "https://www.alwataniah.com/products/tibyan",
+    "Ghala": "https://www.alwataniah.com/products/ghala",
+    "Sevilla": "https://www.alwataniah.com/products/sevilla",
+    "Kenz Al Malik": "https://www.alwataniah.com/products/kenz-al-malik"
+}
+
 class AlWataniahDetailEvidenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -73,6 +87,38 @@ class AlWataniahDetailEvidenceTests(unittest.TestCase):
                 self.assertEqual(variant.get("size_ml"), 100)
                 self.assertEqual(variant.get("concentration"), "Eau de Parfum")
                 self.assertEqual(variant.get("source_evidence_url"), url)
+
+
+    def test_ten_more_existing_identities_have_official_100ml_edp_variants(self):
+        family_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with family_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        family = next(f for f in registry["families"] if f.get("family_id") == "al_wataniah_catalog")
+
+        for name, url in NEW_EXPECTED.items():
+            with self.subTest(product=name):
+                product = next(
+                    p for p in self.products
+                    if p.get("brand_name") == "Al Wataniah" and p.get("canonical_name") == name
+                )
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), url)
+                self.assertEqual(product.get("source_product_url"), url)
+                self.assertEqual(product.get("source_evidence_url"), url)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [100])
+
+                variants = [v for v in self.variants if v.get("product_id") == product["product_id"]]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0].get("variant_id"), f"SHV-{product['product_id']}-100-000")
+                self.assertEqual(variants[0].get("size_ml"), 100)
+                self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(variants[0].get("source_evidence_url"), url)
+
+                family_product = next(p for p in family["products"] if p.get("canonical_name") == name)
+                self.assertEqual(family_product.get("aliases"), product.get("aliases"))
+                self.assertEqual(family_product.get("formats_ml"), [100])
+
 
 if __name__ == "__main__":
     unittest.main()
