@@ -36,7 +36,7 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 107,
     "Games of Spades": 32,
-    "Maison Alhambra": 214,
+    "Maison Alhambra": 217,
     "Mykonos": 72,
     "Armaf": 201,
 }
@@ -1649,6 +1649,46 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(len(matches), 1)
                     self.assertEqual(matches[0].get("source_url"), source)
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+    def test_maison_alhambra_three_more_official_new_in_pages_and_100ml_variants(self):
+        expected = {
+            "Desirable Addiction": (
+                "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-desirable-addiction-eau-de-parfum-for-women",
+                "6290362340805", "Women",
+            ),
+            "Narissa Et Moi": (
+                "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-narissa-et-moi-eau-de-parfum-for-women",
+                "6290362340874", "Women",
+            ),
+            "Imperium": (
+                "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-imperium-eau-de-parfum-for-everyone",
+                "6290360599274", "Unisex",
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, gtin, gender) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("gender"), gender)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertIn(100, row.get("formats_ml", []))
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("gtin"), gtin)
+                self.assertEqual(matches[0].get("source_url"), source)
 
 
 if __name__ == "__main__":
