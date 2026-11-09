@@ -36319,6 +36319,83 @@
       "gtins": [
         "6298043161732"
       ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-TYRANT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Tyrant",
+      "name": "Odyssey Tyrant",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Tyrant",
+      "aliases": [
+        "Odyssey Tyrant",
+        "Armaf Odyssey Tyrant"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-tyrant-special-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-tyrant-special-edition",
+      "gender": "Men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60,
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLATE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Dubai Chocolate",
+      "name": "Odyssey Dubai Chocolate",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Dubai Chocolate",
+      "aliases": [
+        "Odyssey Dubai Chocolate",
+        "Armaf Odyssey Dubai Chocolate"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-dubai-chocolat-copy",
+      "source_evidence_url": "https://armaf.com/products/odyssey-dubai-chocolat-copy",
+      "gender": "Men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-SCENTASY-NOIR-DE-PECHE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Scentasy Noir De Peche",
+      "name": "Scentasy Noir De Peche",
+      "family_id": "armaf_catalog",
+      "family_name": "Scentasy Noir De Peche",
+      "aliases": [
+        "Scentasy Noir De Peche",
+        "Armaf Scentasy Noir De Peche"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/scentasy-noir-de-peche",
+      "source_evidence_url": "https://armaf.com/products/scentasy-noir-de-peche",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SODA-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Soda Pop",
+      "name": "Odyssey Soda Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Soda Pop",
+      "aliases": [
+        "Odyssey Soda Pop",
+        "Armaf Odyssey Soda Pop"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-soda-pop",
+      "source_evidence_url": "https://armaf.com/products/odyssey-soda-pop",
+      "gender": "Unisex"
     }
   ],
   "variants": [
@@ -42890,6 +42967,45 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/club-de-nuit-bling-gold",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling-gold"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-TYRANT",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Tyrant 60 ml",
+        "Armaf Odyssey Tyrant 60 ml",
+        "Armaf Odyssey Tyrant 60ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-TYRANT-60-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-tyrant-special-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-tyrant-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-TYRANT",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Tyrant 100 ml",
+        "Armaf Odyssey Tyrant 100 ml",
+        "Armaf Odyssey Tyrant 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-TYRANT-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-tyrant-special-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-tyrant-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLATE",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Dubai Chocolate 100 ml",
+        "Armaf Odyssey Dubai Chocolate 100 ml",
+        "Armaf Odyssey Dubai Chocolate 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-DUBAI-CHOCOLATE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-dubai-chocolat-copy",
+      "source_evidence_url": "https://armaf.com/products/odyssey-dubai-chocolat-copy"
     }
   ]
 }
