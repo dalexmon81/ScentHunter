@@ -328,3 +328,35 @@ Sources:
 The initial interpretation of the URL containing `sansa-edp-travel-size-15ml` as Sansa-only was incorrect. The live official page title is **Mykonos - Travel Size 15ML** and its product content lists 18 selectable fragrance options. The shared URL is therefore valid variant-level evidence for all 18 listed options, not a misattribution. The 17 variants temporarily removed during review were restored. No concentration was inferred for those 15 ml variants because the page does not state concentration per option.
 
 Official source: https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml
+
+
+### Maison Asrar: second official collection batch (9 November 2026)
+
+The official perfume-sprays collection's second and third product pages exposed 22 more individual brand-owned product pages matching existing catalog identities:
+
+- Jawhara Rouge — 100 ml EDP
+- Jawhara Black — 100 ml EDP
+- Petra — 100 ml EDP
+- Casablanca — 100 ml EDP
+- Trophy — 100 ml EDP
+- Oscar — 100 ml EDP
+- Fairy Tale — 100 ml EDP
+- Magic Night — 100 ml EDP
+- Icon — 100 ml EDP
+- Desire — 100 ml EDP
+- Black Grapefruit (official product page titled **Black**) — 100 ml EDP
+- 1963 — 100 ml EDP
+- Emessa — official EDP product page; size not stated in the page URL, so no size or variant was inferred
+- Zenobia — 100 ml EDP
+- Fakhama — 100 ml EDP
+- Hamsat Ishq — 100 ml EDP
+- Hamsat Ghazal — 100 ml EDP
+- Hamsat Hob — 100 ml EDP
+- Hamsat Gharam — 100 ml EDP
+- Pink Crush — 100 ml EDP
+- Red Velvet — 100 ml EDP
+- Adorable — 100 ml EDP
+
+For the 21 products whose official individual URLs explicitly specify 100 ml EDP, the product provenance and format fields were upgraded and one corresponding 100 ml EDP variant was created with exact page-level evidence. Emessa's individual page verifies the product and EDP concentration, but not a bottle size, so it remains without a fabricated variant.
+
+The Maison Asrar source counts after this batch are **120 canonical identities, 56 individually sourced identities, 64 still at collection-listing confidence, and 36 structured variants** (15 from the prior batch plus 21 added here). No new canonical products were created.
