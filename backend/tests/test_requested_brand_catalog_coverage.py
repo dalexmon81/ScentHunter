@@ -31,7 +31,7 @@ MINIMUM_BRAND_COUNTS = {
     "Arabiyat Prestige": 118,
     "Gulf Orchid": 32,
     "Afnan": 87,
-    "Lattafa": 119,
+    "Lattafa": 122,
     "Aromatix": 12,
     "Zimaya": 76,
     "Al Haramain": 107,
