@@ -4005,8 +4005,12 @@
         "Addict Blue",
         "Assaf Addict Blue"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/addict-blue",
+      "source_evidence_url": "https://assaf.ae/products/addict-blue",
+      "formats_ml": [
+        125
+      ]
     },
     {
       "product_id": "SH-ASSAF-342a7ff8",
@@ -4065,8 +4069,12 @@
         "Arrogate Addict",
         "Assaf Arrogate Addict"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-addict-200ml",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-addict-200ml",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-f67c896e",
@@ -29868,8 +29876,13 @@
         "Arrogate Pink Rose",
         "Assaf Arrogate Pink Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-pink-rose",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-pink-rose",
+      "formats_ml": [
+        150
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-ASSAF-HARVEST-015",
@@ -42259,6 +42272,36 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml"
+    },
+    {
+      "product_id": "SH-ASSAF-10bfc454",
+      "size_ml": 125,
+      "aliases": [
+        "Addict Blue 125 ml",
+        "Assaf Addict Blue 125 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-10bfc454-125-000",
+      "source_evidence_url": "https://assaf.ae/products/addict-blue"
+    },
+    {
+      "product_id": "SH-ASSAF-78a3a8a3",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Addict 200 ml",
+        "Assaf Arrogate Addict 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-78a3a8a3-200-000",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-addict-200ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-014",
+      "size_ml": 150,
+      "aliases": [
+        "Arrogate Pink Rose 150 ml",
+        "Assaf Arrogate Pink Rose 150 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-014-150-000",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-pink-rose"
     }
   ]
 }
