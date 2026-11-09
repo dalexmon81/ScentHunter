@@ -2473,5 +2473,32 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("source_evidence_url"), source)
 
 
+    def test_maison_alhambra_new_launches_have_official_gtins(self):
+        expected = {
+            "Minerale Gold": ("6290362340713", "https://maisonalhambra-usa.com/products/maison-alhambra-minerale-gold-eau-de-parfum-for-everyone"),
+            "Victorioso Fearless": ("6290362340591", "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-fearless-eau-de-parfum-for-everyone"),
+            "The Memory of Oud": ("6290362340683", "https://maisonalhambra-usa.com/products/maison-alhambra-the-memory-of-oud-eau-de-parfum-for-everyone"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+        }
+        for name, (gtin, source) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                product = products[name]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                matches = [
+                    variant for variant in CATALOG.get("variants", [])
+                    if variant.get("product_id") == product["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("gtin"), gtin)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
