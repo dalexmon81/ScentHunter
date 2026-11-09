@@ -966,6 +966,8 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(product.get("source_product_url"), source)
                 self.assertEqual(product.get("concentration"), "Eau de Parfum")
                 self.assertEqual(product.get("formats_ml"), [100])
+                if name == "Black Grapefruit":
+                    self.assertIn("Black", product.get("aliases", []))
                 matching = [
                     row for row in variants
                     if row.get("product_id") == product["product_id"]
