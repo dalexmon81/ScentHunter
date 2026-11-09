@@ -263,3 +263,32 @@ Sources:
 - Official Mykonos product collection (14 products; 0 in stock): https://officialmykonos.com/collections/product
 - Official individual pages for the 14 products listed above, linked from that collection.
 - Authorized European retailer catalogue (90 fragrance entries; explicitly not the official site): https://mykonosperfumes.eu/pages/explore
+
+
+### Mykonos retailer-only discovery queue (9 November 2026)
+
+A name-by-name comparison of the authorized EU retailer's 90-entry exploration page against the 72 existing Mykonos catalog identities produced **19 retailer-only candidate names** not currently represented as exact canonical names in the seed:
+
+- Berry Caramel Pancake
+- Forever Musc
+- Inspire Perfume
+- Avra Kehdabra
+- Violette (shown as a Violenzia collaboration)
+- Dolce Cherry (shown as a Sapeyeeee collaboration)
+- Daydream
+- Inception Reimagined
+- Monaco Royale Black
+- Shape Shift
+- Kingsman
+- Wallflower
+- Elysian
+- Undercover
+- Celestial
+- Café Lyon
+- President
+- Déjà Vu
+- Soft Hour x NCT Haechan
+
+These are **discovery leads only**, not approved canonical products. The retailer's page explicitly identifies itself as not the official Mykonos site. A targeted search of the brand-owned domain did not surface matching individual product pages for these names during this pass. Some entries are collaborations, some may be alternate editions or naming variants, and some are described without concentration or product detail. They must not be imported as 19 new products merely to make the catalog count match the retailer's 90-item headline.
+
+Next verification step: resolve each candidate against an individual brand-owned product page or a second reliable brand/distributor source; collapse aliases and editions only when product identity evidence supports it. No candidate from this queue was added to the product catalog.
