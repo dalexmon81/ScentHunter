@@ -54,7 +54,7 @@ class CatalogFamilyRegistryCoverageTests(unittest.TestCase):
         asad = self.families_by_id["lattafa_asad"]
         self.assertEqual(
             {p["canonical_name"] for p in asad["products"]},
-            {"Asad", "Asad Zanzibar", "Asad Bourbon", "Asad Elixir"},
+            {"Asad", "Asad Zanzibar", "Asad Bourbon", "Asad Elixir", "Asad Polar"},
         )
 
     def test_accent_only_duplicate_is_one_identity_with_three_sizes(self):
