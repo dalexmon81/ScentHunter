@@ -33783,7 +33783,7 @@
       ]
     },
     {
-      "product_id": "SH-AL-HARAMAIN-e467333a",
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-CAMELLIA",
       "brand": "Al Haramain",
       "brand_name": "Al Haramain",
       "canonical_name": "Haramain Camellia",
@@ -33796,7 +33796,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://shop.alharamainperfumes.com/eu/haramain-camellia.html",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-4bb326b2",
@@ -37330,7 +37333,7 @@
         "Onyx Galaxy 100 ml",
         "Khadlaj Onyx Galaxy 100ml"
       ],
-      "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-000",
+      "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
     },
@@ -37685,6 +37688,18 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-575ce58f-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-acai-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-CAMELLIA",
+      "size_ml": 100,
+      "variant_name": "Haramain Camellia 100 ml Extrait de Parfum",
+      "aliases": [
+        "Al Haramain Haramain Camellia 100 ml",
+        "Haramain Camellia 100ml Extrait"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-CAMELLIA-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-camellia-extrait-de-parfum.html"
     }
   ]
 }
