@@ -26,6 +26,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/lattafa-four-official-products-2026-11-08
 
 permissions:
   contents: read
@@ -77,3 +78,16 @@ jobs:
           if [ -f backend/tests/test_lattafa_mishlah_official_page.py ]; then
             python -m unittest backend.tests.test_lattafa_mishlah_official_page -v
           fi
+          if [ -f backend/tests/test_lattafa_four_official_products.py ]; then
+            python -m unittest backend.tests.test_lattafa_four_official_products -v
+          fi
+          if [ -f backend/tests/test_lattafa_further_official_products.py ]; then
+            python -m unittest backend.tests.test_lattafa_further_official_products -v
+          fi
+          if [ -f backend/tests/test_lattafa_another_official_products.py ]; then
+            python -m unittest backend.tests.test_lattafa_another_official_products -v
+          fi
+          if [ -f backend/tests/test_lattafa_further_niche_official_products.py ]; then
+            python -m unittest backend.tests.test_lattafa_further_niche_official_products -v
+          fi
+# Keep this workflow aligned with the official Lattafa catalog regression suite.

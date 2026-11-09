@@ -33725,6 +33725,1144 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-024",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "New York the City of Dreams",
+      "name": "New York the City of Dreams",
+      "family_id": "lattafa_catalog",
+      "family_name": "New York the City of Dreams",
+      "aliases": [
+        "New York the City of Dreams",
+        "Lattafa New York the City of Dreams"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
+      "source_evidence_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-025",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Love In Paris",
+      "name": "Love In Paris",
+      "family_id": "lattafa_catalog",
+      "family_name": "Love In Paris",
+      "aliases": [
+        "Love In Paris",
+        "Lattafa Love In Paris"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/love-in-paris/",
+      "source_evidence_url": "https://lattafa.com/product/love-in-paris/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raghad",
+      "name": "Raghad",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raghad",
+      "aliases": [
+        "Raghad",
+        "Lattafa Raghad"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raghad/",
+      "source_evidence_url": "https://lattafa.com/product/raghad/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Amethyst Fusion",
+      "name": "Badee Al Oud Amethyst Fusion",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud Amethyst Fusion",
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion",
+        "Lattafa Badee Al Oud Amethyst Fusion"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-028",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Creative Art",
+      "name": "Creative Art",
+      "family_id": "lattafa_catalog",
+      "family_name": "Creative Art",
+      "aliases": [
+        "Creative Art",
+        "Lattafa Creative Art"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/creative-art/",
+      "source_evidence_url": "https://lattafa.com/product/creative-art/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-029",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "London the City of Contrast",
+      "name": "London the City of Contrast",
+      "family_id": "lattafa_catalog",
+      "family_name": "London the City of Contrast",
+      "aliases": [
+        "London the City of Contrast",
+        "Lattafa London the City of Contrast"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/london-the-city-of-contrast/",
+      "source_evidence_url": "https://lattafa.com/product/london-the-city-of-contrast/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-030",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Queen of Roses",
+      "name": "Queen of Roses",
+      "family_id": "lattafa_catalog",
+      "family_name": "Queen of Roses",
+      "aliases": [
+        "Queen of Roses",
+        "Lattafa Queen of Roses"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/queen-of-roses/",
+      "source_evidence_url": "https://lattafa.com/product/queen-of-roses/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-031",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "King of Arabia",
+      "name": "King of Arabia",
+      "family_id": "lattafa_catalog",
+      "family_name": "King of Arabia",
+      "aliases": [
+        "King of Arabia",
+        "Lattafa King of Arabia"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/king-of-arabia/",
+      "source_evidence_url": "https://lattafa.com/product/king-of-arabia/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-032",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Lattafa Pride – Stop Wait Go",
+      "name": "Lattafa Pride – Stop Wait Go",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lattafa Pride – Stop Wait Go",
+      "aliases": [
+        "Lattafa Pride – Stop Wait Go",
+        "Stop Wait Go",
+        "Lattafa Stop Wait Go"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lattafa-pride-stop-wait-go/",
+      "source_evidence_url": "https://lattafa.com/product/lattafa-pride-stop-wait-go/"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-MAJD-AL-SULTAN-BLACK-INTENSE",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Majd Al Sultan Black Intense",
+      "name": "Majd Al Sultan Black Intense",
+      "family_id": "lattafa_catalog",
+      "family_name": "Majd Al Sultan Black Intense",
+      "aliases": [
+        "Majd Al Sultan Black Intense",
+        "Lattafa Majd Al Sultan Black Intense"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/majd-al-sultan-black-intense/",
+      "source_evidence_url": "https://lattafa.com/product/majd-al-sultan-black-intense/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-034",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ramaad Al Oud",
+      "name": "Ramaad Al Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ramaad Al Oud",
+      "aliases": [
+        "Ramaad Al Oud",
+        "Lattafa Ramaad Al Oud"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ramaad-al-oud/",
+      "source_evidence_url": "https://lattafa.com/product/ramaad-al-oud/"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-FARFASHA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Farfasha",
+      "name": "Farfasha",
+      "family_id": "lattafa_catalog",
+      "family_name": "Farfasha",
+      "aliases": [
+        "Farfasha",
+        "Lattafa Farfasha"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/farfasha/",
+      "source_evidence_url": "https://lattafa.com/product/farfasha/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-036",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Dream Of Haze",
+      "name": "Dream Of Haze",
+      "family_id": "lattafa_catalog",
+      "family_name": "Dream Of Haze",
+      "aliases": [
+        "Dream Of Haze",
+        "Lattafa Dream Of Haze"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/dream-of-haze/",
+      "source_evidence_url": "https://lattafa.com/product/dream-of-haze/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Canyon",
+      "name": "Atlas Canyon",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Canyon",
+      "aliases": [
+        "Atlas Canyon",
+        "Lattafa Atlas Canyon"
+      ],
+      "formats_ml": [
+        55
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-canyon/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-canyon/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Glacial Valley",
+      "name": "Atlas Glacial Valley",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Glacial Valley",
+      "aliases": [
+        "Atlas Glacial Valley",
+        "Lattafa Atlas Glacial Valley"
+      ],
+      "formats_ml": [
+        55
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-glacial-valley/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Asad Polar",
+      "name": "Asad Polar",
+      "family_id": "lattafa_catalog",
+      "family_name": "Asad Polar",
+      "aliases": [
+        "Asad Polar",
+        "Lattafa Asad Polar"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/asad-polar/",
+      "source_evidence_url": "https://lattafa.com/product/asad-polar/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Beyond Precious",
+      "name": "Beyond Precious",
+      "family_id": "lattafa_catalog",
+      "family_name": "Beyond Precious",
+      "aliases": [
+        "Beyond Precious",
+        "Lattafa Beyond Precious"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/beyond-precious/",
+      "source_evidence_url": "https://lattafa.com/product/beyond-precious/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Harlequin Cream – Give Me Gourmand",
+      "name": "Harlequin Cream – Give Me Gourmand",
+      "family_id": "lattafa_catalog",
+      "family_name": "Harlequin Cream – Give Me Gourmand",
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand",
+        "Lattafa Harlequin Cream – Give Me Gourmand"
+      ],
+      "formats_ml": [
+        75
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-042",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Rave Now- women",
+      "name": "Rave Now- women",
+      "family_id": "lattafa_catalog",
+      "family_name": "Rave Now- women",
+      "aliases": [
+        "Rave Now- women",
+        "Lattafa Rave Now- women"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/rave-now-women/",
+      "source_evidence_url": "https://lattafa.com/product/rave-now-women/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-043",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Rave Now White",
+      "name": "Rave Now White",
+      "family_id": "lattafa_catalog",
+      "family_name": "Rave Now White",
+      "aliases": [
+        "Rave Now White",
+        "Rave Now- White",
+        "Lattafa Rave Now White",
+        "Lattafa Rave Now- White"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/rave-now-white/",
+      "source_evidence_url": "https://lattafa.com/product/rave-now-white/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-044",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Rave Now- rouge",
+      "name": "Rave Now- rouge",
+      "family_id": "lattafa_catalog",
+      "family_name": "Rave Now- rouge",
+      "aliases": [
+        "Rave Now- rouge",
+        "Lattafa Rave Now- rouge"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/rave-now-rouge/",
+      "source_evidence_url": "https://lattafa.com/product/rave-now-rouge/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-045",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Fearless",
+      "name": "Fearless",
+      "family_id": "lattafa_catalog",
+      "family_name": "Fearless",
+      "aliases": [
+        "Fearless",
+        "Lattafa Fearless"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/fearless/",
+      "source_evidence_url": "https://lattafa.com/product/fearless/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-046",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raw Human",
+      "name": "Raw Human",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raw Human",
+      "aliases": [
+        "Raw Human",
+        "Lattafa Raw Human"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raw-human/",
+      "source_evidence_url": "https://lattafa.com/product/raw-human/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah Mira",
+      "name": "Khamrah Mira",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khamrah Mira",
+      "aliases": [
+        "Khamrah Mira",
+        "Lattafa Khamrah Mira"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/khamrah-mira/",
+      "source_evidence_url": "https://lattafa.com/product/khamrah-mira/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Matcha Swirl – Give Me Gourmand",
+      "name": "Matcha Swirl – Give Me Gourmand",
+      "family_id": "lattafa_catalog",
+      "family_name": "Matcha Swirl – Give Me Gourmand",
+      "aliases": [
+        "Matcha Swirl – Give Me Gourmand",
+        "Lattafa Matcha Swirl – Give Me Gourmand"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/",
+      "formats_ml": [
+        75
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-049",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Reem",
+      "name": "Reem",
+      "family_id": "lattafa_catalog",
+      "family_name": "Reem",
+      "aliases": [
+        "Reem",
+        "Lattafa Reem"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/reem/",
+      "source_evidence_url": "https://lattafa.com/product/reem/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-050",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Lahdath",
+      "name": "Lahdath",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lahdath",
+      "aliases": [
+        "Lahdath",
+        "Lattafa Lahdath"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lahdath/",
+      "source_evidence_url": "https://lattafa.com/product/lahdath/",
+      "formats_ml": [
+        80
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-051",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Art Of Wood",
+      "name": "Art Of Wood",
+      "family_id": "lattafa_catalog",
+      "family_name": "Art Of Wood",
+      "aliases": [
+        "Art Of Wood",
+        "Lattafa Art Of Wood"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/art-of-wood/",
+      "source_evidence_url": "https://lattafa.com/product/art-of-wood/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-052",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ansaam Gold",
+      "name": "Ansaam Gold",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ansaam Gold",
+      "aliases": [
+        "Ansaam Gold",
+        "Lattafa Ansaam Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ansaam-gold/",
+      "source_evidence_url": "https://lattafa.com/product/ansaam-gold/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-053",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Petra",
+      "name": "Petra",
+      "family_id": "lattafa_catalog",
+      "family_name": "Petra",
+      "aliases": [
+        "Petra",
+        "Lattafa Petra"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/petra/",
+      "source_evidence_url": "https://lattafa.com/product/petra/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-054",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Natural Oud",
+      "name": "Natural Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Natural Oud",
+      "aliases": [
+        "Natural Oud",
+        "Lattafa Natural Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/natural-oud/",
+      "source_evidence_url": "https://lattafa.com/product/natural-oud/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-055",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Sur Mesure Noir",
+      "name": "Sur Mesure Noir",
+      "family_id": "lattafa_catalog",
+      "family_name": "Sur Mesure Noir",
+      "aliases": [
+        "Sur Mesure Noir",
+        "Lattafa Sur Mesure Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/sur-mesure-noir/",
+      "source_evidence_url": "https://lattafa.com/product/sur-mesure-noir/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-056",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Brioche Vanille",
+      "name": "Brioche Vanille",
+      "family_id": "lattafa_catalog",
+      "family_name": "Brioche Vanille",
+      "aliases": [
+        "Brioche Vanille",
+        "Lattafa Brioche Vanille"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/brioche-vanille/",
+      "source_evidence_url": "https://lattafa.com/product/brioche-vanille/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-057",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Taraf",
+      "name": "Taraf",
+      "family_id": "lattafa_catalog",
+      "family_name": "Taraf",
+      "aliases": [
+        "Taraf",
+        "Lattafa Taraf"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/taraf/",
+      "source_evidence_url": "https://lattafa.com/product/taraf/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-058",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Art of Nature II",
+      "name": "Art of Nature II",
+      "family_id": "lattafa_catalog",
+      "family_name": "Art of Nature II",
+      "aliases": [
+        "Art of Nature II",
+        "Lattafa Art of Nature II"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/art-of-nature-ii/",
+      "source_evidence_url": "https://lattafa.com/product/art-of-nature-ii/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-059",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ghinwa",
+      "name": "Ghinwa",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ghinwa",
+      "aliases": [
+        "Ghinwa",
+        "Lattafa Ghinwa"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ghinwa/",
+      "source_evidence_url": "https://lattafa.com/product/ghinwa/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-060",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Hayaam",
+      "name": "Hayaam",
+      "family_id": "lattafa_catalog",
+      "family_name": "Hayaam",
+      "aliases": [
+        "Hayaam",
+        "Lattafa Hayaam"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/hayaam/",
+      "source_evidence_url": "https://lattafa.com/product/hayaam/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-061",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Durrah",
+      "name": "Durrah",
+      "family_id": "lattafa_catalog",
+      "family_name": "Durrah",
+      "aliases": [
+        "Durrah",
+        "Lattafa Durrah"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/durrah/",
+      "source_evidence_url": "https://lattafa.com/product/durrah/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-062",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Classic Stone",
+      "name": "Classic Stone",
+      "family_id": "lattafa_catalog",
+      "family_name": "Classic Stone",
+      "aliases": [
+        "Classic Stone",
+        "Lattafa Classic Stone"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/classic-stone/",
+      "source_evidence_url": "https://lattafa.com/product/classic-stone/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-063",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Vintage castle",
+      "name": "Vintage castle",
+      "family_id": "lattafa_catalog",
+      "family_name": "Vintage castle",
+      "aliases": [
+        "Vintage castle",
+        "Lattafa Vintage castle"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/vintage-castle/",
+      "source_evidence_url": "https://lattafa.com/product/vintage-castle/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-064",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mughal Fort",
+      "name": "Mughal Fort",
+      "family_id": "lattafa_catalog",
+      "family_name": "Mughal Fort",
+      "aliases": [
+        "Mughal Fort",
+        "Lattafa Mughal Fort"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/mughal-fort/",
+      "source_evidence_url": "https://lattafa.com/product/mughal-fort/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-065",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Dana",
+      "name": "Al Dana",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Dana",
+      "aliases": [
+        "Al Dana",
+        "Lattafa Al Dana"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-dana/",
+      "source_evidence_url": "https://lattafa.com/product/al-dana/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-066",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Remas",
+      "name": "Remas",
+      "family_id": "lattafa_catalog",
+      "family_name": "Remas",
+      "aliases": [
+        "Remas",
+        "Lattafa Remas"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/remas/",
+      "source_evidence_url": "https://lattafa.com/product/remas/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-067",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Zikra",
+      "name": "Zikra",
+      "family_id": "lattafa_catalog",
+      "family_name": "Zikra",
+      "aliases": [
+        "Zikra",
+        "Lattafa Zikra"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/zikra/",
+      "source_evidence_url": "https://lattafa.com/product/zikra/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-068",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Jawhara",
+      "name": "Al Jawhara",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Jawhara",
+      "aliases": [
+        "Al Jawhara",
+        "Lattafa Al Jawhara"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-jawhara/",
+      "source_evidence_url": "https://lattafa.com/product/al-jawhara/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-069",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khanjar",
+      "name": "Khanjar",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khanjar",
+      "aliases": [
+        "Khanjar",
+        "Lattafa Khanjar"
+      ],
+      "formats_ml": [
+        85
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/khanjar/",
+      "source_evidence_url": "https://lattafa.com/product/khanjar/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-070",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Thouq",
+      "name": "Thouq",
+      "family_id": "lattafa_catalog",
+      "family_name": "Thouq",
+      "aliases": [
+        "Thouq",
+        "Lattafa Thouq"
+      ],
+      "formats_ml": [
+        80
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/thouq/",
+      "source_evidence_url": "https://lattafa.com/product/thouq/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-071",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Gharam",
+      "name": "Gharam",
+      "family_id": "lattafa_catalog",
+      "family_name": "Gharam",
+      "aliases": [
+        "Gharam",
+        "Lattafa Gharam"
+      ],
+      "formats_ml": [
+        20,
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/gharam/",
+      "source_evidence_url": "https://lattafa.com/product/gharam/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-072",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Affection",
+      "name": "Affection",
+      "family_id": "lattafa_catalog",
+      "family_name": "Affection",
+      "aliases": [
+        "Affection",
+        "Lattafa Affection"
+      ],
+      "formats_ml": [
+        20
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/affection/",
+      "source_evidence_url": "https://lattafa.com/product/affection/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-073",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Khas Winners Trophy Silver",
+      "name": "Al Khas Winners Trophy Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Khas Winners Trophy Silver",
+      "aliases": [
+        "Al Khas Winners Trophy Silver",
+        "Lattafa Al Khas Winners Trophy Silver"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-khas-winners-trophy-silver/",
+      "source_evidence_url": "https://lattafa.com/product/al-khas-winners-trophy-silver/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-074",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Maharjan Silver",
+      "name": "Maharjan Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Maharjan Silver",
+      "aliases": [
+        "Maharjan Silver",
+        "Lattafa Maharjan Silver"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/maharjan-silver/",
+      "source_evidence_url": "https://lattafa.com/product/maharjan-silver/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-075",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Maharjan Gold",
+      "name": "Maharjan Gold",
+      "family_id": "lattafa_catalog",
+      "family_name": "Maharjan Gold",
+      "aliases": [
+        "Maharjan Gold",
+        "Lattafa Maharjan Gold"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/maharjan-gold/",
+      "source_evidence_url": "https://lattafa.com/product/maharjan-gold/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-076",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Ameed Silver",
+      "name": "Al Ameed Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Ameed Silver",
+      "aliases": [
+        "Al Ameed Silver",
+        "Lattafa Al Ameed Silver"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-ameed-silver/",
+      "source_evidence_url": "https://lattafa.com/product/al-ameed-silver/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-077",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ansaam Silver",
+      "name": "Ansaam Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ansaam Silver",
+      "aliases": [
+        "Ansaam Silver",
+        "Lattafa Ansaam Silver"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ansaam-silver/",
+      "source_evidence_url": "https://lattafa.com/product/ansaam-silver/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-078",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khalid",
+      "name": "Khalid",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khalid",
+      "aliases": [
+        "Khalid",
+        "Lattafa Khalid"
+      ],
+      "formats_ml": [
+        80
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/khalid/",
+      "source_evidence_url": "https://lattafa.com/product/khalid/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-079",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Qiam Silver",
+      "name": "Al Qiam Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Qiam Silver",
+      "aliases": [
+        "Al Qiam Silver",
+        "Lattafa Al Qiam Silver"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-qiam-silver/",
+      "source_evidence_url": "https://lattafa.com/product/al-qiam-silver/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-080",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Tharwah Silver",
+      "name": "Tharwah Silver",
+      "family_id": "lattafa_catalog",
+      "family_name": "Tharwah Silver",
+      "aliases": [
+        "Tharwah Silver",
+        "Lattafa Tharwah Silver"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/tharwah-silver/",
+      "source_evidence_url": "https://lattafa.com/product/tharwah-silver/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-081",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Toleen",
+      "name": "Toleen",
+      "family_id": "lattafa_catalog",
+      "family_name": "Toleen",
+      "aliases": [
+        "Toleen",
+        "Lattafa Toleen"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/toleen/",
+      "source_evidence_url": "https://lattafa.com/product/toleen/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-082",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Lujain",
+      "name": "Lujain",
+      "family_id": "lattafa_catalog",
+      "family_name": "Lujain",
+      "aliases": [
+        "Lujain",
+        "Lattafa Lujain"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lujain/",
+      "source_evidence_url": "https://lattafa.com/product/lujain/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-083",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Al Narjis",
+      "name": "Al Narjis",
+      "family_id": "lattafa_catalog",
+      "family_name": "Al Narjis",
+      "aliases": [
+        "Al Narjis",
+        "Lattafa Al Narjis"
+      ],
+      "formats_ml": [
+        100
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-narjis/",
+      "source_evidence_url": "https://lattafa.com/product/al-narjis/"
     }
   ],
   "variants": [
@@ -36666,6 +37804,541 @@
         "Lattafa Mishlah 100 ml"
       ],
       "variant_id": "SHV-SH-LATTAFA-7eca557a-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-024",
+      "size_ml": 100,
+      "aliases": [
+        "New York the City of Dreams 100 ml",
+        "Lattafa New York the City of Dreams 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-024-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-025",
+      "size_ml": 100,
+      "aliases": [
+        "Love In Paris 100 ml",
+        "Lattafa Love In Paris 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-025-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD",
+      "size_ml": 100,
+      "aliases": [
+        "Raghad 100 ml",
+        "Lattafa Raghad 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-RAGHAD-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
+      "size_ml": 100,
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion 100 ml",
+        "Lattafa Badee Al Oud Amethyst Fusion 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-028",
+      "size_ml": 100,
+      "aliases": [
+        "Creative Art 100 ml",
+        "Lattafa Creative Art 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-028-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-029",
+      "size_ml": 100,
+      "aliases": [
+        "London the City of Contrast 100 ml",
+        "Lattafa London the City of Contrast 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-029-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-030",
+      "size_ml": 100,
+      "aliases": [
+        "Queen of Roses 100 ml",
+        "Lattafa Queen of Roses 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-030-100-000",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-031",
+      "size_ml": 100,
+      "aliases": [
+        "King of Arabia 100 ml",
+        "Lattafa King of Arabia 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-031-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-032",
+      "size_ml": 100,
+      "aliases": [
+        "Lattafa Pride – Stop Wait Go 100 ml",
+        "Lattafa Lattafa Pride – Stop Wait Go 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-032-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-MAJD-AL-SULTAN-BLACK-INTENSE",
+      "size_ml": 100,
+      "aliases": [
+        "Majd Al Sultan Black Intense 100 ml",
+        "Lattafa Majd Al Sultan Black Intense 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-NEW-LAUNCH-MAJD-AL-SULTAN-BLACK-INTENSE-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-034",
+      "size_ml": 100,
+      "aliases": [
+        "Ramaad Al Oud 100 ml",
+        "Lattafa Ramaad Al Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-034-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-FARFASHA",
+      "size_ml": 100,
+      "aliases": [
+        "Farfasha 100 ml",
+        "Lattafa Farfasha 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-NEW-LAUNCH-FARFASHA-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-036",
+      "size_ml": 100,
+      "aliases": [
+        "Dream Of Haze 100 ml",
+        "Lattafa Dream Of Haze 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-036-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Canyon 55 ml",
+        "Lattafa Atlas Canyon 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-CANYON-55-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Glacial Valley 55 ml",
+        "Lattafa Atlas Glacial Valley 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-GLACIAL-VALLEY-55-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
+      "size_ml": 100,
+      "aliases": [
+        "Asad Polar 100 ml",
+        "Lattafa Asad Polar 100 ml"
+      ],
+      "variant_id": "SH-LATTAFA-ASAD-POLAR-V-100-UNSPECIFIED"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
+      "size_ml": 100,
+      "aliases": [
+        "Beyond Precious 100 ml",
+        "Lattafa Beyond Precious 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BEYOND-PRECIOUS-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND",
+      "size_ml": 75,
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand 75 ml",
+        "Lattafa Harlequin Cream – Give Me Gourmand 75 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND-75-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-042",
+      "size_ml": 100,
+      "aliases": [
+        "Rave Now- women 100 ml",
+        "Lattafa Rave Now- women 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-042-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-043",
+      "size_ml": 100,
+      "aliases": [
+        "Rave Now White 100 ml",
+        "Rave Now- White 100 ml",
+        "Lattafa Rave Now White 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-043-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-044",
+      "size_ml": 100,
+      "aliases": [
+        "Rave Now- rouge 100 ml",
+        "Lattafa Rave Now- rouge 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-044-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-045",
+      "size_ml": 100,
+      "aliases": [
+        "Fearless 100 ml",
+        "Lattafa Fearless 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-045-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-046",
+      "size_ml": 100,
+      "aliases": [
+        "Raw Human 100 ml",
+        "Lattafa Raw Human 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-046-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
+      "size_ml": 100,
+      "aliases": [
+        "Khamrah Mira 100 ml",
+        "Lattafa Khamrah Mira 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KHAMRAH-MIRA-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND",
+      "size_ml": 75,
+      "aliases": [
+        "Matcha Swirl – Give Me Gourmand 75 ml",
+        "Lattafa Matcha Swirl – Give Me Gourmand 75 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND-75-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-049",
+      "size_ml": 100,
+      "aliases": [
+        "Reem 100 ml",
+        "Lattafa Reem 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-049-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-050",
+      "size_ml": 80,
+      "aliases": [
+        "Lahdath 80 ml",
+        "Lattafa Lahdath 80 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-050-80-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-051",
+      "size_ml": 100,
+      "aliases": [
+        "Art Of Wood 100 ml",
+        "Lattafa Art Of Wood 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-051-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-052",
+      "size_ml": 100,
+      "aliases": [
+        "Ansaam Gold 100 ml",
+        "Lattafa Ansaam Gold 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-052-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-053",
+      "size_ml": 100,
+      "aliases": [
+        "Petra 100 ml",
+        "Lattafa Petra 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-053-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-055",
+      "size_ml": 100,
+      "aliases": [
+        "Sur Mesure Noir 100 ml",
+        "Lattafa Sur Mesure Noir 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-055-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-056",
+      "size_ml": 100,
+      "aliases": [
+        "Brioche Vanille 100 ml",
+        "Lattafa Brioche Vanille 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-056-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-057",
+      "size_ml": 100,
+      "aliases": [
+        "Taraf 100 ml",
+        "Lattafa Taraf 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-057-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-059",
+      "size_ml": 100,
+      "aliases": [
+        "Ghinwa 100 ml",
+        "Lattafa Ghinwa 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-059-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-060",
+      "size_ml": 100,
+      "aliases": [
+        "Hayaam 100 ml",
+        "Lattafa Hayaam 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-060-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-061",
+      "size_ml": 100,
+      "aliases": [
+        "Durrah 100 ml",
+        "Lattafa Durrah 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-061-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-062",
+      "size_ml": 100,
+      "aliases": [
+        "Classic Stone 100 ml",
+        "Lattafa Classic Stone 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-062-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-063",
+      "size_ml": 100,
+      "aliases": [
+        "Vintage castle 100 ml",
+        "Lattafa Vintage castle 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-063-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-064",
+      "size_ml": 100,
+      "aliases": [
+        "Mughal Fort 100 ml",
+        "Lattafa Mughal Fort 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-064-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-065",
+      "size_ml": 100,
+      "aliases": [
+        "Al Dana 100 ml",
+        "Lattafa Al Dana 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-065-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-066",
+      "size_ml": 100,
+      "aliases": [
+        "Remas 100 ml",
+        "Lattafa Remas 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-066-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-067",
+      "size_ml": 100,
+      "aliases": [
+        "Zikra 100 ml",
+        "Lattafa Zikra 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-067-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-068",
+      "size_ml": 100,
+      "aliases": [
+        "Al Jawhara 100 ml",
+        "Lattafa Al Jawhara 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-068-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-069",
+      "size_ml": 85,
+      "aliases": [
+        "Khanjar 85 ml",
+        "Lattafa Khanjar 85 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-069-85-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-070",
+      "size_ml": 80,
+      "aliases": [
+        "Thouq 80 ml",
+        "Lattafa Thouq 80 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-070-80-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-071",
+      "size_ml": 100,
+      "aliases": [
+        "Gharam 100 ml",
+        "Lattafa Gharam 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-071-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-071",
+      "size_ml": 20,
+      "aliases": [
+        "Gharam 20 ml",
+        "Lattafa Gharam 20 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-071-20-000",
+      "source_url": "https://lattafa.com/product/gharam-20ml/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-072",
+      "size_ml": 20,
+      "aliases": [
+        "Affection 20 ml",
+        "Lattafa Affection 20 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-072-20-000",
+      "source_url": "https://lattafa.com/product/affection-20ml/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-073",
+      "size_ml": 100,
+      "aliases": [
+        "Al Khas Winners Trophy Silver 100 ml",
+        "Lattafa Al Khas Winners Trophy Silver 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-073-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-074",
+      "size_ml": 100,
+      "aliases": [
+        "Maharjan Silver 100 ml",
+        "Lattafa Maharjan Silver 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-074-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-075",
+      "size_ml": 100,
+      "aliases": [
+        "Maharjan Gold 100 ml",
+        "Lattafa Maharjan Gold 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-075-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-076",
+      "size_ml": 100,
+      "aliases": [
+        "Al Ameed Silver 100 ml",
+        "Lattafa Al Ameed Silver 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-076-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-077",
+      "size_ml": 100,
+      "aliases": [
+        "Ansaam Silver 100 ml",
+        "Lattafa Ansaam Silver 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-077-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-078",
+      "size_ml": 80,
+      "aliases": [
+        "Khalid 80 ml",
+        "Lattafa Khalid 80 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-078-80-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-079",
+      "size_ml": 100,
+      "aliases": [
+        "Al Qiam Silver 100 ml",
+        "Lattafa Al Qiam Silver 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-079-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-080",
+      "size_ml": 100,
+      "aliases": [
+        "Tharwah Silver 100 ml",
+        "Lattafa Tharwah Silver 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-080-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-081",
+      "size_ml": 100,
+      "aliases": [
+        "Toleen 100 ml",
+        "Lattafa Toleen 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-081-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-082",
+      "size_ml": 100,
+      "aliases": [
+        "Lujain 100 ml",
+        "Lattafa Lujain 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-082-100-000"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-083",
+      "size_ml": 100,
+      "aliases": [
+        "Al Narjis 100 ml",
+        "Lattafa Al Narjis 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-083-100-000"
     }
   ]
 }
