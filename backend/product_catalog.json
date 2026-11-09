@@ -31545,11 +31545,7 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://assaf.ae/products/lip-stick-125ml",
-      "source_evidence_url": "https://assaf.ae/products/lip-stick-125ml",
-      "formats_ml": [
-        125
-      ],
-      "gender": "Women"
+      "source_evidence_url": "https://assaf.ae/products/lip-stick-125ml"
     },
     {
       "product_id": "SH-ASSAF-HARVEST-075",
@@ -47682,17 +47678,6 @@
       "variant_id": "SHV-SH-LATTAFA-KHAMRAH-100-000",
       "source_url": "https://lattafa.com/product/khamrah/",
       "source_evidence_url": "https://lattafa.com/product/khamrah/"
-    },
-    {
-      "product_id": "SH-ASSAF-HARVEST-074",
-      "size_ml": 125,
-      "aliases": [
-        "Lip Stick 125 ml",
-        "Assaf Lip Stick 125ml"
-      ],
-      "variant_id": "SHV-SH-ASSAF-HARVEST-074-125-000",
-      "source_url": "https://assaf.ae/products/lip-stick-125ml",
-      "source_evidence_url": "https://assaf.ae/products/lip-stick-125ml"
     }
   ]
 }
