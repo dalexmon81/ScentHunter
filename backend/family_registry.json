@@ -15395,6 +15395,41 @@
             "Emotion Antique",
             "Al Haramain Emotion Antique"
           ]
+        },
+        {
+          "canonical_name": "CAJU",
+          "aliases": [
+            "CAJU",
+            "Al Haramain CAJU"
+          ]
+        },
+        {
+          "canonical_name": "CACAU",
+          "aliases": [
+            "CACAU",
+            "Al Haramain CACAU"
+          ]
+        },
+        {
+          "canonical_name": "CUPUACU",
+          "aliases": [
+            "CUPUACU",
+            "Al Haramain CUPUACU"
+          ]
+        },
+        {
+          "canonical_name": "Taj Malaki Velvet",
+          "aliases": [
+            "Taj Malaki Velvet",
+            "Al Haramain Taj Malaki Velvet"
+          ]
+        },
+        {
+          "canonical_name": "Taj Malaki Noir",
+          "aliases": [
+            "Taj Malaki Noir",
+            "Al Haramain Taj Malaki Noir"
+          ]
         }
       ]
     },

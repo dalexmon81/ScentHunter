@@ -144,3 +144,13 @@ All entries are individual perfume sprays, not oils, home fragrance, or multipac
 - Emotion Antique — https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP1428)
 
 Each individual first-party detail page identifies the fragrance, concentration, and liquid volume; all four names were absent from the current Al Haramain canonical identities. Each was added with one explicit 100 ml variant. No retailer price or stock information was copied.
+
+### Al Haramain: five additional verified fragrances (9 November 2026)
+
+- CAJU — https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2063)
+- CACAU — https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2064)
+- CUPUACU — https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2068)
+- Taj Malaki Velvet — https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2067)
+- Taj Malaki Noir — https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2066)
+
+All five individual official product pages identify the fragrance, Eau de Parfum concentration, and 100 ml volume. These names were absent from the Al Haramain catalog and were added with explicit 100 ml variants. No prices or availability data were imported.

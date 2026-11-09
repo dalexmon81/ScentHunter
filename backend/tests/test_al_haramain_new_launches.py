@@ -26,6 +26,11 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
             "Amber Oud Future Dubai": ("https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Emotion Irisee": ("https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Emotion Antique": ("https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "CAJU": ("https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "CACAU": ("https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "CUPUACU": ("https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Taj Malaki Velvet": ("https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Taj Malaki Noir": ("https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
         }
         products = {
             p["canonical_name"]: p for p in CATALOG["products"]
@@ -52,7 +57,7 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
     def test_new_launches_are_registered_in_al_haramain_family(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "al_haramain_catalog")
         names = {p["canonical_name"] for p in family["products"]}
-        for name in ("Haramain Camellia", "Amber Oud Smell Dubai", "Sameera", "Empire Aromatique Ombre", "Leif", "Sameera Noir", "Olaf", "Amber Oud Imagine Dubai", "Amber Oud Future Dubai", "Emotion Irisee", "Emotion Antique"):
+        for name in ("Haramain Camellia", "Amber Oud Smell Dubai", "Sameera", "Empire Aromatique Ombre", "Leif", "Sameera Noir", "Olaf", "Amber Oud Imagine Dubai", "Amber Oud Future Dubai", "Emotion Irisee", "Emotion Antique", "CAJU", "CACAU", "CUPUACU", "Taj Malaki Velvet", "Taj Malaki Noir"):
             self.assertIn(name, names)
 
     def test_al_haramain_ids_are_unique_and_variants_are_attached(self):

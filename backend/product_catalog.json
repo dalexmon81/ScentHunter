@@ -34063,6 +34063,106 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-c0b5bc70",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "CAJU",
+      "name": "CAJU",
+      "family_id": "al_haramain_catalog",
+      "family_name": "CAJU",
+      "aliases": [
+        "CAJU",
+        "Al Haramain CAJU"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3d4e138c",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "CACAU",
+      "name": "CACAU",
+      "family_id": "al_haramain_catalog",
+      "family_name": "CACAU",
+      "aliases": [
+        "CACAU",
+        "Al Haramain CACAU"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-436e8631",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "CUPUACU",
+      "name": "CUPUACU",
+      "family_id": "al_haramain_catalog",
+      "family_name": "CUPUACU",
+      "aliases": [
+        "CUPUACU",
+        "Al Haramain CUPUACU"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-8447ca45",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Taj Malaki Velvet",
+      "name": "Taj Malaki Velvet",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Taj Malaki Velvet",
+      "aliases": [
+        "Taj Malaki Velvet",
+        "Al Haramain Taj Malaki Velvet"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-e9eea477",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Taj Malaki Noir",
+      "name": "Taj Malaki Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Taj Malaki Noir",
+      "aliases": [
+        "Taj Malaki Noir",
+        "Al Haramain Taj Malaki Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37207,6 +37307,61 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-20e8170f-100-000",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-c0b5bc70",
+      "size_ml": 100,
+      "aliases": [
+        "CAJU 100 ml",
+        "Al Haramain CAJU 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-c0b5bc70-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3d4e138c",
+      "size_ml": 100,
+      "aliases": [
+        "CACAU 100 ml",
+        "Al Haramain CACAU 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-3d4e138c-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-436e8631",
+      "size_ml": 100,
+      "aliases": [
+        "CUPUACU 100 ml",
+        "Al Haramain CUPUACU 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-436e8631-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-cupuacu-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-8447ca45",
+      "size_ml": 100,
+      "aliases": [
+        "Taj Malaki Velvet 100 ml",
+        "Al Haramain Taj Malaki Velvet 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-8447ca45-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-e9eea477",
+      "size_ml": 100,
+      "aliases": [
+        "Taj Malaki Noir 100 ml",
+        "Al Haramain Taj Malaki Noir 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-e9eea477-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html"
     }
   ]
 }
