@@ -761,5 +761,28 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("source_evidence_url"), source_url)
 
 
+    def test_paris_corner_confidential_100ml_official_product_page(self):
+        source = "https://www.pariscornerperfumes.com/products/confidential-100ml"
+        rows = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+            and row.get("canonical_name") == "Confidential 100ML"
+        ]
+        self.assertEqual(len(rows), 1)
+        product = rows[0]
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), source)
+        self.assertIn(100, product.get("formats_ml", []))
+        matches = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == product["product_id"]
+            and row.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("source_evidence_url"), source)
+        self.assertNotIn("concentration", product)
+        self.assertNotIn("concentration", matches[0])
+
+
 if __name__ == "__main__":
     unittest.main()
