@@ -135,3 +135,19 @@ Existing Khadlaj listing-level identities upgraded with individual official prod
 - Caffe Latte — https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray (Extrait de Parfum, SKU 6291107979311)
 
 All entries are individual perfume sprays, not oils, home fragrance, or multipacks. No prices or stock data were imported.
+
+### Al Haramain: nine further verified new-launch identities (9 November 2026)
+
+A second reconciliation of the official EU New Launches collection found nine more identities not present in the latest seed. Individual first-party product pages explicitly confirm 100 ml and concentration:
+
+- Avalon — Eau de Parfum
+- Azure Mythique — Eau de Parfum
+- Cupuacu — Eau de Parfum
+- Taj Malaki Noir — Eau de Parfum
+- Gold Crystal Oudh — Extrait de Parfum
+- Gold Crystal Sapphire — Extrait de Parfum
+- Acai — Eau de Parfum
+- Cacau — Eau de Parfum
+- Caju — Eau de Parfum
+
+Oud Nomad, Conception, Harmony and Freya were already reconciled in the parent PR and were not duplicated. Products with inaccessible or insufficient detail pages, bundles and bukhoor remain excluded. No prices, stock or retailer offers were copied into the canonical seed.
