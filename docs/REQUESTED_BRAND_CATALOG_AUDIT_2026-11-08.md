@@ -313,24 +313,91 @@ All 23 existing identities are now marked `source_verified_name`, and their size
 A regression test checks all 23 individual URLs, concentration handling, size-specific variant evidence and one canonical row per product. Combined with the first two batches, all 53 standalone perfume identities appearing across the current official 54-item all-products collection now have individual brand-owned product-page evidence. The 54th item is the generic Travel Size 15ML selector, not a separate canonical perfume identity. This conclusion is limited to the current official collection and does not prove exhaustive coverage of all historical, regional, or discontinued Mykonos fragrances.
 
 
-### Armaf: Uniq Oud Forever official detail-page provenance (9 November 2026)
+### Gulf Orchid: official perfume collection detail-page reconciliation (9 November 2026)
 
-The existing canonical identity `SH-ARMAF-f650f6a8` was retained and upgraded from the official all-perfumes collection URL to its individual brand-owned detail page:
+The brand-owned Gulf Orchid Perfume collection was opened directly. Its current collection page distinguishes the Gulf Orchid brand from other brands also sold by the storefront, including Maison Asrar. The visible perfume collection includes standalone Gulf Orchid fragrances and two gift sets. The Sweet Edition and Flirt Edition bundles were excluded as separate canonical perfume identities.
 
-- Uniq Oud Forever — https://armaf.com/products/uniq-oud-forever-spr
+Thirteen existing Gulf Orchid canonical identities were matched to individual brand-owned detail pages. Their existing product IDs were preserved and their identity status was upgraded to `source_verified_name`:
 
-The individual page confirms the standalone fragrance name and identifies it as unisex. The page's marketing title includes “EAU DE PARFUM Spray”, but its visible product specification does not expose a structured bottle size or concentration field. To avoid promoting title/marketing text into unsupported SKU data, the catalog records only the individual-page identity evidence; concentration and size variants remain unset. No duplicate canonical identity or variant was created.
+- Vanilla Addiction — https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum — 100 ml Eau de Parfum
+- Mango Ice — https://shop-gulforchid.com/products/mango_ice_eau_de_parfum — 100 ml Eau de Parfum
+- Cotton Candy Musk — https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy — detail page confirms the name; size and concentration are not exposed in the inspected page content
+- Tahara Vanilla Musk — https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml — detail page confirms the name; size and concentration are not exposed in the inspected page content, so the URL slug was not used as sole variant evidence
+- Sweet Heaven 20ML — https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml — 20 ml Eau de Parfum
+- Pink Marshmallow — https://shop-gulforchid.com/products/pink-marshmallow — 100 ml Eau de Parfum
+- Coco Blanco — https://shop-gulforchid.com/products/coco-blanco — 100 ml Eau de Parfum
+- Exotic Oud — https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum — 100 ml Eau de Parfum
+- Vanilla Latte — https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum — 100 ml Eau de Parfum
+- Cookie Bite — https://shop-gulforchid.com/products/cookie-bite — 100 ml Eau de Parfum
+- Sweet Like Candy — https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum — 100 ml Eau de Parfum
+- Sweet Heaven Extreme 20ML — https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml — 20 ml Eau de Parfum
+- Piña Colada Musk — https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada — 60 ml Eau de Parfum
+
+Eleven size/concentration combinations were explicitly shown on their product detail pages and received one variant each, with matching `formats_ml`, concentration and `source_evidence_url`. Cotton Candy Musk and Tahara Vanilla Musk received no size or concentration fields and no variants because the inspected product-page body did not explicitly expose those attributes. No size was inferred from the Tahara URL slug alone.
+
+The collection page also shows Sweet Edition and Flirt Edition gift sets; these were intentionally excluded from the fragrance identity count. This pass verifies the 13 current standalone Gulf Orchid products visible in the dedicated perfume collection, not the remaining legacy/regionally listed Gulf Orchid identities already present in the catalog. No prices, availability, or retailer offer data were copied.
+
+Regression tests now cover all 13 individual product URLs, source status, explicit size/concentration variants, deliberate omissions for the two incomplete pages, and variant-ID uniqueness.
 
 
-### Maison Asrar: second new-arrivals page provenance upgrades (9 November 2026)
+### Gulf Orchid / Maison Asrar: legacy multi-brand storefront attribution correction (9 November 2026)
 
-The second page of the brand-owned New Arrivals collection was checked. Eleven existing canonical identities were matched to their individual Maison Asrar product pages and upgraded in place:
+A second review of the storefront's named collection pages found that the domain sells both Gulf Orchid and Maison Asrar fragrances. The collection filter and individual product-page brand label were used to correct ownership; the storefront domain alone is not treated as proof that every item is a Gulf Orchid product.
+
+Three additional Gulf Orchid identities were verified from individual product pages and given explicit 100/110 ml Eau de Parfum variants:
+- Al Qasr — https://shop-gulforchid.com/products/al-qasr-silver — 100 ml EDP
+- Hikma — https://shop-gulforchid.com/products/hikma-by-gulf-orchid-eau-de-parfum — 110 ml EDP
+- Riwaya — https://shop-gulforchid.com/products/riwaya_eau_de_parfum — 100 ml EDP
+
+Several records previously filed under Gulf Orchid were corrected to Maison Asrar:
+- **Asala:** the storefront's Asala collection lists an item named Asala under the Maison Asrar brand filter. Its old individual detail URL currently returns 404, so the existing identity is retained only at listing-level confidence, without size or concentration.
+- **Turath:** the individual page https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml explicitly identifies Maison Asrar, 100 ml EDP. It was reconciled into the already-existing Maison Asrar Turath identity, preserving the Maison Asrar product ID and adding one 100 ml EDP variant.
+- **Vanilla Aura:** the individual page https://shop-gulforchid.com/products/vanilla-aura explicitly identifies Maison Asrar, 100 ml EDP. The Gulf Orchid duplicate row was removed; its source and 100 ml variant were merged into the existing Maison Asrar identity.
+- **Vanilla Voyage:** the individual page https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum and its collection listing identify Maison Asrar. The Gulf Orchid duplicate row was removed and the official detail URL was applied to the existing Maison Asrar identity. The inspected detail page did not explicitly expose size/concentration, so no variant was added.
+
+Three other imported labels were confirmed to be collection names rather than standalone perfume identities and removed from the canonical product list:
+- **Hamsat** is a collection containing Hamsat Gharam, Hamsat Hob, Hamsat Ghazal and Hamsat Ishq; those individual Maison Asrar identities already exist.
+- **Jawhara** is a collection containing Jawhara Rouge and Jawhara Black; those individual Maison Asrar identities already exist.
+- **Jewel** is a collection containing Date Night, Red Velvet and Pink Crush (plus a bundle); those individual Maison Asrar identities already exist.
+
+The removed collection-label rows had no variants and were not used as canonical perfume identities. The corresponding existing individual fragrances were preserved. Product IDs for retained records were preserved; the two duplicate Vanilla Aura / Vanilla Voyage rows were merged into their existing Maison Asrar canonical IDs. Regression tests now check these brand assignments, variant facts, duplicate prevention and exclusion of collection labels as products.
+
+
+### Aromatix / French Avenue: official collection and product-page reconciliation (9 November 2026)
+
+The official French Avenue storefront has a dedicated Aromatix Collection. Its current collection page shows ten standalone Aromatix fragrances plus two Aromatix Summer Vibes bundles. The bundles are sets and are not separate canonical perfume identities.
+
+Ten existing catalog identities were matched to individual French Avenue product-detail pages. Nine pages explicitly state 100 ml and concentration; those received one 100 ml variant each. The tenth page, Plantine Blanc, confirms the product name but its inspected specifications section does not expose size or concentration, so no variant or concentration was inferred.
+
+Verified detail-page identities:
+- Carnal Desire — https://frenchavenue.com/products/carnal-desire — Eau de Parfum, 100 ml
+- Forbidden Fruit — https://frenchavenue.com/products/aromatix-forbidden-fruit — Eau de Parfum, 100 ml
+- Frostbite — https://frenchavenue.com/products/aromatix-frostbite — Extrait de Parfum, 100 ml
+- Magnetiq — https://frenchavenue.com/products/aromatix-magnetiq — Eau de Parfum, 100 ml
+- Naughty Dates — https://frenchavenue.com/products/aromatix-naughty-dates — Eau de Parfum, 100 ml
+- Plantine Blanc — https://frenchavenue.com/products/aromatix-plantine-blanc — individual official page confirms identity; size/concentration not explicitly stated in the inspected page
+- Royal Taboo — https://frenchavenue.com/products/royal-taboo — Extrait de Parfum, 100 ml
+- Sun Kissed — https://frenchavenue.com/products/aromatix-sunkissed — Eau de Parfum, 100 ml
+- Teas Me — https://frenchavenue.com/products/aromatix-teas-me — Eau de Parfum, 100 ml
+- X Xandal — https://frenchavenue.com/products/aromatix-x-xandal — Extrait de Parfum, 100 ml
+
+The official product title spells the name **Plantine Blanc**. The existing product ID was retained, the canonical spelling was corrected to Plantine Blanc, and the previous spelling Platine Blanc remains as an alias.
+
+**Ora** and **Roza** remain at `source_listed_name` confidence using the existing Notino discovery listing. I did not find individual official French Avenue product pages for those two names in this pass, so their concentration and size remain unspecified and no variants were created. The official current collection page lists ten individual perfumes, while the existing catalog has twelve identities; this audit does not claim that Ora and Roza are discontinued or invalid.
+
+Regression tests now check the ten official detail URLs, nine explicit 100 ml concentration variants, Plantine Blanc's deliberate missing variant data, and Ora/Roza's listing-only status.
+
+
+### Maison Asrar: second new-arrivals page individual-detail reconciliation (9 November 2026)
+
+The second page of Maison Asrar's official New Arrivals collection was opened and its 12 displayed perfume cards were matched against existing canonical identities. All 12 already existed; no new identities or variants were created in this pass. The existing product IDs were preserved and their product-level source URLs now point to the individual Maison Asrar detail pages:
 
 - Dubai Milano — https://maisonasrar.com/products/dubai-milano
 - Dubai London — https://maisonasrar.com/products/dubai-london
 - Dubai Miami — https://maisonasrar.com/products/dubai-miami
 - III Thriller — https://maisonasrar.com/products/iii-thriller
 - Milky Way — https://maisonasrar.com/products/milky-way
+- Vanguard — https://maisonasrar.com/products/vanguard
 - Muharib — https://maisonasrar.com/products/muharib
 - Faris Al Arab — https://maisonasrar.com/products/faris-al-arab
 - Vanilla Seduction — https://maisonasrar.com/products/vanilla-seduction
@@ -338,12 +405,14 @@ The second page of the brand-owned New Arrivals collection was checked. Eleven e
 - Throne Eclipse — https://maisonasrar.com/products/throne-eclipse
 - Throne — https://maisonasrar.com/products/throne
 
-All eleven names were already present in the canonical seed. Their existing product IDs were preserved. The accessible official detail pages confirm the individual product names but do not expose explicit size or concentration fields; no variants or concentration values were added. Vanguard was already individually verified in the earlier pass and was not changed. This is a second-page sample, not a complete audit of the 81-item New Arrivals collection.
+The inspected Maison Asrar detail pages confirm the individual product identities, but do not expose explicit size/concentration fields in their page content. Therefore no new variant data was inferred. Vanilla Aura retains its already documented 100 ml Eau de Parfum variant, whose evidence URL remains the Gulf Orchid storefront detail page that explicitly states those variant attributes; the Maison Asrar page is now the product-level identity source.
+
+Regression coverage checks all 12 official URLs, source status, and the deliberate absence of unsupported variants.
 
 
-### Maison Asrar: third new-arrivals page provenance upgrades (9 November 2026)
+### Maison Asrar: third new-arrivals page individual-detail reconciliation (9 November 2026)
 
-The third page of the brand-owned New Arrivals collection was opened and its twelve standalone fragrance cards were checked against the canonical seed. Legacy was already individually verified. The following eleven existing identities were upgraded in place to their matching individual product pages:
+The third page of the official Maison Asrar New Arrivals collection was opened. Its 12 perfume cards were matched to existing canonical identities, and all 12 now point to their individual Maison Asrar product pages with `source_verified_name` status:
 
 - Khayyal — https://maisonasrar.com/products/khayyal
 - Mohra — https://maisonasrar.com/products/mohrab
@@ -353,24 +422,85 @@ The third page of the brand-owned New Arrivals collection was opened and its twe
 - Tornado — https://maisonasrar.com/products/tornado
 - Wadi — https://maisonasrar.com/products/wadi
 - DXB — https://maisonasrar.com/products/dxb
+- Legacy — https://maisonasrar.com/products/legacy
 - Vanilla Voyage — https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum
 - Vision — https://maisonasrar.com/products/vision
 - Oh Honey! — https://maisonasrar.com/products/oh-honey-eau-de-parfum
 
-All eleven canonical identities already existed and retain their original product IDs. The accessible individual pages do not provide structured bottle-size or concentration specifications for these entries. Although some page titles or URL slugs contain EDP wording, no concentration or size was inferred from those labels; no variant rows were added. This is a provenance-only update and a sample of page 3, not a full audit of the 80/81-item New Arrivals collection.
+These individual detail pages confirm the product identities, but the inspected page content did not explicitly expose size/concentration. No variants or concentration fields were inferred. Existing product IDs and variant counts are unchanged. Vanilla Voyage's previous retailer-backed identity URL was replaced by the brand's own product page; it still has no variant because no size was explicitly confirmed in the inspected page.
+
+Regression coverage checks the 12 official URLs and ensures no unsupported sizes or concentrations are introduced.
 
 
-### Maison Asrar: fourth new-arrivals page and brand-attribution safeguard (9 November 2026)
+### Maison Asrar: fourth and fifth New Arrivals pages, multi-brand ownership and variant reconciliation (9 November 2026)
 
-The fourth page of the brand-owned New Arrivals collection was checked. Six existing Maison Asrar identities were upgraded in place to individual detail-page provenance:
+The fourth and fifth pages of Maison Asrar's official New Arrivals collection were reviewed. The two pages show 24 cards; Oh Honey was already verified in the preceding page audit, and Majesty, Imperial and Monarch already had individual official-page provenance. The remaining 20 existing identities were reconciled to their individual product pages: 14 Maison Asrar identities and six additional Maison Asrar products whose variant evidence is also visible on the Gulf Orchid multi-brand storefront.
 
+Fourteen existing Maison Asrar identities received individual official-page provenance:
 - Date Night — https://maisonasrar.com/products/date-night
 - Larimar — https://maisonasrar.com/products/larimar
 - Rubellite — https://maisonasrar.com/products/rubellite
 - Nada — https://maisonasrar.com/products/nada
 - Omniya — https://maisonasrar.com/products/omniya
 - Coffee Blend — https://maisonasrar.com/products/coffee-blend-eau-de-parfum
+- Lumiere — https://maisonasrar.com/products/lumiere
+- Soirée — https://maisonasrar.com/products/soiree
+- Rey — https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar
+- Leo — https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml
+- Hunter — https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml
+- Bloom Bloom — https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml
+- Lolita — https://maisonasrar.com/products/lolita-eau-de-parfum-100ml
+- Bonita — https://maisonasrar.com/products/bonita-eau-de-parfum-100ml
 
-The individual pages do not expose structured bottle-size or concentration fields in the accessible text, so no variants or concentrations were inferred. Existing canonical IDs were retained.
+The inspected Maison Asrar detail pages confirm individual identities. For these 14 pages, size/concentration were not explicitly exposed in the inspected product-page content, so no new variant or concentration data was inferred, even when a URL handle contains a size string.
 
-**Attribution safeguard:** the same storefront page also displays Emerald and Gold Noir, but their individual product-page titles identify them as Gulf Orchid fragrances (Emerald is explicitly titled “Gulf Orchid Emerald Eau De Parfum 110ml”; Gold Noir is likewise titled as a Gulf Orchid product). These two were deliberately not promoted as Maison Asrar-owned fragrances. The existing Maison Asrar rows remain listing-level pending reconciliation with the actual brand owner and the Gulf Orchid catalog. This prevents a retailer assortment from being mistaken for the retailer's own brand catalog.
+Six further identities are confirmed as **Maison Asrar**, not Gulf Orchid. The Maison Asrar individual pages verify their product identities; the Gulf Orchid storefront's product detail pages display the Maison Asrar brand and explicit size/concentration:
+- Emerald — Maison Asrar identity page https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml; variant evidence https://shop-gulforchid.com/products/maison-asrar-emerald-eau-de-parfum-110ml — 110 ml EDP
+- Gold Noir — https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-gold-noir-eau-de-parfum — 110 ml EDP
+- Silver Elixer — https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-silver-elixer-eau-de-parfum — 110 ml EDP
+- Flair — https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-flaire-eau-de-parfum — 100 ml EDP
+- Timeless — https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-timeless-eau-de-parfum — 100 ml EDP
+- Masterpiece — https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum; variant evidence https://shop-gulforchid.com/products/gulf-orchid-masterpiece-eau-de-parfum — 100 ml EDP
+
+The six products were restored to the Maison Asrar brand and family registry. Their product-level source URLs point to Maison Asrar detail pages; size/concentration variant evidence points to the individual Gulf Orchid storefront detail pages, which explicitly label Maison Asrar as the product brand. One 100/110 ml Eau de Parfum variant was added per identity. The Masterpiece Collection bundle remains excluded as a separate perfume identity.
+
+The catalog's Gulf Orchid count therefore remains 16 and Maison Asrar count remains 121; the previous temporary reattribution of these six items to Gulf Orchid was reversed after checking the product-page brand labels. Regression tests enforce the corrected brand ownership and all six explicit size variants.
+
+
+### Maison Asrar: sixth and seventh New Arrivals pages reconciled to individual detail pages (9 November 2026)
+
+The sixth and seventh pages of Maison Asrar's official New Arrivals collection were reviewed. Twenty existing identities were matched to individual Maison Asrar product pages; no new canonical rows were appended:
+
+- Lily — https://maisonasrar.com/products/lily-eau-de-parfum-100ml
+- Rosé Absolute — https://maisonasrar.com/products/absolute-eau-de-perfum-100ml
+- Trophy — https://maisonasrar.com/products/trophy-eau-de-perfum-100ml
+- Oscar — https://maisonasrar.com/products/oscar-eau-de-perfum-100ml
+- Fairy Tale — https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml
+- Magic Night — https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml
+- Desire — https://maisonasrar.com/products/desire-eau-de-perfum-100ml
+- Rosé Bouquet — https://maisonasrar.com/products/bouquet-eau-de-perfum-100ml
+- Jawhara Rouge — https://maisonasrar.com/products/jawhara-rouge-eau-de-perfum-100ml
+- Jawhara Black — https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml
+- Patchouli with Love — https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml
+- Fresh Iris — https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml
+- Vanilla Rouge — https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml
+- Dear Jasmine — https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml
+- Petra — https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml
+- Casablanca — https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml
+- Night in Paris — https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml
+- Sunset in Capri — https://maisonasrar.com/products/sunset-in-capri-maison-asrar-eau-de-perfum-90ml
+- Never Forget Me — https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml
+- Kiss My Lips — https://maisonasrar.com/products/kiss-my-lips-maison-asrar-eau-de-perfum-90ml
+
+All 20 identities now have `source_verified_name` status and individual official product-page URLs. The readable product-page content inspected in this pass did not expose explicit size/concentration specifications. Although some URL handles contain “100ml” or “90ml”, those hints were not treated as variant evidence; no size or concentration fields and no variants were added.
+
+Bonita was already verified in the previous page batch and was not duplicated or re-added. Regression coverage checks all 20 official product URLs and enforces the deliberate absence of unsupported size/concentration data.
+
+
+### Armaf: Uniq Oud Forever individual official-page provenance (9 November 2026)
+
+The existing canonical identity `SH-ARMAF-f650f6a8` was retained and upgraded from the official all-perfumes collection URL to its individual brand-owned product page:
+
+- Uniq Oud Forever — https://armaf.com/products/uniq-oud-forever-spr
+
+The individual page confirms the standalone fragrance name and identifies it as unisex. The page title includes Eau de Parfum spray wording, but the inspected specification does not expose a structured size/concentration field. The catalog therefore records individual-page identity provenance only; no concentration or size variant is inferred. No duplicate canonical identity or variant was created.

@@ -22,7 +22,9 @@ MINIMUM_BRAND_COUNTS = {
     "Armaf": 191,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 23,
+    # Corrected 2026-11-09: 16 standalone Gulf Orchid identities remain after moving Maison Asrar products and removing collection labels from the old 23-row storefront harvest.
+    # Corrected 2026-11-09 after the multi-brand storefront audit removed collection labels and moved Maison Asrar products back to their owner.
+    "Gulf Orchid": 16,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 115,
@@ -427,7 +429,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         }
         expected = (
             "Teas Me", "Frostbite", "Naughty Dates", "Sun Kissed",
-            "Forbidden Fruit", "Magnetiq", "Platine Blanc", "X Xandal",
+            "Forbidden Fruit", "Magnetiq", "Plantine Blanc", "X Xandal",
             "Royal Taboo", "Carnal Desire",
         )
         for name in expected:
@@ -495,24 +497,23 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
-    def test_armaf_uniq_oud_forever_official_detail_page_is_a_provenance_candidate(self):
+    def test_armaf_uniq_oud_forever_individual_official_page_is_verified(self):
         row = next(
             product for product in CATALOG.get("products", [])
             if product.get("brand_name") == "Armaf"
             and product.get("canonical_name") == "Uniq Oud Forever"
         )
-        # The canonical identity already exists. A later provenance update
-        # must preserve this product ID and must never append a second row.
+        source = "https://armaf.com/products/uniq-oud-forever-spr"
         self.assertEqual(row.get("product_id"), "SH-ARMAF-f650f6a8")
         self.assertEqual(row.get("identity_status"), "source_verified_name")
-        self.assertEqual(
-            row.get("source_url"),
-            "https://armaf.com/products/uniq-oud-forever-spr",
-        )
-        self.assertEqual(
-            row.get("source_evidence_url"),
-            "https://armaf.com/products/uniq-oud-forever-spr",
-        )
+        self.assertEqual(row.get("source_url"), source)
+        self.assertEqual(row.get("source_evidence_url"), source)
+        self.assertNotIn("concentration", row)
+        self.assertNotIn("formats_ml", row)
+        self.assertFalse(any(
+            variant.get("product_id") == row["product_id"]
+            for variant in CATALOG.get("variants", [])
+        ))
 
 
     def test_lattafa_asad_polar_official_100ml_identity(self):
@@ -834,34 +835,82 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("concentration"), concentration)
                     self.assertEqual(matches[0].get("source_evidence_url"), source_url)
 
-    def test_armaf_uniq_oud_forever_uses_individual_official_page_without_inferred_variant(self):
-        matches = [
-            row for row in CATALOG.get("products", [])
-            if row.get("brand_name") == "Armaf"
-            and row.get("canonical_name") == "Uniq Oud Forever"
-        ]
-        self.assertEqual(len(matches), 1)
-        product = matches[0]
-        official_url = "https://armaf.com/products/uniq-oud-forever-spr"
-        self.assertEqual(product.get("identity_status"), "source_verified_name")
-        self.assertEqual(product.get("source_url"), official_url)
-        self.assertEqual(product.get("source_evidence_url"), official_url)
-        # The accessible first-party detail page does not expose a structured
-        # bottle size or concentration field; do not invent a SKU variant.
-        self.assertFalse(product.get("concentration"))
-        self.assertFalse(product.get("formats_ml"))
-        self.assertFalse([
-            variant for variant in CATALOG.get("variants", [])
-            if variant.get("product_id") == product["product_id"]
-        ])
 
-    def test_maison_asrar_second_new_arrival_page_has_individual_provenance(self):
+    def test_aromatix_official_french_avenue_detail_pages_and_100ml_variants(self):
+        expected = {
+            "Carnal Desire": ("https://frenchavenue.com/products/carnal-desire", "Eau de Parfum"),
+            "Forbidden Fruit": ("https://frenchavenue.com/products/aromatix-forbidden-fruit", "Eau de Parfum"),
+            "Frostbite": ("https://frenchavenue.com/products/aromatix-frostbite", "Extrait de Parfum"),
+            "Magnetiq": ("https://frenchavenue.com/products/aromatix-magnetiq", "Eau de Parfum"),
+            "Naughty Dates": ("https://frenchavenue.com/products/aromatix-naughty-dates", "Eau de Parfum"),
+            "Royal Taboo": ("https://frenchavenue.com/products/royal-taboo", "Extrait de Parfum"),
+            "Sun Kissed": ("https://frenchavenue.com/products/aromatix-sunkissed", "Eau de Parfum"),
+            "Teas Me": ("https://frenchavenue.com/products/aromatix-teas-me", "Eau de Parfum"),
+            "X Xandal": ("https://frenchavenue.com/products/aromatix-x-xandal", "Extrait de Parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Aromatix"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, concentration) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [100])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("concentration"), concentration)
+                self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
+    def test_aromatix_plantine_blanc_official_identity_without_unsupported_variant(self):
+        rows = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Aromatix"
+            and row.get("canonical_name") == "Plantine Blanc"
+        ]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://frenchavenue.com/products/aromatix-plantine-blanc")
+        self.assertIn("Platine Blanc", row.get("aliases", []))
+        self.assertNotIn("concentration", row)
+        self.assertNotIn("formats_ml", row)
+        self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
+
+    def test_aromatix_ora_and_roza_remain_listing_level_until_official_detail_pages_are_found(self):
+        for name in ("Ora", "Roza"):
+            with self.subTest(name=name):
+                rows = [
+                    row for row in CATALOG.get("products", [])
+                    if row.get("brand_name") == "Aromatix"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(rows), 1)
+                row = rows[0]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("source_url"), "https://www.notino.be/french-avenue/aromatix/")
+                self.assertNotIn("concentration", row)
+                self.assertNotIn("formats_ml", row)
+                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
+
+
+    def test_maison_asrar_second_collection_page_has_individual_official_detail_provenance(self):
         expected = {
             "Dubai Milano": "https://maisonasrar.com/products/dubai-milano",
             "Dubai London": "https://maisonasrar.com/products/dubai-london",
             "Dubai Miami": "https://maisonasrar.com/products/dubai-miami",
             "III Thriller": "https://maisonasrar.com/products/iii-thriller",
             "Milky Way": "https://maisonasrar.com/products/milky-way",
+            "Vanguard": "https://maisonasrar.com/products/vanguard",
             "Muharib": "https://maisonasrar.com/products/muharib",
             "Faris Al Arab": "https://maisonasrar.com/products/faris-al-arab",
             "Vanilla Seduction": "https://maisonasrar.com/products/vanilla-seduction",
@@ -874,21 +923,35 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             for row in CATALOG.get("products", [])
             if row.get("brand_name") == "Maison Asrar"
         }
+        variants = CATALOG.get("variants", [])
         for name, source_url in expected.items():
             with self.subTest(name=name):
                 self.assertIn(name, products)
                 row = products[name]
                 self.assertEqual(row.get("identity_status"), "source_verified_name")
                 self.assertEqual(row.get("source_url"), source_url)
-                self.assertEqual(row.get("source_evidence_url"), source_url)
-                self.assertFalse(row.get("concentration"))
-                self.assertFalse(row.get("formats_ml"))
-                self.assertFalse([
-                    variant for variant in CATALOG.get("variants", [])
+                matching = [
+                    variant for variant in variants
                     if variant.get("product_id") == row["product_id"]
-                ])
+                ]
+                if name == "Vanilla Aura":
+                    # Its 100 ml EDP variant remains supported by the
+                    # individual retailer page; the Maison Asrar page itself
+                    # is used only to verify the canonical identity.
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("size_ml"), 100)
+                    self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                    self.assertEqual(
+                        matching[0].get("source_evidence_url"),
+                        "https://shop-gulforchid.com/products/vanilla-aura",
+                    )
+                else:
+                    self.assertEqual(matching, [])
+                    self.assertNotIn("formats_ml", row)
+                    self.assertNotIn("concentration", row)
 
-    def test_maison_asrar_third_new_arrival_page_has_individual_provenance(self):
+
+    def test_maison_asrar_third_new_arrivals_page_has_individual_official_detail_provenance(self):
         expected = {
             "Khayyal": "https://maisonasrar.com/products/khayyal",
             "Mohra": "https://maisonasrar.com/products/mohrab",
@@ -898,6 +961,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Tornado": "https://maisonasrar.com/products/tornado",
             "Wadi": "https://maisonasrar.com/products/wadi",
             "DXB": "https://maisonasrar.com/products/dxb",
+            "Legacy": "https://maisonasrar.com/products/legacy",
             "Vanilla Voyage": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
             "Vision": "https://maisonasrar.com/products/vision",
             "Oh Honey!": "https://maisonasrar.com/products/oh-honey-eau-de-parfum",
@@ -907,21 +971,22 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             for row in CATALOG.get("products", [])
             if row.get("brand_name") == "Maison Asrar"
         }
+        variants = CATALOG.get("variants", [])
         for name, source_url in expected.items():
             with self.subTest(name=name):
                 self.assertIn(name, products)
                 row = products[name]
                 self.assertEqual(row.get("identity_status"), "source_verified_name")
                 self.assertEqual(row.get("source_url"), source_url)
-                self.assertEqual(row.get("source_evidence_url"), source_url)
-                self.assertFalse(row.get("concentration"))
-                self.assertFalse(row.get("formats_ml"))
-                self.assertFalse([
-                    variant for variant in CATALOG.get("variants", [])
-                    if variant.get("product_id") == row["product_id"]
-                ])
+                self.assertNotIn("formats_ml", row)
+                self.assertNotIn("concentration", row)
+                self.assertFalse(any(
+                    variant.get("product_id") == row["product_id"]
+                    for variant in variants
+                ))
 
-    def test_maison_asrar_fourth_new_arrival_page_has_verified_owned_products_only(self):
+
+    def test_maison_asrar_fourth_and_fifth_new_arrivals_pages_brand_owned_products(self):
         expected = {
             "Date Night": "https://maisonasrar.com/products/date-night",
             "Larimar": "https://maisonasrar.com/products/larimar",
@@ -929,33 +994,114 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Nada": "https://maisonasrar.com/products/nada",
             "Omniya": "https://maisonasrar.com/products/omniya",
             "Coffee Blend": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+            "Lumiere": "https://maisonasrar.com/products/lumiere",
+            "Soirée": "https://maisonasrar.com/products/soiree",
+            "Rey": "https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar",
+            "Leo": "https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml",
+            "Hunter": "https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml",
+            "Bloom Bloom": "https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml",
+            "Lolita": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+            "Bonita": "https://maisonasrar.com/products/bonita-eau-de-parfum-100ml",
         }
         products = {
             row.get("canonical_name"): row
             for row in CATALOG.get("products", [])
             if row.get("brand_name") == "Maison Asrar"
         }
+        variants = CATALOG.get("variants", [])
         for name, source_url in expected.items():
             with self.subTest(name=name):
                 self.assertIn(name, products)
                 row = products[name]
                 self.assertEqual(row.get("identity_status"), "source_verified_name")
                 self.assertEqual(row.get("source_url"), source_url)
-                self.assertEqual(row.get("source_evidence_url"), source_url)
-                self.assertFalse(row.get("concentration"))
-                self.assertFalse(row.get("formats_ml"))
-                self.assertFalse([
-                    variant for variant in CATALOG.get("variants", [])
-                    if variant.get("product_id") == row["product_id"]
-                ])
+                self.assertNotIn("formats_ml", row)
+                self.assertNotIn("concentration", row)
+                self.assertFalse(any(
+                    variant.get("product_id") == row["product_id"]
+                    for variant in variants
+                ))
 
-        # The Maison Asrar storefront also lists third-party Gulf Orchid
-        # products. Do not silently reattribute them to Maison Asrar.
-        for name in ("Emerald", "Gold Noir"):
-            with self.subTest(third_party_name=name):
+
+    def test_maison_asrar_six_products_have_explicit_100_or_110ml_edp_variants(self):
+        expected = {
+            "Emerald": ("https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml", 110, "https://shop-gulforchid.com/products/maison-asrar-emerald-eau-de-parfum-110ml"),
+            "Gold Noir": ("https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum", 110, "https://shop-gulforchid.com/products/gulf-orchid-gold-noir-eau-de-parfum"),
+            "Silver Elixer": ("https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum", 110, "https://shop-gulforchid.com/products/gulf-orchid-silver-elixer-eau-de-parfum"),
+            "Flair": ("https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum", 100, "https://shop-gulforchid.com/products/gulf-orchid-flaire-eau-de-parfum"),
+            "Timeless": ("https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum", 100, "https://shop-gulforchid.com/products/gulf-orchid-timeless-eau-de-parfum"),
+            "Masterpiece": ("https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum", 100, "https://shop-gulforchid.com/products/gulf-orchid-masterpiece-eau-de-parfum"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, size_ml, variant_url) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
                 row = products[name]
-                self.assertEqual(row.get("identity_status"), "source_listed_name")
-                self.assertEqual(row.get("source_url"), "https://maisonasrar.com/collections/all")
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matches[0].get("source_evidence_url"), variant_url)
+
+
+    def test_maison_asrar_sixth_and_seventh_new_arrivals_pages_have_individual_detail_provenance(self):
+        expected = {
+            "Lily": "https://maisonasrar.com/products/lily-eau-de-parfum-100ml",
+            "Rosé Absolute": "https://maisonasrar.com/products/absolute-eau-de-perfum-100ml",
+            "Trophy": "https://maisonasrar.com/products/trophy-eau-de-perfum-100ml",
+            "Oscar": "https://maisonasrar.com/products/oscar-eau-de-perfum-100ml",
+            "Fairy Tale": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml",
+            "Magic Night": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+            "Desire": "https://maisonasrar.com/products/desire-eau-de-perfum-100ml",
+            "Rosé Bouquet": "https://maisonasrar.com/products/bouquet-eau-de-perfum-100ml",
+            "Jawhara Rouge": "https://maisonasrar.com/products/jawhara-rouge-eau-de-perfum-100ml",
+            "Jawhara Black": "https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml",
+            "Patchouli with Love": "https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml",
+            "Fresh Iris": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml",
+            "Vanilla Rouge": "https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml",
+            "Dear Jasmine": "https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml",
+            "Petra": "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml",
+            "Casablanca": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml",
+            "Night in Paris": "https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml",
+            "Sunset in Capri": "https://maisonasrar.com/products/sunset-in-capri-maison-asrar-eau-de-perfum-90ml",
+            "Never Forget Me": "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
+            "Kiss My Lips": "https://maisonasrar.com/products/kiss-my-lips-maison-asrar-eau-de-perfum-90ml",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                # Product page URL handles contain size/concentration hints,
+                # but the inspected page body does not state those specs.
+                self.assertNotIn("formats_ml", row)
+                self.assertNotIn("concentration", row)
+                self.assertFalse(any(
+                    variant.get("product_id") == row["product_id"]
+                    for variant in variants
+                ))
+
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,5 @@
 name: Catalog seed validation
+# Re-run catalog seed validation after Aromatix source-evidence regression updates.
 
 on:
   pull_request:
@@ -12,6 +13,8 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-official-detail-verification-2026-11-09
+      - catalog/gulf-orchid-official-detail-harvest-2026-11-09
+      - catalog/gulf-orchid-brand-attribution-audit-2026-11-09
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -27,6 +30,9 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/mykonos-official-detail-verification-2026-11-09
+      - catalog/gulf-orchid-official-detail-harvest-2026-11-09
+      - catalog/gulf-orchid-brand-attribution-audit-2026-11-09
+      - catalog/aromatix-official-detail-audit-2026-11-09
 
 permissions:
   contents: read
