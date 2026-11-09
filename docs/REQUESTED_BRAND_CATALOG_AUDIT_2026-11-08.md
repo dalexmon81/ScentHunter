@@ -136,3 +136,23 @@ A second pass through page 2 of the official New Launches collection found five 
 
 Each was added once with a matching size variant. Enigma of Taif deliberately has no concentration field because the individual brand-owned page inspected does not expose one. Gift sets on the same new-launch collection were excluded.
 
+
+
+### Maison Asrar: ten new-arrival individual-page provenance upgrades (9 November 2026)
+
+The brand-owned Maison Asrar new-arrival collection lists 81 products. Its first twelve entries were checked against the existing catalog. Belgravia and Regent already had individual official product-page evidence. The following ten existing canonical identities were upgraded from collection/listing-level provenance to their own individual official product pages, without creating duplicate identities:
+
+- **Ameer** — https://maisonasrar.com/products/ameer
+- **DXB Jumeirah** — https://maisonasrar.com/products/dxb-jumeirah
+- **Last Swim** — https://maisonasrar.com/products/last-swim
+- **Silent Surge** — https://maisonasrar.com/products/silent-surge
+- **Veyra** — https://maisonasrar.com/products/veyra
+- **Infina** — https://maisonasrar.com/products/infina
+- **Librae** — https://maisonasrar.com/products/librae
+- **Harmony** — https://maisonasrar.com/products/harmony
+- **Fairyland** — https://maisonasrar.com/products/fairyland
+- **Whisper** — https://maisonasrar.com/products/whisper
+
+The inspected individual pages confirm the fragrance names and standalone product pages. Their accessible page content did not explicitly state bottle size or concentration, so no size variants or concentration values were invented. The collection's note pyramids and merchandising descriptors were not treated as size/concentration evidence. Room sprays, home-fragrance products and sets remain outside the perfume identity scope. The collection page currently reports 81 products; this pass only verifies the first twelve visible new-arrival entries and is not a full 81-product reconciliation.
+
+Regression coverage was added in `backend/tests/test_maison_asrar_new_arrival_evidence.py` for the ten official detail URLs, provenance status, and the deliberate absence of unsupported variants.
