@@ -530,5 +530,22 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
+    def test_lattafa_official_new_launches_listed_without_inferred_variants(self):
+        expected = ["A’Ayan","Ramad Al Oud","Majd Al Sultan Black Intense","Farfasha","Atlas Canyon","Atlas Glacial Valley","Ajwad Pink 2 Pink Creamy Elixir","Raghad","Petra Viola","Badee Al Oud Amethyst Fusion"]
+        rows = [p for p in CATALOG.get("products", []) if p.get("brand_name") == "Lattafa"]
+        variants = CATALOG.get("variants", [])
+        for name in expected:
+            with self.subTest(name=name):
+                matching = [p for p in rows if p.get("canonical_name") == name]
+                self.assertEqual(len(matching), 1)
+                row = matching[0]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("source_url"), "https://lattafa.com/product-category/new-launches/")
+                self.assertNotIn("concentration", row)
+                self.assertNotIn("formats_ml", row)
+                self.assertFalse(any(v.get("product_id") == row["product_id"] for v in variants))
+
+
+
 if __name__ == "__main__":
     unittest.main()
