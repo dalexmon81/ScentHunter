@@ -20,17 +20,18 @@ CATALOG_PATH = "backend/product_catalog.json"
 FAMILY_REGISTRY_PATH = "backend/family_registry.json"
 
 # (PR number, head branch, actual PR base branch)
+# Canonical product identity excludes trailing bottle volume; size remains variant metadata.
+# Stacked candidate branches must be refreshed against their declared base before collision analysis.
 CANDIDATE_PRS = (
-    (465, "catalog/velixir-28-fragrance-variant-reconciliation-2026-11-08", "catalog/mykonos-fragrantica-84-reconciliation-2026-11-08"),
-    (517, "catalog/velixir-official-product-variants-2026-11-08", "catalog/paris-corner-ministry-of-oud-official-harvest-2026-11-08"),
     (539, "catalog/mykonos-detail-evidence-2026-11-08", BASE_REF),
     (546, "catalog/cumulative-source-reconciled-2026-11-08", "catalog/cumulative-requested-brands-2026-11-08"),
     (542, "catalog/gulf-orchid-source-reconciliation-2026-11-08", BASE_REF),
     (584, "catalog/gulf-orchid-reconciled-combined-2026-11-08", "catalog/gulf-orchid-source-reconciliation-2026-11-08"),
-    (585, "catalog/gulf-orchid-reconciled-combined-v2-2026-11-08", "catalog/gulf-orchid-source-reconciliation-2026-11-08"),
     (587, "catalog/gulf-orchid-official-audit-2026-11-08", "catalog/velixir-official-audit-2026-11-08"),
     (588, "catalog/verified-new-launches-2026-11-09", "catalog/consolidated-brand-catalog-2026-11-08"),
-    (590, "catalog/family-registry-verified-launches-2026-11-09", "catalog/verified-new-launches-2026-11-09"),
+    (593, "catalog/armaf-reconciled-official-identities-2026-11-09", "catalog/cumulative-source-reconciled-2026-11-08"),
+    (594, "catalog/al-haramain-new-launches-2026-11-09", "catalog/requested-brand-harvest-2026-11-08"),
+    (591, "catalog/integration-verified-launches-ci-2026-11-09", "catalog/verified-new-launches-2026-11-09"),
     (555, "catalog/lattafa-official-new-launches-2026-11-08", "catalog/gulf-orchid-official-new-arrivals-2026-11-08"),
     (558, "catalog/armaf-official-detail-audit-2026-11-08", "catalog/armaf-official-new-exclusive-2026-11-08"),
     (562, "catalog/lattafa-four-official-products-2026-11-08", "catalog/lattafa-mishlah-official-page-2026-11-08"),
@@ -71,10 +72,22 @@ def git_json(ref: str, path: str) -> dict[str, Any]:
     return parsed
 
 
+def normalize_product_name(value: Any) -> str:
+    """Normalize product identity without treating bottle size as a new product.
+
+    Size belongs to the variant, not the canonical fragrance identity. Some
+    retailer/brand catalogs append a size to the product title (for example,
+    "Sweet Heaven Extreme 20ml"); strip only a trailing metric volume token.
+    """
+    name = str(value or "").strip()
+    name = re.sub(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|mL|ML|l|L)$", "", name)
+    return normalize(name)
+
+
 def product_identity(row: dict[str, Any]) -> tuple[str, str]:
     return (
         normalize(row.get("brand_name") or row.get("brand")),
-        normalize(row.get("canonical_name") or row.get("name")),
+        normalize_product_name(row.get("canonical_name") or row.get("name")),
     )
 
 
@@ -223,7 +236,9 @@ def audit() -> int:
 
     print(
         f"Cross-PR catalog audit: baseline={BASE_REF}; "
-        f"candidate_prs={loaded}; direct_changes_only=true"
+        f"candidate_prs={loaded}; direct_changes_only=true; "
+        "trailing_volume_suffix_excluded_from_product_identity=true; "
+        "variant_identity_includes_concentration=true"
     )
     print(
         "Baseline sizes: "
