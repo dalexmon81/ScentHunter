@@ -32442,10 +32442,17 @@
       "family_name": "Ajwad Pink to Pink Creamy Elixir",
       "aliases": [
         "Ajwad Pink to Pink Creamy Elixir",
-        "Lattafa Ajwad Pink to Pink Creamy Elixir"
+        "Lattafa Ajwad Pink to Pink Creamy Elixir",
+        "Ajwad Pink To Pink Creamy Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafaparfum.eu/de-de/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/fr-de/products/ajwad-pink-to-pink-creamy-elixir",
+      "source_evidence_url": "https://lattafaparfum.eu/fr-de/products/ajwad-pink-to-pink-creamy-elixir",
+      "gender": "Women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-023",
@@ -36129,6 +36136,29 @@
         100
       ],
       "gender": "Women"
+    },
+    {
+      "product_id": "SH-LATTAFA-PETRA-VIOLA-6298043161732",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Petra Viola",
+      "name": "Petra Viola",
+      "family_id": "lattafa_catalog",
+      "family_name": "Petra Viola",
+      "aliases": [
+        "Petra Viola",
+        "Lattafa Petra Viola"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6298043161732"
+      ]
     }
   ],
   "variants": [
@@ -42302,6 +42332,31 @@
       ],
       "variant_id": "SHV-SH-ASSAF-HARVEST-014-150-000",
       "source_evidence_url": "https://assaf.ae/products/arrogate-pink-rose"
+    },
+    {
+      "product_id": "SH-LATTAFA-EU-HARVEST-022",
+      "size_ml": 60,
+      "aliases": [
+        "Ajwad Pink to Pink Creamy Elixir 60 ml",
+        "Lattafa Ajwad Pink to Pink Creamy Elixir 60ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-022-60-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://lattafaparfum.eu/fr-de/products/ajwad-pink-to-pink-creamy-elixir",
+      "source_evidence_url": "https://lattafaparfum.eu/fr-de/products/ajwad-pink-to-pink-creamy-elixir"
+    },
+    {
+      "product_id": "SH-LATTAFA-PETRA-VIOLA-6298043161732",
+      "size_ml": 100,
+      "aliases": [
+        "Petra Viola 100 ml",
+        "Lattafa Petra Viola 100 ml",
+        "Lattafa Petra Viola 100ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-PETRA-VIOLA-6298043161732-100-000",
+      "source_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "gtin": "6298043161732"
     }
   ]
 }
