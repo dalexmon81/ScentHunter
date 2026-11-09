@@ -56,3 +56,16 @@ Workflow note: the stacked PR validation workflow on the target catalog branch e
 ## Validation
 
 The existing Afnan/Lattafa official-harvest test module now verifies all seven Supremacy identities and each explicitly listed volume/concentration combination.
+
+
+# Afnan Turathi official detail verification — 9 November 2026
+
+| Existing canonical identity | Concentration | Volume | Official product page |
+|---|---|---:|---|
+| Turathi Brown Homme | Eau de Parfum | 90 ml | https://fr.afnan.com/en/products/turathi-brown-homme |
+| Turathi Blue | Eau de Parfum | 90 ml | https://www.fr.afnan.com/en/products/turathi-blue-homme |
+| Turathi Electric | Eau de Parfum | 90 ml | https://www.fr.afnan.com/en/products/turathi-electric |
+| Turathi Purple | Eau de Parfum | 90 ml | https://www.fr.afnan.com/en/products/turathi-purple-femme |
+| TURATHI RED | Eau de Parfum | 90 ml | https://www.fr.afnan.com/products/turathi-red-femme |
+
+All five existing canonical product IDs were preserved. Each official detail page explicitly identifies a 90 ml Eau de Parfum. Five distinct 90 ml variants were added and the Afnan family registry was synchronized. No prices, stock or retailer offer data were copied.
