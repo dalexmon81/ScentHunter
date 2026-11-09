@@ -75,5 +75,6 @@ jobs:
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_al_haramain_new_launches
           backend.tests.test_khadlaj_verified_detail_additions
+          backend.tests.test_verified_detail_page_additions
           backend.tests.test_al_haramain_detail_additions
           -v

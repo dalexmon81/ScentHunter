@@ -3230,12 +3230,13 @@
         "Cloud Candy",
         "Khadlaj Cloud Candy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -3249,12 +3250,13 @@
         "Island Vanilla Dunes",
         "Khadlaj Island Vanilla Dunes"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
     },
     {
       "product_id": "SH-KHADLAJ-04832397",
@@ -3287,12 +3289,13 @@
         "Caffe Latte",
         "Khadlaj Caffe Latte"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray"
     },
     {
       "product_id": "SH-KHADLAJ-dd1434f1",
@@ -18639,9 +18642,13 @@
         "Icon",
         "Khadlaj Icon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-2000",
@@ -33936,6 +33943,46 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-a5846dd4",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Oud Nomad",
+      "name": "Oud Nomad",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Oud Nomad",
+      "aliases": [
+        "Oud Nomad",
+        "Al Haramain Oud Nomad"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6e94c97b",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Conception",
+      "name": "Conception",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Conception",
+      "aliases": [
+        "Conception",
+        "Al Haramain Conception"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html"
     }
   ],
   "variants": [
@@ -33996,7 +34043,8 @@
         "Khadlaj Caffe Latte 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-263fcf43-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray"
     },
     {
       "product_id": "SH-KHADLAJ-dd1434f1",
@@ -34360,7 +34408,8 @@
         "Khadlaj Island Vanilla Dunes 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-47b079b3-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
     },
     {
       "product_id": "SH-KHADLAJ-78fd361a",
@@ -34370,7 +34419,8 @@
         "Khadlaj Cloud Candy 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-78fd361a-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae"
     },
     {
       "product_id": "SH-AFNAN-823a97f5",
@@ -37000,6 +37050,39 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-4b3d18b7-100-000",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-a5846dd4",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Nomad 100 ml",
+        "Al Haramain Oud Nomad 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-a5846dd4-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-6e94c97b",
+      "size_ml": 100,
+      "aliases": [
+        "Conception 100 ml",
+        "Al Haramain Conception 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-6e94c97b-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ICON",
+      "size_ml": 100,
+      "aliases": [
+        "Icon 100 ml",
+        "Khadlaj Icon 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ICON-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
     }
   ]
 }

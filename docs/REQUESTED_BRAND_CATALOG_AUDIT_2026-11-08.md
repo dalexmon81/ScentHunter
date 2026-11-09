@@ -121,3 +121,17 @@ Both names were already present as listing-level identities; their records were 
 - Amber Oud Gold Lux — https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html — 100 ml Extrait de Parfum, SKU AHP2094.
 
 Each name was absent from the Al Haramain canonical identities and is now added with one explicit 100 ml variant. The Gold Mine candidate was deliberately held back: the official page title and product details identify Gold Mine, but its URL slug says "sport", so it needs a clean canonical product URL before ingestion. No prices or stock values were copied.
+
+### Verified product-detail upgrades and additions (9 November 2026)
+
+New Al Haramain identities, each with a first-party detail page confirming name, concentration, and 100 ml size:
+- Oud Nomad — https://shop.alharamainperfumes.com/eu/haramain-oud-nomad-100ml-eau-de-parfum.html (Eau de Parfum, 100 ml, SKU AHP2088)
+- Conception — https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html (Eau de Parfum, 100 ml, SKU AHP2087)
+
+Existing Khadlaj listing-level identities upgraded with individual official product detail evidence and explicit 100 ml variants:
+- Icon — https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men (Eau de Parfum, SKU 6298043071215)
+- Island Vanilla Dunes — https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men (Extrait de Parfum, SKU 6291107979748)
+- Cloud Candy — https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae (Extrait de Parfum, SKU 6291107979557)
+- Caffe Latte — https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray (Extrait de Parfum, SKU 6291107979311)
+
+All entries are individual perfume sprays, not oils, home fragrance, or multipacks. No prices or stock data were imported.
