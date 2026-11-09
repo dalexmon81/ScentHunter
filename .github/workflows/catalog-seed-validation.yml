@@ -24,6 +24,7 @@ on:
       - work/maison-alhambra-four-launches-2026-11-09
       - work/armaf-two-official-launches-2026-11-09
       - work/assaf-gris-erik-100ml-evidence-2026-11-09
+      - work/paris-corner-39-identities-10-variant-updates-2026-11-09
       - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
@@ -42,6 +43,7 @@ on:
       - work/maison-alhambra-four-launches-2026-11-09
       - work/armaf-two-official-launches-2026-11-09
       - work/assaf-gris-erik-100ml-evidence-2026-11-09
+      - work/paris-corner-39-identities-10-variant-updates-2026-11-09
       - catalog/afnan-stardust-detail-variant-2026-11-09
       - catalog/afnan-9-series-official-details-2026-11-09
       - catalog/al-wataniah-five-more-details-2026-11-09
@@ -134,3 +136,7 @@ jobs:
       - name: Validate Assaf Gris Erik 100 ml variant evidence
         if: github.head_ref == 'work/assaf-gris-erik-100ml-evidence-2026-11-09'
         run: python -m unittest backend.tests.test_assaf_gris_erik_100ml_evidence -v
+
+      - name: Validate Paris Corner 39 identities and ten variant updates
+        if: github.head_ref == 'work/paris-corner-39-identities-10-variant-updates-2026-11-09'
+        run: python -m unittest backend.tests.test_paris_corner_thirty_nine_identities -v
