@@ -1108,5 +1108,47 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     if row.get("product_id") == product["product_id"]
                 ])
 
+
+    def test_maison_asrar_best_seller_individual_pages_without_size_inference(self):
+        expected = {
+            "Faris Al Arab": (
+                "https://maisonasrar.com/products/faris-al-arab",
+                None,
+            ),
+            "Vanilla Voyage": (
+                "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+                "Eau de Parfum",
+            ),
+            "Gold Noir": (
+                "https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum",
+                "Eau de Parfum",
+            ),
+            "Hilm": (
+                "https://maisonasrar.com/products/hilm",
+                None,
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), concentration)
+                self.assertFalse(product.get("formats_ml"))
+                self.assertFalse([
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ])
+
 if __name__ == "__main__":
     unittest.main()
