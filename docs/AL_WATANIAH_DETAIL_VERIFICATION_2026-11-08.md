@@ -77,3 +77,20 @@ Ten more existing identities were individually verified from the brand-owned pag
 - **Nada** — https://www.alwataniah.com/products/nada
 
 The same identity-preserving rules apply: no duplicate products, no inferred variant details, and no commercial offer/price/stock fields.
+
+## Additional official detail-page verification — 9 November 2026 (batch 2)
+
+Ten more existing products have individual official pages that explicitly specify Eau de Parfum and 100 ml:
+
+- Al Daiem Elixir — https://www.alwataniah.com/products/al-daiem-elixir
+- Ameerati — https://www.alwataniah.com/products/ameerati
+- Attar Al Wesal — https://www.alwataniah.com/products/attar-al-wesal
+- Rose Eclat — https://www.alwataniah.com/products/rose-eclat
+- Oud Mystery Intense — https://www.alwataniah.com/products/oud-mystery-intense
+- Sahari — https://www.alwataniah.com/products/sahari
+- Rose Mystery Intense — https://www.alwataniah.com/products/rose-mystery-intense
+- Golden Honey — https://www.alwataniah.com/products/golden-honey
+- Bareeq Al Dhahab — https://www.alwataniah.com/products/bareeq-al-dhahab
+- Brownie Bite — https://www.alwataniah.com/products/brownie-bite
+
+This PR now upgrades 32 existing identities to individual detail-page evidence and adds 32 explicit 100 ml EDP variants. Including Lemon Souffle and Choco Truffle, the catalog contains 34 individually detail-verified Al Wataniah identities out of 86. The other 52 remain collection-backed.
