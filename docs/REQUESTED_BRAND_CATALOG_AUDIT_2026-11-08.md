@@ -252,3 +252,42 @@ Per-brand canonical identity counts:
 The 20 requested brands total **2,078** identities. The remaining three identities are outside that requested set (Giorgio Armani 1 and Al Ambra 2). These checks establish internal structural consistency and provenance-field coverage; they do **not** prove that every brand's complete worldwide or historical assortment has been harvested. The catalog remains a canonical identity seed, not a live offer inventory.
 
 The two successful `validate-catalog-seed` Actions runs recorded for catalog commit `f64c61f1558df42ddd50cf6067b70ef0df6c8d4a` validate the unchanged catalog/test snapshot. This documentation-only reconciliation does not modify catalog data or production code.
+
+### Gulf Orchid: official storefront detail-page harvest (9 November 2026)
+
+The brand-owned Gulf Orchid storefront was checked against the existing seed and its New Arrivals listing. Five existing identities were upgraded to individual product-page evidence, and nine further standalone fragrances were added as canonical identities. The product detail pages explicitly state Eau de Parfum and bottle size for every entry below, so one matching explicit variant was recorded per identity:
+
+- Vanilla Addiction — 100 ml EDP (existing identity upgraded)
+- Mango Ice — 100 ml EDP (existing identity upgraded)
+- Sweet Heaven 20ML — 20 ml EDP (existing identity upgraded; retained as a size-specific canonical label from the seed)
+- Pink Marshmallow — 100 ml EDP (existing identity upgraded)
+- Coco Blanco — 100 ml EDP (existing identity upgraded)
+- Belle — 100 ml EDP (new identity)
+- Amour — 100 ml EDP (new identity)
+- Chic — 100 ml EDP (new identity)
+- Cloud 9 — 100 ml EDP (new identity)
+- Phantom — 100 ml EDP (new identity)
+- Flamma — 100 ml EDP (new identity)
+- Vortex — 100 ml EDP (new identity)
+- Rosalia — 100 ml EDP (new identity)
+- Maestro — 100 ml EDP (new identity)
+
+The corresponding family-registry entries and product format lists were synchronized. Regression tests assert official detail URLs, identity status, concentration, size and one-to-one variant provenance. No price, stock state, or unverified size was added. The official New Arrivals listing also includes Maison Asrar products; those were not misclassified as Gulf Orchid. Other Gulf Orchid collection names without individual fragrance evidence remain listing-level and were not upgraded.
+
+Primary source pages:
+- Official perfume collection: https://shop-gulforchid.com/collections/perfume
+- Official New Arrivals: https://shop-gulforchid.com/collections/new-arrivals
+- Vanilla Addiction: https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum
+- Mango Ice: https://shop-gulforchid.com/products/mango_ice_eau_de_parfum
+- Sweet Heaven 20 ml: https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml
+- Pink Marshmallow: https://shop-gulforchid.com/products/pink-marshmallow
+- Coco Blanco: https://shop-gulforchid.com/products/coco-blanco
+- Belle: https://shop-gulforchid.com/products/belle
+- Amour: https://shop-gulforchid.com/products/amour
+- Chic: https://shop-gulforchid.com/products/chic
+- Cloud 9: https://shop-gulforchid.com/products/cloud-9
+- Phantom: https://shop-gulforchid.com/products/phantom
+- Flamma: https://shop-gulforchid.com/products/flamma
+- Vortex: https://shop-gulforchid.com/products/vortex
+- Rosalia: https://shop-gulforchid.com/products/rosalia
+- Maestro: https://shop-gulforchid.com/products/maestro
