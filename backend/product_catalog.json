@@ -851,8 +851,8 @@
         "Hunter",
         "Maison Asrar Hunter"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -970,8 +970,8 @@
         "Lolita",
         "Maison Asrar Lolita"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -986,8 +986,8 @@
         "Lumiere",
         "Maison Asrar Lumiere"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/lumiere",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1024,18 +1024,18 @@
     },
     {
       "product_id": "SH-MAISON-ASRAR-f1c0eae0",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
       "canonical_name": "Masterpiece",
       "name": "Masterpiece",
-      "family_id": "maison_asrar_catalog",
+      "family_id": "gulf_orchid_catalog",
       "family_name": "Masterpiece",
       "aliases": [
         "Masterpiece",
-        "Maison Asrar Masterpiece"
+        "Gulf Orchid Masterpiece"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1082,8 +1082,8 @@
         "Nada",
         "Maison Asrar Nada"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/nada",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1146,8 +1146,8 @@
         "Omniya",
         "Maison Asrar Omniya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/omniya",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1258,8 +1258,8 @@
         "Rey",
         "Maison Asrar Rey"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1402,8 +1402,8 @@
         "Bloom Bloom",
         "Maison Asrar Bloom Bloom"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1418,8 +1418,8 @@
         "Bonita",
         "Maison Asrar Bonita"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/bonita-eau-de-parfum-100ml",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1466,8 +1466,8 @@
         "Coffee Blend",
         "Maison Asrar Coffee Blend"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1498,8 +1498,8 @@
         "Date Night",
         "Maison Asrar Date Night"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/date-night",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1617,19 +1617,23 @@
     },
     {
       "product_id": "SH-MAISON-ASRAR-4a2629e8",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
       "canonical_name": "Emerald",
       "name": "Emerald",
-      "family_id": "maison_asrar_catalog",
+      "family_id": "gulf_orchid_catalog",
       "family_name": "Emerald",
       "aliases": [
         "Emerald",
-        "Maison Asrar Emerald"
+        "Gulf Orchid Emerald"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml",
+      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        110
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-3e2cdf7a",
@@ -1698,18 +1702,18 @@
     },
     {
       "product_id": "SH-MAISON-ASRAR-ba877706",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
       "canonical_name": "Flair",
       "name": "Flair",
-      "family_id": "maison_asrar_catalog",
+      "family_id": "gulf_orchid_catalog",
       "family_name": "Flair",
       "aliases": [
         "Flair",
-        "Maison Asrar Flair"
+        "Gulf Orchid Flair"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -1746,18 +1750,18 @@
     },
     {
       "product_id": "SH-MAISON-ASRAR-4c9f7d46",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
       "canonical_name": "Gold Noir",
       "name": "Gold Noir",
-      "family_id": "maison_asrar_catalog",
+      "family_id": "gulf_orchid_catalog",
       "family_name": "Gold Noir",
       "aliases": [
         "Gold Noir",
-        "Maison Asrar Gold Noir"
+        "Gulf Orchid Gold Noir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -2046,8 +2050,8 @@
         "Larimar",
         "Maison Asrar Larimar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/larimar",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -2062,8 +2066,8 @@
         "Leo",
         "Maison Asrar Leo"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -2126,24 +2130,24 @@
         "Rubellite",
         "Maison Asrar Rubellite"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/rubellite",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
       "product_id": "SH-MAISON-ASRAR-898e0e28",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
       "canonical_name": "Silver Elixer",
       "name": "Silver Elixer",
-      "family_id": "maison_asrar_catalog",
+      "family_id": "gulf_orchid_catalog",
       "family_name": "Silver Elixer",
       "aliases": [
         "Silver Elixer",
-        "Maison Asrar Silver Elixer"
+        "Gulf Orchid Silver Elixer"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -2158,8 +2162,8 @@
         "Soirée",
         "Maison Asrar Soirée"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/soiree",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -2228,18 +2232,18 @@
     },
     {
       "product_id": "SH-MAISON-ASRAR-410d2374",
-      "brand": "Maison Asrar",
-      "brand_name": "Maison Asrar",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
       "canonical_name": "Timeless",
       "name": "Timeless",
-      "family_id": "maison_asrar_catalog",
+      "family_id": "gulf_orchid_catalog",
       "family_name": "Timeless",
       "aliases": [
         "Timeless",
-        "Maison Asrar Timeless"
+        "Gulf Orchid Timeless"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum",
       "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
     },
     {
@@ -38253,6 +38257,17 @@
       "variant_id": "SHV-SH-AROMATIX-672bf656-100-000",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://frenchavenue.com/products/aromatix-x-xandal"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-4a2629e8",
+      "size_ml": 110,
+      "aliases": [
+        "Emerald 110 ml",
+        "Gulf Orchid Emerald 110ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-4a2629e8-110-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml"
     }
   ]
 }
