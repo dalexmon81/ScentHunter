@@ -915,5 +915,45 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_paris_corner_official_storefront_batch_b_detail_pages_and_explicit_sizes(self):
+        expected = {
+            "Celestial Emir": ("https://www.pariscornerperfumes.com/products/celestial", 100),
+            "Charuto Regal Reserve": ("https://www.pariscornerperfumes.com/products/charuto-regal-reserve", None),
+            "Charuto Tobacco Vanille": ("https://www.pariscornerperfumes.com/products/charuto-tobacco-vanille", 100),
+            "Cherry Cola": ("https://www.pariscornerperfumes.com/products/cherry-cola", None),
+            "Cherry Gossip": ("https://www.pariscornerperfumes.com/products/cherry-gossip", 100),
+            "Choco Cult": ("https://www.pariscornerperfumes.com/products/choco-cult", 100),
+            "Choco Lait": ("https://www.pariscornerperfumes.com/products/choco-lait", 100),
+            "Coconut Lagoon": ("https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml", None),
+            "Confidential": ("https://www.pariscornerperfumes.com/products/confidential-100ml", 100),
+            "Cornflower Delight": ("https://www.pariscornerperfumes.com/products/cornflower-delight", 100),
+            "Cosmic Giardino": ("https://www.pariscornerperfumes.com/products/cosmic-giardino", 100),
+            "Cosmopolitan Dubai": ("https://www.pariscornerperfumes.com/products/cosmopolitan-dubai", None),
+            "Cosmopolitan London": ("https://www.pariscornerperfumes.com/products/cosmopolitan-london", None),
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_url"), source)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
