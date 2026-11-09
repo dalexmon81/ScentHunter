@@ -136,3 +136,28 @@ PR #424 remains separate and open/draft. Its current head `a45a0a1cabf09dd926b5b
 - [Catalog-first staging API contract — run 42574270516](https://github.com/dalexmon81/ScentHunter/actions/runs/42574270516)
 
 This is a green catalog collision gate and a green isolated architecture CI slice, not acceptance of all architecture phases or live retailer ingestion. No PR was merged, no live retailer was activated, and no production deployment or traffic rollout was performed.
+
+### Follow-up verification — 9 November 2026 (Al Wataniah PR #604)
+
+PR #604 adds no new canonical identities. It upgrades twelve existing Al Wataniah identities to their individual brand-owned product pages and adds one explicitly documented 100 ml Eau de Parfum variant to each:
+
+- Kayaan Midnight
+- Sabah Al Ward
+- Sabah Al Ward Sugar
+- Special Oud
+- Emiran
+- Cloud
+- Castilla
+- Fayroz
+- Layali
+- Praline Toffee
+- Turquois
+- Royal Oak II
+
+The original product IDs are preserved. The family registry and two Al Wataniah regression modules were updated to recognize the verified detail pages and the expanded set of explicit variants. CI initially exposed stale assertions that assumed only two Al Wataniah variants existed; those assertions were updated to distinguish detail-verified identities from collection-only identities.
+
+- Catalog validation: [run 42627903917](https://github.com/dalexmon81/ScentHunter/actions/runs/42627903917)
+- Result: **PASS — 143 tests, OK**.
+- Cross-PR audit candidate set is extended to include PR #604 (27 candidates total); this audit run validates the new candidate set independently.
+
+No new product IDs, retailer offers, prices, stock, shipping or deployment changes are included.
