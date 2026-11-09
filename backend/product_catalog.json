@@ -4737,9 +4737,10 @@
         "9 PM Rebel",
         "Afnan 9 PM Rebel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/9-pm-rebel",
+      "source_evidence_url": "https://afnan.com/products/9-pm-rebel",
+      "source_product_url": "https://afnan.com/products/9-pm-rebel"
     },
     {
       "product_id": "SH-AFNAN-5cdc0bae",
@@ -4825,9 +4826,10 @@
         "Historic Doria",
         "Afnan Historic Doria"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/historic-doria",
+      "source_evidence_url": "https://afnan.com/products/historic-doria",
+      "source_product_url": "https://afnan.com/products/historic-doria"
     },
     {
       "product_id": "SH-AFNAN-4e32c3b3",
@@ -4921,14 +4923,14 @@
         "9 PM",
         "Afnan 9 PM"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://www.bjutip.com/men-perfumes",
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/9-pm",
+      "source_evidence_url": "https://afnan.com/products/9-pm",
       "formats_ml": [
         100
       ],
       "concentration": "Eau de Parfum",
-      "source_product_url": "https://uae.afnan.com/products/9-pm-perfume",
+      "source_product_url": "https://afnan.com/products/9-pm",
       "gtins": [
         "6290171002338"
       ]
@@ -4945,9 +4947,10 @@
         "9 PM Pour Femme",
         "Afnan 9 PM Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/9-pm-pour-femme",
+      "source_evidence_url": "https://afnan.com/products/9-pm-pour-femme",
+      "source_product_url": "https://afnan.com/products/9-pm-pour-femme"
     },
     {
       "product_id": "SH-AFNAN-f8622945",
@@ -5045,9 +5048,10 @@
         "Cherry Bouquet",
         "Afnan Cherry Bouquet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/cherry-bouquet",
+      "source_evidence_url": "https://afnan.com/products/cherry-bouquet",
+      "source_product_url": "https://afnan.com/products/cherry-bouquet"
     },
     {
       "product_id": "SH-AFNAN-ca13dada",
@@ -5317,9 +5321,10 @@
         "9 PM Elixir",
         "Afnan 9 PM Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/9-pm-elixir",
+      "source_evidence_url": "https://afnan.com/products/9-pm-elixir",
+      "source_product_url": "https://afnan.com/products/9-pm-elixir"
     },
     {
       "product_id": "SH-AFNAN-583391fb",
@@ -21334,9 +21339,10 @@
         "ABIYAD MUKHALLAT",
         "Afnan ABIYAD MUKHALLAT"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/mukhallat-abiyad",
+      "source_evidence_url": "https://afnan.com/products/mukhallat-abiyad",
+      "source_product_url": "https://afnan.com/products/mukhallat-abiyad"
     },
     {
       "product_id": "SH-AFNAN-ABIYAD-MUSK",
@@ -21350,9 +21356,10 @@
         "ABIYAD MUSK",
         "Afnan ABIYAD MUSK"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/musk-abiyad-cpo",
+      "source_evidence_url": "https://afnan.com/products/musk-abiyad-cpo",
+      "source_product_url": "https://afnan.com/products/musk-abiyad-cpo"
     },
     {
       "product_id": "SH-AFNAN-ABIYAD-SANDAL",
@@ -21366,9 +21373,10 @@
         "ABIYAD SANDAL",
         "Afnan ABIYAD SANDAL"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/sandal-abiyad",
+      "source_evidence_url": "https://afnan.com/products/sandal-abiyad",
+      "source_product_url": "https://afnan.com/products/sandal-abiyad"
     },
     {
       "product_id": "SH-AFNAN-ADWAA-AL-SHARQ",
@@ -21382,9 +21390,10 @@
         "ADWAA AL SHARQ",
         "Afnan ADWAA AL SHARQ"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/adwaa-al-sharq",
+      "source_evidence_url": "https://afnan.com/products/adwaa-al-sharq",
+      "source_product_url": "https://afnan.com/products/adwaa-al-sharq"
     },
     {
       "product_id": "SH-AFNAN-DEHN-AL-OUDH-ABIYAD",
@@ -21414,9 +21423,10 @@
         "Delicious Bouquet",
         "Afnan Delicious Bouquet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/delicious-bouquet",
+      "source_evidence_url": "https://afnan.com/products/delicious-bouquet",
+      "source_product_url": "https://afnan.com/products/delicious-bouquet"
     },
     {
       "product_id": "SH-AFNAN-EBDAA-CONCENTRATED-PERFUME-OIL",
@@ -21430,9 +21440,10 @@
         "Ebdaa Concentrated Perfume Oil",
         "Afnan Ebdaa Concentrated Perfume Oil"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/ebdaa-perfume-oil",
+      "source_evidence_url": "https://afnan.com/products/ebdaa-perfume-oil",
+      "source_product_url": "https://afnan.com/products/ebdaa-perfume-oil"
     },
     {
       "product_id": "SH-AFNAN-EDICT-AMBERYTHME",
@@ -21446,9 +21457,10 @@
         "EDICT AMBERYTHME",
         "Afnan EDICT AMBERYTHME"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/edict-amberythme",
+      "source_evidence_url": "https://afnan.com/products/edict-amberythme",
+      "source_product_url": "https://afnan.com/products/edict-amberythme"
     },
     {
       "product_id": "SH-AFNAN-EDICT-MUSCTIQUE",
@@ -21462,9 +21474,10 @@
         "EDICT MUSCTIQUE",
         "Afnan EDICT MUSCTIQUE"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/edict-musctique",
+      "source_evidence_url": "https://afnan.com/products/edict-musctique",
+      "source_product_url": "https://afnan.com/products/edict-musctique"
     },
     {
       "product_id": "SH-AFNAN-EDICT-OUDDICTION",
@@ -21478,9 +21491,10 @@
         "EDICT OUDDICTION",
         "Afnan EDICT OUDDICTION"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/edict-ouddiction",
+      "source_evidence_url": "https://afnan.com/products/edict-ouddiction",
+      "source_product_url": "https://afnan.com/products/edict-ouddiction"
     },
     {
       "product_id": "SH-AFNAN-FAKHAR-AL-JAMAAL",
@@ -35125,7 +35139,8 @@
       ],
       "variant_id": "SHV-SH-AFNAN-823a97f5-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6290171002338"
+      "gtin": "6290171002338",
+      "source_evidence_url": "https://afnan.com/products/9-pm"
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
