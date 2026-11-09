@@ -1078,5 +1078,35 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     if row.get("product_id") == product["product_id"]
                 ])
 
+
+    def test_maison_asrar_final_collection_pages_identity_without_size_inference(self):
+        expected = {
+            "III Thriller": "https://maisonasrar.com/products/iii-thriller",
+            "Dubai Milano": "https://maisonasrar.com/products/dubai-milano",
+            "Dubai London": "https://maisonasrar.com/products/dubai-london",
+            "Dubai Miami": "https://maisonasrar.com/products/dubai-miami",
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertFalse(product.get("formats_ml"))
+                self.assertNotIn("concentration", product)
+                self.assertFalse([
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ])
+
 if __name__ == "__main__":
     unittest.main()
