@@ -899,5 +899,53 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertNotIn("formats_ml", row)
                 self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
 
+
+    def test_maison_asrar_second_collection_page_has_individual_official_detail_provenance(self):
+        expected = {
+            "Dubai Milano": "https://maisonasrar.com/products/dubai-milano",
+            "Dubai London": "https://maisonasrar.com/products/dubai-london",
+            "Dubai Miami": "https://maisonasrar.com/products/dubai-miami",
+            "III Thriller": "https://maisonasrar.com/products/iii-thriller",
+            "Milky Way": "https://maisonasrar.com/products/milky-way",
+            "Vanguard": "https://maisonasrar.com/products/vanguard",
+            "Muharib": "https://maisonasrar.com/products/muharib",
+            "Faris Al Arab": "https://maisonasrar.com/products/faris-al-arab",
+            "Vanilla Seduction": "https://maisonasrar.com/products/vanilla-seduction",
+            "Vanilla Aura": "https://maisonasrar.com/products/vanilla-aura",
+            "Throne Eclipse": "https://maisonasrar.com/products/throne-eclipse",
+            "Throne": "https://maisonasrar.com/products/throne",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                ]
+                if name == "Vanilla Aura":
+                    # Its 100 ml EDP variant remains supported by the
+                    # individual retailer page; the Maison Asrar page itself
+                    # is used only to verify the canonical identity.
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("size_ml"), 100)
+                    self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                    self.assertEqual(
+                        matching[0].get("source_evidence_url"),
+                        "https://shop-gulforchid.com/products/vanilla-aura",
+                    )
+                else:
+                    self.assertEqual(matching, [])
+                    self.assertNotIn("formats_ml", row)
+                    self.assertNotIn("concentration", row)
+
 if __name__ == "__main__":
     unittest.main()
