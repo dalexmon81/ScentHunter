@@ -363,3 +363,40 @@ The Maison Asrar source counts after this batch are **120 canonical identities, 
 
 
 The official collection labels the Black Grapefruit listing **BLACK GRAPEFRUIT**, while its linked individual product page is titled **BLACK**. The page's own fragrance description and scent journey identify grapefruit, lavender and tonka, matching the collection listing. The canonical identity remains **Black Grapefruit** and **Black** is recorded as a source-backed alias rather than creating a second product.
+
+
+### Maison Asrar: collection pages 4 and 5 (9 November 2026)
+
+A further review of the fourth and fifth pages of the official perfume-sprays collection produced 24 more existing product identities with direct official product pages:
+
+**Sixteen explicit Eau de Parfum size variants**
+- Gentle Oud — 80 ml
+- Italian Leather — 80 ml
+- Wood Intense — 80 ml
+- Khateer — 100 ml
+- Basma — 100 ml
+- Khayal — 100 ml
+- Soudfa — 100 ml
+- Rose Musk — 100 ml
+- Rose Oud — 100 ml
+- Rose Honey — 100 ml
+- Rose Vanilla — 100 ml
+- Daham — 100 ml
+- Alonoud — 100 ml
+- Turath — 100 ml
+- Turath Malaki — 100 ml
+- Rosé Bouquet — 100 ml
+
+**Eight individual product pages without explicit size/concentration in the URL**
+- Vanilla Seduction
+- Vanilla Aura
+- Throne Eclipse
+- Throne
+- Aseel
+- Khayyal
+- Mohra
+- Milky Way
+
+For the 16 pages with explicit EDP size evidence, the catalog now contains one matching variant each. For the other eight, only product identity and source provenance were upgraded; no size, concentration or variant was guessed.
+
+The Maison Asrar count after this batch is **120 canonical identities, 80 individually sourced identities, 40 still at collection-listing confidence, and 52 structured variants**. No canonical products were added or duplicated.
