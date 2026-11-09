@@ -34,9 +34,9 @@ MINIMUM_BRAND_COUNTS = {
     "Lattafa": 123,
     "Aromatix": 12,
     "Zimaya": 76,
-    "Al Haramain": 141,
+    "Al Haramain": 149,
     "Games of Spades": 32,
-    "Maison Alhambra": 227,
+    "Maison Alhambra": 226,
     "Mykonos": 72,
     "Armaf": 218,
 }
