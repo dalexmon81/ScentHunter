@@ -715,5 +715,111 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     source,
                 )
 
+
+    def test_mykonos_official_product_page_provenance_and_variants(self):
+        expected = {
+            "Xoxo Rosy": (
+                "https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "Vanilla Clouds": (
+                "https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1",
+                {50: "Extrait de Parfum"},
+            ),
+            "Utopia": (
+                "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Sparkling Rosé": (
+                "https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Pink Beach": (
+                "https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "Paradise": (
+                "https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml",
+                {50: "Extrait de Parfum"},
+            ),
+            "Musk Aura": (
+                "https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Moroccan Vanilla": (
+                "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Hawaiian Crush": (
+                "https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml",
+                {50: "Extrait de Parfum"},
+            ),
+            "Enchanted": (
+                "https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml",
+                {50: "Extrait de Parfum", 100: "Extrait de Parfum"},
+            ),
+            "Caramel Fudge Cookie": (
+                "https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "California Club": (
+                "https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml",
+                {50: "Extrait de Parfum"},
+            ),
+            "Baby Love": (
+                "https://officialmykonos.com/products/mykonos-baby-love-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "Aphrodite": (
+                "https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml",
+                {50: "Extrait de Parfum", 100: "Extrait de Parfum"},
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, expected_sizes) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Mykonos"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                actual = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(
+                    {row.get("size_ml"): row.get("concentration") for row in actual},
+                    expected_sizes,
+                )
+                for variant in actual:
+                    self.assertEqual(variant.get("source_evidence_url"), source)
+
+    def test_mykonos_travel_size_evidence_is_not_reused_across_products(self):
+        wrong_source = (
+            "https://officialmykonos.com/products/"
+            "mykonos-sansa-edp-travel-size-15ml"
+        )
+        products_by_id = {
+            row.get("product_id"): row
+            for row in CATALOG.get("products", [])
+        }
+        linked = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("source_evidence_url") == wrong_source
+        ]
+        self.assertEqual(len(linked), 1)
+        self.assertEqual(
+            products_by_id[linked[0]["product_id"]].get("canonical_name"),
+            "Sansa",
+        )
+        self.assertEqual(linked[0].get("size_ml"), 15)
+
 if __name__ == "__main__":
     unittest.main()
