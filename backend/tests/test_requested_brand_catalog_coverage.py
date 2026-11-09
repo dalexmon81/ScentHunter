@@ -24,7 +24,7 @@ MINIMUM_BRAND_COUNTS = {
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
     # Eight collection labels and two Maison Asrar retailer duplicates were removed from product identities.
-    "Gulf Orchid": 13,
+    "Gulf Orchid": 26,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 115,
@@ -1264,96 +1264,53 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
     def test_gulf_orchid_products_are_brand_attributed_and_variants_are_normalized(self):
         expected = {
-            "Vanilla Addiction": (
-                "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum",
-                {100: "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum"},
-            ),
-            "Mango Ice": (
-                "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum",
-                {100: "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum"},
-            ),
-            "Cotton Candy Musk": (
-                "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy",
-                {},
-            ),
-            "Tahara Vanilla Musk": (
-                "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-                {60: "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"},
-            ),
-            "Sweet Heaven": (
-                "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum",
-                {
-                    20: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml",
-                    100: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum",
-                },
-            ),
-            "Pink Marshmallow": (
-                "https://shop-gulforchid.com/products/pink-marshmallow",
-                {100: "https://shop-gulforchid.com/products/pink-marshmallow"},
-            ),
-            "Coco Blanco": (
-                "https://shop-gulforchid.com/products/coco-blanco",
-                {100: "https://shop-gulforchid.com/products/coco-blanco"},
-            ),
-            "Exotic Oud": (
-                "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
-                {100: "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"},
-            ),
-            "Vanilla Latte": (
-                "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
-                {100: "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"},
-            ),
-            "Cookie Bite": (
-                "https://shop-gulforchid.com/products/cookie-bite",
-                {100: "https://shop-gulforchid.com/products/cookie-bite"},
-            ),
-            "Sweet Like Candy": (
-                "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum",
-                {100: "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum"},
-            ),
-            "Sweet Heaven Extreme": (
-                "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum",
-                {
-                    20: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml",
-                    100: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum",
-                },
-            ),
-            "Piña Colada Musk": (
-                "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada",
-                {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada"},
-            ),
+            "Vanilla Addiction": ("https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum", {100: "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum"}),
+            "Mango Ice": ("https://shop-gulforchid.com/products/mango_ice_eau_de_parfum", {100: "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum"}),
+            "Cotton Candy Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy", {}),
+            "Tahara Vanilla Musk": ("https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml", {60: "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"}),
+            "Sweet Heaven": ("https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum", {20: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml", 100: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum"}),
+            "Pink Marshmallow": ("https://shop-gulforchid.com/products/pink-marshmallow", {100: "https://shop-gulforchid.com/products/pink-marshmallow"}),
+            "Coco Blanco": ("https://shop-gulforchid.com/products/coco-blanco", {100: "https://shop-gulforchid.com/products/coco-blanco"}),
+            "Exotic Oud": ("https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum", {100: "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"}),
+            "Vanilla Latte": ("https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum", {100: "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"}),
+            "Cookie Bite": ("https://shop-gulforchid.com/products/cookie-bite", {100: "https://shop-gulforchid.com/products/cookie-bite"}),
+            "Sweet Like Candy": ("https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum", {100: "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum"}),
+            "Sweet Heaven Extreme": ("https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum", {20: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml", 100: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum"}),
+            "Piña Colada Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada", {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada"}),
+            "Angel Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel", {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel"}),
+            "Cloud 9": ("https://shop-gulforchid.com/products/cloud-9", {100: "https://shop-gulforchid.com/products/cloud-9"}),
+            "Naughty Vanilla": ("https://shop-gulforchid.com/products/naughty-vanilla", {100: "https://shop-gulforchid.com/products/naughty-vanilla"}),
+            "Yacht Club": ("https://shop-gulforchid.com/products/yacht_club_eau_de_parfum", {100: "https://shop-gulforchid.com/products/yacht_club_eau_de_parfum"}),
+            "Sweet Heaven Cherry": ("https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum", {20: "https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum"}),
+            "Candy Bite": ("https://shop-gulforchid.com/products/candy-bite", {100: "https://shop-gulforchid.com/products/candy-bite"}),
+            "Sweet Cherry Kiss": ("https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum", {100: "https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum"}),
+            "Creamy Pistachio": ("https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum", {100: "https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum"}),
+            "Marshmallow": ("https://shop-gulforchid.com/products/marshmallow", {100: "https://shop-gulforchid.com/products/marshmallow"}),
+            "Sweet Heaven Ice": ("https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum", {100: "https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum"}),
+            "Crème Caramel": ("https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum", {100: "https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum"}),
+            "Mysterious Tahara Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara", {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara"}),
+            "Pomegranate Musk": ("https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml", {60: "https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml"}),
         }
         products = CATALOG.get("products", [])
         variants = CATALOG.get("variants", [])
         gulf = [p for p in products if p.get("brand_name") == "Gulf Orchid"]
-        self.assertEqual(len(gulf), 13)
-        self.assertEqual(
-            {p.get("canonical_name") for p in gulf},
-            set(expected),
-        )
+        self.assertEqual(len(gulf), 26)
+        self.assertEqual({p.get("canonical_name") for p in gulf}, set(expected))
         for name, (source, variant_sources) in expected.items():
             with self.subTest(name=name):
-                matches = [p for p in gulf if p.get("canonical_name") == name]
-                self.assertEqual(len(matches), 1)
-                product = matches[0]
+                product = next(p for p in gulf if p.get("canonical_name") == name)
                 self.assertEqual(product.get("identity_status"), "source_verified_name")
                 self.assertEqual(product.get("source_url"), source)
                 self.assertEqual(product.get("source_evidence_url"), source)
                 self.assertEqual(product.get("source_product_url"), source)
                 self.assertEqual(product.get("concentration"), "Eau de Parfum")
-                matching = [
-                    v for v in variants
-                    if v.get("product_id") == product["product_id"]
-                ]
+                matching = [v for v in variants if v.get("product_id") == product["product_id"]]
                 self.assertEqual(
                     {v.get("size_ml"): v.get("source_evidence_url") for v in matching},
                     variant_sources,
                 )
                 if variant_sources:
-                    self.assertEqual(
-                        product.get("formats_ml"),
-                        sorted(variant_sources),
-                    )
+                    self.assertEqual(product.get("formats_ml"), sorted(variant_sources))
                 else:
                     self.assertFalse(product.get("formats_ml"))
 
