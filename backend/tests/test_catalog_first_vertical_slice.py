@@ -426,6 +426,7 @@ def test_liquid_brun_bplatz_fixture_flows_through_postgres_to_catalog_search(mon
             assert decision.status == "matched"
             assert decision.method == "gtin_exact"
             assert decision.product_variant_id == variant.id
+            session.commit()
 
         publication = promote_matched_offers(factory)
         assert publication == {"processed": 1, "published": 1, "blocked": 0}
