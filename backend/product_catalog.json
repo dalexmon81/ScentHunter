@@ -38273,31 +38273,6 @@
       "gender": "Unisex"
     },
     {
-      "product_id": "SH-MAISON-ALHAMBRA-6d9c2b41",
-      "brand": "Maison Alhambra",
-      "brand_name": "Maison Alhambra",
-      "canonical_name": "Aquilo Pour Homme",
-      "name": "Aquilo Pour Homme",
-      "family_id": "maison_alhambra_catalog",
-      "family_name": "Aquilo Pour Homme",
-      "aliases": [
-        "Aquilo Pour Homme",
-        "Maison Alhambra Aquilo Pour Homme"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men",
-      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men",
-      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        100
-      ],
-      "gtins": [
-        "6291108735886"
-      ],
-      "gender": "Men"
-    },
-    {
       "product_id": "SH-AL-HARAMAIN-AHP2052",
       "brand": "Al Haramain",
       "brand_name": "Al Haramain",
@@ -46683,19 +46658,6 @@
       "gtin": "6290362340997",
       "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone"
-    },
-    {
-      "product_id": "SH-MAISON-ALHAMBRA-6d9c2b41",
-      "size_ml": 100,
-      "aliases": [
-        "Aquilo Pour Homme 100 ml",
-        "Maison Alhambra Aquilo Pour Homme 100 ml"
-      ],
-      "variant_id": "SHV-SH-MAISON-ALHAMBRA-6d9c2b41-100-000",
-      "concentration": "Eau de Parfum",
-      "gtin": "6291108735886",
-      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men",
-      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-d2574528",
