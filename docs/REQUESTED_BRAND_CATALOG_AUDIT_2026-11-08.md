@@ -358,3 +358,19 @@ The third page of the brand-owned New Arrivals collection was opened and its twe
 - Oh Honey! — https://maisonasrar.com/products/oh-honey-eau-de-parfum
 
 All eleven canonical identities already existed and retain their original product IDs. The accessible individual pages do not provide structured bottle-size or concentration specifications for these entries. Although some page titles or URL slugs contain EDP wording, no concentration or size was inferred from those labels; no variant rows were added. This is a provenance-only update and a sample of page 3, not a full audit of the 80/81-item New Arrivals collection.
+
+
+### Maison Asrar: fourth new-arrivals page and brand-attribution safeguard (9 November 2026)
+
+The fourth page of the brand-owned New Arrivals collection was checked. Six existing Maison Asrar identities were upgraded in place to individual detail-page provenance:
+
+- Date Night — https://maisonasrar.com/products/date-night
+- Larimar — https://maisonasrar.com/products/larimar
+- Rubellite — https://maisonasrar.com/products/rubellite
+- Nada — https://maisonasrar.com/products/nada
+- Omniya — https://maisonasrar.com/products/omniya
+- Coffee Blend — https://maisonasrar.com/products/coffee-blend-eau-de-parfum
+
+The individual pages do not expose structured bottle-size or concentration fields in the accessible text, so no variants or concentrations were inferred. Existing canonical IDs were retained.
+
+**Attribution safeguard:** the same storefront page also displays Emerald and Gold Noir, but their individual product-page titles identify them as Gulf Orchid fragrances (Emerald is explicitly titled “Gulf Orchid Emerald Eau De Parfum 110ml”; Gold Noir is likewise titled as a Gulf Orchid product). These two were deliberately not promoted as Maison Asrar-owned fragrances. The existing Maison Asrar rows remain listing-level pending reconciliation with the actual brand owner and the Gulf Orchid catalog. This prevents a retailer assortment from being mistaken for the retailer's own brand catalog.
