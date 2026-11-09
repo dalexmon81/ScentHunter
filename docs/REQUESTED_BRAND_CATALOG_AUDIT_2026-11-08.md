@@ -375,3 +375,18 @@ Primary source:
 - Official collection pagination: https://officialmykonos.com/collections/all?page=2 ; https://officialmykonos.com/collections/all?page=3 ; https://officialmykonos.com/collections/all?page=4
 
 Regression coverage verifies the 53 individual source URLs, identity status, source evidence for variants, the shared 15 ml options, and the unresolved Vanilla Clouds concentration conflict.
+
+## Latest structural snapshot after Mykonos reconciliation — 9 November 2026
+
+The current PR branch was fetched and parsed after the Mykonos storefront update:
+
+- Canonical fragrance identities: **2,090**
+- Explicit variants: **381**
+- Fragrance families: **34**
+- Requested-brand identities: **2,087**
+- Mykonos: **72 identities total; 53 upgraded with individual official product-page evidence; 19 retained as listing-level / historical records**
+- Duplicate product IDs, variant IDs and normalized brand/name pairs: **0**
+- Orphan variants, invalid sizes and missing requested-brand source URLs: **0**
+- All catalog identities remain represented in the family registry.
+
+The new Mykonos test module is included in `.github/workflows/catalog-seed-validation.yml`. Its CI result must be checked on the final PR head before calling this block fully validated. The catalog totals did not change because this pass upgraded provenance for existing identities and corrected an uncertain concentration field; it did not add new fragrance identities or variants.
