@@ -29,6 +29,7 @@ def test_explicit_full_percentage_is_required_for_full_catalog_routing():
         environ={
             "SCENTHUNTER_CATALOG_SEARCH_ENABLED": "1",
             "SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT": "100",
+            "SCENTHUNTER_CATALOG_SEARCH_PARITY_APPROVED": "1",
         },
     )
     assert decision["traffic_percent"] == 100
@@ -36,10 +37,26 @@ def test_explicit_full_percentage_is_required_for_full_catalog_routing():
     assert decision["run_shadow"] is False
 
 
+
+def test_catalog_search_requires_explicit_real_offer_parity_approval():
+    decision = catalog_rollout_decision(
+        "Liquid Brun",
+        "stable-session",
+        environ={
+            "SCENTHUNTER_CATALOG_SEARCH_ENABLED": "1",
+            "SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT": "100",
+        },
+    )
+    assert decision["enabled"] is True
+    assert decision["parity_approved"] is False
+    assert decision["traffic_percent"] == 0
+    assert decision["use_catalog"] is False
+
 def test_canary_percentage_is_deterministic_for_a_stable_key():
     env = {
         "SCENTHUNTER_CATALOG_SEARCH_ENABLED": "1",
         "SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT": "25",
+        "SCENTHUNTER_CATALOG_SEARCH_PARITY_APPROVED": "1",
     }
     first = catalog_rollout_decision("Sauvage", "session-123", environ=env)
     second = catalog_rollout_decision("Sauvage", "session-123", environ=env)
@@ -119,6 +136,7 @@ def test_search_start_routes_full_canary_to_catalog_without_starting_legacy_job(
 
     monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_ENABLED", "1")
     monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_TRAFFIC_PERCENT", "100")
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_SEARCH_PARITY_APPROVED", "1")
     called = []
     monkeypatch.setattr(
         main,
