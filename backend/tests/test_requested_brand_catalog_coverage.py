@@ -1469,5 +1469,29 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_paris_corner_deux_ii_expressions_north_stag_official_100ml_page(self):
+        row = next(
+            (
+                product for product in CATALOG.get("products", [])
+                if product.get("brand_name") == "Paris Corner"
+                and product.get("canonical_name") == "Deux II Expressions"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        source = "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), source)
+        self.assertIn(100, row.get("formats_ml", []))
+        matches = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row.get("product_id")
+            and variant.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("source_url"), source)
+        self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
