@@ -831,5 +831,26 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("concentration"), concentration)
                     self.assertEqual(matches[0].get("source_evidence_url"), source_url)
 
+    def test_armaf_uniq_oud_forever_uses_individual_official_page_without_inferred_variant(self):
+        matches = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+            and row.get("canonical_name") == "Uniq Oud Forever"
+        ]
+        self.assertEqual(len(matches), 1)
+        product = matches[0]
+        official_url = "https://armaf.com/products/uniq-oud-forever-spr"
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), official_url)
+        self.assertEqual(product.get("source_evidence_url"), official_url)
+        # The accessible first-party detail page does not expose a structured
+        # bottle size or concentration field; do not invent a SKU variant.
+        self.assertFalse(product.get("concentration"))
+        self.assertFalse(product.get("formats_ml"))
+        self.assertFalse([
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == product["product_id"]
+        ])
+
 if __name__ == "__main__":
     unittest.main()
