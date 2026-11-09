@@ -74,5 +74,6 @@ jobs:
           backend.tests.test_requested_brand_catalog_coverage
           backend.tests.test_velixir_official_storefront
           backend.tests.test_mykonos_official_storefront
+          backend.tests.test_al_wataniah_official_storefront
           backend.tests.test_aromatix_official_catalog
           -v
