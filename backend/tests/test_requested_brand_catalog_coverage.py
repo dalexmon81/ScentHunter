@@ -12,25 +12,25 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 # worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
-    "Mykonos": 72,
     "Maison Asrar": 120,
+    "Swiss Arabian": 41,
+    "Paris Corner": 246,
     "Khadlaj": 116,
     "Bujairami": 142,
-    "Paris Corner": 245,
     "Assaf": 140,
     "Al Wataniah": 86,
-    "Armaf": 191,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 23,
-    "Swiss Arabian": 32,
-    "Games of Spades": 29,
-    "Lattafa": 115,
+    "Gulf Orchid": 32,
     "Afnan": 87,
+    "Lattafa": 115,
     "Aromatix": 12,
-    "Maison Alhambra": 203,
-    "Zimaya": 72,
-    "Al Haramain": 101,
+    "Zimaya": 76,
+    "Al Haramain": 107,
+    "Games of Spades": 32,
+    "Maison Alhambra": 207,
+    "Mykonos": 72,
+    "Armaf": 191,
 }
 
 
@@ -674,6 +674,46 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
         self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+    def test_catalog_product_and_variant_ids_are_unique(self):
+        product_ids = [row.get("product_id") for row in CATALOG.get("products", [])]
+        variant_ids = [row.get("variant_id") for row in CATALOG.get("variants", [])]
+        self.assertTrue(all(product_ids))
+        self.assertTrue(all(variant_ids))
+        self.assertEqual(len(product_ids), len(set(product_ids)))
+        self.assertEqual(len(variant_ids), len(set(variant_ids)))
+
+    def test_every_variant_references_a_real_product_and_positive_size(self):
+        product_ids = {row.get("product_id") for row in CATALOG.get("products", [])}
+        for index, row in enumerate(CATALOG.get("variants", [])):
+            with self.subTest(variant=index):
+                self.assertIn(row.get("product_id"), product_ids)
+                self.assertIsInstance(row.get("size_ml"), (int, float))
+                self.assertGreater(row.get("size_ml"), 0)
+
+    def test_every_catalog_identity_maps_to_a_registered_family_product(self):
+        registry_path = BACKEND / "family_registry.json"
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        registered = {
+            (
+                str(family.get("brand") or "").strip(),
+                str(product.get("canonical_name") or "").strip().casefold(),
+            )
+            for family in registry.get("families", [])
+            for product in family.get("products", [])
+        }
+        family_ids = {
+            family.get("family_id") for family in registry.get("families", [])
+        }
+        for index, row in enumerate(CATALOG.get("products", [])):
+            key = (
+                str(row.get("brand_name") or row.get("brand") or "").strip(),
+                str(row.get("canonical_name") or row.get("name") or "").strip().casefold(),
+            )
+            with self.subTest(product=index):
+                self.assertIn(row.get("family_id"), family_ids)
+                self.assertIn(key, registered)
 
 
 if __name__ == "__main__":
