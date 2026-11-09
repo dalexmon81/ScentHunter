@@ -428,7 +428,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         }
         expected = (
             "Teas Me", "Frostbite", "Naughty Dates", "Sun Kissed",
-            "Forbidden Fruit", "Magnetiq", "Platine Blanc", "X Xandal",
+            "Forbidden Fruit", "Magnetiq", "Plantine Blanc", "X Xandal",
             "Royal Taboo", "Carnal Desire",
         )
         for name in expected:
