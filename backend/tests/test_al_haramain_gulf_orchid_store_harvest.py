@@ -27,7 +27,7 @@ MAISON_ASRAR_REATTRIBUTED = {
     "Asala": ("https://shop-gulforchid.com/collections/asala-collection", "source_listed_name", None),
     "Turath": ("https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml", "source_verified_name", (100, "Eau de Parfum")),
     "Vanilla Aura": ("https://maisonasrar.com/products/vanilla-aura", "source_verified_name", (100, "Eau de Parfum")),
-    "Vanilla Voyage": ("https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum", "source_verified_name", None),
+    "Vanilla Voyage": ("https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum", "source_verified_name", None),
 }
 
 class OfficialStoreRangeHarvestTests(unittest.TestCase):
