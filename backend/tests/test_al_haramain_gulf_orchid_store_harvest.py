@@ -26,7 +26,7 @@ GULF_ORCHID_DETAIL_VERIFIED = {
 MAISON_ASRAR_REATTRIBUTED = {
     "Asala": ("https://shop-gulforchid.com/collections/asala-collection", "source_listed_name", None),
     "Turath": ("https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml", "source_verified_name", (100, "Eau de Parfum")),
-    "Vanilla Aura": ("https://shop-gulforchid.com/products/vanilla-aura", "source_verified_name", (100, "Eau de Parfum")),
+    "Vanilla Aura": ("https://maisonasrar.com/products/vanilla-aura", "source_verified_name", (100, "Eau de Parfum")),
     "Vanilla Voyage": ("https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum", "source_verified_name", None),
 }
 
@@ -106,7 +106,11 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
                     self.assertEqual(len(variants), 1)
                     self.assertEqual(variants[0].get("size_ml"), size_ml)
                     self.assertEqual(variants[0].get("concentration"), concentration)
-                    self.assertEqual(variants[0].get("source_evidence_url"), source_url)
+                    expected_variant_source = (
+                        "https://shop-gulforchid.com/products/vanilla-aura"
+                        if name == "Vanilla Aura" else source_url
+                    )
+                    self.assertEqual(variants[0].get("source_evidence_url"), expected_variant_source)
 
     def test_gulf_orchid_detail_harvest_does_not_duplicate_variant_ids(self):
         variant_ids = [variant["variant_id"] for variant in self.catalog.get("variants", [])]
