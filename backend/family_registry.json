@@ -8892,6 +8892,43 @@
             "Armaf Club de Nuit Woman Extrait de Parfum",
             "Club De Nuit Woman Extrait de Parfum"
           ]
+        },
+        {
+          "canonical_name": "Odyssey Bloody Hot",
+          "aliases": [
+            "Odyssey Bloody Hot",
+            "Armaf Odyssey Bloody Hot"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Pink Pop",
+          "aliases": [
+            "Odyssey Pink Pop",
+            "Armaf Odyssey Pink Pop",
+            "Odyssey Pink Pop EDP"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Ring My Bell",
+          "aliases": [
+            "Odyssey Ring My Bell",
+            "Armaf Odyssey Ring My Bell"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Spartacus",
+          "aliases": [
+            "Spartacus",
+            "Armaf Spartacus",
+            "Spartacus EDP",
+            "Armaf Spartacus EDP"
+          ]
         }
       ]
     },

@@ -36807,6 +36807,91 @@
         100
       ],
       "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-BLOODY-HOT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Bloody Hot",
+      "name": "Odyssey Bloody Hot",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Bloody Hot",
+      "aliases": [
+        "Odyssey Bloody Hot",
+        "Armaf Odyssey Bloody Hot"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-bloody-hot",
+      "source_product_url": "https://armaf.com/products/odyssey-bloody-hot",
+      "source_evidence_url": "https://armaf.com/products/odyssey-bloody-hot",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-PINK-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Pink Pop",
+      "name": "Odyssey Pink Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Pink Pop",
+      "aliases": [
+        "Odyssey Pink Pop",
+        "Armaf Odyssey Pink Pop",
+        "Odyssey Pink Pop EDP"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-pink-pop-edp",
+      "source_product_url": "https://armaf.com/products/odyssey-pink-pop-edp",
+      "source_evidence_url": "https://armaf.com/products/odyssey-pink-pop-edp",
+      "concentration": "Eau de Parfum",
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-RING-MY-BELL",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Ring My Bell",
+      "name": "Odyssey Ring My Bell",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Ring My Bell",
+      "aliases": [
+        "Odyssey Ring My Bell",
+        "Armaf Odyssey Ring My Bell"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-ring-my-bell",
+      "source_product_url": "https://armaf.com/products/odyssey-ring-my-bell",
+      "source_evidence_url": "https://armaf.com/products/odyssey-ring-my-bell",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-SPARTACUS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Spartacus",
+      "name": "Spartacus",
+      "family_id": "armaf_catalog",
+      "family_name": "Spartacus",
+      "aliases": [
+        "Spartacus",
+        "Armaf Spartacus",
+        "Spartacus EDP",
+        "Armaf Spartacus EDP"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/spartacus-edp",
+      "source_product_url": "https://armaf.com/products/spartacus-edp",
+      "source_evidence_url": "https://armaf.com/products/spartacus-edp",
+      "concentration": "Eau de Parfum",
+      "gender": "Men"
     }
   ],
   "variants": [
@@ -44181,6 +44266,30 @@
       "concentration": "Extrait de Parfum",
       "source_url": "https://frenchavenue.com/products/spirito-mystic",
       "source_evidence_url": "https://frenchavenue.com/products/spirito-mystic"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-BLOODY-HOT",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-BLOODY-HOT-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Bloody Hot 100 ml",
+        "Armaf Odyssey Bloody Hot 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-bloody-hot",
+      "source_evidence_url": "https://armaf.com/products/odyssey-bloody-hot"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-RING-MY-BELL",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-RING-MY-BELL-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Ring My Bell 100 ml",
+        "Armaf Odyssey Ring My Bell 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-ring-my-bell",
+      "source_evidence_url": "https://armaf.com/products/odyssey-ring-my-bell"
     }
   ]
 }

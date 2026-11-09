@@ -38,7 +38,7 @@ MINIMUM_BRAND_COUNTS = {
     "Games of Spades": 32,
     "Maison Alhambra": 214,
     "Mykonos": 72,
-    "Armaf": 202,
+    "Armaf": 206,
 }
 
 
@@ -1961,6 +1961,47 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Club de Nuit Woman Extrait de Parfum",
             {row.get("canonical_name") for row in family.get("products", [])},
         )
+
+
+
+    def test_armaf_page_four_new_official_fragrances(self):
+        expected = {
+            "Odyssey Bloody Hot": ("https://armaf.com/products/odyssey-bloody-hot", "Eau de Parfum", "Men", [100]),
+            "Odyssey Pink Pop": ("https://armaf.com/products/odyssey-pink-pop-edp", "Eau de Parfum", "Women", []),
+            "Odyssey Ring My Bell": ("https://armaf.com/products/odyssey-ring-my-bell", "Eau de Parfum", "Men", [100]),
+            "Spartacus": ("https://armaf.com/products/spartacus-edp", "Eau de Parfum", "Men", []),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, gender, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("source_product_url"), source)
+                self.assertEqual(row.get("source_evidence_url"), source)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("gender"), gender)
+                self.assertEqual(row.get("formats_ml", []), sizes)
+                matching = [v for v in variants if v.get("product_id") == row.get("product_id")]
+                self.assertEqual(sorted(v.get("size_ml") for v in matching), sorted(sizes))
+                for size in sizes:
+                    variant = next(v for v in matching if v.get("size_ml") == size)
+                    self.assertEqual(variant.get("source_url"), source)
+                    self.assertEqual(variant.get("source_evidence_url"), source)
+
+    def test_armaf_page_four_products_are_in_family_registry(self):
+        registry = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+        family = next(row for row in registry.get("families", []) if row.get("family_id") == "armaf_catalog")
+        registered = {row.get("canonical_name") for row in family.get("products", [])}
+        for name in ("Odyssey Bloody Hot", "Odyssey Pink Pop", "Odyssey Ring My Bell", "Spartacus"):
+            with self.subTest(name=name):
+                self.assertIn(name, registered)
 
 
 if __name__ == "__main__":
