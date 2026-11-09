@@ -947,5 +947,40 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertNotIn("formats_ml", row)
                     self.assertNotIn("concentration", row)
 
+
+    def test_maison_asrar_third_new_arrivals_page_has_individual_official_detail_provenance(self):
+        expected = {
+            "Khayyal": "https://maisonasrar.com/products/khayyal",
+            "Mohra": "https://maisonasrar.com/products/mohrab",
+            "Hikaya": "https://maisonasrar.com/products/hikaya",
+            "Hilm": "https://maisonasrar.com/products/hilm",
+            "Cascade": "https://maisonasrar.com/products/cascade",
+            "Tornado": "https://maisonasrar.com/products/tornado",
+            "Wadi": "https://maisonasrar.com/products/wadi",
+            "DXB": "https://maisonasrar.com/products/dxb",
+            "Legacy": "https://maisonasrar.com/products/legacy",
+            "Vanilla Voyage": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+            "Vision": "https://maisonasrar.com/products/vision",
+            "Oh Honey!": "https://maisonasrar.com/products/oh-honey-eau-de-parfum",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertNotIn("formats_ml", row)
+                self.assertNotIn("concentration", row)
+                self.assertFalse(any(
+                    variant.get("product_id") == row["product_id"]
+                    for variant in variants
+                ))
+
 if __name__ == "__main__":
     unittest.main()
