@@ -4501,8 +4501,8 @@
         "Liquid Brun",
         "French Avenue Liquid Brun"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/",
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/liquid-brun",
       "concentration": "Eau de Parfum",
       "formats_ml": [
         100
@@ -4511,7 +4511,7 @@
         "6290360375694"
       ],
       "source_product_url": "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916",
-      "source_evidence_url": "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
+      "source_evidence_url": "https://frenchavenue.com/products/liquid-brun"
     },
     {
       "product_id": "SH-0031",
@@ -4525,8 +4525,8 @@
         "Liquid Brun Limited Edition",
         "French Avenue Liquid Brun Limited Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/",
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/liquid-brun-limited-edition",
       "concentration": "Extrait de Parfum",
       "formats_ml": [
         150
@@ -4535,7 +4535,7 @@
         "6298042001831"
       ],
       "source_product_url": "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
-      "source_evidence_url": "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+      "source_evidence_url": "https://frenchavenue.com/products/liquid-brun-limited-edition"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-7ab73d00",
@@ -4549,8 +4549,13 @@
         "Azzure Aoud",
         "French Avenue Azzure Aoud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/azzure-aoud",
+      "source_evidence_url": "https://frenchavenue.com/products/azzure-aoud",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-7a27edc4",
@@ -4564,8 +4569,13 @@
         "Royal Blend",
         "French Avenue Royal Blend"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/royal-blend",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-blend",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-21a731ff",
@@ -4579,8 +4589,13 @@
         "Spectre Ghost",
         "French Avenue Spectre Ghost"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/spectre-ghost",
+      "source_evidence_url": "https://frenchavenue.com/products/spectre-ghost",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-a8d582fb",
@@ -4609,8 +4624,13 @@
         "Vulcan Feu",
         "French Avenue Vulcan Feu"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/vulcan-feu",
+      "source_evidence_url": "https://frenchavenue.com/products/vulcan-feu",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
@@ -21881,9 +21901,13 @@
         "Cocoa Morado",
         "French Avenue Cocoa Morado"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/cocoa-morado",
+      "source_evidence_url": "https://frenchavenue.com/products/cocoa-morado",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-AMBER-EMPIRE",
@@ -21897,25 +21921,9 @@
         "Amber Empire",
         "French Avenue Amber Empire"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
-    },
-    {
-      "product_id": "SH-FRENCH-AVENUE-DUSK-TILL-DAWN",
-      "brand": "French Avenue",
-      "brand_name": "French Avenue",
-      "canonical_name": "Dusk Till Dawn",
-      "name": "Dusk Till Dawn",
-      "family_id": "french_avenue_catalog",
-      "family_name": "Dusk Till Dawn",
-      "aliases": [
-        "Dusk Till Dawn",
-        "French Avenue Dusk Till Dawn"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/amber-empire",
+      "source_evidence_url": "https://frenchavenue.com/products/amber-empire"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-ROYAL-BLEND-SEQUOIA",
@@ -21929,9 +21937,13 @@
         "Royal Blend Sequoia",
         "French Avenue Royal Blend Sequoia"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/royal-blend-sequoia",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-blend-sequoia",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-NOBLE-CEDAR",
@@ -21945,9 +21957,13 @@
         "Noble Cedar",
         "French Avenue Noble Cedar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/noble-cedar",
+      "source_evidence_url": "https://frenchavenue.com/products/noble-cedar",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-JASMERE",
@@ -21961,9 +21977,13 @@
         "Jasmere",
         "French Avenue Jasmere"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/jasmere",
+      "source_evidence_url": "https://frenchavenue.com/products/jasmere",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-ATLANTIS-EXTRAIT",
@@ -21977,9 +21997,13 @@
         "Atlantis Extrait",
         "French Avenue Atlantis Extrait"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/atlantis-extrait",
+      "source_evidence_url": "https://frenchavenue.com/products/atlantis-extrait",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-AMBROISE-POUR-FEMME",
@@ -21993,9 +22017,13 @@
         "Ambroise Pour Femme",
         "French Avenue Ambroise Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/ambroise-pour-femme",
+      "source_evidence_url": "https://frenchavenue.com/products/ambroise-pour-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-AETHER",
@@ -22009,9 +22037,13 @@
         "Aether",
         "French Avenue Aether"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/aether",
+      "source_evidence_url": "https://frenchavenue.com/products/aether",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-IMPERIAL-OCEAN",
@@ -22025,9 +22057,13 @@
         "Imperial Ocean",
         "French Avenue Imperial Ocean"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/imperial-ocean",
+      "source_evidence_url": "https://frenchavenue.com/products/imperial-ocean",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-ZAYAAN-GOLD",
@@ -37177,7 +37213,9 @@
       "aliases": [
         "Liquid Brun Eau de Parfum 100 ml",
         "French Avenue Liquid Brun EDP 100ml"
-      ]
+      ],
+      "source_url": "https://frenchavenue.com/products/liquid-brun",
+      "source_evidence_url": "https://frenchavenue.com/products/liquid-brun"
     },
     {
       "product_id": "SH-0031",
@@ -37187,7 +37225,9 @@
       "aliases": [
         "Liquid Brun Limited Edition Extrait de Parfum 150 ml",
         "French Avenue Liquid Brun Limited Edition 150ml"
-      ]
+      ],
+      "source_url": "https://frenchavenue.com/products/liquid-brun-limited-edition",
+      "source_evidence_url": "https://frenchavenue.com/products/liquid-brun-limited-edition"
     },
     {
       "product_id": "SH-0043",
@@ -43729,6 +43769,150 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/odyssey-mega-man",
       "source_evidence_url": "https://armaf.com/products/odyssey-mega-man"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-21a731ff",
+      "size_ml": 80,
+      "aliases": [
+        "Spectre Ghost 80 ml",
+        "French Avenue Spectre Ghost 80 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-21a731ff-80-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/spectre-ghost",
+      "source_evidence_url": "https://frenchavenue.com/products/spectre-ghost"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-89654a23",
+      "size_ml": 100,
+      "aliases": [
+        "Vulcan Feu 100 ml",
+        "French Avenue Vulcan Feu 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-89654a23-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/vulcan-feu",
+      "source_evidence_url": "https://frenchavenue.com/products/vulcan-feu"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-7ab73d00",
+      "size_ml": 100,
+      "aliases": [
+        "Azzure Aoud 100 ml",
+        "French Avenue Azzure Aoud 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-7ab73d00-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/azzure-aoud",
+      "source_evidence_url": "https://frenchavenue.com/products/azzure-aoud"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ROYAL-BLEND-SEQUOIA",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Blend Sequoia 100 ml",
+        "French Avenue Royal Blend Sequoia 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-ROYAL-BLEND-SEQUOIA-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/royal-blend-sequoia",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-blend-sequoia"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-NOBLE-CEDAR",
+      "size_ml": 100,
+      "aliases": [
+        "Noble Cedar 100 ml",
+        "French Avenue Noble Cedar 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-NOBLE-CEDAR-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/noble-cedar",
+      "source_evidence_url": "https://frenchavenue.com/products/noble-cedar"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-JASMERE",
+      "size_ml": 100,
+      "aliases": [
+        "Jasmere 100 ml",
+        "French Avenue Jasmere 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-JASMERE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/jasmere",
+      "source_evidence_url": "https://frenchavenue.com/products/jasmere"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ATLANTIS-EXTRAIT",
+      "size_ml": 100,
+      "aliases": [
+        "Atlantis Extrait 100 ml",
+        "French Avenue Atlantis Extrait 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-ATLANTIS-EXTRAIT-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/atlantis-extrait",
+      "source_evidence_url": "https://frenchavenue.com/products/atlantis-extrait"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-AMBROISE-POUR-FEMME",
+      "size_ml": 100,
+      "aliases": [
+        "Ambroise Pour Femme 100 ml",
+        "French Avenue Ambroise Pour Femme 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-AMBROISE-POUR-FEMME-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/ambroise-pour-femme",
+      "source_evidence_url": "https://frenchavenue.com/products/ambroise-pour-femme"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-AETHER",
+      "size_ml": 100,
+      "aliases": [
+        "Aether 100 ml",
+        "French Avenue Aether 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-AETHER-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/aether",
+      "source_evidence_url": "https://frenchavenue.com/products/aether"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-7a27edc4",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Blend 100 ml",
+        "French Avenue Royal Blend 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-7a27edc4-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/royal-blend",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-blend"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-IMPERIAL-OCEAN",
+      "size_ml": 100,
+      "aliases": [
+        "Imperial Ocean 100 ml",
+        "French Avenue Imperial Ocean 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-IMPERIAL-OCEAN-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/imperial-ocean",
+      "source_evidence_url": "https://frenchavenue.com/products/imperial-ocean"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-COCOA-MORADO",
+      "size_ml": 100,
+      "aliases": [
+        "Cocoa Morado 100 ml",
+        "French Avenue Cocoa Morado 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-COCOA-MORADO-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/cocoa-morado",
+      "source_evidence_url": "https://frenchavenue.com/products/cocoa-morado"
     }
   ]
 }
