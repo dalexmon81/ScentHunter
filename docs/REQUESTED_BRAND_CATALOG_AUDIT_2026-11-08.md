@@ -97,3 +97,14 @@ A focused reconciliation compared selected current official pages against the ex
 - **Lattafa and Arabiyat Prestige:** the official current pages show new items such as Asad Polar and Lychee Musk. Existing product presence, region-specific listings, and page variants need reconciliation before changes; third-party listings remain discovery evidence only and must not silently replace first-party proof.
 
 The audit deliberately leaves candidate rows unmodified in this pass. The next catalog change should be a separate, small harvest PR that adds only the individually confirmed absent identities (after checking all existing aliases/families), and a separate provenance-only PR for existing rows. No prices, stock, or retailer offers are inferred from brand pages.
+
+
+### Official product-detail reconciliation — 9 November 2026
+
+Three product-level decisions were implemented after checking first-party detail pages and reconciling exact canonical identities:
+
+- **Armaf — Uniq Effects of Uniq:** added as one new canonical fragrance identity from https://armaf.com/products/uniq-effects-of-uniq-spr. The official detail page labels it as a fragrance and its title explicitly identifies Eau de Parfum. No size was stated in the accessible official detail page, so no variant or size was invented.
+- **Lattafa — Asad Polar:** added as one new canonical fragrance identity from https://lattafa.com/product/asad-polar/. The official detail page explicitly states 100 ml and identifies it as a men's fragrance. A single 100 ml variant is recorded; concentration is intentionally blank because the official product detail did not state it.
+- **Arabiyat Prestige — Lychee Musk:** the existing identity `SH-ARABIYAT-PRESTIGE-0b061839` was upgraded in place using https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex. The page explicitly states Eau de Parfum, 100 ml and unisex. One 100 ml EDP variant was added; no duplicate canonical identity was created.
+
+The new rows were reconciled into their existing Armaf and Lattafa family-registry entries. The Asad family regression expectation now includes Asad Polar as a related Asad-line fragrance. The catalog does not include any price, stock, offer, retailer, or shipping data from these brand pages.
