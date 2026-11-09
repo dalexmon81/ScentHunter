@@ -503,21 +503,17 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
-    def test_armaf_uniq_oud_forever_official_detail_page_is_a_provenance_candidate(self):
+    def test_armaf_uniq_oud_forever_official_detail_page_is_verified(self):
         row = next(
             product for product in CATALOG.get("products", [])
             if product.get("brand_name") == "Armaf"
             and product.get("canonical_name") == "Uniq Oud Forever"
         )
-        # The canonical identity already exists. A later provenance update
-        # must preserve this product ID and must never append a second row.
         self.assertEqual(row.get("product_id"), "SH-ARMAF-f650f6a8")
-        self.assertEqual(row.get("identity_status"), "source_listed_name")
-        self.assertNotEqual(
-            row.get("source_url"),
-            "https://armaf.com/products/uniq-oud-forever-spr",
-            "Promote only in a dedicated provenance update after page fields are rechecked.",
-        )
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://armaf.com/products/uniq-oud-forever-spr")
+        self.assertEqual(row.get("concentration"), "Eau de Parfum")
+        self.assertEqual(row.get("gender"), "Unisex")
 
 
     def test_lattafa_asad_polar_official_100ml_identity(self):
@@ -1332,7 +1328,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
     def test_paris_corner_official_storefront_batch_g_detail_pages_and_sizes(self):
         expected = {
             "Rifaaqat Adorn": ("https://www.pariscornerperfumes.com/products/rifaaqat-adorn", None),
-            "Rua": ("https://www.pariscornerperfumes.com/products/rua", 100),
+            "RUA": ("https://www.pariscornerperfumes.com/products/rua", 100),
             "Rua Radiant Roses": ("https://www.pariscornerperfumes.com/products/rua-radiant-roses", 100),
             "Soothing Zephyr": ("https://www.pariscornerperfumes.com/products/soothing-zephyr", None),
             "Strawberry Pound Cake": ("https://www.pariscornerperfumes.com/products/strawberry-pound-cake", 100),
