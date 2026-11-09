@@ -115,5 +115,40 @@ class AlWataniahDetailEvidenceTests(unittest.TestCase):
                 self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
                 self.assertEqual(variants[0].get("source_evidence_url"), url)
 
+    def test_ten_further_identities_have_official_100ml_edp_evidence(self):
+        expected = {
+        "Al Daiem Elixir": "https://www.alwataniah.com/products/al-daiem-elixir",
+        "Ameerati": "https://www.alwataniah.com/products/ameerati",
+        "Attar Al Wesal": "https://www.alwataniah.com/products/attar-al-wesal",
+        "Rose Eclat": "https://www.alwataniah.com/products/rose-eclat",
+        "Oud Mystery Intense": "https://www.alwataniah.com/products/oud-mystery-intense",
+        "Sahari": "https://www.alwataniah.com/products/sahari",
+        "Rose Mystery Intense": "https://www.alwataniah.com/products/rose-mystery-intense",
+        "Golden Honey": "https://www.alwataniah.com/products/golden-honey",
+        "Bareeq Al Dhahab": "https://www.alwataniah.com/products/bareeq-al-dhahab",
+        "Brownie Bite": "https://www.alwataniah.com/products/brownie-bite"
+}
+        for name, url in expected.items():
+            with self.subTest(product=name):
+                matches = [
+                    p for p in self.products
+                    if p.get("brand_name") == "Al Wataniah"
+                    and p.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), url)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertIn(100, product.get("formats_ml", []))
+                variants = [
+                    v for v in self.variants
+                    if v.get("product_id") == product["product_id"]
+                    and v.get("size_ml") == 100
+                ]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(variants[0].get("source_evidence_url"), url)
+
 if __name__ == "__main__":
     unittest.main()
