@@ -33,6 +33,7 @@ CANDIDATE_PRS = (
     (594, "catalog/al-haramain-new-launches-2026-11-09", "catalog/requested-brand-harvest-2026-11-08"),
     (599, "catalog/al-haramain-five-verified-clean-final-2026-11-09", "catalog/al-haramain-new-launches-2026-11-09"),
     (603, "catalog/reconciled-official-details-2026-11-09-v3", BASE_REF),
+    (604, "catalog/al-wataniah-twelve-official-details-2026-11-09", BASE_REF),
     (591, "catalog/integration-verified-launches-ci-2026-11-09", "catalog/verified-new-launches-2026-11-09"),
     (555, "catalog/lattafa-official-new-launches-2026-11-08", "catalog/gulf-orchid-official-new-arrivals-2026-11-08"),
     (558, "catalog/armaf-official-detail-audit-2026-11-08", "catalog/armaf-official-new-exclusive-2026-11-08"),
