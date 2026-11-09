@@ -563,7 +563,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(rows[0].get("identity_status"), "source_verified_name")
         self.assertEqual(
             rows[0].get("source_url"),
-            "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex",
+            "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex",
         )
 
 
