@@ -93,5 +93,48 @@ class LattafaCatalogTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_three_additional_official_lattta_pages_have_100ml_variants(self):
+        expected = {
+            "Majd Al Sultan Black Intense": (
+                "https://lattafa.com/product/majd-al-sultan-black-intense/", "Men"
+            ),
+            "Badee Al Oud Amethyst Fusion": (
+                "https://lattafa.com/product/badee-al-oud-amethyst-fusion/", "Unisex"
+            ),
+            "Farfasha": (
+                "https://lattafa.com/product/farfasha/", "Women"
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand") == "Lattafa"
+        }
+        variants = CATALOG.get("variants", [])
+        family_names = {
+            row.get("canonical_name")
+            for family in REGISTRY.get("families", [])
+            if family.get("family_id") == "lattafa_catalog"
+            for row in family.get("products", [])
+        }
+        for name, (source, gender) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                product = products[name]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("gender"), gender)
+                self.assertIn(100, product.get("formats_ml", []))
+                self.assertIn(name, family_names)
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == product.get("product_id")
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+
 if __name__ == "__main__":
     unittest.main()
