@@ -3062,8 +3062,11 @@
         "Choco Lait",
         "Paris Corner Choco Lait"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/choco-lait",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-3033b72a",
@@ -3096,8 +3099,11 @@
         "Paris Corner Confidential",
         "Confidential 100ML"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-41eeb4a5",
@@ -3111,8 +3117,11 @@
         "Cosmic Giardino",
         "Paris Corner Cosmic Giardino"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cosmic-giardino",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-918f26d8",
@@ -16335,8 +16344,11 @@
         "Celestial Emir",
         "Paris Corner Celestial Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/celestial",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CHARUTO-MYSTERIOUS-TOBACCO",
@@ -16369,8 +16381,8 @@
         "Charuto Regal Reserve",
         "Paris Corner Charuto Regal Reserve"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/charuto-regal-reserve"
     },
     {
       "product_id": "SH-PARIS-CORNER-CHARUTO-TOBACCO-VANILLE",
@@ -16384,8 +16396,11 @@
         "Charuto Tobacco Vanille",
         "Paris Corner Charuto Tobacco Vanille"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/charuto-tobacco-vanille",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CHERRY-COLA",
@@ -16399,8 +16414,8 @@
         "Cherry Cola",
         "Paris Corner Cherry Cola"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cherry-cola"
     },
     {
       "product_id": "SH-PARIS-CORNER-CHERRY-GOSSIP",
@@ -16414,8 +16429,11 @@
         "Cherry Gossip",
         "Paris Corner Cherry Gossip"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cherry-gossip",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CHOCO-CULT",
@@ -16429,8 +16447,11 @@
         "Choco Cult",
         "Paris Corner Choco Cult"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/choco-cult",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-COCONUT-LAGOON",
@@ -16444,8 +16465,8 @@
         "Coconut Lagoon",
         "Paris Corner Coconut Lagoon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-CORNFLOWER-DELIGHT",
@@ -16459,8 +16480,11 @@
         "Cornflower Delight",
         "Paris Corner Cornflower Delight"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cornflower-delight",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-DUBAI",
@@ -16474,8 +16498,8 @@
         "Cosmopolitan Dubai",
         "Paris Corner Cosmopolitan Dubai"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-dubai"
     },
     {
       "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-LONDON",
@@ -16489,8 +16513,8 @@
         "Cosmopolitan London",
         "Paris Corner Cosmopolitan London"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-london"
     },
     {
       "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-NEWYORK",
@@ -39520,6 +39544,94 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/frenetichomme-intense"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CELESTIAL-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-CELESTIAL-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Celestial Emir 100 ml",
+        "Paris Corner Celestial Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/celestial",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/celestial"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHARUTO-TOBACCO-VANILLE",
+      "variant_id": "SHV-PARIS-CORNER-CHARUTO-TOBACCO-VANILLE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Charuto Tobacco Vanille 100 ml",
+        "Paris Corner Charuto Tobacco Vanille 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/charuto-tobacco-vanille",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/charuto-tobacco-vanille"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHERRY-GOSSIP",
+      "variant_id": "SHV-PARIS-CORNER-CHERRY-GOSSIP-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Cherry Gossip 100 ml",
+        "Paris Corner Cherry Gossip 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/cherry-gossip",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cherry-gossip"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHOCO-CULT",
+      "variant_id": "SHV-PARIS-CORNER-CHOCO-CULT-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Choco Cult 100 ml",
+        "Paris Corner Choco Cult 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/choco-cult",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/choco-cult"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-e8b7fc40",
+      "variant_id": "SHV-PARIS-CORNER-E8B7FC40-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Choco Lait 100 ml",
+        "Paris Corner Choco Lait 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/choco-lait",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/choco-lait"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-c5ed3eb2",
+      "variant_id": "SHV-PARIS-CORNER-C5ED3EB2-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Confidential 100 ml",
+        "Paris Corner Confidential 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/confidential-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CORNFLOWER-DELIGHT",
+      "variant_id": "SHV-PARIS-CORNER-CORNFLOWER-DELIGHT-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Cornflower Delight 100 ml",
+        "Paris Corner Cornflower Delight 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/cornflower-delight",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cornflower-delight"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-41eeb4a5",
+      "variant_id": "SHV-PARIS-CORNER-41EEB4A5-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Cosmic Giardino 100 ml",
+        "Paris Corner Cosmic Giardino 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/cosmic-giardino",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmic-giardino"
     }
   ]
 }
