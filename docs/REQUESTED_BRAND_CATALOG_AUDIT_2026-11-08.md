@@ -361,3 +361,28 @@ Three other imported labels were confirmed to be collection names rather than st
 - **Jewel** is a collection containing Date Night, Red Velvet and Pink Crush (plus a bundle); those individual Maison Asrar identities already exist.
 
 The removed collection-label rows had no variants and were not used as canonical perfume identities. The corresponding existing individual fragrances were preserved. Product IDs for retained records were preserved; the two duplicate Vanilla Aura / Vanilla Voyage rows were merged into their existing Maison Asrar canonical IDs. Regression tests now check these brand assignments, variant facts, duplicate prevention and exclusion of collection labels as products.
+
+
+### Aromatix / French Avenue: official collection and product-page reconciliation (9 November 2026)
+
+The official French Avenue storefront has a dedicated Aromatix Collection. Its current collection page shows ten standalone Aromatix fragrances plus two Aromatix Summer Vibes bundles. The bundles are sets and are not separate canonical perfume identities.
+
+Ten existing catalog identities were matched to individual French Avenue product-detail pages. Nine pages explicitly state 100 ml and concentration; those received one 100 ml variant each. The tenth page, Plantine Blanc, confirms the product name but its inspected specifications section does not expose size or concentration, so no variant or concentration was inferred.
+
+Verified detail-page identities:
+- Carnal Desire — https://frenchavenue.com/products/carnal-desire — Eau de Parfum, 100 ml
+- Forbidden Fruit — https://frenchavenue.com/products/aromatix-forbidden-fruit — Eau de Parfum, 100 ml
+- Frostbite — https://frenchavenue.com/products/aromatix-frostbite — Extrait de Parfum, 100 ml
+- Magnetiq — https://frenchavenue.com/products/aromatix-magnetiq — Eau de Parfum, 100 ml
+- Naughty Dates — https://frenchavenue.com/products/aromatix-naughty-dates — Eau de Parfum, 100 ml
+- Plantine Blanc — https://frenchavenue.com/products/aromatix-plantine-blanc — individual official page confirms identity; size/concentration not explicitly stated in the inspected page
+- Royal Taboo — https://frenchavenue.com/products/royal-taboo — Extrait de Parfum, 100 ml
+- Sun Kissed — https://frenchavenue.com/products/aromatix-sunkissed — Eau de Parfum, 100 ml
+- Teas Me — https://frenchavenue.com/products/aromatix-teas-me — Eau de Parfum, 100 ml
+- X Xandal — https://frenchavenue.com/products/aromatix-x-xandal — Extrait de Parfum, 100 ml
+
+The official product title spells the name **Plantine Blanc**. The existing product ID was retained, the canonical spelling was corrected to Plantine Blanc, and the previous spelling Platine Blanc remains as an alias.
+
+**Ora** and **Roza** remain at `source_listed_name` confidence using the existing Notino discovery listing. I did not find individual official French Avenue product pages for those two names in this pass, so their concentration and size remain unspecified and no variants were created. The official current collection page lists ten individual perfumes, while the existing catalog has twelve identities; this audit does not claim that Ora and Roza are discontinued or invalid.
+
+Regression tests now check the ten official detail URLs, nine explicit 100 ml concentration variants, Plantine Blanc's deliberate missing variant data, and Ora/Roza's listing-only status.
