@@ -28,7 +28,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
         catalog_names = {p["canonical_name"].casefold() for p in self.products}
         registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 102)
+        self.assertEqual(len(self.products), 107)
 
     def test_all_products_use_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "al_haramain_catalog" for p in self.products))
@@ -78,6 +78,44 @@ class AlHaramainCatalogTests(unittest.TestCase):
         self.assertEqual(matches[0]["source_evidence_url"], source)
         registry_names = {p["canonical_name"] for p in self.family["products"]}
         self.assertIn("Haramain Camellia", registry_names)
+
+
+
+    def test_five_more_al_haramain_official_detail_pages_and_100ml_variants(self):
+        expected = {
+            "Haramain Loulou Rose": (
+                "https://us.alharamainperfumes.com/en/haramain-loulou-rose-100ml-eau-de-parfum.html",
+                "Eau de Parfum",
+            ),
+            "Haramain Palm Dubai": (
+                "https://us.alharamainperfumes.com/en/haramain-palm-dubai-100ml-extrait-de-parfum.html",
+                "Extrait de Parfum",
+            ),
+            "Haramain Gold Crystal Oudh": (
+                "https://us.alharamainperfumes.com/en/haramain-gold-crystal-oudh-spray-100ml.html",
+                "Extrait de Parfum",
+            ),
+            "Haramain Black Musk": (
+                "https://us.alharamainperfumes.com/en/haramain-black-musk-100ml-spray.html",
+                "Eau de Parfum",
+            ),
+            "Haramain Maryam": (
+                "https://us.alharamainperfumes.com/en/maryam-spray.html",
+                "Eau de Parfum",
+            ),
+        }
+        for name, (source, concentration) in expected.items():
+            with self.subTest(product=name):
+                product = self.products_by_name[name]
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_url"], source)
+                self.assertEqual(product["concentration"], concentration)
+                self.assertEqual(product["formats_ml"], [100])
+                matches = self.variants_for(product)
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0]["size_ml"], 100)
+                self.assertEqual(matches[0]["concentration"], concentration)
+                self.assertEqual(matches[0]["source_evidence_url"], source)
 
 
     def test_unverified_amber_oud_sizes_are_not_invented(self):
