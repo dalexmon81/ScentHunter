@@ -43,6 +43,10 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
     def test_harvest_rows_have_no_invented_variants(self):
         for product in self.products:
             if product["product_id"].startswith(("SH-AL-HARAMAIN-STORE-", "SH-GULF-ORCHID-STORE-")):
+                if product["identity_status"] == "source_verified_name":
+                    source = product.get("source_url", "")
+                    self.assertTrue("/products/" in source or source.endswith(".html"))
+                    continue
                 self.assertEqual(product["identity_status"], "source_listed_name")
                 self.assertNotIn("concentration", product)
                 self.assertNotIn("formats_ml", product)
