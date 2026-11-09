@@ -5613,6 +5613,16 @@
             "Un I Expressions North Stag",
             "Paris Corner Un I Expressions North Stag"
           ]
+        },
+        {
+          "canonical_name": "Confidential 100ML",
+          "aliases": [
+            "Confidential 100ML",
+            "Paris Corner Confidential 100ml"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
