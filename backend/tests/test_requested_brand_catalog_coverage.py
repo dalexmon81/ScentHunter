@@ -522,5 +522,41 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(rows[0].get("identity_status"), "source_listed_name")
 
 
+
+    def test_official_product_detail_candidates_have_verified_identity_and_variant_data(self):
+        products = {
+            (p.get("brand_name"), p.get("canonical_name")): p
+            for p in CATALOG.get("products", [])
+        }
+        variants = CATALOG.get("variants", [])
+        armaf = products[("Armaf", "Uniq Effects of Uniq")]
+        self.assertEqual(armaf.get("identity_status"), "source_verified_name")
+        self.assertEqual(armaf.get("source_url"), "https://armaf.com/products/uniq-effects-of-uniq-spr")
+        self.assertEqual(armaf.get("concentration"), "Eau de Parfum")
+        self.assertNotIn("formats_ml", armaf)
+        self.assertFalse(any(v.get("product_id") == armaf["product_id"] for v in variants))
+
+        polar = products[("Lattafa", "Asad Polar")]
+        self.assertEqual(polar.get("identity_status"), "source_verified_name")
+        self.assertEqual(polar.get("source_url"), "https://lattafa.com/product/asad-polar/")
+        self.assertNotIn("concentration", polar)
+        self.assertEqual(polar.get("formats_ml"), [100])
+        polar_variants = [v for v in variants if v.get("product_id") == polar["product_id"]]
+        self.assertEqual(len(polar_variants), 1)
+        self.assertEqual(polar_variants[0].get("size_ml"), 100)
+        self.assertNotIn("concentration", polar_variants[0])
+        self.assertEqual(polar_variants[0].get("source_url"), polar["source_url"])
+
+        lychee = products[("Arabiyat Prestige", "Lychee Musk")]
+        self.assertEqual(lychee.get("product_id"), "SH-ARABIYAT-PRESTIGE-0b061839")
+        self.assertEqual(lychee.get("identity_status"), "source_verified_name")
+        self.assertEqual(lychee.get("source_url"), "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex")
+        self.assertEqual(lychee.get("concentration"), "Eau de Parfum")
+        lychee_variants = [v for v in variants if v.get("product_id") == lychee["product_id"]]
+        self.assertEqual(len(lychee_variants), 1)
+        self.assertEqual(lychee_variants[0].get("size_ml"), 100)
+        self.assertEqual(lychee_variants[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(lychee_variants[0].get("source_url"), lychee["source_url"])
+
 if __name__ == "__main__":
     unittest.main()
