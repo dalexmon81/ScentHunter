@@ -15500,6 +15500,16 @@
             "Areej Al Oud",
             "Al Haramain Areej Al Oud"
           ]
+        },
+        {
+          "canonical_name": "Haramain Camellia",
+          "aliases": [
+            "Haramain Camellia",
+            "Al Haramain Haramain Camellia"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
