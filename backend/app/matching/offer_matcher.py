@@ -105,8 +105,17 @@ def decide_offer_match(session: Session, raw: IngestionRaw) -> MatchDecision:
         if len(gtin_candidates) == 1:
             candidate = gtin_candidates[0]
             if candidate.canonical_key != identity.canonical_key:
-                return MatchDecision("unmatched", "gtin_identity_conflict", None, None,
-                                     "verified_gtin_conflicts_with_normalized_identity")
+                # Legacy catalog rows may retain a source-specific canonical key.
+                # A verified GTIN is not enough on its own: accept it only when
+                # the complete normalized brand, fragrance, concentration,
+                # volume and packaging identity independently resolves to this
+                # exact same variant.
+                strict_attribute_candidates = _exact_legacy_attribute_candidates(
+                    session, identity
+                )
+                if not any(row.id == candidate.id for row in strict_attribute_candidates):
+                    return MatchDecision("unmatched", "gtin_identity_conflict", None, None,
+                                         "verified_gtin_conflicts_with_normalized_identity")
             return MatchDecision("matched", "gtin_exact", Decimal("1.000"),
                                  candidate.id, "verified_gtin_and_identity_agree")
 
