@@ -38,7 +38,7 @@ MINIMUM_BRAND_COUNTS = {
     "Games of Spades": 32,
     "Maison Alhambra": 214,
     "Mykonos": 72,
-    "Armaf": 191,
+    "Armaf": 197,
 }
 
 
