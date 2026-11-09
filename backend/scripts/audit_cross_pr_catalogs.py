@@ -32,7 +32,7 @@ CANDIDATE_PRS = (
     (593, "catalog/armaf-reconciled-official-identities-2026-11-09", "catalog/cumulative-source-reconciled-2026-11-08"),
     (594, "catalog/al-haramain-new-launches-2026-11-09", "catalog/requested-brand-harvest-2026-11-08"),
     (599, "catalog/al-haramain-five-verified-clean-final-2026-11-09", "catalog/al-haramain-new-launches-2026-11-09"),
-    (600, "catalog/official-product-details-2026-11-09", BASE_REF),
+    (603, "catalog/reconciled-official-details-2026-11-09-v3", BASE_REF),
     (591, "catalog/integration-verified-launches-ci-2026-11-09", "catalog/verified-new-launches-2026-11-09"),
     (555, "catalog/lattafa-official-new-launches-2026-11-08", "catalog/gulf-orchid-official-new-arrivals-2026-11-08"),
     (558, "catalog/armaf-official-detail-audit-2026-11-08", "catalog/armaf-official-new-exclusive-2026-11-08"),
@@ -48,7 +48,6 @@ CANDIDATE_PRS = (
     (575, "catalog/verified-incense-fragrances-2026-11-08", BASE_REF),
     (576, "catalog/lattafa-official-launches-2026-11-08", "catalog/verified-incense-fragrances-2026-11-08"),
     (577, "catalog/lattafa-amethyst-petra-2026-11-08", "catalog/lattafa-official-launches-2026-11-08"),
-    (578, "catalog/lattafa-asad-polar-2026-11-08", "catalog/lattafa-amethyst-petra-2026-11-08"),
     (579, "catalog/paris-corner-official-pages-2026-11-08", "catalog/lattafa-asad-polar-2026-11-08"),
 )
 
