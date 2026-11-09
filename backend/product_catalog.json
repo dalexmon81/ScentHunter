@@ -34213,7 +34213,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum",
       "source_product_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-GIVE-ME-GOURMAND-MATCHA-SWIRL",
@@ -34231,7 +34234,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml",
       "source_product_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
@@ -34249,7 +34255,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml",
       "source_product_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-ATLAS-CANYON",
@@ -34267,7 +34276,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml",
       "source_product_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml",
+      "formats_ml": [
+        55
+      ]
     },
     {
       "product_id": "SH-LATTAFA-GIVE-ME-GOURMAND-HARLEQUIN-CREAM",
@@ -34285,7 +34297,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml",
       "source_product_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
@@ -34303,7 +34318,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml",
       "source_product_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml",
+      "formats_ml": [
+        55
+      ]
     },
     {
       "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
@@ -34320,7 +34338,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion",
       "source_product_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-RAGHAD",
@@ -34337,7 +34358,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/raghad",
       "source_product_url": "https://www.lattafa-usa.com/products/raghad",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/raghad"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/raghad",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-PETRA-VIOLA",
@@ -34354,7 +34378,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.lattafa-usa.com/products/petra-viola",
       "source_product_url": "https://www.lattafa-usa.com/products/petra-viola",
-      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola"
+      "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
