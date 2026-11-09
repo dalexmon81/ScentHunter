@@ -1215,5 +1215,60 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_paris_corner_official_storefront_batch_f_detail_pages_and_sizes(self):
+        expected = {
+            "Opulentia Primus Emir": ("https://www.pariscornerperfumes.com/products/opulentia-primus-emir", 100),
+            "Oud and Vanille Emir": ("https://www.pariscornerperfumes.com/products/oud-and-vanille-emir", 75),
+            "Oud Faek": ("https://www.pariscornerperfumes.com/products/oud-faek", None),
+            "Oud Holidays": ("https://www.pariscornerperfumes.com/products/oud-holidays-100ml", 100),
+            "Oud Wahaaj": ("https://www.pariscornerperfumes.com/products/oud-wahaaj-1", None),
+            "Papillon des Vents": ("https://www.pariscornerperfumes.com/products/papillon-des-vents", 100),
+            "Pear Potion": ("https://www.pariscornerperfumes.com/products/pear-potion", None),
+            "Perseviron": ("https://www.pariscornerperfumes.com/products/perseviron", 100),
+            "Perseviron Fig Hug": ("https://www.pariscornerperfumes.com/products/perseviron-fig-hug", 100),
+            "Pinkling": ("https://www.pariscornerperfumes.com/products/pinkling", 100),
+            "Plum Liquor": ("https://www.pariscornerperfumes.com/products/plum-liquor", None),
+            "Poppy Pulse": ("https://www.pariscornerperfumes.com/products/poppy-pulse", 100),
+            "Pour Me Wild": ("https://www.pariscornerperfumes.com/products/pour-me-wild", 100),
+            "Praise": ("https://www.pariscornerperfumes.com/products/praise", 100),
+            "Precision": ("https://www.pariscornerperfumes.com/products/precision", 100),
+            "Prodigy": ("https://www.pariscornerperfumes.com/products/prodigy-100ml", 100),
+            "Prodigy Noir": ("https://www.pariscornerperfumes.com/products/prodigy-noir-100ml", 100),
+            "Protocol Edition": ("https://www.pariscornerperfumes.com/products/protocol-edition", 100),
+            "Qawafi": ("https://www.pariscornerperfumes.com/products/qawafi-100ml", 100),
+            "Qissa": ("https://www.pariscornerperfumes.com/products/qissa", None),
+            "Qissa Delicious": ("https://www.pariscornerperfumes.com/products/qissa-delicious", None),
+            "Qissa Gala": ("https://www.pariscornerperfumes.com/products/qissa-gala", 100),
+            "Qissa Pink": ("https://www.pariscornerperfumes.com/products/qissa-pink", None),
+            "Reham Vanilla Mood": ("https://www.pariscornerperfumes.com/products/reham-vanilla-mood", 100),
+            "Reham Wild Mineral": ("https://www.pariscornerperfumes.com/products/reham-wild-mineral", 100),
+            "Resurrection": ("https://www.pariscornerperfumes.com/products/resurrection", 100),
+            "Rich Santal Emir Factory Edition": ("https://www.pariscornerperfumes.com/products/rich-santal-emir-factory-edition", 100),
+            "Rifaaqat": ("https://www.pariscornerperfumes.com/products/rifaaqat", None),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_url"), source)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
