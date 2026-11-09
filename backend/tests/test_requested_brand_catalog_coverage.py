@@ -38,7 +38,7 @@ MINIMUM_BRAND_COUNTS = {
     "Games of Spades": 32,
     "Maison Alhambra": 214,
     "Mykonos": 72,
-    "Armaf": 201,
+    "Armaf": 202,
 }
 
 
@@ -1874,6 +1874,93 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(variant.get("source_url"), source)
                     self.assertEqual(variant.get("source_evidence_url"), source)
                     self.assertEqual(variant.get("concentration"), concentration)
+
+
+
+    def test_armaf_page_three_official_detail_reconciliation(self):
+        expected = {
+            "Odyssey Go Mango": (
+                "https://armaf.com/products/odyssey-go-mango",
+                None, "Unisex", [],
+            ),
+            "Club de Nuit Oud": (
+                "https://armaf.com/products/club-de-nuit-oud",
+                "Eau de Toilette", "Men", [105],
+            ),
+            "Odyssey Ba Ha Mas": (
+                "https://armaf.com/products/odyssey-ba-ha-mas",
+                "Eau de Parfum", "Unisex", [],
+            ),
+            "Odyssey Marshmallow": (
+                "https://armaf.com/products/odyssey-marshmallow",
+                "Eau de Parfum", "Unisex", [],
+            ),
+            "Club de Nuit Intense Woman": (
+                "https://armaf.com/products/club-de-nuit-intense-woman",
+                "Eau de Parfum", "Women", [105, 10, 30],
+            ),
+            "Odyssey Limoni": (
+                "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition",
+                "Eau de Parfum", "Unisex", [60, 100, 200],
+            ),
+            "Yum Yum": (
+                "https://armaf.com/products/yum-yum-spr",
+                None, "Unisex", [],
+            ),
+            "Club de Nuit Lionheart Man": (
+                "https://armaf.com/products/cdn-lion-heart-man-spr",
+                "Eau de Parfum", "Men", [],
+            ),
+            "Infinity Silver": (
+                "https://armaf.com/products/infinity-spr-1",
+                "Eau de Parfum", "Men", [],
+            ),
+            "Ombre Oud Intense Man": (
+                "https://armaf.com/products/ombre-oud-intense",
+                "Eau de Parfum", "Men", [100],
+            ),
+            "Club de Nuit Woman Extrait de Parfum": (
+                "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+                "Extrait de Parfum", "Women", [],
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, gender, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("source_product_url"), source)
+                self.assertEqual(row.get("source_evidence_url"), source)
+                self.assertEqual(row.get("gender"), gender)
+                if concentration:
+                    self.assertEqual(row.get("concentration"), concentration)
+                else:
+                    self.assertNotIn("concentration", row)
+                self.assertEqual(row.get("formats_ml", []), sizes)
+                matching = [v for v in variants if v.get("product_id") == row.get("product_id")]
+                self.assertEqual(sorted(v.get("size_ml") for v in matching), sorted(sizes))
+                for size in sizes:
+                    variant = next(v for v in matching if v.get("size_ml") == size)
+                    self.assertEqual(variant.get("source_url"), source)
+                    self.assertEqual(variant.get("source_evidence_url"), source)
+                    self.assertEqual(variant.get("concentration"), concentration)
+
+    def test_armaf_new_woman_extrait_identity_is_registered(self):
+        family = next(
+            row for row in json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8")).get("families", [])
+            if row.get("family_id") == "armaf_catalog"
+        )
+        self.assertIn(
+            "Club de Nuit Woman Extrait de Parfum",
+            {row.get("canonical_name") for row in family.get("products", [])},
+        )
 
 
 if __name__ == "__main__":

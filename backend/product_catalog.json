@@ -13164,9 +13164,15 @@
         "Club de Nuit Oud",
         "Armaf Club de Nuit Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-oud",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-oud",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-oud",
+      "gender": "Men",
+      "concentration": "Eau de Toilette",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-e4d46951",
@@ -13300,9 +13306,12 @@
         "Club de Nuit Lionheart Man",
         "Armaf Club de Nuit Lionheart Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "gender": "Men",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-8a8dfbb3",
@@ -14038,9 +14047,11 @@
         "Odyssey Go Mango",
         "Armaf Odyssey Go Mango"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_evidence_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_product_url": "https://armaf.com/products/odyssey-go-mango",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-386ff57b",
@@ -14054,10 +14065,12 @@
         "Odyssey Ba Ha Mas",
         "Armaf Odyssey Ba Ha Mas"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "source_evidence_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-78579c03",
@@ -14071,10 +14084,12 @@
         "Odyssey Marshmallow",
         "Armaf Odyssey Marshmallow"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-marshmallow",
+      "source_evidence_url": "https://armaf.com/products/odyssey-marshmallow",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/odyssey-marshmallow",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-e9227d2b",
@@ -14088,10 +14103,17 @@
         "Club de Nuit Intense Woman",
         "Armaf Club de Nuit Intense Woman"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-woman",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-woman",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-intense-woman",
+      "gender": "Women",
+      "formats_ml": [
+        105,
+        10,
+        30
+      ]
     },
     {
       "product_id": "SH-ARMAF-b6165bfe",
@@ -14105,10 +14127,17 @@
         "Odyssey Limoni",
         "Armaf Odyssey Limoni"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition",
+      "gender": "Unisex",
+      "formats_ml": [
+        60,
+        100,
+        200
+      ]
     },
     {
       "product_id": "SH-ARMAF-ff1a16c2",
@@ -14122,9 +14151,11 @@
         "Yum Yum",
         "Armaf Yum Yum"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/yum-yum-spr",
+      "source_evidence_url": "https://armaf.com/products/yum-yum-spr",
+      "source_product_url": "https://armaf.com/products/yum-yum-spr",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-3810c777",
@@ -14138,10 +14169,12 @@
         "Infinity Silver",
         "Armaf Infinity Silver"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/infinity-spr-1",
+      "source_evidence_url": "https://armaf.com/products/infinity-spr-1",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/infinity-spr-1",
+      "gender": "Men"
     },
     {
       "product_id": "SH-ARMAF-890a715f",
@@ -14155,10 +14188,15 @@
         "Ombre Oud Intense Man",
         "Armaf Ombre Oud Intense Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=3",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/ombre-oud-intense",
+      "source_evidence_url": "https://armaf.com/products/ombre-oud-intense",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/ombre-oud-intense",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-5e1c7e9b",
@@ -36695,6 +36733,26 @@
       "gtins": [
         "6290362340836"
       ]
+    },
+    {
+      "product_id": "SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Club de Nuit Woman Extrait de Parfum",
+      "name": "Club de Nuit Woman Extrait de Parfum",
+      "family_id": "armaf_catalog",
+      "family_name": "Club de Nuit Woman Extrait de Parfum",
+      "aliases": [
+        "Club de Nuit Woman Extrait de Parfum",
+        "Armaf Club de Nuit Woman Extrait de Parfum",
+        "Club De Nuit Woman Extrait de Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "source_product_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "concentration": "Extrait de Parfum",
+      "gender": "Women"
     }
   ],
   "variants": [
@@ -43913,6 +43971,102 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://frenchavenue.com/products/cocoa-morado",
       "source_evidence_url": "https://frenchavenue.com/products/cocoa-morado"
+    },
+    {
+      "product_id": "SH-ARMAF-8c539773",
+      "variant_id": "SHV-SH-ARMAF-8c539773-105-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Oud 105 ml",
+        "Armaf Club de Nuit Oud 105ml"
+      ],
+      "concentration": "Eau de Toilette",
+      "source_url": "https://armaf.com/products/club-de-nuit-oud",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-oud"
+    },
+    {
+      "product_id": "SH-ARMAF-e9227d2b",
+      "variant_id": "SHV-SH-ARMAF-e9227d2b-105-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Intense Woman 105 ml",
+        "Armaf Club de Nuit Intense Woman 105ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-woman",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-woman"
+    },
+    {
+      "product_id": "SH-ARMAF-e9227d2b",
+      "variant_id": "SHV-SH-ARMAF-e9227d2b-10-000",
+      "size_ml": 10,
+      "aliases": [
+        "Club de Nuit Intense Woman 10 ml",
+        "Armaf Club de Nuit Intense Woman 10ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-woman",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-woman"
+    },
+    {
+      "product_id": "SH-ARMAF-e9227d2b",
+      "variant_id": "SHV-SH-ARMAF-e9227d2b-30-000",
+      "size_ml": 30,
+      "aliases": [
+        "Club de Nuit Intense Woman 30 ml",
+        "Armaf Club de Nuit Intense Woman 30ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intense-woman",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intense-woman"
+    },
+    {
+      "product_id": "SH-ARMAF-b6165bfe",
+      "variant_id": "SHV-SH-ARMAF-b6165bfe-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Limoni 60 ml",
+        "Armaf Odyssey Limoni 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-b6165bfe",
+      "variant_id": "SHV-SH-ARMAF-b6165bfe-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Limoni 100 ml",
+        "Armaf Odyssey Limoni 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-b6165bfe",
+      "variant_id": "SHV-SH-ARMAF-b6165bfe-200-000",
+      "size_ml": 200,
+      "aliases": [
+        "Odyssey Limoni 200 ml",
+        "Armaf Odyssey Limoni 200ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition",
+      "source_evidence_url": "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-890a715f",
+      "variant_id": "SHV-SH-ARMAF-890a715f-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ombre Oud Intense Man 100 ml",
+        "Armaf Ombre Oud Intense Man 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/ombre-oud-intense",
+      "source_evidence_url": "https://armaf.com/products/ombre-oud-intense"
     }
   ]
 }

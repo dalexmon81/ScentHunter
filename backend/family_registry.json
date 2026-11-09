@@ -7556,6 +7556,9 @@
           "aliases": [
             "Club de Nuit Oud",
             "Armaf Club de Nuit Oud"
+          ],
+          "formats_ml": [
+            105
           ]
         },
         {
@@ -7796,6 +7799,11 @@
           "aliases": [
             "Club de Nuit Intense Woman",
             "Armaf Club de Nuit Intense Woman"
+          ],
+          "formats_ml": [
+            105,
+            10,
+            30
           ]
         },
         {
@@ -7803,6 +7811,11 @@
           "aliases": [
             "Odyssey Limoni",
             "Armaf Odyssey Limoni"
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
           ]
         },
         {
@@ -7824,6 +7837,9 @@
           "aliases": [
             "Ombre Oud Intense Man",
             "Armaf Ombre Oud Intense Man"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8867,6 +8883,14 @@
           "aliases": [
             "Odyssey Soda Pop",
             "Armaf Odyssey Soda Pop"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Woman Extrait de Parfum",
+          "aliases": [
+            "Club de Nuit Woman Extrait de Parfum",
+            "Armaf Club de Nuit Woman Extrait de Parfum",
+            "Club De Nuit Woman Extrait de Parfum"
           ]
         }
       ]
