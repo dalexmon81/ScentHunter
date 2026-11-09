@@ -10296,6 +10296,16 @@
           ]
         },
         {
+          "canonical_name": "Amour",
+          "aliases": [
+            "Amour",
+            "Gulf Orchid Amour"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Angel Musk",
           "aliases": [
             "Angel Musk",
@@ -10343,10 +10353,40 @@
           ]
         },
         {
+          "canonical_name": "Belle",
+          "aliases": [
+            "Belle",
+            "Gulf Orchid Belle"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
           "canonical_name": "Candy Bite",
           "aliases": [
             "Candy Bite",
             "Gulf Orchid Candy Bite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Chic",
+          "aliases": [
+            "Chic",
+            "Gulf Orchid Chic"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Cloud 9",
+          "aliases": [
+            "Cloud 9",
+            "Gulf Orchid Cloud 9"
           ],
           "formats_ml": [
             100
@@ -10674,6 +10714,16 @@
           "aliases": [
             "Pacific",
             "Gulf Orchid Pacific"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Phantom",
+          "aliases": [
+            "Phantom",
+            "Gulf Orchid Phantom"
           ],
           "formats_ml": [
             100
