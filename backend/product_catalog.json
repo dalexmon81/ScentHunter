@@ -35910,6 +35910,66 @@
       "source_url": "https://armaf.com/products/dubai-nights-umbra-spr",
       "source_evidence_url": "https://armaf.com/products/dubai-nights-umbra-spr",
       "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAJD-AL-SULTAN-BLACK-INTENSE-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Majd Al Sultan Black Intense",
+      "name": "Majd Al Sultan Black Intense",
+      "family_id": "lattafa_catalog",
+      "family_name": "Majd Al Sultan Black Intense",
+      "aliases": [
+        "Majd Al Sultan Black Intense",
+        "Lattafa Majd Al Sultan Black Intense"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/majd-al-sultan-black-intense/",
+      "source_evidence_url": "https://lattafa.com/product/majd-al-sultan-black-intense/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Badee Al Oud Amethyst Fusion",
+      "name": "Badee Al Oud Amethyst Fusion",
+      "family_id": "lattafa_catalog",
+      "family_name": "Badee Al Oud Amethyst Fusion",
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion",
+        "Lattafa Badee Al Oud Amethyst Fusion"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-LATTAFA-FARFASHA-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Farfasha",
+      "name": "Farfasha",
+      "family_id": "lattafa_catalog",
+      "family_name": "Farfasha",
+      "aliases": [
+        "Farfasha",
+        "Lattafa Farfasha"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/farfasha/",
+      "source_evidence_url": "https://lattafa.com/product/farfasha/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Women"
     }
   ],
   "variants": [
@@ -41645,6 +41705,36 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/vanilla-and-roses-emir",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/vanilla-and-roses-emir"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAJD-AL-SULTAN-BLACK-INTENSE-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Majd Al Sultan Black Intense 100 ml",
+        "Lattafa Majd Al Sultan Black Intense 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-MAJD-AL-SULTAN-BLACK-INTENSE-20261109-100-000",
+      "source_evidence_url": "https://lattafa.com/product/majd-al-sultan-black-intense/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Badee Al Oud Amethyst Fusion 100 ml",
+        "Lattafa Badee Al Oud Amethyst Fusion 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION-20261109-100-000",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-amethyst-fusion/"
+    },
+    {
+      "product_id": "SH-LATTAFA-FARFASHA-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Farfasha 100 ml",
+        "Lattafa Farfasha 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-FARFASHA-20261109-100-000",
+      "source_evidence_url": "https://lattafa.com/product/farfasha/"
     }
   ]
 }
