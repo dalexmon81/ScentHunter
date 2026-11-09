@@ -425,3 +425,36 @@ Primary source:
 - Individual official product pages are recorded in the product catalog.
 
 Regression tests cover all 19 detail-page URLs and verify that Ain Emarat and Ain Emarat Extrait remain distinct. The new test module is included in the catalog-seed GitHub Actions workflow.
+
+### Afnan: official global storefront detail-page reconciliation (9 November 2026)
+
+The official Afnan Global storefront was checked against its All Products collection (120 listings) and individual product pages. Fifteen existing catalog identities were upgraded to individual official product-page evidence:
+
+- 9 PM
+- 9 PM Pour Femme
+- 9 PM Elixir
+- 9 PM Rebel
+- Abiyad Mukhallat
+- Abiyad Musk
+- Abiyad Sandal
+- Adwaa Al Sharq
+- Cherry Bouquet
+- Delicious Bouquet
+- Ebdaa Concentrated Perfume Oil
+- Edict Amberythme
+- Edict Musctique
+- Edict Ouddiction
+- Historic Doria
+
+The five Abiyad / Ebdaa items are retained as fragrance oils, not deodorants or gift sets. Afnan's official navigation and collection page separately identify deodorants, gift sets, travel sets and perfume oils; these product types are not conflated. Existing product IDs and canonical identities were retained. No size or concentration variants were added in this provenance-only pass because the inspected pages did not provide a consistent complete set of structured size data for these 15 records.
+
+The official Afnan Global collection currently reports 120 listings, which include perfume oils, deodorants, travel kits and gift sets. Only standalone fragrance identities belong in the canonical fragrance list. Additional listings remain for further item-by-item review.
+
+Primary sources:
+- Official Global All Products collection: https://afnan.com/collections/all
+- Official 9 PM page: https://afnan.com/products/9-pm
+- Official 9 PM Pour Femme page: https://afnan.com/products/9-pm-pour-femme
+- Official 9 PM Elixir page: https://afnan.com/products/9-pm-elixir
+- Official 9 PM Rebel page: https://afnan.com/products/9-pm-rebel
+
+Regression tests cover all 15 individual page URLs and keep perfume oils separate from deodorant / gift-set listings.
