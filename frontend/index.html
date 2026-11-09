@@ -1143,6 +1143,14 @@ function openProduct(i){
   const unknownSizeGroup=groups.find(x=>!x.size)||null;
   const saved=getWishlist();
 
+  // An identity-only catalog result has no verified offers or format buckets.
+  // Show an explicit empty state instead of an empty "compare formats" panel.
+  if(!(g.offers||[]).length){
+    const img=g.image||g.fallback_image||"";
+    resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">NESSUNA OFFERTA VERIFICATA</div><p class="offer-meta">Al momento non ci sono prezzi e disponibilità confermati per questo profumo. Torna più tardi: mostreremo qui le offerte quando saranno verificate.</p></article>`;
+    return;
+  }
+
   /*
    * IMPORTANT DISPLAY RULE:
    * An offer without size_ml is still a valid offer for the already-resolved
