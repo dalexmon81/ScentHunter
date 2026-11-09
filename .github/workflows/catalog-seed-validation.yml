@@ -11,6 +11,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/mykonos-official-detail-verification-2026-11-09
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -25,6 +26,7 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/mykonos-official-detail-verification-2026-11-09
 
 permissions:
   contents: read
