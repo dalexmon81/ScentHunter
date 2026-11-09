@@ -194,6 +194,9 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Troy Enable",
             "Frankel Blue Elixir",
             "Lip Stick",
+            "Baby Girl",
+            "Black Lady",
+            "Arrogate Oud Bakhur",
         }
         for product in self.products:
             if product["product_id"].startswith("SH-ASSAF-HARVEST-") and product["canonical_name"] not in detail_verified:
