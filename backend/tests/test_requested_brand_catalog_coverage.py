@@ -562,6 +562,31 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex",
         )
 
+    def test_armaf_uniq_effects_of_uniq_official_variant_is_explicitly_verified(self):
+        rows = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+            and row.get("canonical_name") == "Uniq Effects of Uniq"
+        ]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(
+            row.get("source_url"),
+            "https://armaf.com/products/uniq-effects-of-uniq-spr",
+        )
+        matching = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].get("size_ml"), 60)
+        self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(
+            matching[0].get("source_evidence_url"),
+            "https://armaf.com/products/uniq-effects-of-uniq-spr",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
