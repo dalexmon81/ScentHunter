@@ -3157,8 +3157,14 @@
         "Date Caramel",
         "Paris Corner Date Caramel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/date-caramel",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/date-caramel",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/date-caramel",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-a7bb1ce4",
@@ -16505,8 +16511,13 @@
         "Dusky Vanilla",
         "Paris Corner Dusky Vanilla"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ECSTATIC-BLANC-FLEUR",
@@ -16680,8 +16691,13 @@
         "Farah",
         "Paris Corner Farah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/farah",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/farah",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/farah",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FASCINATION-EMIR",
@@ -16923,8 +16939,14 @@
         "Indomitable",
         "Paris Corner Indomitable"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/indomitable",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/indomitable",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/indomitable",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-INTENSE-OUD",
@@ -17342,7 +17364,9 @@
       "source_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush"
     },
     {
       "product_id": "SH-PARIS-CORNER-MAWJ-APPLETINI",
@@ -17386,8 +17410,14 @@
         "Mawj Moscow Mule",
         "Paris Corner Mawj Moscow Mule"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-MEHWISH",
@@ -17674,9 +17704,13 @@
         "Fig Fete",
         "Paris Corner Fig Fete"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FATAL-EMBRACE",
@@ -17848,9 +17882,13 @@
         "Khair Peach Delulu",
         "Paris Corner Khair Peach Delulu"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=3",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-PISTACHIO",
@@ -17933,9 +17971,13 @@
         "Molten Caramel",
         "Paris Corner Molten Caramel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/molten-caramel",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/molten-caramel",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/molten-caramel",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MYSTERIUM",
@@ -24194,9 +24236,14 @@
         "Perseviron Fig Hug",
         "Paris Corner Perseviron Fig Hug"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=6",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=6"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-a00c4613",
@@ -35262,6 +35309,861 @@
       ],
       "source_product_url": "https://cz.armaf.eu/en/products/check-mate-white-knight",
       "source_evidence_url": "https://cz.armaf.eu/en/products/check-mate-white-knight"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-A-CHAOS-IN-THE-OCEAN",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "A Chaos In The Ocean",
+      "name": "A Chaos In The Ocean",
+      "family_id": "paris_corner_catalog",
+      "family_name": "A Chaos In The Ocean",
+      "aliases": [
+        "A Chaos In The Ocean",
+        "Paris Corner A Chaos In The Ocean"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/a-chaos-in-the-ocean-valar-series-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/a-chaos-in-the-ocean-valar-series-100ml",
+      "collection_name": "Valar Series",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/a-chaos-in-the-ocean-valar-series-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-A-WALK-ON-DIRT",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "A Walk on Dirt",
+      "name": "A Walk on Dirt",
+      "family_id": "paris_corner_catalog",
+      "family_name": "A Walk on Dirt",
+      "aliases": [
+        "A Walk on Dirt",
+        "Paris Corner A Walk on Dirt"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/a-walk-on-dirt-valar-series-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/a-walk-on-dirt-valar-series-100ml",
+      "collection_name": "Valar Series",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/a-walk-on-dirt-valar-series-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AMBER-OUD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Amber Oud",
+      "name": "Amber Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Amber Oud",
+      "aliases": [
+        "Amber Oud",
+        "Paris Corner Amber Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/amber-oud-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/amber-oud-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/amber-oud-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ARABIAN-ORYX-INTENSE-OUD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Arabian Oryx Intense Oud",
+      "name": "Arabian Oryx Intense Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Arabian Oryx Intense Oud",
+      "aliases": [
+        "Arabian Oryx Intense Oud",
+        "Paris Corner Arabian Oryx Intense Oud",
+        "Arabian Oryx: Intense Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/intense-oud-arabian-oryx-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/intense-oud-arabian-oryx-100ml",
+      "collection_name": "Arabian Oryx",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/intense-oud-arabian-oryx-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ARABIAN-ORYX-INTENSE-OUD-SAFFRON",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Arabian Oryx Intense Oud Saffron",
+      "name": "Arabian Oryx Intense Oud Saffron",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Arabian Oryx Intense Oud Saffron",
+      "aliases": [
+        "Arabian Oryx Intense Oud Saffron",
+        "Paris Corner Arabian Oryx Intense Oud Saffron",
+        "Arabian Oryx: Intense Oud Saffron"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/intense-oud-saffron-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/intense-oud-saffron-100ml",
+      "collection_name": "Arabian Oryx",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/intense-oud-saffron-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ASEERAH",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Aseerah",
+      "name": "Aseerah",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Aseerah",
+      "aliases": [
+        "Aseerah",
+        "Paris Corner Aseerah"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/aseerah-eau-de-parfum-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/aseerah-eau-de-parfum-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/aseerah-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-CITRON-VANILLE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Autobiography Citron Vanille",
+      "name": "Autobiography Citron Vanille",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Autobiography Citron Vanille",
+      "aliases": [
+        "Autobiography Citron Vanille",
+        "Paris Corner Autobiography Citron Vanille",
+        "Autobiography: Citron Vanille"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/citron-vanille-65-ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/citron-vanille-65-ml",
+      "collection_name": "Autobiography",
+      "formats_ml": [
+        65
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/citron-vanille-65-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-OH-BOY",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Autobiography Oh Boy",
+      "name": "Autobiography Oh Boy",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Autobiography Oh Boy",
+      "aliases": [
+        "Autobiography Oh Boy",
+        "Paris Corner Autobiography Oh Boy",
+        "Autobiography: Oh Boy"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/oh-boy-65ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/oh-boy-65ml",
+      "collection_name": "Autobiography",
+      "formats_ml": [
+        65
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/oh-boy-65ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-SALTY-BREEZE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Autobiography Salty Breeze",
+      "name": "Autobiography Salty Breeze",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Autobiography Salty Breeze",
+      "aliases": [
+        "Autobiography Salty Breeze",
+        "Paris Corner Autobiography Salty Breeze",
+        "Autobiography: Salty Breeze"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/salty-breeze-autobiography-65ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/salty-breeze-autobiography-65ml",
+      "collection_name": "Autobiography",
+      "formats_ml": [
+        65
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/salty-breeze-autobiography-65ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-SUPREME-GOLD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Autobiography Supreme Gold",
+      "name": "Autobiography Supreme Gold",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Autobiography Supreme Gold",
+      "aliases": [
+        "Autobiography Supreme Gold",
+        "Paris Corner Autobiography Supreme Gold",
+        "Autobiography: Supreme Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/supreme-gold-65-ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/supreme-gold-65-ml",
+      "collection_name": "Autobiography",
+      "formats_ml": [
+        65
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/supreme-gold-65-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CEDRAT-ESSENCE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cedrat Essence",
+      "name": "Cedrat Essence",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Cedrat Essence",
+      "aliases": [
+        "Cedrat Essence",
+        "Paris Corner Cedrat Essence"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/cedrat-essence-75ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/cedrat-essence-75ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/cedrat-essence-75ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CELESTIAL",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Celestial",
+      "name": "Celestial",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Celestial",
+      "aliases": [
+        "Celestial",
+        "Paris Corner Celestial"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/celestial-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/celestial-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/celestial-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CLOUD-BORN",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Cloud Born",
+      "name": "Cloud Born",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Cloud Born",
+      "aliases": [
+        "Cloud Born",
+        "Paris Corner Cloud Born"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/cloud-born-eau-de-parfum-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/cloud-born-eau-de-parfum-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/cloud-born-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CORAZON-BOURBON",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Corazon Bourbon",
+      "name": "Corazon Bourbon",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Corazon Bourbon",
+      "aliases": [
+        "Corazon Bourbon",
+        "Paris Corner Corazon Bourbon"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/corazon-bourbon-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/corazon-bourbon-100ml",
+      "collection_name": "Pendora Scents",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/corazon-bourbon-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CORAZON-LE-PARFUM",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Corazon Le Parfum",
+      "name": "Corazon Le Parfum",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Corazon Le Parfum",
+      "aliases": [
+        "Corazon Le Parfum",
+        "Paris Corner Corazon Le Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/corazon-le-parfum-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/corazon-le-parfum-100ml",
+      "collection_name": "Pendora Scents",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/corazon-le-parfum-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-CAMP-FIRE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Factory Edition Camp Fire",
+      "name": "Factory Edition Camp Fire",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Factory Edition Camp Fire",
+      "aliases": [
+        "Factory Edition Camp Fire",
+        "Paris Corner Factory Edition Camp Fire",
+        "Factory Edition: Camp Fire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-camp-fire-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-camp-fire-100ml",
+      "collection_name": "Factory Edition",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/factory-edition-camp-fire-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-JUST-BERGAMOT",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Factory Edition Just Bergamot",
+      "name": "Factory Edition Just Bergamot",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Factory Edition Just Bergamot",
+      "aliases": [
+        "Factory Edition Just Bergamot",
+        "Paris Corner Factory Edition Just Bergamot",
+        "Factory Edition: Just Bergamot"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-just-bergamot-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-just-bergamot-100ml",
+      "collection_name": "Factory Edition",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/factory-edition-just-bergamot-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-RICH-SANTAL",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Factory Edition Rich Santal",
+      "name": "Factory Edition Rich Santal",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Factory Edition Rich Santal",
+      "aliases": [
+        "Factory Edition Rich Santal",
+        "Paris Corner Factory Edition Rich Santal",
+        "Factory Edition: Rich Santal"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-rich-santal-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-rich-santal-100ml",
+      "collection_name": "Factory Edition",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/factory-edition-rich-santal-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-ULTRA-CITRUS",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Factory Edition Ultra Citrus",
+      "name": "Factory Edition Ultra Citrus",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Factory Edition Ultra Citrus",
+      "aliases": [
+        "Factory Edition Ultra Citrus",
+        "Paris Corner Factory Edition Ultra Citrus",
+        "Factory Edition: Ultra Citrus"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-ultra-citrus-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-ultra-citrus-100ml",
+      "collection_name": "Factory Edition",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/factory-edition-ultra-citrus-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-WARM-LEATHER",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Factory Edition Warm Leather",
+      "name": "Factory Edition Warm Leather",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Factory Edition Warm Leather",
+      "aliases": [
+        "Factory Edition Warm Leather",
+        "Paris Corner Factory Edition Warm Leather",
+        "Factory Edition: Warm Leather"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-warm-leather-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-warm-leather-100ml",
+      "collection_name": "Factory Edition",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/factory-edition-warm-leather-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FASCINATION",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Fascination",
+      "name": "Fascination",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Fascination",
+      "aliases": [
+        "Fascination",
+        "Paris Corner Fascination"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/fascination-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/fascination-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/fascination-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FIRE-YOUR-DESIRE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Fire Your Desire",
+      "name": "Fire Your Desire",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Fire Your Desire",
+      "aliases": [
+        "Fire Your Desire",
+        "Paris Corner Fire Your Desire"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/fire-your-desire-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/fire-your-desire-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/fire-your-desire-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FORBIDDEN-SUGAR",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Forbidden Sugar",
+      "name": "Forbidden Sugar",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Forbidden Sugar",
+      "aliases": [
+        "Forbidden Sugar",
+        "Paris Corner Forbidden Sugar"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/forbidden-sugar-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/forbidden-sugar-100ml",
+      "collection_name": "Emir",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/forbidden-sugar-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HURRIYA-GINGERIQUE",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Hurriya Gingerique",
+      "name": "Hurriya Gingerique",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Hurriya Gingerique",
+      "aliases": [
+        "Hurriya Gingerique",
+        "Paris Corner Hurriya Gingerique"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/hurriya-gingerique-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/hurriya-gingerique-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/hurriya-gingerique-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-DARK-ROSES",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Magic Oud in Dark Roses",
+      "name": "Magic Oud in Dark Roses",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Magic Oud in Dark Roses",
+      "aliases": [
+        "Magic Oud in Dark Roses",
+        "Paris Corner Magic Oud in Dark Roses"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/magic-oud-in-dark-roses-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/magic-oud-in-dark-roses-100ml",
+      "collection_name": "Magic Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/magic-oud-in-dark-roses-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-KALIMATH",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Magic Oud in Kalimath",
+      "name": "Magic Oud in Kalimath",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Magic Oud in Kalimath",
+      "aliases": [
+        "Magic Oud in Kalimath",
+        "Paris Corner Magic Oud in Kalimath"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/magic-oud-in-kalimath-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/magic-oud-in-kalimath-100ml",
+      "collection_name": "Magic Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/magic-oud-in-kalimath-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-SANDAL-WOOD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Magic Oud in Sandal Wood",
+      "name": "Magic Oud in Sandal Wood",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Magic Oud in Sandal Wood",
+      "aliases": [
+        "Magic Oud in Sandal Wood",
+        "Paris Corner Magic Oud in Sandal Wood"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://ae.pariscorner.com/products/magic-oud-in-sandal-wood-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/magic-oud-in-sandal-wood-100ml",
+      "collection_name": "Magic Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://ae.pariscorner.com/products/magic-oud-in-sandal-wood-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-1ff62b0b",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Amber Oud",
+      "name": "Ministry of Oud - Amber Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Amber Oud",
+      "aliases": [
+        "Ministry of Oud - Amber Oud",
+        "Paris Corner Ministry of Oud - Amber Oud",
+        "Ministry of Oud Amber Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-d396a92a",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Gladiators Oath",
+      "name": "Ministry of Oud - Gladiators Oath",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Gladiators Oath",
+      "aliases": [
+        "Ministry of Oud - Gladiators Oath",
+        "Paris Corner Ministry of Oud - Gladiators Oath",
+        "Ministry of Oud Gladiators Oath"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-6936e23b",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Maestro's Symphony",
+      "name": "Ministry of Oud - Maestro's Symphony",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Maestro's Symphony",
+      "aliases": [
+        "Ministry of Oud - Maestro's Symphony",
+        "Paris Corner Ministry of Oud - Maestro's Symphony",
+        "Ministry of Oud Maestro's Symphony"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ff928faa",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Nile Whispers",
+      "name": "Ministry of Oud - Nile Whispers",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Nile Whispers",
+      "aliases": [
+        "Ministry of Oud - Nile Whispers",
+        "Paris Corner Ministry of Oud - Nile Whispers",
+        "Ministry of Oud Nile Whispers"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-159b9d38",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Beyond the Wall",
+      "name": "Ministry of Oud - Oud Beyond the Wall",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Beyond the Wall",
+      "aliases": [
+        "Ministry of Oud - Oud Beyond the Wall",
+        "Paris Corner Ministry of Oud - Oud Beyond the Wall",
+        "Ministry of Oud Oud Beyond the Wall"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ae6eed96",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Indonesian",
+      "name": "Ministry of Oud - Oud Indonesian",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Indonesian",
+      "aliases": [
+        "Ministry of Oud - Oud Indonesian",
+        "Paris Corner Ministry of Oud - Oud Indonesian",
+        "Ministry of Oud Oud Indonesian"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-fb16a27a",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Royal",
+      "name": "Ministry of Oud - Oud Royal",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Royal",
+      "aliases": [
+        "Ministry of Oud - Oud Royal",
+        "Paris Corner Ministry of Oud - Oud Royal",
+        "Ministry of Oud Oud Royal"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-30133d89",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Satin",
+      "name": "Ministry of Oud - Oud Satin",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Satin",
+      "aliases": [
+        "Ministry of Oud - Oud Satin",
+        "Paris Corner Ministry of Oud - Oud Satin",
+        "Ministry of Oud Oud Satin"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-7c4f3c29",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Romance Reverie",
+      "name": "Ministry of Oud - Romance Reverie",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Romance Reverie",
+      "aliases": [
+        "Ministry of Oud - Romance Reverie",
+        "Paris Corner Ministry of Oud - Romance Reverie",
+        "Ministry of Oud Romance Reverie"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-efc71aee",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Strictly Oud",
+      "name": "Ministry of Oud - Strictly Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Strictly Oud",
+      "aliases": [
+        "Ministry of Oud - Strictly Oud",
+        "Paris Corner Ministry of Oud - Strictly Oud",
+        "Ministry of Oud Strictly Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-8a3adfeb",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud Greatest",
+      "name": "Ministry of Oud Greatest",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud Greatest",
+      "aliases": [
+        "Ministry of Oud Greatest",
+        "Paris Corner Ministry of Oud Greatest"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-39610187",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Tiramisu Speculoos",
+      "name": "Tiramisu Speculoos",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Tiramisu Speculoos",
+      "aliases": [
+        "Tiramisu Speculoos",
+        "Paris Corner Tiramisu Speculoos"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml"
     }
   ],
   "variants": [
@@ -37826,7 +38728,9 @@
         "Marshmallow Blush 100 ml",
         "Paris Corner Marshmallow Blush 100ml"
       ],
-      "variant_id": "SHV-SH-PARIS-CORNER-MARSHMALLOW-BLUSH-100-000"
+      "variant_id": "SHV-SH-PARIS-CORNER-MARSHMALLOW-BLUSH-100-000",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush",
+      "source_url": "https://www.pariscornerperfumes.com/products/marshmallow-blush"
     },
     {
       "product_id": "SH-PARIS-CORNER-ORAVEA",
@@ -40148,6 +41052,565 @@
       ],
       "source_url": "https://cz.armaf.eu/en/products/check-mate-white-knight",
       "source_evidence_url": "https://cz.armaf.eu/en/products/check-mate-white-knight"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-A-CHAOS-IN-THE-OCEAN",
+      "variant_id": "SHV-SH-PARIS-CORNER-A-CHAOS-IN-THE-OCEAN-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "A Chaos In The Ocean 100 ml",
+        "Paris Corner A Chaos In The Ocean 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/a-chaos-in-the-ocean-valar-series-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/a-chaos-in-the-ocean-valar-series-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-A-WALK-ON-DIRT",
+      "variant_id": "SHV-SH-PARIS-CORNER-A-WALK-ON-DIRT-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "A Walk on Dirt 100 ml",
+        "Paris Corner A Walk on Dirt 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/a-walk-on-dirt-valar-series-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/a-walk-on-dirt-valar-series-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AMBER-OUD",
+      "variant_id": "SHV-SH-PARIS-CORNER-AMBER-OUD-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Amber Oud 100 ml",
+        "Paris Corner Amber Oud 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/amber-oud-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/amber-oud-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ARABIAN-ORYX-INTENSE-OUD",
+      "variant_id": "SHV-SH-PARIS-CORNER-ARABIAN-ORYX-INTENSE-OUD-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Arabian Oryx Intense Oud 100 ml",
+        "Paris Corner Arabian Oryx Intense Oud 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/intense-oud-arabian-oryx-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/intense-oud-arabian-oryx-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ARABIAN-ORYX-INTENSE-OUD-SAFFRON",
+      "variant_id": "SHV-SH-PARIS-CORNER-ARABIAN-ORYX-INTENSE-OUD-SAFFRON-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Arabian Oryx Intense Oud Saffron 100 ml",
+        "Paris Corner Arabian Oryx Intense Oud Saffron 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/intense-oud-saffron-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/intense-oud-saffron-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ASEERAH",
+      "variant_id": "SHV-SH-PARIS-CORNER-ASEERAH-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Aseerah 100 ml",
+        "Paris Corner Aseerah 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/aseerah-eau-de-parfum-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/aseerah-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-CITRON-VANILLE",
+      "variant_id": "SHV-SH-PARIS-CORNER-AUTOBIOGRAPHY-CITRON-VANILLE-65-000",
+      "size_ml": 65,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Autobiography Citron Vanille 65 ml",
+        "Paris Corner Autobiography Citron Vanille 65 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/citron-vanille-65-ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/citron-vanille-65-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-OH-BOY",
+      "variant_id": "SHV-SH-PARIS-CORNER-AUTOBIOGRAPHY-OH-BOY-65-000",
+      "size_ml": 65,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Autobiography Oh Boy 65 ml",
+        "Paris Corner Autobiography Oh Boy 65 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/oh-boy-65ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/oh-boy-65ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-SALTY-BREEZE",
+      "variant_id": "SHV-SH-PARIS-CORNER-AUTOBIOGRAPHY-SALTY-BREEZE-65-000",
+      "size_ml": 65,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Autobiography Salty Breeze 65 ml",
+        "Paris Corner Autobiography Salty Breeze 65 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/salty-breeze-autobiography-65ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/salty-breeze-autobiography-65ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-AUTOBIOGRAPHY-SUPREME-GOLD",
+      "variant_id": "SHV-SH-PARIS-CORNER-AUTOBIOGRAPHY-SUPREME-GOLD-65-000",
+      "size_ml": 65,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Autobiography Supreme Gold 65 ml",
+        "Paris Corner Autobiography Supreme Gold 65 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/supreme-gold-65-ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/supreme-gold-65-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CEDRAT-ESSENCE",
+      "variant_id": "SHV-SH-PARIS-CORNER-CEDRAT-ESSENCE-75-000",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cedrat Essence 75 ml",
+        "Paris Corner Cedrat Essence 75 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/cedrat-essence-75ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/cedrat-essence-75ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CELESTIAL",
+      "variant_id": "SHV-SH-PARIS-CORNER-CELESTIAL-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Celestial 100 ml",
+        "Paris Corner Celestial 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/celestial-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/celestial-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CLOUD-BORN",
+      "variant_id": "SHV-SH-PARIS-CORNER-CLOUD-BORN-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cloud Born 100 ml",
+        "Paris Corner Cloud Born 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/cloud-born-eau-de-parfum-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/cloud-born-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CORAZON-BOURBON",
+      "variant_id": "SHV-SH-PARIS-CORNER-CORAZON-BOURBON-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Corazon Bourbon 100 ml",
+        "Paris Corner Corazon Bourbon 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/corazon-bourbon-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/corazon-bourbon-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CORAZON-LE-PARFUM",
+      "variant_id": "SHV-SH-PARIS-CORNER-CORAZON-LE-PARFUM-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Corazon Le Parfum 100 ml",
+        "Paris Corner Corazon Le Parfum 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/corazon-le-parfum-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/corazon-le-parfum-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-CAMP-FIRE",
+      "variant_id": "SHV-SH-PARIS-CORNER-FACTORY-EDITION-CAMP-FIRE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Factory Edition Camp Fire 100 ml",
+        "Paris Corner Factory Edition Camp Fire 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-camp-fire-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-camp-fire-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-JUST-BERGAMOT",
+      "variant_id": "SHV-SH-PARIS-CORNER-FACTORY-EDITION-JUST-BERGAMOT-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Factory Edition Just Bergamot 100 ml",
+        "Paris Corner Factory Edition Just Bergamot 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-just-bergamot-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-just-bergamot-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-RICH-SANTAL",
+      "variant_id": "SHV-SH-PARIS-CORNER-FACTORY-EDITION-RICH-SANTAL-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Factory Edition Rich Santal 100 ml",
+        "Paris Corner Factory Edition Rich Santal 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-rich-santal-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-rich-santal-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-ULTRA-CITRUS",
+      "variant_id": "SHV-SH-PARIS-CORNER-FACTORY-EDITION-ULTRA-CITRUS-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Factory Edition Ultra Citrus 100 ml",
+        "Paris Corner Factory Edition Ultra Citrus 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-ultra-citrus-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-ultra-citrus-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FACTORY-EDITION-WARM-LEATHER",
+      "variant_id": "SHV-SH-PARIS-CORNER-FACTORY-EDITION-WARM-LEATHER-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Factory Edition Warm Leather 100 ml",
+        "Paris Corner Factory Edition Warm Leather 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/factory-edition-warm-leather-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/factory-edition-warm-leather-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FASCINATION",
+      "variant_id": "SHV-SH-PARIS-CORNER-FASCINATION-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Fascination 100 ml",
+        "Paris Corner Fascination 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/fascination-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/fascination-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FIRE-YOUR-DESIRE",
+      "variant_id": "SHV-SH-PARIS-CORNER-FIRE-YOUR-DESIRE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Fire Your Desire 100 ml",
+        "Paris Corner Fire Your Desire 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/fire-your-desire-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/fire-your-desire-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FORBIDDEN-SUGAR",
+      "variant_id": "SHV-SH-PARIS-CORNER-FORBIDDEN-SUGAR-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Forbidden Sugar 100 ml",
+        "Paris Corner Forbidden Sugar 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/forbidden-sugar-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/forbidden-sugar-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-HURRIYA-GINGERIQUE",
+      "variant_id": "SHV-SH-PARIS-CORNER-HURRIYA-GINGERIQUE-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Hurriya Gingerique 100 ml",
+        "Paris Corner Hurriya Gingerique 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/hurriya-gingerique-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/hurriya-gingerique-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-DARK-ROSES",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAGIC-OUD-IN-DARK-ROSES-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Magic Oud in Dark Roses 100 ml",
+        "Paris Corner Magic Oud in Dark Roses 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/magic-oud-in-dark-roses-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/magic-oud-in-dark-roses-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-KALIMATH",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAGIC-OUD-IN-KALIMATH-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Magic Oud in Kalimath 100 ml",
+        "Paris Corner Magic Oud in Kalimath 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/magic-oud-in-kalimath-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/magic-oud-in-kalimath-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAGIC-OUD-IN-SANDAL-WOOD",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAGIC-OUD-IN-SANDAL-WOOD-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Magic Oud in Sandal Wood 100 ml",
+        "Paris Corner Magic Oud in Sandal Wood 100 ml"
+      ],
+      "source_url": "https://ae.pariscorner.com/products/magic-oud-in-sandal-wood-100ml",
+      "source_evidence_url": "https://ae.pariscorner.com/products/magic-oud-in-sandal-wood-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-1ff62b0b",
+      "variant_id": "SHV-SH-PARIS-CORNER-1ff62b0b-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Amber Oud 100 ml",
+        "Paris Corner Ministry of Oud - Amber Oud 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-d396a92a",
+      "variant_id": "SHV-SH-PARIS-CORNER-d396a92a-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Gladiators Oath 100 ml",
+        "Paris Corner Ministry of Oud - Gladiators Oath 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-6936e23b",
+      "variant_id": "SHV-SH-PARIS-CORNER-6936e23b-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Maestro's Symphony 100 ml",
+        "Paris Corner Ministry of Oud - Maestro's Symphony 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ff928faa",
+      "variant_id": "SHV-SH-PARIS-CORNER-ff928faa-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Nile Whispers 100 ml",
+        "Paris Corner Ministry of Oud - Nile Whispers 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-159b9d38",
+      "variant_id": "SHV-SH-PARIS-CORNER-159b9d38-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Beyond the Wall 100 ml",
+        "Paris Corner Ministry of Oud - Oud Beyond the Wall 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ae6eed96",
+      "variant_id": "SHV-SH-PARIS-CORNER-ae6eed96-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Indonesian 100 ml",
+        "Paris Corner Ministry of Oud - Oud Indonesian 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-fb16a27a",
+      "variant_id": "SHV-SH-PARIS-CORNER-fb16a27a-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Royal 100 ml",
+        "Paris Corner Ministry of Oud - Oud Royal 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-30133d89",
+      "variant_id": "SHV-SH-PARIS-CORNER-30133d89-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Satin 100 ml",
+        "Paris Corner Ministry of Oud - Oud Satin 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-7c4f3c29",
+      "variant_id": "SHV-SH-PARIS-CORNER-7c4f3c29-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Romance Reverie 100 ml",
+        "Paris Corner Ministry of Oud - Romance Reverie 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-efc71aee",
+      "variant_id": "SHV-SH-PARIS-CORNER-efc71aee-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Strictly Oud 100 ml",
+        "Paris Corner Ministry of Oud - Strictly Oud 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-8a3adfeb",
+      "variant_id": "SHV-SH-PARIS-CORNER-8a3adfeb-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud Greatest 100 ml",
+        "Paris Corner Ministry of Oud Greatest 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-39610187",
+      "variant_id": "SHV-SH-PARIS-CORNER-39610187-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Tiramisu Speculoos 100 ml",
+        "Paris Corner Tiramisu Speculoos 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-807b8de9",
+      "variant_id": "SHV-SH-PARIS-CORNER-807b8de9-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Date Caramel 100 ml",
+        "Paris Corner Date Caramel 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/date-caramel",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/date-caramel"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-INDOMITABLE",
+      "variant_id": "SHV-SH-PARIS-CORNER-INDOMITABLE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Indomitable 100 ml",
+        "Paris Corner Indomitable 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/indomitable",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/indomitable"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-MOSCOW-MULE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Moscow Mule 100 ml",
+        "Paris Corner Mawj Moscow Mule 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-18f3d5a4",
+      "variant_id": "SHV-SH-PARIS-CORNER-18f3d5a4-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Perseviron Fig Hug 100 ml",
+        "Paris Corner Perseviron Fig Hug 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/pc-fig-hug-perseviron-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-DUSKY-VANILLA",
+      "variant_id": "SHV-SH-PARIS-CORNER-DUSKY-VANILLA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Dusky Vanilla 100 ml",
+        "Paris Corner Dusky Vanilla 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dusky-vanilla"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FIG-FETE",
+      "variant_id": "SHV-SH-PARIS-CORNER-FIG-FETE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Fig Fete 100 ml",
+        "Paris Corner Fig Fete 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/fig-fete",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fig-fete"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-PEACH-DELULU",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-PEACH-DELULU-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Khair Peach Delulu 100 ml",
+        "Paris Corner Khair Peach Delulu 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-peach-delulu"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-FARAH",
+      "size_ml": 100,
+      "aliases": [
+        "Farah 100 ml",
+        "Paris Corner Farah 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-FARAH-100-000",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/farah",
+      "source_url": "https://www.pariscornerperfumes.com/products/farah"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MOLTEN-CARAMEL",
+      "size_ml": 100,
+      "aliases": [
+        "Molten Caramel 100 ml",
+        "Paris Corner Molten Caramel 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-MOLTEN-CARAMEL-100-UNSPECIFIED",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/molten-caramel",
+      "source_url": "https://www.pariscornerperfumes.com/products/molten-caramel"
     }
   ]
 }
