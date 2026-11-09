@@ -22,7 +22,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Maison Asrar": 120,
     "Swiss Arabian": 41,
-    "Paris Corner": 246,
+    "Paris Corner": 247,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Assaf": 140,
@@ -821,6 +821,44 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(len(matches), 1)
                 self.assertEqual(matches[0].get("gtin"), gtin)
                 self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+    def test_paris_corner_official_storefront_batch_a_detail_pages_and_sizes(self):
+        expected = {
+            "Arcana": ("https://www.pariscornerperfumes.com/products/arcana", None),
+            "Arwa": ("https://www.pariscornerperfumes.com/products/arwa", None),
+            "Atomise Intensive Men": ("https://www.pariscornerperfumes.com/products/atomise-intensive-men", None),
+            "Azm": ("https://www.pariscornerperfumes.com/products/azm", 100),
+            "Banana Bliss": ("https://www.pariscornerperfumes.com/products/banana-bliss-100ml", 100),
+            "Bayn Al Asrar": ("https://www.pariscornerperfumes.com/products/bayn-al-asrar", None),
+            "Blackberry Wish": ("https://www.pariscornerperfumes.com/products/blackberry-wish", 100),
+            "Cake Temptation": ("https://www.pariscornerperfumes.com/products/cake-temptation-100ml", 100),
+            "Camaro Homme Intense": ("https://www.pariscornerperfumes.com/products/camaro-homme-intense", None),
+            "Camp Fire Emir Factory Edition": ("https://www.pariscornerperfumes.com/products/camp-fire-emir-factory-edition", 100),
+            "Caramel Bash": ("https://www.pariscornerperfumes.com/products/caramel-bash-1", 100),
+            "Cedrat Essence Emir": ("https://www.pariscornerperfumes.com/products/cedart-essence-emir", 75),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
 if __name__ == "__main__":
