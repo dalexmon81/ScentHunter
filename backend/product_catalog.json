@@ -30867,8 +30867,13 @@
         "Arrogate Oud Bakhur",
         "Assaf Arrogate Oud Bakhur"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/oud-bakhur-arrogate",
+      "source_evidence_url": "https://assaf.ae/products/oud-bakhur-arrogate",
+      "source_product_url": "https://assaf.ae/products/oud-bakhur-arrogate",
+      "formats_ml": [
+        150
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-012",
@@ -31031,8 +31036,15 @@
         "Baby Girl",
         "Assaf Baby Girl"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/baby-girl-1",
+      "source_evidence_url": "https://assaf.ae/products/baby-girl-1",
+      "source_product_url": "https://assaf.ae/products/baby-girl-1",
+      "gender": "Women",
+      "formats_ml": [
+        100,
+        120
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-022",
@@ -31061,8 +31073,14 @@
         "Black Lady",
         "Assaf Black Lady"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/black-lady-200-ml",
+      "source_evidence_url": "https://assaf.ae/products/black-lady-200-ml",
+      "source_product_url": "https://assaf.ae/products/black-lady-200-ml",
+      "gender": "Women",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-024",
@@ -48684,6 +48702,50 @@
       "variant_id": "SHV-SH-ASSAF-0bc20939-200-000",
       "source_url": "https://assaf.ae/products/warrior",
       "source_evidence_url": "https://assaf.ae/products/warrior"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-021",
+      "size_ml": 100,
+      "aliases": [
+        "Baby Girl 100 ml",
+        "Assaf Baby Girl 100 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-021-100-000",
+      "source_url": "https://assaf.ae/products/baby-girl-1",
+      "source_evidence_url": "https://assaf.ae/products/baby-girl-1"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-021",
+      "size_ml": 120,
+      "aliases": [
+        "Baby Girl 120 ml",
+        "Assaf Baby Girl 120 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-021-120-000",
+      "source_url": "https://assaf.ae/products/edp-baby-girl-120ml",
+      "source_evidence_url": "https://assaf.ae/products/edp-baby-girl-120ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-023",
+      "size_ml": 200,
+      "aliases": [
+        "Black Lady 200 ml",
+        "Assaf Black Lady 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-023-200-000",
+      "source_url": "https://assaf.ae/products/black-lady-200-ml",
+      "source_evidence_url": "https://assaf.ae/products/black-lady-200-ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-011",
+      "size_ml": 150,
+      "aliases": [
+        "Arrogate Oud Bakhur 150 ml",
+        "Assaf Arrogate Oud Bakhur 150 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-011-150-000",
+      "source_url": "https://assaf.ae/products/oud-bakhur-arrogate",
+      "source_evidence_url": "https://assaf.ae/products/oud-bakhur-arrogate"
     }
   ]
 }
