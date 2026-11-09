@@ -225,3 +225,290 @@ Three additional standalone fragrances were added from individual official produ
 - **Rouge Extrait** — Extrait de Parfum; 100 ml, 30 ml and 10 ml
 
 Gift sets and coffrets remain excluded as standalone perfume identities. Other Jo Milano Paris lines outside the Games of Spades family were not added in this focused pass.
+
+
+### Source-host versus brand attribution follow-up (9 November 2026)
+
+A focused source review confirmed that three Maison Asrar fragrances use the Gulf Orchid storefront as their product host. The host domain alone must not be used to reassign the brand: each individual product page labels the product brand as **Maison Asrar**, and the pages explicitly state **100 ml - EDP**.
+
+- **Plot Twist** — https://shop-gulforchid.com/products/plot-twist
+- **Love Key** — https://shop-gulforchid.com/products/love-key
+- **Unsolved Mystery** — https://shop-gulforchid.com/products/unsolved-mystery
+
+These three existing identities therefore remain Maison Asrar products. Their existing 100 ml Eau de Parfum variants are retained; no duplicate products or variants were added. Regression coverage now checks the brand attribution, individual source URL, 100 ml size and EDP concentration for all three. This prevents a future cleanup from incorrectly treating a retailer's domain as the product's manufacturer.
+
+### Mykonos catalogue reconciliation lead (9 November 2026)
+
+The catalog contains **72** Mykonos canonical identities. A live check of the brand-owned **/collections/product** page returned **14 products, all sold out (0 in stock)** at the time inspected. This is a specific collection view, not proof that the brand has only 14 fragrances in its full historical or regional assortment. The earlier working figure of 54 products was not reproduced against this current collection view and must not be treated as a verified current count. The authorized European retailer's separate catalogue describes **90 fragrances** and explicitly states that it is not the official Mykonos site.
+
+The retailer's 90-item catalogue remains a discovery lead, not authority to bulk-import 18 additional identities. Candidate names and collaboration labels must be matched to brand-owned product pages or corroborated by a second reliable source before promotion. In this pass, 14 existing Mykonos identities were matched to individual brand-owned product pages and upgraded to individual-page provenance; no new canonical identities were added.
+
+Sources reviewed:
+- Brand-owned storefront: https://officialmykonos.com/collections/all
+- Authorized European retailer catalogue (explicitly identifies itself as not the official Mykonos site): https://mykonosperfumes.eu/pages/explore
+- Maison Asrar brand-owned storefront: https://maisonasrar.com/collections/all
+- Maison Asrar perfume-sprays collection: https://maisonasrar.com/collections/perfume-sprays
+- Gulf Orchid retailer pages for the three Maison Asrar fragrances listed above.
+
+
+### Mykonos official product-page reconciliation and variant-source correction (9 November 2026)
+
+Fourteen existing Mykonos identities were matched to their individual product pages on the brand-owned storefront. Their product-level source URL, evidence URL and product URL now point to the exact official page, and their confidence is upgraded from collection-listing evidence to individual-page evidence. The 14 identities are: Xoxo Rosy, Vanilla Clouds, Utopia, Sparkling Rosé, Pink Beach, Paradise, Musk Aura, Moroccan Vanilla, Hawaiian Crush, Enchanted, Caramel Fudge Cookie, California Club, Baby Love and Aphrodite.
+
+A later direct inspection of the shared official **Travel Size 15ML** product page corrected an earlier interpretation: this is not a Sansa-only product page. It explicitly presents a selectable list of **18 Mykonos fragrance options** at 15 ml, including Dark Secret, Musk Aura, Sansa, Satin Blanc, Sparkling Rosé, Black Opera, Moroccan Vanilla, Affair, Utopia, Tea Poetry, Hawaiian Crush, On The Rocks, Royal Ispahan, Crimson, California, California Blue, Penthouse and Monaco Royale. The page itself is the shared source for all 18 selectable options.
+
+The 17 variants that had been removed during the initial source review were therefore restored, together with their 15 ml format claims. The Sansa 15 ml variant was retained throughout. Their common evidence URL is correct because the official page explicitly lists all 18 options. Concentration is left unspecified for these travel variants because the shared page does not state it for each selection. Regression coverage now checks all 18 names, size and shared source URL, while separate tests check the direct full-size product pages.
+
+The official /collections/product page showed all 14 listed items sold out and 0 in stock when checked; this is transient availability context only and is not copied as live offer data.
+
+Sources:
+- Official Mykonos product collection (14 products; 0 in stock): https://officialmykonos.com/collections/product
+- Official individual pages for the 14 products listed above, linked from that collection.
+- Authorized European retailer catalogue (90 fragrance entries; explicitly not the official site): https://mykonosperfumes.eu/pages/explore
+
+
+### Mykonos retailer-only discovery queue (9 November 2026)
+
+A name-by-name comparison of the authorized EU retailer's 90-entry exploration page against the 72 existing Mykonos catalog identities produced **19 retailer-only candidate names** not currently represented as exact canonical names in the seed:
+
+- Berry Caramel Pancake
+- Forever Musc
+- Inspire Perfume
+- Avra Kehdabra
+- Violette (shown as a Violenzia collaboration)
+- Dolce Cherry (shown as a Sapeyeeee collaboration)
+- Daydream
+- Inception Reimagined
+- Monaco Royale Black
+- Shape Shift
+- Kingsman
+- Wallflower
+- Elysian
+- Undercover
+- Celestial
+- Café Lyon
+- President
+- Déjà Vu
+- Soft Hour x NCT Haechan
+
+These are **discovery leads only**, not approved canonical products. The retailer's page explicitly identifies itself as not the official Mykonos site. A targeted search of the brand-owned domain did not surface matching individual product pages for these names during this pass. Some entries are collaborations, some may be alternate editions or naming variants, and some are described without concentration or product detail. They must not be imported as 19 new products merely to make the catalog count match the retailer's 90-item headline.
+
+Next verification step: resolve each candidate against an individual brand-owned product page or a second reliable brand/distributor source; collapse aliases and editions only when product identity evidence supports it. No candidate from this queue was added to the product catalog.
+
+
+### Maison Asrar: official product-page and variant expansion (9 November 2026)
+
+A second pass through the brand-owned perfume-sprays collection found 12 more existing catalog identities with individual official product pages that explicitly identify their EDP format and bottle size. These were upgraded from generic collection-level provenance and given one matching variant each:
+
+- **Bloom Bloom** — 100 ml Eau de Parfum
+- **Lolita** — 100 ml Eau de Parfum
+- **Bonita** — 100 ml Eau de Parfum
+- **Lily** — 100 ml Eau de Parfum
+- **Kiss My Lips** — 90 ml Eau de Parfum
+- **Never Forget Me** — 90 ml Eau de Parfum
+- **Night in Paris** — 90 ml Eau de Parfum
+- **Sunset in Capri** — 90 ml Eau de Parfum
+- **Dear Jasmine** — 100 ml Eau de Parfum
+- **Patchouli with Love** — 100 ml Eau de Parfum
+- **Fresh Iris** — 100 ml Eau de Parfum
+- **Vanilla Rouge** — 100 ml Eau de Parfum
+
+The 19 previously individual-page-verified Maison Asrar records also now have explicit product-level evidence and product URLs populated. Together with the three Gulf Orchid-hosted Maison Asrar items, the seed now has **34 individually sourced Maison Asrar identities**, including **15 structured Maison Asrar variants** (12 newly added official EDP variants plus the three existing Gulf Orchid 100 ml EDP variants). The Maison Asrar canonical identity count remains 120; no duplicate products were added.
+
+The other **86** Maison Asrar identities remain at collection-listing confidence and still need individual-page reconciliation. The official perfume-sprays collection currently exposes **74 products**; this is a changing storefront view, not a claim that all 120 seed identities are current or that every item in the 129-product all-products collection is a standalone perfume.
+
+Sources:
+- Official Maison Asrar perfume-sprays collection: https://maisonasrar.com/collections/perfume-sprays
+- Individual official product pages linked from that collection for the 12 additions above.
+- Existing official individual pages for the 19 previously verified identities.
+
+
+### Mykonos 15 ml shared travel-size page clarification (9 November 2026)
+
+The initial interpretation of the URL containing `sansa-edp-travel-size-15ml` as Sansa-only was incorrect. The live official page title is **Mykonos - Travel Size 15ML** and its product content lists 18 selectable fragrance options. The shared URL is therefore valid variant-level evidence for all 18 listed options, not a misattribution. The 17 variants temporarily removed during review were restored. No concentration was inferred for those 15 ml variants because the page does not state concentration per option.
+
+Official source: https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml
+
+
+### Maison Asrar: second official collection batch (9 November 2026)
+
+The official perfume-sprays collection's second and third product pages exposed 22 more individual brand-owned product pages matching existing catalog identities:
+
+- Jawhara Rouge — 100 ml EDP
+- Jawhara Black — 100 ml EDP
+- Petra — 100 ml EDP
+- Casablanca — 100 ml EDP
+- Trophy — 100 ml EDP
+- Oscar — 100 ml EDP
+- Fairy Tale — 100 ml EDP
+- Magic Night — 100 ml EDP
+- Icon — 100 ml EDP
+- Desire — 100 ml EDP
+- Black Grapefruit (official product page titled **Black**) — 100 ml EDP
+- 1963 — 100 ml EDP
+- Emessa — official EDP product page; size not stated in the page URL, so no size or variant was inferred
+- Zenobia — 100 ml EDP
+- Fakhama — 100 ml EDP
+- Hamsat Ishq — 100 ml EDP
+- Hamsat Ghazal — 100 ml EDP
+- Hamsat Hob — 100 ml EDP
+- Hamsat Gharam — 100 ml EDP
+- Pink Crush — 100 ml EDP
+- Red Velvet — 100 ml EDP
+- Adorable — 100 ml EDP
+
+For the 21 products whose official individual URLs explicitly specify 100 ml EDP, the product provenance and format fields were upgraded and one corresponding 100 ml EDP variant was created with exact page-level evidence. Emessa's individual page verifies the product and EDP concentration, but not a bottle size, so it remains without a fabricated variant.
+
+The Maison Asrar source counts after this batch are **120 canonical identities, 56 individually sourced identities, 64 still at collection-listing confidence, and 36 structured variants** (15 from the prior batch plus 21 added here). No new canonical products were created.
+
+
+The official collection labels the Black Grapefruit listing **BLACK GRAPEFRUIT**, while its linked individual product page is titled **BLACK**. The page's own fragrance description and scent journey identify grapefruit, lavender and tonka, matching the collection listing. The canonical identity remains **Black Grapefruit** and **Black** is recorded as a source-backed alias rather than creating a second product.
+
+
+### Maison Asrar: collection pages 4 and 5 (9 November 2026)
+
+A further review of the fourth and fifth pages of the official perfume-sprays collection produced 24 more existing product identities with direct official product pages:
+
+**Sixteen explicit Eau de Parfum size variants**
+- Gentle Oud — 80 ml
+- Italian Leather — 80 ml
+- Wood Intense — 80 ml
+- Khateer — 100 ml
+- Basma — 100 ml
+- Khayal — 100 ml
+- Soudfa — 100 ml
+- Rose Musk — 100 ml
+- Rose Oud — 100 ml
+- Rose Honey — 100 ml
+- Rose Vanilla — 100 ml
+- Daham — 100 ml
+- Alonoud — 100 ml
+- Turath — 100 ml
+- Turath Malaki — 100 ml
+- Rosé Bouquet — 100 ml
+
+**Eight individual product pages without explicit size/concentration in the URL**
+- Vanilla Seduction
+- Vanilla Aura
+- Throne Eclipse
+- Throne
+- Aseel
+- Khayyal
+- Mohra
+- Milky Way
+
+For the 16 pages with explicit EDP size evidence, the catalog now contains one matching variant each. For the other eight, only product identity and source provenance were upgraded; no size, concentration or variant was guessed.
+
+The Maison Asrar count after this batch is **120 canonical identities, 80 individually sourced identities, 40 still at collection-listing confidence, and 52 structured variants**. No canonical products were added or duplicated.
+
+
+### Maison Asrar: final official collection pages (9 November 2026)
+
+The sixth and seventh pages of the brand-owned perfume-sprays collection were checked. Most products on those pages already had individual official provenance from earlier passes. Four additional existing identities were newly matched to direct official pages:
+
+- III Thriller
+- Dubai Milano
+- Dubai London
+- Dubai Miami
+
+Their product identity and source URLs are now verified. The linked product pages do not explicitly state a bottle size or concentration in the URL, so no variants or concentration values were inferred for these four.
+
+The official collection has 74 fragrance listings across its seven pages. The catalog remains broader (120 Maison Asrar identities) because it includes historical and other regional/listing evidence. This pass verifies four more existing identities; it does not claim all 120 are current products in this one storefront collection.
+
+
+### Maison Asrar duplicate identity reconciliation: Black / Black Grapefruit (9 November 2026)
+
+The source review exposed two catalog identities for the same fragrance: **Black** (retailer/listing provenance) and **Black Grapefruit** (official collection listing). The official collection links Black Grapefruit to the individual Maison Asrar product page titled **BLACK**; the page's scent profile explicitly names grapefruit, lavender and tonka, matching the collection card. The independent retailer's Black page also reproduces the brand's same note pyramid.
+
+The duplicate canonical **Black** row was removed from both `product_catalog.json` and `family_registry.json`. **Black Grapefruit** remains the canonical product, with **Black** retained as an alias and its official 100 ml EDP variant. This reduces Maison Asrar from 120 to **119 distinct canonical identities** without losing a fragrance or variant.
+
+
+### Maison Asrar: four additional individual product pages from best-seller discovery (9 November 2026)
+
+The official best-seller collection and exact-name search surfaced individual brand-owned pages for four remaining listing-level identities:
+
+- Faris Al Arab — direct product page; no size/concentration inferred
+- Vanilla Voyage — direct product page identifies Eau de Parfum; no size inferred
+- Gold Noir — direct product page identifies Eau de Parfum; no size inferred
+- Hilm — direct product page; no size/concentration inferred
+
+These four identities now have individual product provenance. No variants were created because the official individual pages do not state a bottle size in the source inspected.
+
+After merging the duplicate Black listing into Black Grapefruit and verifying these four pages, Maison Asrar now has **119 distinct canonical identities: 88 individually sourced and 31 still at collection-listing confidence**. The brand still has 52 structured variants in this catalog pass.
+
+
+### Maison Asrar: best-seller collection detail-page reconciliation (9 November 2026)
+
+The official best-seller collection linked individual product pages for 26 more existing identities that were still listing-level in the seed:
+
+Coffee Blend, Soirée, Date Night, Oh Honey!, Nada, Qamar, Joy, Rosé Absolute, Rubellite, Lumiere, Luna, Muharib, DXB, Vision, Rey, Wadi, Tornado, Hunter, Masterpiece, Cascade, Leo, Flair, Silver Elixer, Timeless, Larimar and Hikaya.
+
+All 26 now have individual official product provenance. Six product URLs explicitly include **100 ml Eau de Parfum** and therefore gained a matching variant: Joy, Rosé Absolute, Luna, Rey, Hunter and Leo. The remaining 20 retain identity-level verification only. Where the URL identifies Eau de Parfum but omits the size, concentration is recorded but no size or variant is invented.
+
+Maison Asrar now has **119 canonical identities, 114 individually sourced identities, 5 still at collection-listing confidence, and 58 structured variants**. The five remaining listing-only identities require more precise product evidence or a determination that they are historical/discontinued entries.
+
+
+### Maison Asrar: final three direct pages and remaining listing-only identities (9 November 2026)
+
+Exact-name research surfaced official individual pages for three of the five remaining listing-level identities:
+
+- **Omniya** — official individual product page; no size or concentration inferred
+- **Rose** — official individual product page identifies Eau de Parfum; size not stated
+- **Emerald** — official individual product page explicitly identifies **110 ml Eau de Parfum**, so a 110 ml EDP variant was added
+
+The only Maison Asrar identities still at collection-listing confidence are now **Pomme Rouge** and **Haven**. No matching individual product pages were found on the brand domain in this pass; they remain in the catalog as listing-level identities rather than being deleted or assigned invented formats.
+
+Maison Asrar now has **119 canonical identities, 117 individually sourced identities, 2 still at collection-listing confidence, and 59 structured variants**.
+
+
+### Gulf Orchid: product, collection and brand-attribution reconciliation (9 November 2026)
+
+A review of the Gulf Orchid storefront's own perfume collection and product pages found that the original 23-entry Gulf Orchid section mixed three different entity types:
+
+- **13 actual Gulf Orchid fragrance identities**
+- **8 collection labels** (Al Qasr, Asala, Hamsat, Hikma, Jawhara, Jewel, Riwaya and Turath), which are collection/family names rather than standalone perfume products
+- **2 Maison Asrar products** (Vanilla Aura and Vanilla Voyage) sold by the Gulf Orchid retailer but explicitly labeled Maison Asrar
+
+The eight collection labels and two cross-brand duplicates were removed from Gulf Orchid's product records and family registry. Vanilla Aura and Vanilla Voyage remain in the Maison Asrar brand catalog. This is a source-host versus manufacturer distinction: a retailer selling a fragrance does not become its brand.
+
+The 13 remaining Gulf Orchid products were upgraded to individual product-page provenance. Fourteen variants were added where the product pages explicitly state size and EDP concentration:
+
+- Vanilla Addiction — 100 ml EDP
+- Mango Ice — 100 ml EDP
+- Tahara Vanilla Musk — 60 ml EDP
+- Sweet Heaven — 20 ml and 100 ml EDP
+- Pink Marshmallow — 100 ml EDP
+- Coco Blanco — 100 ml EDP
+- Exotic Oud — 100 ml EDP
+- Vanilla Latte — 100 ml EDP
+- Cookie Bite — 100 ml EDP
+- Sweet Like Candy — 100 ml EDP
+- Sweet Heaven Extreme — 20 ml and 100 ml EDP
+- Piña Colada Musk — 60 ml EDP
+
+Cotton Candy Musk has an individual product page and EDP identity, but the page inspected does not state its size; no variant was invented.
+
+The two size-bearing records **Sweet Heaven 20ML** and **Sweet Heaven Extreme 20ML** were normalized to the canonical product names **Sweet Heaven** and **Sweet Heaven Extreme**, with the 20 ml format represented as a variant alongside the 100 ml full-size variant.
+
+Gulf Orchid now contains **13 distinct fragrance identities and 14 structured EDP variants**. The product catalog total falls by ten because collection labels and cross-brand duplicates were removed; no actual Gulf Orchid or Maison Asrar fragrance was lost.
+
+
+### Gulf Orchid: second official storefront page (9 November 2026)
+
+The second page of the brand-owned Gulf Orchid perfume collection contains 15 listings. Two are the already-catalogued **Sweet Heaven** and **Sweet Heaven Extreme**; the other 13 are new fragrance identities and were added from their individual official product pages:
+
+- Angel Musk — 60 ml EDP
+- Cloud 9 — 100 ml EDP
+- Naughty Vanilla — 100 ml EDP
+- Yacht Club — 100 ml EDP
+- Sweet Heaven Cherry — 20 ml EDP
+- Candy Bite — 100 ml EDP
+- Sweet Cherry Kiss — 100 ml EDP
+- Creamy Pistachio — 100 ml EDP
+- Marshmallow — 100 ml EDP
+- Sweet Heaven Ice — 100 ml EDP
+- Crème Caramel — 100 ml EDP
+- Mysterious Tahara Musk — 60 ml EDP
+- Pomegranate Musk — 60 ml EDP
+
+Each new identity has a direct official product URL and one size-specific EDP variant. The Gulf Orchid catalog now contains **26 verified fragrance identities and 27 variants** (14 from the first pass plus 13 newly added). The 8 collection labels and 2 Maison Asrar retailer duplicates remain excluded.

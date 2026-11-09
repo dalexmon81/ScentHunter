@@ -13,7 +13,8 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
-    "Maison Asrar": 120,
+    # One duplicate Black / Black Grapefruit identity was reconciled into one canonical product.
+    "Maison Asrar": 119,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -22,7 +23,8 @@ MINIMUM_BRAND_COUNTS = {
     "Armaf": 191,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 23,
+    # Eight collection labels and two Maison Asrar retailer duplicates were removed from product identities.
+    "Gulf Orchid": 26,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 115,
@@ -675,6 +677,677 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
         self.assertEqual(matches[0].get("source_evidence_url"), source)
 
+
+
+    def test_maison_asrar_products_on_gulf_orchid_store_keep_maison_asrar_brand(self):
+        expected = {
+            "Plot Twist": "https://shop-gulforchid.com/products/plot-twist",
+            "Love Key": "https://shop-gulforchid.com/products/love-key",
+            "Unsolved Mystery": "https://shop-gulforchid.com/products/unsolved-mystery",
+        }
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        ]
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertIn(100, product.get("formats_ml", []))
+                matching_variants = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                    and row.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching_variants), 1)
+                self.assertEqual(
+                    matching_variants[0].get("concentration"),
+                    "Eau de Parfum",
+                )
+                self.assertEqual(
+                    matching_variants[0].get("source_evidence_url"),
+                    source,
+                )
+
+
+    def test_mykonos_official_product_page_provenance_and_variants(self):
+        expected = {
+            "Xoxo Rosy": (
+                "https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "Vanilla Clouds": (
+                "https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1",
+                {50: "Extrait de Parfum"},
+            ),
+            "Utopia": (
+                "https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Sparkling Rosé": (
+                "https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Pink Beach": (
+                "https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "Paradise": (
+                "https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml",
+                {50: "Extrait de Parfum"},
+            ),
+            "Musk Aura": (
+                "https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Moroccan Vanilla": (
+                "https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml",
+                {100: "Extrait de Parfum"},
+            ),
+            "Hawaiian Crush": (
+                "https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml",
+                {50: "Extrait de Parfum"},
+            ),
+            "Enchanted": (
+                "https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml",
+                {50: "Extrait de Parfum", 100: "Extrait de Parfum"},
+            ),
+            "Caramel Fudge Cookie": (
+                "https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "California Club": (
+                "https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml",
+                {50: "Extrait de Parfum"},
+            ),
+            "Baby Love": (
+                "https://officialmykonos.com/products/mykonos-baby-love-edp-50ml",
+                {50: "Eau de Parfum"},
+            ),
+            "Aphrodite": (
+                "https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml",
+                {50: "Extrait de Parfum", 100: "Extrait de Parfum"},
+            ),
+        }
+        travel_url = (
+            "https://officialmykonos.com/products/"
+            "mykonos-sansa-edp-travel-size-15ml"
+        )
+        travel_names = {
+            "Utopia", "Sparkling Rosé", "Musk Aura",
+            "Moroccan Vanilla", "Hawaiian Crush",
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, expected_sizes) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Mykonos"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                actual = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                regular = [row for row in actual if row.get("size_ml") != 15]
+                self.assertEqual(
+                    {row.get("size_ml"): row.get("concentration") for row in regular},
+                    expected_sizes,
+                )
+                travel = [row for row in actual if row.get("size_ml") == 15]
+                if name in travel_names:
+                    self.assertEqual(len(travel), 1)
+                    self.assertEqual(travel[0].get("source_evidence_url"), travel_url)
+                    self.assertNotIn("concentration", travel[0])
+                else:
+                    self.assertEqual(travel, [])
+                for variant in regular:
+                    self.assertEqual(variant.get("source_evidence_url"), source)
+
+    def test_mykonos_travel_size_page_documents_18_selectable_15ml_variants(self):
+        travel_url = (
+            "https://officialmykonos.com/products/"
+            "mykonos-sansa-edp-travel-size-15ml"
+        )
+        expected = {
+            "Dark Secret", "Musk Aura", "Sansa", "Satin Blanc",
+            "Sparkling Rosé", "Black Opera", "Moroccan Vanilla", "Affair",
+            "Utopia", "Tea Poetry", "Hawaiian Crush", "On The Rocks",
+            "Royal Ispahan", "Crimson", "California", "California Blue",
+            "Penthouse", "Monaco Royale",
+        }
+        products_by_id = {
+            row.get("product_id"): row
+            for row in CATALOG.get("products", [])
+        }
+        linked = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("source_evidence_url") == travel_url
+        ]
+        self.assertEqual(len(linked), 18)
+        names = set()
+        for variant in linked:
+            product = products_by_id[variant["product_id"]]
+            names.add(product.get("canonical_name"))
+            self.assertEqual(variant.get("size_ml"), 15)
+            self.assertNotIn("concentration", variant)
+            self.assertIn(15, product.get("formats_ml", []))
+        self.assertEqual(names, expected)
+
+    def test_maison_asrar_official_edp_product_pages_and_variants(self):
+        expected = {
+            "Bloom Bloom": (
+                "https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml",
+                100,
+            ),
+            "Lolita": (
+                "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+                100,
+            ),
+            "Bonita": (
+                "https://maisonasrar.com/products/bonita-eau-de-parfum-100ml",
+                100,
+            ),
+            "Lily": (
+                "https://maisonasrar.com/products/lily-eau-de-parfum-100ml",
+                100,
+            ),
+            "Kiss My Lips": (
+                "https://maisonasrar.com/products/kiss-my-lips-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Never Forget Me": (
+                "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Night in Paris": (
+                "https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Sunset in Capri": (
+                "https://maisonasrar.com/products/sunset-in-capri-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Dear Jasmine": (
+                "https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+            "Patchouli with Love": (
+                "https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+            "Fresh Iris": (
+                "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+            "Vanilla Rouge": (
+                "https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [size])
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), size)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
+    def test_maison_asrar_second_official_collection_batch_100ml_edp_variants(self):
+        expected = {
+            "Jawhara Rouge": "https://maisonasrar.com/products/jawhara-rouge-eau-de-perfum-100ml",
+            "Jawhara Black": "https://maisonasrar.com/products/jawhara-black-eau-de-perfum-100ml",
+            "Petra": "https://maisonasrar.com/products/petra-maison-asrar-eau-de-perfum-100ml",
+            "Casablanca": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml",
+            "Trophy": "https://maisonasrar.com/products/trophy-eau-de-perfum-100ml",
+            "Oscar": "https://maisonasrar.com/products/oscar-eau-de-perfum-100ml",
+            "Fairy Tale": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml",
+            "Magic Night": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+            "Icon": "https://maisonasrar.com/products/icon-eau-de-perfum-100ml",
+            "Desire": "https://maisonasrar.com/products/desire-eau-de-perfum-100ml",
+            "Black Grapefruit": "https://maisonasrar.com/products/black-eau-de-perfum-100ml",
+            "1963": "https://maisonasrar.com/products/1963-eau-de-perfum-100ml",
+            "Zenobia": "https://maisonasrar.com/products/maison-asrar-zenobia-eau-de-parfum-100-ml-for-women",
+            "Fakhama": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+            "Hamsat Ishq": "https://maisonasrar.com/products/maison-asrar-hamsat-ishq-eau-de-parfum-100-ml-for-women",
+            "Hamsat Ghazal": "https://maisonasrar.com/products/maison-asrar-hamsat-ghazal-eau-de-parfum-100-ml-for-women",
+            "Hamsat Hob": "https://maisonasrar.com/products/maison-asrar-hamsat-hob-eau-de-parfum-100-ml-for-women",
+            "Hamsat Gharam": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women",
+            "Pink Crush": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women",
+            "Red Velvet": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women",
+            "Adorable": "https://maisonasrar.com/products/adorable-eau-de-parfum-100-ml-for-women",
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [100])
+                if name == "Black Grapefruit":
+                    self.assertIn("Black", product.get("aliases", []))
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), 100)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+    def test_maison_asrar_emessa_official_page_does_not_infer_size(self):
+        source = (
+            "https://maisonasrar.com/products/"
+            "maison-asrar-emessa-eau-de-parfum-for-women"
+        )
+        matches = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+            and row.get("canonical_name") == "Emessa"
+        ]
+        self.assertEqual(len(matches), 1)
+        product = matches[0]
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), source)
+        self.assertEqual(product.get("source_evidence_url"), source)
+        self.assertEqual(product.get("concentration"), "Eau de Parfum")
+        self.assertFalse(product.get("formats_ml"))
+        self.assertFalse([
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == product["product_id"]
+        ])
+
+
+    def test_maison_asrar_collection_pages_four_and_five_explicit_variants(self):
+        expected = {
+            "Gentle Oud": ("https://maisonasrar.com/products/maison-asrar-gentle-oud-eau-de-parfum-80-ml-for-men", 80),
+            "Italian Leather": ("https://maisonasrar.com/products/maison-asrar-italian-leather-eau-de-parfum-80-ml-for-men", 80),
+            "Wood Intense": ("https://maisonasrar.com/products/maison-asrar-wood-intense-eau-de-parfum-80-ml-for-men", 80),
+            "Khateer": ("https://maisonasrar.com/products/maison-asrar-khateer-eau-de-parfum-100-ml-for-men", 100),
+            "Basma": ("https://maisonasrar.com/products/maison-asrar-basma-eau-de-parfum-100-ml-unisex", 100),
+            "Khayal": ("https://maisonasrar.com/products/maison-asrar-khayal-eau-de-parfum-100-ml-unisex", 100),
+            "Soudfa": ("https://maisonasrar.com/products/maison-asrar-soudfa-eau-de-parfum-100-ml-for-women", 100),
+            "Rose Musk": ("https://maisonasrar.com/products/maison-asrar-rose-musk-eau-de-parfum-100-ml-for-women", 100),
+            "Rose Oud": ("https://maisonasrar.com/products/maison-asrar-rose-oud-eau-de-parfum-100-ml-for-women", 100),
+            "Rose Honey": ("https://maisonasrar.com/products/maison-asrar-rose-honey-eau-de-parfum-100-ml-for-women", 100),
+            "Rose Vanilla": ("https://maisonasrar.com/products/maison-asrar-rose-vanilla-eau-de-parfum-100-ml-for-women", 100),
+            "Daham": ("https://maisonasrar.com/products/maison-asrar-daham-eau-de-parfum-100-ml-for-men", 100),
+            "Alonoud": ("https://maisonasrar.com/products/maison-asrar-alonoud-eau-de-parfum-100-ml-for-women", 100),
+            "Turath": ("https://maisonasrar.com/products/turath-eau-de-perfum-100ml", 100),
+            "Turath Malaki": ("https://maisonasrar.com/products/turath-malaki-eau-de-perfum-100ml", 100),
+            "Rosé Bouquet": ("https://maisonasrar.com/products/bouquet-eau-de-perfum-100ml", 100),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [size])
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), size)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+    def test_maison_asrar_collection_pages_four_and_five_unsized_pages_do_not_infer_variants(self):
+        expected = {
+            "Vanilla Seduction": "https://maisonasrar.com/products/vanilla-seduction",
+            "Vanilla Aura": "https://maisonasrar.com/products/vanilla-aura",
+            "Throne Eclipse": "https://maisonasrar.com/products/throne-eclipse",
+            "Throne": "https://maisonasrar.com/products/throne",
+            "Aseel": "https://maisonasrar.com/products/aseel",
+            "Khayyal": "https://maisonasrar.com/products/khayyal",
+            "Mohra": "https://maisonasrar.com/products/mohrab",
+            "Milky Way": "https://maisonasrar.com/products/milky-way",
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertFalse(product.get("formats_ml"))
+                self.assertNotIn("concentration", product)
+                self.assertFalse([
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ])
+
+
+    def test_maison_asrar_final_collection_pages_identity_without_size_inference(self):
+        expected = {
+            "III Thriller": "https://maisonasrar.com/products/iii-thriller",
+            "Dubai Milano": "https://maisonasrar.com/products/dubai-milano",
+            "Dubai London": "https://maisonasrar.com/products/dubai-london",
+            "Dubai Miami": "https://maisonasrar.com/products/dubai-miami",
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertFalse(product.get("formats_ml"))
+                self.assertNotIn("concentration", product)
+                self.assertFalse([
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ])
+
+
+    def test_maison_asrar_best_seller_individual_pages_without_size_inference(self):
+        expected = {
+            "Faris Al Arab": (
+                "https://maisonasrar.com/products/faris-al-arab",
+                None,
+            ),
+            "Vanilla Voyage": (
+                "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+                "Eau de Parfum",
+            ),
+            "Gold Noir": (
+                "https://maisonasrar.com/products/gulf-orchid-gold-noir-eau-de-parfum",
+                "Eau de Parfum",
+            ),
+            "Hilm": (
+                "https://maisonasrar.com/products/hilm",
+                None,
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), concentration)
+                self.assertFalse(product.get("formats_ml"))
+                self.assertFalse([
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ])
+
+
+    def test_maison_asrar_best_seller_collection_pages_and_variants(self):
+        expected = {
+            "Coffee Blend": ("https://maisonasrar.com/products/coffee-blend-eau-de-parfum", "Eau de Parfum", None),
+            "Soirée": ("https://maisonasrar.com/products/soiree", None, None),
+            "Date Night": ("https://maisonasrar.com/products/date-night", None, None),
+            "Oh Honey!": ("https://maisonasrar.com/products/oh-honey-eau-de-parfum", "Eau de Parfum", None),
+            "Nada": ("https://maisonasrar.com/products/nada", None, None),
+            "Qamar": ("https://maisonasrar.com/products/qamar", None, None),
+            "Joy": ("https://maisonasrar.com/products/joy-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Rosé Absolute": ("https://maisonasrar.com/products/absolute-eau-de-perfum-100ml", "Eau de Parfum", 100),
+            "Rubellite": ("https://maisonasrar.com/products/rubellite", None, None),
+            "Lumiere": ("https://maisonasrar.com/products/lumiere", None, None),
+            "Luna": ("https://maisonasrar.com/products/luna-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Muharib": ("https://maisonasrar.com/products/muharib", None, None),
+            "DXB": ("https://maisonasrar.com/products/dxb", None, None),
+            "Vision": ("https://maisonasrar.com/products/vision", None, None),
+            "Rey": ("https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar", "Eau de Parfum", 100),
+            "Wadi": ("https://maisonasrar.com/products/wadi", None, None),
+            "Tornado": ("https://maisonasrar.com/products/tornado", None, None),
+            "Hunter": ("https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Masterpiece": ("https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum", "Eau de Parfum", None),
+            "Cascade": ("https://maisonasrar.com/products/cascade", None, None),
+            "Leo": ("https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Flair": ("https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum", "Eau de Parfum", None),
+            "Silver Elixer": ("https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum", "Eau de Parfum", None),
+            "Timeless": ("https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum", "Eau de Parfum", None),
+            "Larimar": ("https://maisonasrar.com/products/larimar", None, None),
+            "Hikaya": ("https://maisonasrar.com/products/hikaya", None, None),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, size) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), concentration)
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                if size is None:
+                    self.assertFalse(product.get("formats_ml"))
+                    self.assertEqual(matching, [])
+                else:
+                    self.assertEqual(product.get("formats_ml"), [size])
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("size_ml"), size)
+                    self.assertEqual(matching[0].get("concentration"), concentration)
+                    self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
+    def test_maison_asrar_final_three_individual_pages_and_emerald_variant(self):
+        expected = {
+            "Omniya": (
+                "https://maisonasrar.com/products/omniya",
+                None,
+                None,
+            ),
+            "Rose": (
+                "https://maisonasrar.com/products/gulf-orchid-rose-eau-de-parfum",
+                "Eau de Parfum",
+                None,
+            ),
+            "Emerald": (
+                "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml",
+                "Eau de Parfum",
+                110,
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, size) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), concentration)
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                if size is None:
+                    self.assertFalse(product.get("formats_ml"))
+                    self.assertEqual(matching, [])
+                else:
+                    self.assertEqual(product.get("formats_ml"), [size])
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("size_ml"), size)
+                    self.assertEqual(matching[0].get("concentration"), concentration)
+                    self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
+    def test_gulf_orchid_products_are_brand_attributed_and_variants_are_normalized(self):
+        expected = {
+            "Vanilla Addiction": ("https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum", {100: "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum"}),
+            "Mango Ice": ("https://shop-gulforchid.com/products/mango_ice_eau_de_parfum", {100: "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum"}),
+            "Cotton Candy Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy", {}),
+            "Tahara Vanilla Musk": ("https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml", {60: "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"}),
+            "Sweet Heaven": ("https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum", {20: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml", 100: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum"}),
+            "Pink Marshmallow": ("https://shop-gulforchid.com/products/pink-marshmallow", {100: "https://shop-gulforchid.com/products/pink-marshmallow"}),
+            "Coco Blanco": ("https://shop-gulforchid.com/products/coco-blanco", {100: "https://shop-gulforchid.com/products/coco-blanco"}),
+            "Exotic Oud": ("https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum", {100: "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"}),
+            "Vanilla Latte": ("https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum", {100: "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"}),
+            "Cookie Bite": ("https://shop-gulforchid.com/products/cookie-bite", {100: "https://shop-gulforchid.com/products/cookie-bite"}),
+            "Sweet Like Candy": ("https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum", {100: "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum"}),
+            "Sweet Heaven Extreme": ("https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum", {20: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml", 100: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum"}),
+            "Piña Colada Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada", {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada"}),
+            "Angel Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel", {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel"}),
+            "Cloud 9": ("https://shop-gulforchid.com/products/cloud-9", {100: "https://shop-gulforchid.com/products/cloud-9"}),
+            "Naughty Vanilla": ("https://shop-gulforchid.com/products/naughty-vanilla", {100: "https://shop-gulforchid.com/products/naughty-vanilla"}),
+            "Yacht Club": ("https://shop-gulforchid.com/products/yacht_club_eau_de_parfum", {100: "https://shop-gulforchid.com/products/yacht_club_eau_de_parfum"}),
+            "Sweet Heaven Cherry": ("https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum", {20: "https://shop-gulforchid.com/products/sweet_heaven_cherry_20_ml_eau_de_parfum"}),
+            "Candy Bite": ("https://shop-gulforchid.com/products/candy-bite", {100: "https://shop-gulforchid.com/products/candy-bite"}),
+            "Sweet Cherry Kiss": ("https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum", {100: "https://shop-gulforchid.com/products/sweet_cherry_kiss_eau_de_parfum"}),
+            "Creamy Pistachio": ("https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum", {100: "https://shop-gulforchid.com/products/creamy_pistachio_eau_de_parfum"}),
+            "Marshmallow": ("https://shop-gulforchid.com/products/marshmallow", {100: "https://shop-gulforchid.com/products/marshmallow"}),
+            "Sweet Heaven Ice": ("https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum", {100: "https://shop-gulforchid.com/products/sweet_heaven_ice_eau_de_parfum"}),
+            "Crème Caramel": ("https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum", {100: "https://shop-gulforchid.com/products/creme_caramel_eau_de_parfum"}),
+            "Mysterious Tahara Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara", {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-mysterious-tahara"}),
+            "Pomegranate Musk": ("https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml", {60: "https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml"}),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        gulf = [p for p in products if p.get("brand_name") == "Gulf Orchid"]
+        self.assertEqual(len(gulf), 26)
+        self.assertEqual({p.get("canonical_name") for p in gulf}, set(expected))
+        for name, (source, variant_sources) in expected.items():
+            with self.subTest(name=name):
+                product = next(p for p in gulf if p.get("canonical_name") == name)
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                matching = [v for v in variants if v.get("product_id") == product["product_id"]]
+                self.assertEqual(
+                    {v.get("size_ml"): v.get("source_evidence_url") for v in matching},
+                    variant_sources,
+                )
+                if variant_sources:
+                    self.assertEqual(product.get("formats_ml"), sorted(variant_sources))
+                else:
+                    self.assertFalse(product.get("formats_ml"))
+
+    def test_gulf_orchid_collection_labels_and_maison_asrar_retail_duplicates_are_not_products(self):
+        gulf = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Gulf Orchid"
+        ]
+        forbidden = {
+            "Al Qasr", "Asala", "Hamsat", "Hikma",
+            "Jawhara", "Jewel", "Riwaya", "Turath",
+            "Vanilla Aura", "Vanilla Voyage",
+            "Sweet Heaven 20ML", "Sweet Heaven Extreme 20ML",
+        }
+        self.assertFalse(
+            [p.get("canonical_name") for p in gulf if p.get("canonical_name") in forbidden]
+        )
+        maison = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Maison Asrar"
+        ]
+        self.assertEqual(
+            len([p for p in maison if p.get("canonical_name") == "Vanilla Aura"]),
+            1,
+        )
+        self.assertEqual(
+            len([p for p in maison if p.get("canonical_name") == "Vanilla Voyage"]),
+            1,
+        )
+        self.assertEqual(
+            len([p for p in gulf if p.get("canonical_name") == "Sweet Heaven"]),
+            1,
+        )
+        self.assertEqual(
+            len([p for p in gulf if p.get("canonical_name") == "Sweet Heaven Extreme"]),
+            1,
+        )
 
 if __name__ == "__main__":
     unittest.main()
