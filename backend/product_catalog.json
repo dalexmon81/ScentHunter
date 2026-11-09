@@ -37905,6 +37905,28 @@
       "source_evidence_url": "https://armaf.com/products/armaf-aura-fresh",
       "concentration": "Eau de Parfum",
       "gender": "Men"
+    },
+    {
+      "product_id": "SH-ARMAF-7ee27c99",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "The Lion's Club Monarque",
+      "name": "The Lion's Club Monarque",
+      "family_id": "armaf_catalog",
+      "family_name": "The Lion's Club Monarque",
+      "aliases": [
+        "The Lion's Club Monarque",
+        "The Lion's Club - Monarque",
+        "Armaf The Lion's Club Monarque"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.eu/products/the-lions-club-monarque",
+      "source_evidence_url": "https://armaf.eu/products/the-lions-club-monarque",
+      "source_product_url": "https://armaf.eu/products/the-lions-club-monarque",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -45971,6 +45993,18 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/odyssey-wild-one",
       "source_evidence_url": "https://armaf.com/products/odyssey-wild-one"
+    },
+    {
+      "product_id": "SH-ARMAF-7ee27c99",
+      "size_ml": 100,
+      "aliases": [
+        "The Lion's Club Monarque 100 ml",
+        "Armaf The Lion's Club Monarque 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-7ee27c99-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://armaf.eu/products/the-lions-club-monarque",
+      "source_url": "https://armaf.eu/products/the-lions-club-monarque"
     }
   ]
 }
