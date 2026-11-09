@@ -249,14 +249,20 @@ class AssafRangeHarvestTests(unittest.TestCase):
                     self.assertNotIn("concentration", product)
 
 
-    def test_lip_stick_official_identity_is_verified_but_conflicting_size_is_not_normalized(self):
+    def test_lip_stick_official_identity_has_verified_125ml_variant(self):
         product = self.by_name["lip stick"]
+        source = "https://assaf.ae/products/lip-stick-125ml"
         self.assertEqual(product.get("identity_status"), "source_verified_name")
-        self.assertEqual(product.get("source_url"), "https://assaf.ae/products/lip-stick-125ml")
-        self.assertNotIn("formats_ml", product)
-        self.assertFalse(
-            any(variant.get("product_id") == product["product_id"] for variant in self.catalog["variants"])
-        )
+        self.assertEqual(product.get("source_url"), source)
+        self.assertEqual(product.get("formats_ml"), [125])
+        variants = [
+            variant for variant in self.catalog["variants"]
+            if variant.get("product_id") == product["product_id"]
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("size_ml"), 125)
+        self.assertEqual(variants[0].get("source_url"), source)
+        self.assertEqual(variants[0].get("source_evidence_url"), source)
 
     def test_two_more_assaf_official_detail_pages_have_supported_variants(self):
         expected = {
