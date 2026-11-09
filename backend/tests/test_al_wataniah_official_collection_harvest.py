@@ -355,8 +355,6 @@ EXPECTED = {
 }
 
 VERIFIED_DETAIL_URLS = {
-    "Lemon Souffle": "https://www.alwataniah.com/products/lemon-souffle",
-    "Choco Truffle": "https://www.alwataniah.com/products/choco-truffle",
     "Kayaan Midnight": "https://www.alwataniah.com/products/kayaan-midnight",
     "Sabah Al Ward": "https://www.alwataniah.com/products/sabah-al-ward",
     "Sabah Al Ward Sugar": "https://www.alwataniah.com/products/saba-al-ward-sugar",
@@ -369,6 +367,16 @@ VERIFIED_DETAIL_URLS = {
     "Praline Toffee": "https://www.alwataniah.com/products/praline-toffee",
     "Turquois": "https://www.alwataniah.com/products/turquois",
     "Royal Oak II": "https://www.alwataniah.com/products/royal-oak-ii",
+    "Kayaan Classic": "https://www.alwataniah.com/products/kayaan-classic",
+    "Kayaan Terra": "https://www.alwataniah.com/products/kayaan-terra",
+    "Kayaan Gold": "https://www.alwataniah.com/products/kayaan-gold",
+    "Ain Emarat": "https://www.alwataniah.com/products/ain-emarat",
+    "Royal Oak I": "https://www.alwataniah.com/products/royal-oak-i",
+    "Al Daiem": "https://www.alwataniah.com/products/al-daiem",
+    "Arya Peony Rose": "https://www.alwataniah.com/products/arya-peony-rose",
+    "Arya": "https://www.alwataniah.com/products/arya",
+    "Ain Emarat Extrait": "https://www.alwataniah.com/products/ain-emarat-extrait",
+    "Nada": "https://www.alwataniah.com/products/nada"
 }
 
 
