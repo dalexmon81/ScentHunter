@@ -1042,5 +1042,52 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_paris_corner_official_storefront_batch_d_detail_pages_and_sizes(self):
+        expected = {
+            "Lueur d'Espoir Arena Intense": ("https://www.pariscornerperfumes.com/products/lueur-d-espoir-arena-intense", 100),
+            "Lueur d'Espoir Memories of Summer": ("https://www.pariscornerperfumes.com/products/lueur-d-espoir-memories-of-summer", 100),
+            "Lueur d'Espoir Serene Grove": ("https://www.pariscornerperfumes.com/products/lueur-d-espoir-serene-grove", 100),
+            "Lueur d'Espoir Silhouette": ("https://www.pariscornerperfumes.com/products/lueur-d-espoir-silhouette", 100),
+            "Lullaby": ("https://www.pariscornerperfumes.com/products/lullaby", None),
+            "Magic Oud Dark Roses": ("https://www.pariscornerperfumes.com/products/magic-oud-dark-roses", None),
+            "Magic Oud In Pure Zaffron": ("https://www.pariscornerperfumes.com/products/magic-oud-in-pure-zaffron", None),
+            "Magic Oud Kalimath": ("https://www.pariscornerperfumes.com/products/magic-oud-kalimath", None),
+            "Magic Oud Kashmir Musk": ("https://www.pariscornerperfumes.com/products/magic-oud-kashmir-musk", None),
+            "Magic Oud Sandal Wood": ("https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood", None),
+            "Manaal": ("https://www.pariscornerperfumes.com/products/manaal-1", None),
+            "Mango Flames": ("https://www.pariscornerperfumes.com/products/mango-flames", None),
+            "Mango Jugoso": ("https://www.pariscornerperfumes.com/products/mango-jugoso-100ml", 100),
+            "Mango Punch": ("https://www.pariscornerperfumes.com/products/mango-punch", None),
+            "Mawj Appletini": ("https://www.pariscornerperfumes.com/products/mawj-appletini", None),
+            "Mawj Cognac Blaze": ("https://www.pariscornerperfumes.com/products/mawj-cognac-blaze", None),
+            "Mawj Moscow Mule": ("https://www.pariscornerperfumes.com/products/mawj-moscow-mule", None),
+            "Mehwish": ("https://www.pariscornerperfumes.com/products/mehwish", None),
+            "Metalico Emir": ("https://www.pariscornerperfumes.com/products/metalico-emir", None),
+            "Miel Obscura": ("https://www.pariscornerperfumes.com/products/miel-obscura", 100),
+            "Miel Vanille": ("https://www.pariscornerperfumes.com/products/miel-vanille", None),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
