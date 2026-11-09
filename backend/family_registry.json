@@ -10407,6 +10407,34 @@
             "Piña Colada Musk",
             "Gulf Orchid Piña Colada Musk"
           ]
+        },
+        {
+          "canonical_name": "Ameer",
+          "aliases": [
+            "Ameer",
+            "Gulf Orchid Ameer"
+          ]
+        },
+        {
+          "canonical_name": "Belle",
+          "aliases": [
+            "Belle",
+            "Gulf Orchid Belle"
+          ]
+        },
+        {
+          "canonical_name": "Amour",
+          "aliases": [
+            "Amour",
+            "Gulf Orchid Amour"
+          ]
+        },
+        {
+          "canonical_name": "Chic",
+          "aliases": [
+            "Chic",
+            "Gulf Orchid Chic"
+          ]
         }
       ]
     },
@@ -13952,6 +13980,34 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Victorioso Heroic",
+          "aliases": [
+            "Victorioso Heroic",
+            "Maison Alhambra Victorioso Heroic"
+          ]
+        },
+        {
+          "canonical_name": "Rose Origami",
+          "aliases": [
+            "Rose Origami",
+            "Maison Alhambra Rose Origami"
+          ]
+        },
+        {
+          "canonical_name": "Opera Rouge",
+          "aliases": [
+            "Opera Rouge",
+            "Maison Alhambra Opera Rouge"
+          ]
+        },
+        {
+          "canonical_name": "Camille",
+          "aliases": [
+            "Camille",
+            "Maison Alhambra Camille"
           ]
         }
       ]
