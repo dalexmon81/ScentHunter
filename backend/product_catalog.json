@@ -7092,8 +7092,13 @@
         "Amber Oud Tobacco Edition",
         "Al Haramain Amber Oud Tobacco Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-tobacco-edition.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-tobacco-edition.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-2270da08",
@@ -7186,8 +7191,13 @@
         "Amber Oud Dubai Night",
         "Al Haramain Amber Oud Dubai Night"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-dubai-night-75ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-dubai-night-75ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-bcf136e8",
@@ -31559,8 +31569,13 @@
         "Amber Oud Gold Edition",
         "Al Haramain Amber Oud Gold Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/amber-oud-gold-edition-120-ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/amber-oud-gold-edition-120-ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        120
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-STORE-007",
@@ -31574,8 +31589,13 @@
         "Detour Noir Exclusif",
         "Al Haramain Detour Noir Exclusif"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-exclusif-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-exclusif-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-STORE-008",
@@ -31709,8 +31729,13 @@
         "Detour Noir Intense",
         "Al Haramain Detour Noir Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/collection/perfume-spray.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-intense-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-intense-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-STORE-017",
@@ -42357,6 +42382,61 @@
       "source_url": "https://www.lattafa-usa.com/products/petra-viola",
       "source_evidence_url": "https://www.lattafa-usa.com/products/petra-viola",
       "gtin": "6298043161732"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-007",
+      "size_ml": 100,
+      "aliases": [
+        "Detour Noir Exclusif 100 ml",
+        "Al Haramain Detour Noir Exclusif 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-STORE-007-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-exclusif-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-016",
+      "size_ml": 100,
+      "aliases": [
+        "Detour Noir Intense 100 ml",
+        "Al Haramain Detour Noir Intense 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-STORE-016-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-intense-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-27b89224",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Tobacco Edition 200 ml",
+        "Al Haramain Amber Oud Tobacco Edition 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-27b89224-200-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-tobacco-edition.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-STORE-006",
+      "size_ml": 120,
+      "aliases": [
+        "Amber Oud Gold Edition 120 ml",
+        "Al Haramain Amber Oud Gold Edition 120 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-STORE-006-120-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/amber-oud-gold-edition-120-ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-5e8e5f16",
+      "size_ml": 75,
+      "aliases": [
+        "Amber Oud Dubai Night 75 ml",
+        "Al Haramain Amber Oud Dubai Night 75 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-5e8e5f16-75-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-dubai-night-75ml-extrait-de-parfum.html"
     }
   ]
 }
