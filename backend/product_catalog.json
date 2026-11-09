@@ -4764,9 +4764,13 @@
         "Kiaana Vibes",
         "Afnan Kiaana Vibes"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/kiaana-vibes",
+      "source_evidence_url": "https://afnan.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-adcd7b58",
@@ -4780,9 +4784,13 @@
         "Lynked Freedom",
         "Afnan Lynked Freedom"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/lynked-freedom",
+      "source_evidence_url": "https://afnan.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-62b409e4",
@@ -4948,9 +4956,13 @@
         "Lynked Forever",
         "Afnan Lynked Forever"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/lynked-forever",
+      "source_evidence_url": "https://afnan.com/collections/all",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-fbf16414",
@@ -17683,9 +17695,12 @@
         "Molten Caramel",
         "Paris Corner Molten Caramel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/molten-caramel",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=5",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MYSTERIUM",
@@ -37720,6 +37735,49 @@
       "variant_id": "SHV-SH-ARMAF-UNIQ-EFFECTS-OF-UNIQ-60-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://armaf.com/products/uniq-effects-of-uniq-spr"
+    },
+    {
+      "product_id": "SH-AFNAN-13721551",
+      "size_ml": 100,
+      "variant_name": "Kiaana Vibes 100 ml Eau de Parfum",
+      "aliases": [
+        "Afnan Kiaana Vibes 100 ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-13721551-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/kiaana-vibes"
+    },
+    {
+      "product_id": "SH-AFNAN-f8622945",
+      "size_ml": 100,
+      "variant_name": "Lynked Forever 100 ml Eau de Parfum",
+      "aliases": [
+        "Afnan Lynked Forever 100 ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-f8622945-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/lynked-forever"
+    },
+    {
+      "product_id": "SH-AFNAN-adcd7b58",
+      "size_ml": 100,
+      "variant_name": "Lynked Freedom 100 ml Eau de Parfum",
+      "aliases": [
+        "Afnan Lynked Freedom 100 ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-adcd7b58-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/lynked-freedom"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MOLTEN-CARAMEL",
+      "size_ml": 100,
+      "variant_name": "Molten Caramel 100 ml",
+      "aliases": [
+        "Paris Corner Molten Caramel 100 ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-MOLTEN-CARAMEL-100-UNSPECIFIED",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/molten-caramel"
     }
   ]
 }
