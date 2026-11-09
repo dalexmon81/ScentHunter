@@ -12169,7 +12169,11 @@
           "canonical_name": "Ajwad Pink to Pink Creamy Elixir",
           "aliases": [
             "Ajwad Pink to Pink Creamy Elixir",
-            "Lattafa Ajwad Pink to Pink Creamy Elixir"
+            "Lattafa Ajwad Pink to Pink Creamy Elixir",
+            "Ajwad Pink To Pink Creamy Elixir"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -12263,6 +12267,16 @@
           "aliases": [
             "Farfasha",
             "Lattafa Farfasha"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Petra Viola",
+          "aliases": [
+            "Petra Viola",
+            "Lattafa Petra Viola"
           ],
           "formats_ml": [
             100
