@@ -154,3 +154,15 @@ Each individual first-party detail page identifies the fragrance, concentration,
 - Taj Malaki Noir — https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2066)
 
 All five individual official product pages identify the fragrance, Eau de Parfum concentration, and 100 ml volume. These names were absent from the Al Haramain catalog and were added with explicit 100 ml variants. No prices or availability data were imported.
+
+### Al Haramain: five further verified detail-page additions (9 November 2026)
+
+The latest official EU New Launches reconciliation found five more absent fragrance identities. Their individual product pages explicitly confirm 100 ml and concentration:
+
+- Avalon — Eau de Parfum
+- Azure Mythique — Eau de Parfum
+- Gold Crystal Oudh — Extrait de Parfum
+- Gold Crystal Sapphire — Extrait de Parfum
+- Acai — Eau de Parfum
+
+Other newly verified names already added to the parent branch were not duplicated. No prices, stock or retailer offers were copied into the catalog.
