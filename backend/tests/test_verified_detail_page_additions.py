@@ -17,6 +17,9 @@ class VerifiedDetailPageAdditionsTests(unittest.TestCase):
             ("Khadlaj", "Island Vanilla Dunes"): ("https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men", "Extrait de Parfum", 100),
             ("Khadlaj", "Cloud Candy"): ("https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae", "Extrait de Parfum", 100),
             ("Khadlaj", "Caffe Latte"): ("https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray", "Extrait de Parfum", 100),
+            ("Khadlaj", "Island Sun"): ("https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum", "Extrait de Parfum", 100),
+            ("Khadlaj", "Karus Gold Absolu"): ("https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray", "Eau de Parfum", 100),
+            ("Khadlaj", "Fursan White"): ("https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae", "Eau de Parfum", 100),
         }
         products = {(p.get("brand"), p["canonical_name"]): p for p in CATALOG["products"]}
         for key, (url, concentration, size) in expected.items():

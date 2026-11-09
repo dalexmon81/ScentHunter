@@ -160,3 +160,11 @@ All five individual official product pages identify the fragrance, Eau de Parfum
 - Amber Oud Aqua Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html (200 ml, Extrait de Parfum, SKU AHP2109)
 
 The first-party detail page confirms the existing fragrance identity, Extrait de Parfum concentration, and 200 ml liquid volume. Added a 200 ml variant to the existing canonical product; no duplicate product identity was created. No price or stock data was imported.
+
+### Khadlaj: three more official detail-page upgrades (9 November 2026)
+
+- Island Sun — https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum (100 ml, Extrait de Parfum, SKU 6298043073080)
+- Karus Gold Absolu — https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray (100 ml, Eau de Parfum, SKU 6298043072458)
+- Fursan White — https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae (100 ml, Eau de Parfum, SKU 6291107977751)
+
+These three Khadlaj listing-level identities already had one 100 ml variant each. The official detail pages confirm the same size and concentration, so only provenance/status were upgraded; no duplicate products or variants were created. Sara was not upgraded because the official product page heading says Extrait de Parfum while other collection-card text labels it EDP; that discrepancy needs reconciliation before changing the catalog.

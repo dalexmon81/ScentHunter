@@ -3211,12 +3211,13 @@
         "Fursan White",
         "Khadlaj Fursan White"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-78fd361a",
@@ -3385,12 +3386,13 @@
         "Karus Gold Absolu",
         "Khadlaj Karus Gold Absolu"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-a1c6306a",
@@ -3461,12 +3463,13 @@
         "Island Sun",
         "Khadlaj Island Sun"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-7ecbb58c",
@@ -34204,7 +34207,8 @@
         "Khadlaj Fursan White 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-cdaa81f2-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-04832397",
@@ -34275,7 +34279,8 @@
         "Khadlaj Karus Gold Absolu 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-baaea0ac-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/karus-gold-absolu-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-a1c6306a",
@@ -34315,7 +34320,8 @@
         "Khadlaj Island Sun 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-93c5a51d-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-20646841",
