@@ -28,7 +28,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
         catalog_names = {p["canonical_name"].casefold() for p in self.products}
         registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 107)
+        self.assertEqual(len(self.products), 119)
 
     def test_all_products_use_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "al_haramain_catalog" for p in self.products))
@@ -135,6 +135,47 @@ class AlHaramainCatalogTests(unittest.TestCase):
         variant_ids = [v["variant_id"] for v in self.variants]
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(variant_ids), len(set(variant_ids)))
+
+
+    def test_twelve_additional_official_launches_have_verified_100ml_variants(self):
+        expected = {
+            "Amber Oud Smell Dubai": ("https://shop.alharamainperfumes.com/uae/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html", "Extrait de Parfum"),
+            "Empire Aromatique Ombre": ("https://shop.alharamainperfumes.com/uae/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html", "Extrait de Parfum"),
+            "Haramain Olaf": ("https://shop.alharamainperfumes.com/uae/haramain-olaf-100ml-eau-de-parfum.html", "Eau de Parfum"),
+            "Haramain Leif": ("https://shop.alharamainperfumes.com/uae/haramain-leif-100ml-eau-de-parfum.html", "Eau de Parfum"),
+            "Amber Oud Imagine Dubai": ("https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html", "Extrait de Parfum"),
+            "Amber Oud Gold Lux": ("https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html", "Extrait de Parfum"),
+            "Haramain Sameera": ("https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html", "Extrait de Parfum"),
+            "Haramain Sameera Noir": ("https://shop.alharamainperfumes.com/qatar/haramain-sameera-noir-100ml-extrait-de-parfum.html", "Extrait de Parfum"),
+            "Haramain Freya": ("https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html", "Eau de Parfum"),
+            "Haramain Harmony": ("https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html", "Eau de Parfum"),
+            "Haramain CACAU": ("https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html", "Eau de Parfum"),
+            "Haramain CAJU": ("https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html", "Eau de Parfum"),
+        }
+        registry_names = {p["canonical_name"] for p in self.family["products"]}
+        for name, (source, concentration) in expected.items():
+            with self.subTest(product=name):
+                product = self.products_by_name[name]
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_url"], source)
+                self.assertEqual(product["concentration"], concentration)
+                self.assertEqual(product["formats_ml"], [100])
+                matches = self.variants_for(product)
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0]["size_ml"], 100)
+                self.assertEqual(matches[0]["concentration"], concentration)
+                self.assertEqual(matches[0]["source_evidence_url"], source)
+                self.assertIn(name, registry_names)
+
+    def test_conflicting_or_mismatched_official_candidates_are_not_promoted(self):
+        names = {p["canonical_name"] for p in self.products}
+        # Official product-page title and specification disagree on concentration.
+        self.assertNotIn("Haramain Adventure", names)
+        self.assertNotIn("Haramain Ayaat Malika Gold", names)
+        self.assertNotIn("Amber Oud Future Dubai", names)
+        # The indexed Gold Mine detail result resolves to a URL slugged as "sport";
+        # hold it until the canonical official product URL is corroborated.
+        self.assertNotIn("Amber Oud Gold Mine", names)
 
 
 if __name__ == "__main__":
