@@ -24353,9 +24353,13 @@
         "Al Nashama Caprice",
         "Lattafa Al Nashama Caprice"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-nashama-caprice/",
+      "source_evidence_url": "https://lattafa.com/product/al-nashama-caprice/",
+      "source_product_url": "https://lattafa.com/product/al-nashama-caprice/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-KINGDOM-MEN",
@@ -24369,9 +24373,14 @@
         "Kingdom Men",
         "Lattafa Kingdom Men"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/kingdom-men/",
+      "source_evidence_url": "https://lattafa.com/product/kingdom-men/",
+      "source_product_url": "https://lattafa.com/product/kingdom-men/",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-KINGDOM-WOMEN",
@@ -24385,9 +24394,14 @@
         "Kingdom Women",
         "Lattafa Kingdom Women"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/kingdom-women/",
+      "source_evidence_url": "https://lattafa.com/product/kingdom-women/",
+      "source_product_url": "https://lattafa.com/product/kingdom-women/",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-ANGHAM",
@@ -24401,9 +24415,14 @@
         "Angham",
         "Lattafa Angham"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/angham/",
+      "source_evidence_url": "https://lattafa.com/product/angham/",
+      "source_product_url": "https://lattafa.com/product/angham/",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-AJWAD-PINK-TO-PINK",
@@ -24417,9 +24436,14 @@
         "Ajwad Pink to Pink",
         "Lattafa Ajwad Pink to Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ajwad-pink-to-pink/",
+      "source_evidence_url": "https://lattafa.com/product/ajwad-pink-to-pink/",
+      "source_product_url": "https://lattafa.com/product/ajwad-pink-to-pink/",
+      "gender": "Women",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-LATTAFA-SEHR-LATTAFA",
@@ -24433,9 +24457,14 @@
         "Sehr Lattafa",
         "Lattafa Sehr Lattafa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/sehr-lattafa/",
+      "source_evidence_url": "https://lattafa.com/product/sehr-lattafa/",
+      "source_product_url": "https://lattafa.com/product/sehr-lattafa/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-QAAED-AL-SHABAAB",
@@ -24449,9 +24478,14 @@
         "Qaaed Al Shabaab",
         "Lattafa Qaaed Al Shabaab"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/qaaed-al-shabaab/",
+      "source_evidence_url": "https://lattafa.com/product/qaaed-al-shabaab/",
+      "source_product_url": "https://lattafa.com/product/qaaed-al-shabaab/",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-MAHASIN-CRYSTAL",
@@ -24465,9 +24499,14 @@
         "Mahasin Crystal",
         "Lattafa Mahasin Crystal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/mahasin-crystal/",
+      "source_evidence_url": "https://lattafa.com/product/mahasin-crystal/",
+      "source_product_url": "https://lattafa.com/product/mahasin-crystal/",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-EMEER",
@@ -24481,9 +24520,14 @@
         "Emeer",
         "Lattafa Emeer"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/emeer/",
+      "source_evidence_url": "https://lattafa.com/product/emeer/",
+      "source_product_url": "https://lattafa.com/product/emeer/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-AMEER-AL-ARAB-IMPERIUM",
@@ -24497,9 +24541,14 @@
         "Ameer Al Arab Imperium",
         "Lattafa Ameer Al Arab Imperium"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ameer-al-arab-imperium/",
+      "source_evidence_url": "https://lattafa.com/product/ameer-al-arab-imperium/",
+      "source_product_url": "https://lattafa.com/product/ameer-al-arab-imperium/",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-AMEER-AL-OUD",
@@ -24513,9 +24562,14 @@
         "Ameer Al Oud",
         "Lattafa Ameer Al Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ameer-al-oud/",
+      "source_evidence_url": "https://lattafa.com/product/ameer-al-oud/",
+      "source_product_url": "https://lattafa.com/product/ameer-al-oud/",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-ADEEB",
@@ -24529,9 +24583,14 @@
         "Adeeb",
         "Lattafa Adeeb"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/6/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/adeeb/",
+      "source_evidence_url": "https://lattafa.com/product/adeeb/",
+      "source_product_url": "https://lattafa.com/product/adeeb/",
+      "gender": "Women",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-LATTAFA-MAITHA",
@@ -47854,6 +47913,138 @@
       "variant_id": "SHV-SH-LATTAFA-OUD-MOOD-100-000",
       "source_url": "https://lattafa.com/product/oud-mood/",
       "source_evidence_url": "https://lattafa.com/product/oud-mood/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NASHAMA-CAPRICE",
+      "size_ml": 100,
+      "aliases": [
+        "Al Nashama Caprice 100 ml",
+        "Lattafa Al Nashama Caprice 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AL-NASHAMA-CAPRICE-100-000",
+      "source_url": "https://lattafa.com/product/al-nashama-caprice/",
+      "source_evidence_url": "https://lattafa.com/product/al-nashama-caprice/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KINGDOM-MEN",
+      "size_ml": 100,
+      "aliases": [
+        "Kingdom Men 100 ml",
+        "Lattafa Kingdom Men 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KINGDOM-MEN-100-000",
+      "source_url": "https://lattafa.com/product/kingdom-men/",
+      "source_evidence_url": "https://lattafa.com/product/kingdom-men/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KINGDOM-WOMEN",
+      "size_ml": 100,
+      "aliases": [
+        "Kingdom Women 100 ml",
+        "Lattafa Kingdom Women 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KINGDOM-WOMEN-100-000",
+      "source_url": "https://lattafa.com/product/kingdom-women/",
+      "source_evidence_url": "https://lattafa.com/product/kingdom-women/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANGHAM",
+      "size_ml": 100,
+      "aliases": [
+        "Angham 100 ml",
+        "Lattafa Angham 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ANGHAM-100-000",
+      "source_url": "https://lattafa.com/product/angham/",
+      "source_evidence_url": "https://lattafa.com/product/angham/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AJWAD-PINK-TO-PINK",
+      "size_ml": 60,
+      "aliases": [
+        "Ajwad Pink to Pink 60 ml",
+        "Lattafa Ajwad Pink to Pink 60 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AJWAD-PINK-TO-PINK-60-000",
+      "source_url": "https://lattafa.com/product/ajwad-pink-to-pink/",
+      "source_evidence_url": "https://lattafa.com/product/ajwad-pink-to-pink/"
+    },
+    {
+      "product_id": "SH-LATTAFA-SEHR-LATTAFA",
+      "size_ml": 100,
+      "aliases": [
+        "Sehr Lattafa 100 ml",
+        "Lattafa Sehr Lattafa 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-SEHR-LATTAFA-100-000",
+      "source_url": "https://lattafa.com/product/sehr-lattafa/",
+      "source_evidence_url": "https://lattafa.com/product/sehr-lattafa/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QAAED-AL-SHABAAB",
+      "size_ml": 100,
+      "aliases": [
+        "Qaaed Al Shabaab 100 ml",
+        "Lattafa Qaaed Al Shabaab 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-QAAED-AL-SHABAAB-100-000",
+      "source_url": "https://lattafa.com/product/qaaed-al-shabaab/",
+      "source_evidence_url": "https://lattafa.com/product/qaaed-al-shabaab/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MAHASIN-CRYSTAL",
+      "size_ml": 100,
+      "aliases": [
+        "Mahasin Crystal 100 ml",
+        "Lattafa Mahasin Crystal 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-MAHASIN-CRYSTAL-100-000",
+      "source_url": "https://lattafa.com/product/mahasin-crystal/",
+      "source_evidence_url": "https://lattafa.com/product/mahasin-crystal/"
+    },
+    {
+      "product_id": "SH-LATTAFA-EMEER",
+      "size_ml": 100,
+      "aliases": [
+        "Emeer 100 ml",
+        "Lattafa Emeer 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-EMEER-100-000",
+      "source_url": "https://lattafa.com/product/emeer/",
+      "source_evidence_url": "https://lattafa.com/product/emeer/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AMEER-AL-ARAB-IMPERIUM",
+      "size_ml": 100,
+      "aliases": [
+        "Ameer Al Arab Imperium 100 ml",
+        "Lattafa Ameer Al Arab Imperium 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AMEER-AL-ARAB-IMPERIUM-100-000",
+      "source_url": "https://lattafa.com/product/ameer-al-arab-imperium/",
+      "source_evidence_url": "https://lattafa.com/product/ameer-al-arab-imperium/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AMEER-AL-OUD",
+      "size_ml": 100,
+      "aliases": [
+        "Ameer Al Oud 100 ml",
+        "Lattafa Ameer Al Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AMEER-AL-OUD-100-000",
+      "source_url": "https://lattafa.com/product/ameer-al-oud/",
+      "source_evidence_url": "https://lattafa.com/product/ameer-al-oud/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ADEEB",
+      "size_ml": 80,
+      "aliases": [
+        "Adeeb 80 ml",
+        "Lattafa Adeeb 80 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ADEEB-80-000",
+      "source_url": "https://lattafa.com/product/adeeb/",
+      "source_evidence_url": "https://lattafa.com/product/adeeb/"
     }
   ]
 }
