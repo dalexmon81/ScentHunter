@@ -200,5 +200,55 @@ class AfnanLattafaOfficialHarvestTests(unittest.TestCase):
                     self.assertEqual(variant.get("concentration"), evidence["type"])
                     self.assertEqual(variant.get("source_evidence_url"), evidence["url"])
 
+
+    def test_afnan_turathi_official_pages_and_90ml_edp_variants_are_verified(self):
+        expected = {
+        "Turathi Brown Homme": {
+                "url": "https://fr.afnan.com/en/products/turathi-brown-homme",
+                "type": "Eau de Parfum",
+                "size": 90
+        },
+        "Turathi Blue": {
+                "url": "https://www.fr.afnan.com/en/products/turathi-blue-homme",
+                "type": "Eau de Parfum",
+                "size": 90
+        },
+        "Turathi Electric": {
+                "url": "https://www.fr.afnan.com/en/products/turathi-electric",
+                "type": "Eau de Parfum",
+                "size": 90
+        },
+        "Turathi Purple": {
+                "url": "https://www.fr.afnan.com/en/products/turathi-purple-femme",
+                "type": "Eau de Parfum",
+                "size": 90
+        },
+        "TURATHI RED": {
+                "url": "https://www.fr.afnan.com/products/turathi-red-femme",
+                "type": "Eau de Parfum",
+                "size": 90
+        }
+}
+        for name, evidence in expected.items():
+            with self.subTest(name=name):
+                product = next(
+                    p for p in self.catalog["products"]
+                    if p.get("brand") == "Afnan" and p.get("canonical_name") == name
+                )
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), evidence["url"])
+                self.assertEqual(product.get("source_product_url"), evidence["url"])
+                self.assertEqual(product.get("source_evidence_url"), evidence["url"])
+                self.assertEqual(product.get("concentration"), evidence["type"])
+                self.assertEqual(product.get("formats_ml"), [evidence["size"]])
+                variants = [
+                    v for v in self.catalog["variants"]
+                    if v.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0].get("size_ml"), evidence["size"])
+                self.assertEqual(variants[0].get("concentration"), evidence["type"])
+                self.assertEqual(variants[0].get("source_evidence_url"), evidence["url"])
+
 if __name__ == "__main__":
     unittest.main()
