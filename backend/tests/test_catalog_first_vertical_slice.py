@@ -351,3 +351,112 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
         assert matching_variant["offers"] == []
     finally:
         engine.dispose()
+
+
+def test_liquid_brun_bplatz_fixture_flows_through_postgres_to_catalog_search(monkeypatch):
+    """Authentic Bplatz capture proves Liquid Brun's full catalog-first path.
+
+    This is a disposable CI database only. A long TTL isolates lifecycle
+    verification from the separate freshness test below; it does not change
+    production freshness policy or activate a retailer.
+    """
+    root = Path(__file__).resolve().parents[2]
+    fixture_path = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.raw.html"
+    meta_path = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    html = fixture_path.read_text(encoding="utf-8")
+    parsed = parse_product_html(html, meta["url_final"], "French Avenue Liquid Brun")
+    assert parsed is not None
+
+    connector = BplatzConnector()
+    records = connector.parse_raw(parsed)
+    assert len(records) == 1
+    record = replace(
+        records[0],
+        external_product_id=meta["shopify_variant_id"],
+        captured_at=meta["acquired_at_utc"],
+    )
+    assert record.gtin == "6290360375694"
+    assert record.price is not None and record.price > 0
+    assert record.currency == "EUR"
+    assert record.availability == "in_stock"
+
+    engine = make_engine()
+    assert engine.dialect.name == "postgresql"
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    try:
+        with factory() as session:
+            legacy_map = session.get(LegacyVariantIdMap, "VAR-f87146c82d167f4c")
+            assert legacy_map is not None, "Liquid Brun 100 ml legacy mapping missing"
+            variant = session.get(ProductVariant, legacy_map.product_variant_id)
+            assert variant is not None
+            assert variant.gtin == "6290360375694"
+
+            store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            if store is None:
+                store = Store(
+                    name="Bplatz", slug="bplatz", domain="bplatz.de",
+                    country="DE", currency="EUR", status="active",
+                )
+                session.add(store)
+                session.flush()
+            # Long TTL is scoped to this disposable test database. A separate
+            # integration test asserts that expired source captures are blocked.
+            store.offer_ttl_minutes = 365 * 24 * 60
+            raw_payload = record.to_dict()
+            raw_payload["_source_fixture"] = {
+                "url": meta["url_final"],
+                "acquired_at_utc": meta["acquired_at_utc"],
+                "sha256": meta["sha256"],
+                "fixture_path": str(fixture_path.relative_to(root)),
+                "test_only": True,
+            }
+            raw = IngestionRaw(
+                store_id=store.id,
+                external_product_id=record.external_product_id,
+                raw_payload=raw_payload,
+                status="pending",
+            )
+            session.add(raw)
+            session.commit()
+            raw_id = raw.id
+
+        with factory() as session:
+            decision = match_staged_offer(session, raw_id)
+            assert decision.status == "matched"
+            assert decision.method == "gtin_exact"
+            assert decision.product_variant_id == variant.id
+
+        publication = promote_matched_offers(factory)
+        assert publication == {"processed": 1, "published": 1, "blocked": 0}
+
+        monkeypatch.setattr(
+            catalog_search_api,
+            "search_catalog",
+            lambda query, *, limit=20: catalog_search_api._search_catalog(
+                query, limit=limit, session_factory=factory
+            ),
+        )
+        api = FastAPI()
+        api.include_router(catalog_search_router)
+        with TestClient(api) as client:
+            response = client.get("/catalog/search", params={"q": "Liquid Brun"})
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        product = next(
+            row for row in payload["results"]
+            if row["brand"].lower() == "french avenue"
+            and row["fragrance"].lower() == "liquid brun"
+        )
+        matching_variant = next(
+            row for row in product["variants"]
+            if row["variant_id"] == str(variant.id)
+        )
+        offers = [offer for offer in matching_variant["offers"] if offer["store"] == "bplatz"]
+        assert len(offers) == 1
+        assert offers[0]["price"] == float(record.price)
+        assert offers[0]["currency"] == "EUR"
+        assert offers[0]["availability"] == "in_stock"
+        assert offers[0]["url"] == meta["url_final"]
+    finally:
+        engine.dispose()
