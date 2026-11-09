@@ -22,6 +22,7 @@ on:
       - work/maison-alhambra-twelve-details-2026-11-09
       - work/maison-alhambra-twelve-new-identities-2026-11-09
       - work/maison-alhambra-four-launches-2026-11-09
+      - work/armaf-two-official-launches-2026-11-09
       - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
@@ -38,6 +39,7 @@ on:
       - work/maison-alhambra-twelve-details-2026-11-09
       - work/maison-alhambra-twelve-new-identities-2026-11-09
       - work/maison-alhambra-four-launches-2026-11-09
+      - work/armaf-two-official-launches-2026-11-09
       - catalog/afnan-stardust-detail-variant-2026-11-09
       - catalog/afnan-9-series-official-details-2026-11-09
       - catalog/al-wataniah-five-more-details-2026-11-09
@@ -122,3 +124,7 @@ jobs:
       - name: Validate four Maison Alhambra official launches
         if: github.head_ref == 'work/maison-alhambra-four-launches-2026-11-09'
         run: python -m unittest backend.tests.test_maison_alhambra_four_launches -v
+
+      - name: Validate two Armaf official launches
+        if: github.head_ref == 'work/armaf-two-official-launches-2026-11-09'
+        run: python -m unittest backend.tests.test_armaf_two_official_launches -v
