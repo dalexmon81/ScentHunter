@@ -109,3 +109,16 @@ This block adds two missing fragrance identities and upgrades one existing ident
 
 No prices, stock status, retailer offers, or shipping claims are copied into the catalog. Transient sales information is not product identity data.
 
+
+
+### Swiss Arabian new-launch reconciliation — 9 November 2026
+
+Four absent canonical fragrance identities were added from Swiss Arabian's official individual product pages:
+
+- **Shaghaf Oud Marine:** official product detail https://swissarabian.com/collections/new-launches/products/shaghaf-oud-marine. Its 75 ml Eau de Parfum specification is explicitly confirmed by Swiss Arabian's own Collector's Edition III detail page, which lists the included Shaghaf Oud Marine EDP 75 ml.
+- **Echoes of St. Moritz:** official product detail https://swissarabian.com/collections/new-launches/products/echoes-of-st-moritz. Its 100 ml Extrait de Parfum specification is explicitly confirmed by the same official Collector's Edition III page.
+- **Shaghaf Nectar Blush:** official product detail https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush. The official US product title specifies Eau de Parfum 75 ml.
+- **Patchouli 01:** official product detail https://us.swissarabian.com/products/patchouli-01. The official US product title specifies Extrait de Parfum 50 ml.
+
+Each identity received one matching size/concentration variant and was added to the existing Swiss Arabian family registry. The Collector's Edition III was intentionally excluded as a separate identity because the official page describes it as a two-fragrance set containing Echoes of St. Moritz and Shaghaf Oud Marine, not a standalone perfume.
+

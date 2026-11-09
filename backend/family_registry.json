@@ -10673,6 +10673,46 @@
             "Incense 01",
             "Swiss Arabian Incense 01"
           ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Marine",
+          "aliases": [
+            "Shaghaf Oud Marine",
+            "Swiss Arabian Shaghaf Oud Marine"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Echoes of St. Moritz",
+          "aliases": [
+            "Echoes of St. Moritz",
+            "Swiss Arabian Echoes of St. Moritz"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Nectar Blush",
+          "aliases": [
+            "Shaghaf Nectar Blush",
+            "Swiss Arabian Shaghaf Nectar Blush"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Patchouli 01",
+          "aliases": [
+            "Patchouli 01",
+            "Swiss Arabian Patchouli 01"
+          ],
+          "formats_ml": [
+            50
+          ]
         }
       ]
     },

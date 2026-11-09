@@ -33760,6 +33760,90 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-OUD-MARINE",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Marine",
+      "name": "Shaghaf Oud Marine",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Oud Marine",
+      "aliases": [
+        "Shaghaf Oud Marine",
+        "Swiss Arabian Shaghaf Oud Marine"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/collections/new-launches/products/shaghaf-oud-marine",
+      "source_product_url": "https://swissarabian.com/collections/new-launches/products/shaghaf-oud-marine",
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75
+      ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-ECHOES-OF-ST-MORITZ",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Echoes of St. Moritz",
+      "name": "Echoes of St. Moritz",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Echoes of St. Moritz",
+      "aliases": [
+        "Echoes of St. Moritz",
+        "Swiss Arabian Echoes of St. Moritz"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/collections/new-launches/products/echoes-of-st-moritz",
+      "source_product_url": "https://swissarabian.com/collections/new-launches/products/echoes-of-st-moritz",
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-NECTAR-BLUSH",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Nectar Blush",
+      "name": "Shaghaf Nectar Blush",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Nectar Blush",
+      "aliases": [
+        "Shaghaf Nectar Blush",
+        "Swiss Arabian Shaghaf Nectar Blush"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush",
+      "source_product_url": "https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush",
+      "source_evidence_url": "https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75
+      ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-PATCHOULI-01",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Patchouli 01",
+      "name": "Patchouli 01",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Patchouli 01",
+      "aliases": [
+        "Patchouli 01",
+        "Swiss Arabian Patchouli 01"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.swissarabian.com/products/patchouli-01",
+      "source_product_url": "https://us.swissarabian.com/products/patchouli-01",
+      "source_evidence_url": "https://us.swissarabian.com/products/patchouli-01",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        50
+      ]
     }
   ],
   "variants": [
@@ -36709,6 +36793,42 @@
       "size_ml": 100,
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-SHAGHAF-OUD-MARINE-V-75-EDP",
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-OUD-MARINE",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Shaghaf Oud Marine",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-ECHOES-OF-ST-MORITZ-V-100-EXTRAIT",
+      "product_id": "SH-SWISS-ARABIAN-ECHOES-OF-ST-MORITZ",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Echoes of St. Moritz",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-SHAGHAF-NECTAR-BLUSH-V-75-EDP",
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-NECTAR-BLUSH",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Shaghaf Nectar Blush",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-PATCHOULI-01-V-50-EXTRAIT",
+      "product_id": "SH-SWISS-ARABIAN-PATCHOULI-01",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Patchouli 01",
+      "size_ml": 50,
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.swissarabian.com/products/patchouli-01"
     }
   ]
 }
