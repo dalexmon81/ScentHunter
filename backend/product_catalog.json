@@ -3060,8 +3060,14 @@
         "Choco Lait",
         "Paris Corner Choco Lait"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-choco-lait-edp-w-100-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-choco-lait-edp-w-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-choco-lait-edp-w-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-3033b72a",
@@ -3094,8 +3100,14 @@
         "Paris Corner Confidential",
         "Confidential 100ML"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-confidential-edp-u-100-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-confidential-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-confidential-edp-u-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-41eeb4a5",
@@ -3160,8 +3172,14 @@
         "December Ambar",
         "Paris Corner December Ambar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-ambar-edp-u-85-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-ambar-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-ambar-edp-u-85-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-5239463e",
@@ -3196,8 +3214,14 @@
         "December Vanilla",
         "Paris Corner December Vanilla"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-f3a6e129",
@@ -3211,8 +3235,14 @@
         "Dulzura",
         "Paris Corner Dulzura"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-dulzura-edp-women-100-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-dulzura-edp-women-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-dulzura-edp-women-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-9a9dbbff",
@@ -39325,6 +39355,66 @@
       ],
       "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-cosmic-giardino-edp-u-100-ml",
       "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-cosmic-giardino-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ef841988",
+      "variant_id": "SHV-SH-PARIS-CORNER-ef841988-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "December Vanilla 85 ml",
+        "Paris Corner December Vanilla 85 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-c5ed3eb2",
+      "variant_id": "SHV-SH-PARIS-CORNER-c5ed3eb2-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Confidential 100 ml",
+        "Paris Corner Confidential 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-confidential-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-confidential-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-a7bb1ce4",
+      "variant_id": "SHV-SH-PARIS-CORNER-a7bb1ce4-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "December Ambar 85 ml",
+        "Paris Corner December Ambar 85 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-ambar-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-ambar-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-e8b7fc40",
+      "variant_id": "SHV-SH-PARIS-CORNER-e8b7fc40-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Choco Lait 100 ml",
+        "Paris Corner Choco Lait 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-choco-lait-edp-w-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-choco-lait-edp-w-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-f3a6e129",
+      "variant_id": "SHV-SH-PARIS-CORNER-f3a6e129-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Dulzura 100 ml",
+        "Paris Corner Dulzura 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-dulzura-edp-women-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-dulzura-edp-women-100-ml"
     }
   ]
 }
