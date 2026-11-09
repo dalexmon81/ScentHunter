@@ -23,7 +23,8 @@ MINIMUM_BRAND_COUNTS = {
     "Armaf": 191,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 23,
+    # Eight collection labels and two Maison Asrar retailer duplicates were removed from product identities.
+    "Gulf Orchid": 13,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 115,
@@ -1259,6 +1260,137 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matching[0].get("size_ml"), size)
                     self.assertEqual(matching[0].get("concentration"), concentration)
                     self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
+    def test_gulf_orchid_products_are_brand_attributed_and_variants_are_normalized(self):
+        expected = {
+            "Vanilla Addiction": (
+                "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum",
+                {100: "https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum"},
+            ),
+            "Mango Ice": (
+                "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum",
+                {100: "https://shop-gulforchid.com/products/mango_ice_eau_de_parfum"},
+            ),
+            "Cotton Candy Musk": (
+                "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy",
+                {},
+            ),
+            "Tahara Vanilla Musk": (
+                "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
+                {60: "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"},
+            ),
+            "Sweet Heaven": (
+                "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum",
+                {
+                    20: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml",
+                    100: "https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum",
+                },
+            ),
+            "Pink Marshmallow": (
+                "https://shop-gulforchid.com/products/pink-marshmallow",
+                {100: "https://shop-gulforchid.com/products/pink-marshmallow"},
+            ),
+            "Coco Blanco": (
+                "https://shop-gulforchid.com/products/coco-blanco",
+                {100: "https://shop-gulforchid.com/products/coco-blanco"},
+            ),
+            "Exotic Oud": (
+                "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+                {100: "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"},
+            ),
+            "Vanilla Latte": (
+                "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+                {100: "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"},
+            ),
+            "Cookie Bite": (
+                "https://shop-gulforchid.com/products/cookie-bite",
+                {100: "https://shop-gulforchid.com/products/cookie-bite"},
+            ),
+            "Sweet Like Candy": (
+                "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum",
+                {100: "https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum"},
+            ),
+            "Sweet Heaven Extreme": (
+                "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum",
+                {
+                    20: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml",
+                    100: "https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum",
+                },
+            ),
+            "Piña Colada Musk": (
+                "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada",
+                {60: "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada"},
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        gulf = [p for p in products if p.get("brand_name") == "Gulf Orchid"]
+        self.assertEqual(len(gulf), 13)
+        self.assertEqual(
+            {p.get("canonical_name") for p in gulf},
+            set(expected),
+        )
+        for name, (source, variant_sources) in expected.items():
+            with self.subTest(name=name):
+                matches = [p for p in gulf if p.get("canonical_name") == name]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                matching = [
+                    v for v in variants
+                    if v.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(
+                    {v.get("size_ml"): v.get("source_evidence_url") for v in matching},
+                    variant_sources,
+                )
+                if variant_sources:
+                    self.assertEqual(
+                        product.get("formats_ml"),
+                        sorted(variant_sources),
+                    )
+                else:
+                    self.assertFalse(product.get("formats_ml"))
+
+    def test_gulf_orchid_collection_labels_and_maison_asrar_retail_duplicates_are_not_products(self):
+        gulf = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Gulf Orchid"
+        ]
+        forbidden = {
+            "Al Qasr", "Asala", "Hamsat", "Hikma",
+            "Jawhara", "Jewel", "Riwaya", "Turath",
+            "Vanilla Aura", "Vanilla Voyage",
+            "Sweet Heaven 20ML", "Sweet Heaven Extreme 20ML",
+        }
+        self.assertFalse(
+            [p.get("canonical_name") for p in gulf if p.get("canonical_name") in forbidden]
+        )
+        maison = [
+            p for p in CATALOG.get("products", [])
+            if p.get("brand_name") == "Maison Asrar"
+        ]
+        self.assertEqual(
+            len([p for p in maison if p.get("canonical_name") == "Vanilla Aura"]),
+            1,
+        )
+        self.assertEqual(
+            len([p for p in maison if p.get("canonical_name") == "Vanilla Voyage"]),
+            1,
+        )
+        self.assertEqual(
+            len([p for p in gulf if p.get("canonical_name") == "Sweet Heaven"]),
+            1,
+        )
+        self.assertEqual(
+            len([p for p in gulf if p.get("canonical_name") == "Sweet Heaven Extreme"]),
+            1,
+        )
 
 if __name__ == "__main__":
     unittest.main()
