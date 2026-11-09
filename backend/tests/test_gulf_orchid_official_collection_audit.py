@@ -8,6 +8,10 @@ EXPECTED_URLS = {
     "Al Qasr": "https://shop-gulforchid.com/products/al-qasr-silver",
     "Al Qasr Dahab": "https://shop-gulforchid.com/products/al-qasr-gold",
     "Almalek": "https://shop-gulforchid.com/products/almalek-by-gulf-orchid-eau-de-parfum",
+    "Amour": "https://shop-gulforchid.com/products/amour",
+    "Belle": "https://shop-gulforchid.com/products/belle",
+    "Chic": "https://shop-gulforchid.com/products/chic",
+    "Cloud 9": "https://shop-gulforchid.com/products/cloud-9",
     "Angel Musk": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-angel",
     "Angham": "https://shop-gulforchid.com/products/angham-by-gulf-orchid-eau-de-parfum",
     "Arabian Nights": "https://shop-gulforchid.com/products/arabian_nights_eau_de_parfum",
@@ -48,6 +52,7 @@ EXPECTED_URLS = {
     "Omsiah": "https://shop-gulforchid.com/products/omsiah_eau_de_parfum",
     "Pacific": "https://shop-gulforchid.com/products/pacific_eau_de_parfum",
     "Piña Colada Musk": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada",
+    "Phantom": "https://shop-gulforchid.com/products/phantom",
     "Pink Marshmallow": "https://shop-gulforchid.com/products/pink-marshmallow",
     "Pistachio Musk": "https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pistachio",
     "Pomegranate Musk": "https://shop-gulforchid.com/products/pomegranate-musk-eau-de-parfum-60ml",
@@ -80,6 +85,10 @@ EXPECTED_VARIANTS = {
     "Al Qasr": [100],
     "Al Qasr Dahab": [100],
     "Almalek": [100],
+    "Amour": [100],
+    "Belle": [100],
+    "Chic": [100],
+    "Cloud 9": [100],
     "Angel Musk": [60],
     "Angham": [110],
     "Baklava Bite": [100],
@@ -118,6 +127,7 @@ EXPECTED_VARIANTS = {
     "Omsiah": [100],
     "Pacific": [100],
     "Piña Colada Musk": [60],
+    "Phantom": [100],
     "Pink Marshmallow": [100],
     "Pistachio Musk": [60],
     "Pomegranate Musk": [60],
@@ -160,7 +170,7 @@ class GulfOrchidOfficialCollectionAuditTests(unittest.TestCase):
 
     def test_audited_official_collection_pages_are_represented(self):
         self.assertEqual(set(self.by_name), set(EXPECTED_URLS))
-        self.assertEqual(len(self.products), 70)
+        self.assertEqual(len(self.products), 75)
 
     def test_all_canonical_names_have_official_product_page_provenance(self):
         for name, url in EXPECTED_URLS.items():
