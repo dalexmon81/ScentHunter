@@ -4133,8 +4133,11 @@
         "Troy Enable",
         "Assaf Troy Enable"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/troy-enable",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ASSAF-d981a71a",
@@ -31095,8 +31098,11 @@
         "Frankel Blue Elixir",
         "Assaf Frankel Blue Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/edp-frankel-blue-elixir-200ml",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-050",
@@ -31480,8 +31486,8 @@
         "Lip Stick",
         "Assaf Lip Stick"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/lip-stick-125ml"
     },
     {
       "product_id": "SH-ASSAF-HARVEST-075",
@@ -32089,8 +32095,11 @@
         "Strike Black",
         "Assaf Strike Black"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/strike-black",
+      "formats_ml": [
+        125
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-115",
@@ -47449,6 +47458,39 @@
       "variant_id": "SHV-SH-LATTAFA-DYNASTY-100-000",
       "source_url": "https://lattafa.com/product/dynasty/",
       "source_evidence_url": "https://lattafa.com/product/dynasty/"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-114",
+      "size_ml": 125,
+      "aliases": [
+        "Strike Black 125 ml",
+        "Assaf Strike Black 125ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-114-125-000",
+      "source_url": "https://assaf.ae/products/strike-black",
+      "source_evidence_url": "https://assaf.ae/products/strike-black"
+    },
+    {
+      "product_id": "SH-ASSAF-1e1edc5e",
+      "size_ml": 100,
+      "aliases": [
+        "Troy Enable 100 ml",
+        "Assaf Troy Enable 100ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-1e1edc5e-100-000",
+      "source_url": "https://assaf.ae/products/troy-enable",
+      "source_evidence_url": "https://assaf.ae/products/troy-enable"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-049",
+      "size_ml": 200,
+      "aliases": [
+        "Frankel Blue Elixir 200 ml",
+        "Assaf Frankel Blue Elixir 200ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-049-200-000",
+      "source_url": "https://assaf.ae/products/edp-frankel-blue-elixir-200ml",
+      "source_evidence_url": "https://assaf.ae/products/edp-frankel-blue-elixir-200ml"
     }
   ]
 }
