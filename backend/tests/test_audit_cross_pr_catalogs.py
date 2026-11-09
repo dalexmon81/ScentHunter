@@ -18,6 +18,6 @@ def test_latest_catalog_prs_are_included_in_cross_pr_audit():
 
     candidate_numbers = {number for number, _head, _base in CANDIDATE_PRS}
     # PR #604 adds 32 product-page reconciliations and matching 100 ml EDP variants.
-    assert {562, 565, 599, 603, 604}.issubset(candidate_numbers)
+    assert {562, 565, 599, 603, 604, 605}.issubset(candidate_numbers)
     assert 578 not in candidate_numbers
     assert 600 not in candidate_numbers
