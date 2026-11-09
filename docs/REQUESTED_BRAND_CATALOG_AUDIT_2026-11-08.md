@@ -135,3 +135,12 @@ Existing Khadlaj listing-level identities upgraded with individual official prod
 - Caffe Latte — https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray (Extrait de Parfum, SKU 6291107979311)
 
 All entries are individual perfume sprays, not oils, home fragrance, or multipacks. No prices or stock data were imported.
+
+### Al Haramain: four additional verified fragrance launches (9 November 2026)
+
+- Amber Oud Imagine Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP2072)
+- Amber Oud Future Dubai — https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP2071)
+- Emotion Irisee — https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP1429)
+- Emotion Antique — https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP1428)
+
+Each individual first-party detail page identifies the fragrance, concentration, and liquid volume; all four names were absent from the current Al Haramain canonical identities. Each was added with one explicit 100 ml variant. No retailer price or stock information was copied.

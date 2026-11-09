@@ -33983,6 +33983,86 @@
         100
       ],
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-conception-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-659c2efd",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Imagine Dubai",
+      "name": "Amber Oud Imagine Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Imagine Dubai",
+      "aliases": [
+        "Amber Oud Imagine Dubai",
+        "Al Haramain Amber Oud Imagine Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-14bc55ee",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Future Dubai",
+      "name": "Amber Oud Future Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Future Dubai",
+      "aliases": [
+        "Amber Oud Future Dubai",
+        "Al Haramain Amber Oud Future Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3a4991cb",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Emotion Irisee",
+      "name": "Emotion Irisee",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Emotion Irisee",
+      "aliases": [
+        "Emotion Irisee",
+        "Al Haramain Emotion Irisee"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-20e8170f",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Emotion Antique",
+      "name": "Emotion Antique",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Emotion Antique",
+      "aliases": [
+        "Emotion Antique",
+        "Al Haramain Emotion Antique"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37083,6 +37163,50 @@
       "variant_id": "SHV-SH-KHADLAJ-ICON-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-659c2efd",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Imagine Dubai 100 ml",
+        "Al Haramain Amber Oud Imagine Dubai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-659c2efd-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-14bc55ee",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Future Dubai 100 ml",
+        "Al Haramain Amber Oud Future Dubai 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-14bc55ee-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-3a4991cb",
+      "size_ml": 100,
+      "aliases": [
+        "Emotion Irisee 100 ml",
+        "Al Haramain Emotion Irisee 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-3a4991cb-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-20e8170f",
+      "size_ml": 100,
+      "aliases": [
+        "Emotion Antique 100 ml",
+        "Al Haramain Emotion Antique 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-20e8170f-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html"
     }
   ]
 }

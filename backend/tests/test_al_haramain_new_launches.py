@@ -22,6 +22,10 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
             "Amber Oud Gold Lux": ("https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Sameera Noir": ("https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Olaf": ("https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Amber Oud Imagine Dubai": ("https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Amber Oud Future Dubai": ("https://shop.alharamainperfumes.com/au/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Emotion Irisee": ("https://shop.alharamainperfumes.com/eu/haramain-emotion-irisee-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Emotion Antique": ("https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
         }
         products = {
             p["canonical_name"]: p for p in CATALOG["products"]
@@ -48,7 +52,7 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
     def test_new_launches_are_registered_in_al_haramain_family(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "al_haramain_catalog")
         names = {p["canonical_name"] for p in family["products"]}
-        for name in ("Haramain Camellia", "Amber Oud Smell Dubai", "Sameera", "Empire Aromatique Ombre", "Leif", "Sameera Noir", "Olaf"):
+        for name in ("Haramain Camellia", "Amber Oud Smell Dubai", "Sameera", "Empire Aromatique Ombre", "Leif", "Sameera Noir", "Olaf", "Amber Oud Imagine Dubai", "Amber Oud Future Dubai", "Emotion Irisee", "Emotion Antique"):
             self.assertIn(name, names)
 
     def test_al_haramain_ids_are_unique_and_variants_are_attached(self):
