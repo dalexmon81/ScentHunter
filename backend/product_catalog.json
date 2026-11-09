@@ -1207,9 +1207,10 @@
         "Omniya",
         "Maison Asrar Omniya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/omniya",
+      "source_evidence_url": "https://maisonasrar.com/products/omniya",
+      "source_product_url": "https://maisonasrar.com/products/omniya"
     },
     {
       "product_id": "SH-MAISON-ASRAR-59d29f3c",
@@ -1366,9 +1367,11 @@
         "Rose",
         "Maison Asrar Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/gulf-orchid-rose-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/gulf-orchid-rose-eau-de-parfum",
+      "source_product_url": "https://maisonasrar.com/products/gulf-orchid-rose-eau-de-parfum",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-ab1eee6c",
@@ -1767,9 +1770,14 @@
         "Emerald",
         "Maison Asrar Emerald"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml",
+      "source_product_url": "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        110
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-3e2cdf7a",
@@ -38923,6 +38931,17 @@
       ],
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-4a2629e8",
+      "variant_id": "SHV-SH-MAISON-ASRAR-4a2629e8-110-EDP",
+      "size_ml": 110,
+      "aliases": [
+        "Emerald 110 ml",
+        "Maison Asrar Emerald 110 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-emerald-eau-de-parfum-110ml"
     }
   ]
 }
