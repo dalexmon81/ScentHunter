@@ -160,3 +160,15 @@ All five individual official product pages identify the fragrance, Eau de Parfum
 - Amber Oud Aqua Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html (200 ml, Extrait de Parfum, SKU AHP2109)
 
 The first-party detail page confirms the existing fragrance identity, Extrait de Parfum concentration, and 200 ml liquid volume. Added a 200 ml variant to the existing canonical product; no duplicate product identity was created. No price or stock data was imported.
+
+### Al Haramain: five additional official detail-page variants (9 November 2026)
+
+Five further entries from the official EU new-launch range were absent from the current seed and verified individually:
+
+- Avalon — 100 ml Eau de Parfum
+- Azure Mythique — 100 ml Eau de Parfum
+- Gold Crystal Oudh — 100 ml Extrait de Parfum
+- Gold Crystal Sapphire — 100 ml Extrait de Parfum
+- Acai — 100 ml Eau de Parfum
+
+Each record links to its own official product detail page and has one explicit 100 ml variant. No prices, stock or retailer offers were copied.

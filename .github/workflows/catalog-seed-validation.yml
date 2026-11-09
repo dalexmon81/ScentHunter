@@ -18,6 +18,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/al-haramain-five-detail-additions-2026-11-09
       - catalog/al-haramain-new-launches-2026-11-09
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
