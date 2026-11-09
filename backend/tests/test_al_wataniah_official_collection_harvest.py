@@ -394,7 +394,17 @@ VERIFIED_DETAIL_URLS = {
     "Sahari": "https://www.alwataniah.com/products/sahari",
     "Special Oud": "https://www.alwataniah.com/products/special-oud",
     "Sultan Al Lail": "https://www.alwataniah.com/products/sultan-al-lail",
-    "Turquois": "https://www.alwataniah.com/products/turquois"
+    "Turquois": "https://www.alwataniah.com/products/turquois",
+    "Milele": "https://www.alwataniah.com/products/milele",
+    "Durrat Al Aroos": "https://www.alwataniah.com/products/durrat-al-aroos",
+    "Thahaani": "https://www.alwataniah.com/products/thahaani",
+    "Crème": "https://www.alwataniah.com/products/creme",
+    "Watani Purple": "https://www.alwataniah.com/products/watani-purple",
+    "Granada": "https://www.alwataniah.com/products/granada",
+    "Tibyan": "https://www.alwataniah.com/products/tibyan",
+    "Ghala": "https://www.alwataniah.com/products/ghala",
+    "Sevilla": "https://www.alwataniah.com/products/sevilla",
+    "Kenz Al Malik": "https://www.alwataniah.com/products/kenz-al-malik"
 }
 
 
