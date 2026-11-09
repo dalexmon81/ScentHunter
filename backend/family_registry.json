@@ -11083,6 +11083,44 @@
             "Games of Spades Yellow Sapphire",
             "Game of Spades Yellow Sapphire"
           ]
+        },
+        {
+          "canonical_name": "Blue Sapphire",
+          "aliases": [
+            "Blue Sapphire",
+            "Games of Spades Blue Sapphire",
+            "Game of Spades Blue Sapphire"
+          ],
+          "formats_ml": [
+            90,
+            30
+          ]
+        },
+        {
+          "canonical_name": "Emerald Extrait",
+          "aliases": [
+            "Emerald Extrait",
+            "Games of Spades Emerald Extrait",
+            "Game of Spades Emerald Extrait"
+          ],
+          "formats_ml": [
+            90,
+            50,
+            10
+          ]
+        },
+        {
+          "canonical_name": "Rouge Extrait",
+          "aliases": [
+            "Rouge Extrait",
+            "Games of Spades Rouge Extrait",
+            "Game of Spades Rouge Extrait"
+          ],
+          "formats_ml": [
+            100,
+            30,
+            10
+          ]
         }
       ]
     },

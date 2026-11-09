@@ -213,3 +213,15 @@ Current storefront products reconciled:
 - Ether — Extrait de Parfum; size not explicitly stated
 
 The storefront collection page shows all 20 as sold out/unavailable at the time inspected. This is transient store availability, not a reason to remove the canonical identities. No current price or stock values were copied into the catalog. Eight additional Velixir identities remain in the seed but are not in the 20-item current storefront listing; they were not altered or treated as current availability evidence.
+
+
+### Games of Spades: official Jo Milano Paris product-page reconciliation (9 November 2026)
+
+Jo Milano Paris is the brand owner behind the Games of Spades line. Twenty-eight existing catalog identities were matched to their own official Jo Milano Paris product pages and upgraded to individual-page provenance. The existing **Ace** name remains explicitly at listing-level confidence: the current official store did not expose an individual Ace product page, so its evidence was corrected to the distributor catalog lead rather than incorrectly pointing at the King page.
+
+Three additional standalone fragrances were added from individual official product pages, with only the sizes and concentrations explicitly stated by Jo Milano Paris:
+- **Blue Sapphire** — Parfum; 90 ml and 30 ml
+- **Emerald Extrait** — Extrait de Parfum; 90 ml, 50 ml and 10 ml
+- **Rouge Extrait** — Extrait de Parfum; 100 ml, 30 ml and 10 ml
+
+Gift sets and coffrets remain excluded as standalone perfume identities. Other Jo Milano Paris lines outside the Games of Spades family were not added in this focused pass.
