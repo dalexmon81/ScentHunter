@@ -20250,9 +20250,10 @@
         "Absolute Power",
         "Bujairami Absolute Power"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/absolute-power-inspired-by-le-male-elixir-absolu-jean-paul-gaultier",
+      "source_evidence_url": "https://bujairami.ae/products/absolute-power-inspired-by-le-male-elixir-absolu-jean-paul-gaultier",
+      "source_product_url": "https://bujairami.ae/products/absolute-power-inspired-by-le-male-elixir-absolu-jean-paul-gaultier"
     },
     {
       "product_id": "SH-BUJAIRAMI-ACE",
@@ -20283,9 +20284,14 @@
         "Agha",
         "Bujairami Agha"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/agha-inspired-by-althair-from-parfums-de-marly",
+      "source_evidence_url": "https://bujairami.ae/products/agha-inspired-by-althair-from-parfums-de-marly",
+      "source_product_url": "https://bujairami.ae/products/agha-inspired-by-althair-from-parfums-de-marly",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-AHLA-SABIYEH",
@@ -20299,9 +20305,10 @@
         "Ahla Sabiyeh",
         "Bujairami Ahla Sabiyeh"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/ahla-sabiyeh-inspired-by-dior-j-adore",
+      "source_evidence_url": "https://bujairami.ae/products/ahla-sabiyeh-inspired-by-dior-j-adore",
+      "source_product_url": "https://bujairami.ae/products/ahla-sabiyeh-inspired-by-dior-j-adore"
     },
     {
       "product_id": "SH-BUJAIRAMI-APEX",
@@ -20331,9 +20338,14 @@
         "Arabian Valley",
         "Bujairami Arabian Valley"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/arabian-valley-inspired-by-imperial-valley-from-gissah",
+      "source_evidence_url": "https://bujairami.ae/products/arabian-valley-inspired-by-imperial-valley-from-gissah",
+      "source_product_url": "https://bujairami.ae/products/arabian-valley-inspired-by-imperial-valley-from-gissah",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-BEAUTIFUL-LADY",
@@ -20347,9 +20359,14 @@
         "Beautiful Lady",
         "Bujairami Beautiful Lady"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/beautiful-lady-inspired-by",
+      "source_evidence_url": "https://bujairami.ae/products/beautiful-lady-inspired-by",
+      "source_product_url": "https://bujairami.ae/products/beautiful-lady-inspired-by",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-BLUSH",
@@ -20363,9 +20380,10 @@
         "Blush",
         "Bujairami Blush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/blush-inspired-by-good-girl-blush-carolina-herrera",
+      "source_evidence_url": "https://bujairami.ae/products/blush-inspired-by-good-girl-blush-carolina-herrera",
+      "source_product_url": "https://bujairami.ae/products/blush-inspired-by-good-girl-blush-carolina-herrera"
     },
     {
       "product_id": "SH-BUJAIRAMI-BOOZ-EXTREME",
@@ -20379,9 +20397,14 @@
         "Booz Extreme",
         "Bujairami Booz Extreme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/booz-extreme",
+      "source_evidence_url": "https://bujairami.ae/products/booz-extreme",
+      "source_product_url": "https://bujairami.ae/products/booz-extreme",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-BOSS-LIFE",
@@ -20395,9 +20418,14 @@
         "Boss Life",
         "Bujairami Boss Life"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/boss-life-inspired-by-outlands-from-amouage",
+      "source_evidence_url": "https://bujairami.ae/products/boss-life-inspired-by-outlands-from-amouage",
+      "source_product_url": "https://bujairami.ae/products/boss-life-inspired-by-outlands-from-amouage",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-BOUJEE",
@@ -20411,9 +20439,14 @@
         "Boujee",
         "Bujairami Boujee"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.ae/collections/all?page=1",
-      "source_evidence_url": "https://bujairami.ae/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.ae/products/boujee-inspired-by-attrape-reves-from-louis-vuitton",
+      "source_evidence_url": "https://bujairami.ae/products/boujee-inspired-by-attrape-reves-from-louis-vuitton",
+      "source_product_url": "https://bujairami.ae/products/boujee-inspired-by-attrape-reves-from-louis-vuitton",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-BUJAIRAMI-CANDY-CAROUSEL",
@@ -48262,6 +48295,72 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-AGHA",
+      "size_ml": 100,
+      "aliases": [
+        "Agha 100 ml",
+        "Bujairami Agha 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-AGHA-100-000",
+      "source_url": "https://bujairami.ae/products/agha-inspired-by-althair-from-parfums-de-marly",
+      "source_evidence_url": "https://bujairami.ae/products/agha-inspired-by-althair-from-parfums-de-marly"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ARABIAN-VALLEY",
+      "size_ml": 100,
+      "aliases": [
+        "Arabian Valley 100 ml",
+        "Bujairami Arabian Valley 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-ARABIAN-VALLEY-100-000",
+      "source_url": "https://bujairami.ae/products/arabian-valley-inspired-by-imperial-valley-from-gissah",
+      "source_evidence_url": "https://bujairami.ae/products/arabian-valley-inspired-by-imperial-valley-from-gissah"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BEAUTIFUL-LADY",
+      "size_ml": 100,
+      "aliases": [
+        "Beautiful Lady 100 ml",
+        "Bujairami Beautiful Lady 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-BEAUTIFUL-LADY-100-000",
+      "source_url": "https://bujairami.ae/products/beautiful-lady-inspired-by",
+      "source_evidence_url": "https://bujairami.ae/products/beautiful-lady-inspired-by"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOOZ-EXTREME",
+      "size_ml": 100,
+      "aliases": [
+        "Booz Extreme 100 ml",
+        "Bujairami Booz Extreme 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-BOOZ-EXTREME-100-000",
+      "source_url": "https://bujairami.ae/products/booz-extreme",
+      "source_evidence_url": "https://bujairami.ae/products/booz-extreme"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOSS-LIFE",
+      "size_ml": 100,
+      "aliases": [
+        "Boss Life 100 ml",
+        "Bujairami Boss Life 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-BOSS-LIFE-100-000",
+      "source_url": "https://bujairami.ae/products/boss-life-inspired-by-outlands-from-amouage",
+      "source_evidence_url": "https://bujairami.ae/products/boss-life-inspired-by-outlands-from-amouage"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-BOUJEE",
+      "size_ml": 100,
+      "aliases": [
+        "Boujee 100 ml",
+        "Bujairami Boujee 100 ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-BOUJEE-100-000",
+      "source_url": "https://bujairami.ae/products/boujee-inspired-by-attrape-reves-from-louis-vuitton",
+      "source_evidence_url": "https://bujairami.ae/products/boujee-inspired-by-attrape-reves-from-louis-vuitton"
     }
   ]
 }
