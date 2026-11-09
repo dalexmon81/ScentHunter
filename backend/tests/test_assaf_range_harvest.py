@@ -182,6 +182,9 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Arrogate Euphoria",
             "Arrogate Blue de Elixir",
             "Arrogate Blue Exclusive",
+            "Addict Blue",
+            "Arrogate Addict",
+            "Arrogate Pink Rose",
         }
         for product in self.products:
             if product["product_id"].startswith("SH-ASSAF-HARVEST-") and product["canonical_name"] not in detail_verified:
@@ -191,7 +194,7 @@ class AssafRangeHarvestTests(unittest.TestCase):
                     self.assertNotIn("concentration", product)
                     self.assertNotIn("formats_ml", product)
 
-    def test_official_detail_pages_upgrade_fourteen_existing_identities(self):
+    def test_official_detail_pages_upgrade_seventeen_existing_identities(self):
         expected = {
             "Arrogate Pink": ({"200"}, "https://assaf.ae/products/arrogate-pink-200ml"),
             "Arrogate Pink Diva": ({"200"}, "https://assaf.ae/products/arrogate-pink-diva"),
@@ -207,6 +210,9 @@ class AssafRangeHarvestTests(unittest.TestCase):
             "Arrogate Euphoria": ({"150"}, "https://assaf.ae/products/arrogate-euphoria-150ml"),
             "Arrogate Blue de Elixir": ({"200"}, "https://assaf.ae/products/arrogate-blue-de-elixir-200ml"),
             "Arrogate Blue Exclusive": ({"200"}, "https://assaf.ae/products/arrogate-blue-exclusive"),
+            "Addict Blue": ({"125"}, "https://assaf.ae/products/addict-blue"),
+            "Arrogate Addict": ({"200"}, "https://assaf.ae/products/arrogate-addict-200ml"),
+            "Arrogate Pink Rose": ({"150"}, "https://assaf.ae/products/arrogate-pink-rose"),
         }
         variants = self.catalog["variants"]
         for name, (sizes, source_url) in expected.items():
