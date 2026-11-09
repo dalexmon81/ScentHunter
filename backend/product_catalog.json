@@ -4729,9 +4729,14 @@
         "Supremacy Gold",
         "Afnan Supremacy Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-gold",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-gold",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-gold",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -4745,15 +4750,15 @@
         "Supremacy Not Only Intense",
         "Afnan Supremacy Not Only Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://it.afnan.com/products/supremacy-not-only-intense",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense",
       "formats_ml": [
         100,
         150
       ],
       "concentration": "Extrait de Parfum",
-      "source_product_url": "https://it.afnan.com/products/supremacy-not-only-intense"
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-AFNAN-e408d61b",
@@ -4916,9 +4921,14 @@
         "Supremacy Pink",
         "Afnan Supremacy Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-pink",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-pink",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-pink",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-aa93308c",
@@ -4932,9 +4942,14 @@
         "Supremacy Purple",
         "Afnan Supremacy Purple"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-purple",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-purple",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-purple",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-387345b5",
@@ -5382,9 +5397,15 @@
         "Supremacy Silver",
         "Afnan Supremacy Silver"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-silver",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-silver",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-silver",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100,
+        150
+      ]
     },
     {
       "product_id": "SH-AFNAN-544372b1",
@@ -5398,9 +5419,14 @@
         "Supremacy Collector's Edition",
         "Afnan Supremacy Collector's Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-fc437465",
@@ -22694,9 +22720,14 @@
         "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
         "Supremacy Tapis Rouge"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=3",
-      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-TASNEEM",
@@ -34873,7 +34904,8 @@
         "Afnan Supremacy Not Only Intense 100ml"
       ],
       "variant_id": "SHV-SH-AFNAN-d1fee769-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -34883,7 +34915,8 @@
         "Afnan Supremacy Not Only Intense 150ml"
       ],
       "variant_id": "SHV-SH-AFNAN-d1fee769-150-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-8a079897",
@@ -38414,6 +38447,83 @@
       "variant_id": "SHV-SH-AFNAN-068d05a5-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-rebel"
+    },
+    {
+      "product_id": "SH-AFNAN-816ce12c",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Gold 100 ml",
+        "Afnan Supremacy Gold 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-816ce12c-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-gold"
+    },
+    {
+      "product_id": "SH-AFNAN-583391fb",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Silver 100 ml",
+        "Afnan Supremacy Silver 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-583391fb-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-silver"
+    },
+    {
+      "product_id": "SH-AFNAN-583391fb",
+      "size_ml": 150,
+      "aliases": [
+        "Supremacy Silver 150 ml",
+        "Afnan Supremacy Silver 150ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-583391fb-150-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-silver"
+    },
+    {
+      "product_id": "SH-AFNAN-544372b1",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Collector's Edition 100 ml",
+        "Afnan Supremacy Collector's Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-544372b1-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition"
+    },
+    {
+      "product_id": "SH-AFNAN-d587de8a",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Pink 100 ml",
+        "Afnan Supremacy Pink 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-d587de8a-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-pink"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-TAPIS-ROUGE-LUXURY-COLLECTION",
+      "size_ml": 90,
+      "aliases": [
+        "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION 90 ml",
+        "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-SUPREMACY-TAPIS-ROUGE-LUXURY-COLLECTION-90-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge"
+    },
+    {
+      "product_id": "SH-AFNAN-aa93308c",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Purple 100 ml",
+        "Afnan Supremacy Purple 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-aa93308c-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-purple"
     }
   ]
 }
