@@ -52,6 +52,53 @@ def stable_id(kind: str, source_id: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"{kind}:{source_id}")
 
 
+def canonical_gtin(variant: dict) -> str | None:
+    """Resolve the single GTIN supported by ProductVariant from catalog evidence.
+
+    The catalog schema uses a gtins[] list while the database model stores one
+    GTIN per variant. Accept zero or one distinct value and fail closed when
+    the source lists multiple GTINs; those must be represented as separate
+    variants rather than silently choosing one.
+    """
+    raw_values = variant.get("gtins")
+    if raw_values in (None, ""):
+        values = []
+    elif isinstance(raw_values, list):
+        values = raw_values
+    else:
+        values = [raw_values]
+
+    legacy_value = variant.get("gtin")
+    if legacy_value not in (None, ""):
+        values.append(legacy_value)
+
+    normalized = []
+    for raw in values:
+        value = re.sub(r"[\\s-]", "", str(raw or ""))
+        if not value:
+            continue
+        if not value.isdigit() or len(value) not in (8, 12, 13, 14):
+            raise ValueError(f"Invalid GTIN value {raw!r}")
+        digits = [int(char) for char in value]
+        check_digit = digits[-1]
+        weighted_sum = sum(
+            digit * (3 if offset % 2 == 0 else 1)
+            for offset, digit in enumerate(reversed(digits[:-1]))
+        )
+        expected = (10 - weighted_sum % 10) % 10
+        if check_digit != expected:
+            raise ValueError(f"Invalid GTIN check digit for {value!r}")
+        if value not in normalized:
+            normalized.append(value)
+
+    if len(normalized) > 1:
+        raise ValueError(
+            "A canonical variant can store one GTIN; split multiple GTINs "
+            f"into distinct variants: {normalized}"
+        )
+    return normalized[0] if normalized else None
+
+
 def merge_discovery_overlay(raw: dict, overlay: dict) -> int:
     """Merge researched fragrance identities only; never infer variants or offers."""
     products = raw.setdefault("products", [])
@@ -432,6 +479,7 @@ def main() -> int:
                         source_id,
                     ))
                     variant_id = stable_id("variant", source_id)
+                    gtin = canonical_gtin(variant)
                     variant_row = session.get(ProductVariant, variant_id)
                     if variant_row is None:
                         variant_row = ProductVariant(
@@ -442,7 +490,7 @@ def main() -> int:
                             is_tester=variant.get("is_tester"),
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
-                            gtin=variant.get("gtin"),
+                            gtin=gtin,
                             canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
                         session.add(variant_row)
@@ -453,6 +501,13 @@ def main() -> int:
                         expected_key = str(variant.get("canonical_key") or key[:320])
                         if variant_row.canonical_key != expected_key:
                             variant_row.canonical_key = expected_key
+                        if gtin and variant_row.gtin and variant_row.gtin != gtin:
+                            raise RuntimeError(
+                                f"Variant {source_id} has conflicting GTIN values: "
+                                f"database={variant_row.gtin!r}, catalog={gtin!r}"
+                            )
+                        if gtin and not variant_row.gtin:
+                            variant_row.gtin = gtin
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
