@@ -137,5 +137,45 @@ class AlHaramainCatalogTests(unittest.TestCase):
         self.assertEqual(len(variant_ids), len(set(variant_ids)))
 
 
+    def test_five_more_fragrances_have_verified_official_detail_pages_and_variants(self):
+        expected = {
+            "Detour Noir Exclusif": (
+                "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-exclusif-100ml-eau-de-parfum.html",
+                "Eau de Parfum", 100,
+            ),
+            "Detour Noir Intense": (
+                "https://shop.alharamainperfumes.com/eu/haramain-detour-noir-intense-100ml-eau-de-parfum.html",
+                "Eau de Parfum", 100,
+            ),
+            "Amber Oud Tobacco Edition": (
+                "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-tobacco-edition.html",
+                "Eau de Parfum", 200,
+            ),
+            "Amber Oud Gold Edition": (
+                "https://shop.alharamainperfumes.com/eu/amber-oud-gold-edition-120-ml.html",
+                "Eau de Parfum", 120,
+            ),
+            "Amber Oud Dubai Night": (
+                "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-gold-dubai-night-75ml-extrait-de-parfum.html",
+                "Extrait de Parfum", 75,
+            ),
+        }
+        for name, (source, concentration, size_ml) in expected.items():
+            with self.subTest(product=name):
+                product = self.products_by_name[name]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("concentration"), concentration)
+                self.assertIn(size_ml, product.get("formats_ml", []))
+                matches = [
+                    variant for variant in self.variants_for(product)
+                    if variant.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("concentration"), concentration)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+
 if __name__ == "__main__":
     unittest.main()
