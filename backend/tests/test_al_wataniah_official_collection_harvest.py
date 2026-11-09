@@ -424,9 +424,25 @@ VERIFIED_DETAIL_URLS = {
     "Shagaf Al Ward Gardenia": "https://www.alwataniah.com/products/shagaf-al-ward-gardenia",
     "Sabah Al Ward Garden of Eden": "https://www.alwataniah.com/products/sabah-al-ward-garden-of-eden",
     "Attar Al Wesal Elixir": "https://www.alwataniah.com/products/attar-al-wesal-elixir",
-    "Ziyana": "https://www.alwataniah.com/products/ziyana"
+    "Ziyana": "https://www.alwataniah.com/products/ziyana",
+    "Lazuli": "https://www.alwataniah.com/products/lazuli",
+    "Fayyad": "https://www.alwataniah.com/products/fayyad",
+    "Amnia": "https://www.alwataniah.com/products/amnia",
+    "Lily": "https://www.alwataniah.com/products/lily",
+    "Qasar Al Watan": "https://www.alwataniah.com/products/qasar-al-watan",
+    "Rawaee Elite": "https://www.alwataniah.com/products/rawaee-elite",
+    "Rawaee Monarch": "https://www.alwataniah.com/products/rawaee-monarch",
+    "Emiran Selar": "https://www.alwataniah.com/products/emiran-selar",
+    "Massad Royale": "https://www.alwataniah.com/products/massad-royale",
+    "White Chocolate Ganache": "https://www.alwataniah.com/products/white-chocolate-ganache",
+    "Sugar Rush": "https://www.alwataniah.com/products/sugar-rush"
 }
 
+
+VERIFIED_IDENTITY_ONLY_URLS = {
+    "House Of Oud": "https://www.alwataniah.com/products/house-of-oud",
+    "Anwan": "https://www.alwataniah.com/products/anwan"
+}
 
 class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
     def test_all_official_collection_fragrances_are_present_once(self):
@@ -447,6 +463,11 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                     self.assertEqual(product.get("source_url"), VERIFIED_DETAIL_URLS[name])
                     self.assertEqual(product.get("concentration"), "Eau de Parfum")
                     self.assertIn(100, product.get("formats_ml", []))
+                elif name in VERIFIED_IDENTITY_ONLY_URLS:
+                    self.assertEqual(product.get("identity_status"), "source_verified_name")
+                    self.assertEqual(product.get("source_url"), VERIFIED_IDENTITY_ONLY_URLS[name])
+                    self.assertNotIn("concentration", product)
+                    self.assertNotIn("formats_ml", product)
                 else:
                     self.assertEqual(product.get("identity_status"), "source_listed_name")
                     self.assertEqual(product.get("source_url"), listing_url)
