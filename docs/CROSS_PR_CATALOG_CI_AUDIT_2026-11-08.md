@@ -108,3 +108,17 @@ The family registry should contain one canonical row for each fragrance identity
 - No catalog row, variant, family entry, price, stock, `main` branch or production deployment was changed by the audit.
 - All component PRs remain open unless separately changed by an explicit review decision.
 - A blocked CI result is the intended signal while these overlaps remain unresolved.
+
+## Follow-up verification — 2026-11-09 (PR #592)
+
+Latest cross-PR CI: [run 42574329296](https://github.com/dalexmon81/ScentHunter/actions/runs/42574329296), **failure as intended**: 21 unresolved conflicting identity/ID findings and 93 identical additions reported as non-blocking overlaps. This is a cross-branch audit, not a failure of the standalone catalog seed tests.
+
+Current blocking breakdown from the CI log:
+
+- **Armaf:** 2 canonical-name/product-ID collisions (Check Mate White Knight; Odyssey French Kiss) across #558, #564, #565 and #593.
+- **Gulf Orchid:** 5 canonical-name/product-ID collisions (Al Qasr, Amour, Belle, Chic, Riwaya) across baseline and #584/#587/#588; additionally 2 existing product IDs are reused with differing normalized names because a 20 ml size suffix is included in one spelling of Sweet Heaven and Sweet Heaven Extreme.
+- **Lattafa:** 12 canonical-name/product-ID collisions (Asad Polar, Atlas Canyon, Atlas Glacial Valley, Badee Al Oud Amethyst Fusion, Beyond Precious, Farfasha, Harlequin Cream Give Me Gourmand, Khamrah Mira, Majd Al Sultan Black Intense, Matcha Swirl Give Me Gourmand, Petra Viola, Raghad).
+
+The correct breakdown is **2 Armaf + 5 Gulf Orchid + 12 Lattafa + 2 Gulf Orchid reused IDs = 21 findings**. The report is intentionally red until the selected source branches are reconciled into one canonical identity scheme. Do not drop candidates solely to make the audit green; first retain source evidence, pick one stable product ID per normalized identity, map aliases, and ensure variant foreign keys point to the surviving ID. The 93 repeated additions are informational and must not be double-counted as new products.
+
+**Architecture handoff:** PR #424 is separate from this collision gate. Its catalog-first staging API and PostgreSQL vertical-slice checks passed in runs [42574207596](https://github.com/dalexmon81/ScentHunter/actions/runs/42574207596) and [42574207608](https://github.com/dalexmon81/ScentHunter/actions/runs/42574207608). Catalog collision reconciliation must precede any consolidated seed migration, but architecture work can continue on isolated staging without merging or deploying to production.
