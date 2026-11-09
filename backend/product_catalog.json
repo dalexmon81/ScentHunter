@@ -34693,6 +34693,50 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-AVANT",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Avant",
+      "name": "Avant",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Avant",
+        "Maison Alhambra Avant"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-CAMILLE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Camille",
+      "name": "Camille",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Maison Alhambra",
+      "aliases": [
+        "Camille",
+        "Maison Alhambra Camille"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Women"
     }
   ],
   "variants": [
@@ -38609,6 +38653,32 @@
       "variant_id": "SHV-SH-AROMATIX-672bf656-100-000",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://frenchavenue.com/products/aromatix-x-xandal"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-AVANT",
+      "size_ml": 100,
+      "aliases": [
+        "Avant 100 ml",
+        "Maison Alhambra Avant 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-AVANT-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107459110",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-avant-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-CAMILLE",
+      "size_ml": 100,
+      "aliases": [
+        "Camille 100 ml",
+        "Maison Alhambra Camille 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-CAMILLE-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360599236",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women"
     }
   ]
 }
