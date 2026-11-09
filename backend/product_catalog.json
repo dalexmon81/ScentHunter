@@ -7081,8 +7081,17 @@
         "Amber Oud Ultra Violet",
         "Al Haramain Amber Oud Ultra Violet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-120ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-120ml.html",
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-120ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60,
+        120,
+        200
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-AL-HARAMAIN-5d7e5051",
@@ -7235,8 +7244,16 @@
         "Amber Oud Black Edition",
         "Al Haramain Amber Oud Black Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html",
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60,
+        100,
+        200
+      ]
     },
     {
       "product_id": "SH-AL-HARAMAIN-54e2230e",
@@ -7265,8 +7282,17 @@
         "Amber Oud Private Edition",
         "Al Haramain Amber Oud Private Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-100ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-100ml.html",
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-100ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60,
+        100,
+        120
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-AL-HARAMAIN-740e41cb",
@@ -48128,6 +48154,114 @@
       "variant_id": "SHV-SH-LATTAFA-AFEEF-100-000",
       "source_url": "https://lattafa.com/product/afeef/",
       "source_evidence_url": "https://lattafa.com/product/afeef/"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1c89e86a",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Ultra Violet 60 ml",
+        "Al Haramain Amber Oud Ultra Violet 60ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1c89e86a-60-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-60ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-60ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1c89e86a",
+      "size_ml": 120,
+      "aliases": [
+        "Amber Oud Ultra Violet 120 ml",
+        "Al Haramain Amber Oud Ultra Violet 120ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1c89e86a-120-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-120ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-120ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-1c89e86a",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Ultra Violet 200 ml",
+        "Al Haramain Amber Oud Ultra Violet 200ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-1c89e86a-200-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/default/haramain-amber-oud-ultra-violet-200ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-amber-oud-ultra-violet-200ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-b84d77e4",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Private Edition 60 ml",
+        "Al Haramain Amber Oud Private Edition 60ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-b84d77e4-60-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-60ml-spray.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-60ml-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-b84d77e4",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Private Edition 100 ml",
+        "Al Haramain Amber Oud Private Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-b84d77e4-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-100ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-b84d77e4",
+      "size_ml": 120,
+      "aliases": [
+        "Amber Oud Private Edition 120 ml",
+        "Al Haramain Amber Oud Private Edition 120ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-b84d77e4-120-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-bcf136e8",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Black Edition 60 ml",
+        "Al Haramain Amber Oud Black Edition 60ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-bcf136e8-60-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-bcf136e8",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Black Edition 100 ml",
+        "Al Haramain Amber Oud Black Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-bcf136e8-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-bcf136e8",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Black Edition 200 ml",
+        "Al Haramain Amber Oud Black Edition 200ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-bcf136e8-200-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html"
     }
   ]
 }
