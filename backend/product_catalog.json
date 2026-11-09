@@ -12040,9 +12040,13 @@
         "Club de Nuit Intense Man",
         "Armaf Club de Nuit Intense Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.armaf.eu/products/club-de-nuit-intense-for-man",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Toilette",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-96ab7130",
@@ -12344,9 +12348,13 @@
         "Club de Nuit Oud",
         "Armaf Club de Nuit Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.armaf.eu/products/club-de-nuit-oud",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-e4d46951",
@@ -12520,9 +12528,13 @@
         "Club de Nuit Man",
         "Armaf Club de Nuit Man"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.armaf.eu/products/club-de-nuit-man",
+      "source_evidence_url": "https://armaf.com/collections/all-perfumes",
+      "concentration": "Eau de Toilette",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-e5e7e73b",
@@ -46417,6 +46429,162 @@
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-PINK-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Pink Pop",
+      "name": "Odyssey Pink Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Pink Pop",
+      "aliases": [
+        "Odyssey Pink Pop",
+        "Armaf Odyssey Pink Pop"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-pink-pop-edp"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-FRENCH-KISS",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey French Kiss",
+      "name": "Odyssey French Kiss",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey French Kiss",
+      "aliases": [
+        "Odyssey French Kiss",
+        "Armaf Odyssey French Kiss",
+        "Odyssey French Kiss 60 ml",
+        "Armaf Odyssey French Kiss 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-french-kiss",
+      "formats_ml": [
+        60
+      ],
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-french-kiss"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SODA-POP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Soda Pop",
+      "name": "Odyssey Soda Pop",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Soda Pop",
+      "aliases": [
+        "Odyssey Soda Pop",
+        "Armaf Odyssey Soda Pop"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.armaf.ae/products/odyssey-soda-pop",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-DUNESCAPE-DUBAI",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Dunescape Dubai",
+      "name": "Dunescape Dubai",
+      "family_id": "armaf_catalog",
+      "family_name": "Armaf",
+      "aliases": [
+        "Dunescape Dubai",
+        "Armaf Dunescape Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.eu/products/dunescape",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-CHECK-MATE-WHITE-KNIGHT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Check Mate White Knight",
+      "name": "Check Mate White Knight",
+      "family_id": "armaf_catalog",
+      "family_name": "Armaf",
+      "aliases": [
+        "Check Mate White Knight",
+        "Armaf Check Mate White Knight"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/en/products/check-mate-white-knight",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-5111fab1",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Tyrant Special Edition",
+      "name": "Odyssey Tyrant Special Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Tyrant Special Edition",
+      "aliases": [
+        "Odyssey Tyrant Special Edition",
+        "Armaf Odyssey Tyrant Special Edition"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/en/products/odyssey-tyrant-special-edition",
+      "source_evidence_url": "https://cz.armaf.eu/en/products/odyssey-tyrant-special-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60,
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-332c2520",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Eau de Montagne Mountain Edition",
+      "name": "Odyssey Eau de Montagne Mountain Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Eau de Montagne Mountain Edition",
+      "aliases": [
+        "Odyssey Eau de Montagne Mountain Edition",
+        "Armaf Odyssey Eau de Montagne Mountain Edition"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/en/products/odyssey-eau-de-montagne-mountain-edition",
+      "source_evidence_url": "https://cz.armaf.eu/en/products/odyssey-eau-de-montagne-mountain-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-b428c109",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Dubai Delicacy Kunafa Chocolate",
+      "name": "Dubai Delicacy Kunafa Chocolate",
+      "family_id": "armaf_catalog",
+      "family_name": "Dubai Delicacy Kunafa Chocolate",
+      "aliases": [
+        "Dubai Delicacy Kunafa Chocolate",
+        "Armaf Dubai Delicacy Kunafa Chocolate"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/dubai-delicacy",
+      "source_evidence_url": "https://cz.armaf.eu/products/dubai-delicacy",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        70
+      ]
     }
   ],
   "variants": [
@@ -54401,6 +54569,121 @@
       "source_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/la-fede-eau-de-parfume/products/uno-intimo-edp-spray-shop-online-best-price-in-dubai-uae"
+    },
+    {
+      "product_id": "SH-ARMAF-8c539773",
+      "variant_id": "SHV-SH-ARMAF-8c539773-105-EDP-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Oud 105 ml",
+        "Armaf Club de Nuit Oud 105ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-dd435afb",
+      "variant_id": "SHV-SH-ARMAF-dd435afb-105-EDT-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Man 105 ml",
+        "Armaf Club de Nuit Man 105ml"
+      ],
+      "concentration": "Eau de Toilette"
+    },
+    {
+      "product_id": "SH-ARMAF-f0af9d9d",
+      "variant_id": "SHV-SH-ARMAF-f0af9d9d-105-EDT-000",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Intense Man 105 ml",
+        "Armaf Club de Nuit Intense Man 105ml"
+      ],
+      "concentration": "Eau de Toilette"
+    },
+    {
+      "product_id": "SH-ARMAF-DUNESCAPE-DUBAI",
+      "variant_id": "SHV-SH-ARMAF-DUNESCAPE-DUBAI-100-000",
+      "size_ml": 100,
+      "concentration": "Extrait de Parfum",
+      "aliases": [
+        "Dunescape Dubai 100 ml",
+        "Armaf Dunescape Dubai 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-CHECK-MATE-WHITE-KNIGHT",
+      "variant_id": "SHV-SH-ARMAF-CHECK-MATE-WHITE-KNIGHT-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Check Mate White Knight 100 ml",
+        "Armaf Check Mate White Knight 100ml"
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-5111fab1",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Tyrant Special Edition 60 ml",
+        "Armaf Odyssey Tyrant Special Edition 60ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-5111fab1-60-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://cz.armaf.eu/en/products/odyssey-tyrant-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-5111fab1",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Tyrant Special Edition 100 ml",
+        "Armaf Odyssey Tyrant Special Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-5111fab1-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://cz.armaf.eu/en/products/odyssey-tyrant-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-332c2520",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Eau de Montagne Mountain Edition 100 ml",
+        "Armaf Odyssey Eau de Montagne Mountain Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-332c2520-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://cz.armaf.eu/en/products/odyssey-eau-de-montagne-mountain-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-b428c109",
+      "size_ml": 70,
+      "aliases": [
+        "Dubai Delicacy Kunafa Chocolate 70 ml",
+        "Armaf Dubai Delicacy Kunafa Chocolate 70ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-b428c109-70-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://cz.armaf.eu/products/dubai-delicacy"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SODA-POP",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-SODA-POP-100-EDP-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Soda Pop 100 ml",
+        "Armaf Odyssey Soda Pop 100ml"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-FRENCH-KISS",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey French Kiss 60 ml",
+        "Armaf Odyssey French Kiss 60ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-FRENCH-KISS-60-EDP-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://cz.armaf.eu/products/odyssey-french-kiss"
     }
   ]
 }
