@@ -122,3 +122,17 @@ Four absent canonical fragrance identities were added from Swiss Arabian's offic
 
 Each identity received one matching size/concentration variant and was added to the existing Swiss Arabian family registry. The Collector's Edition III was intentionally excluded as a separate identity because the official page describes it as a two-fragrance set containing Echoes of St. Moritz and Shaghaf Oud Marine, not a standalone perfume.
 
+
+
+### Swiss Arabian new-launch reconciliation — continuation, 9 November 2026
+
+A second pass through page 2 of the official New Launches collection found five more absent identities:
+
+- **Enigma of Taif:** individual official page https://swissarabian.com/collections/new-launches/products/enigma-of-taif explicitly states 100 ml. The accessible brand-owned page does not state concentration, so it remains unspecified.
+- **Shaghaf Amber Infusion:** official page https://swissarabian.com/collections/new-launches/products/shaghaf-amber-infusion explicitly states Extrait de Parfum 75 ml.
+- **Soul of Bali:** official page https://swissarabian.com/collections/new-launches/products/soul-of-bali explicitly states Extrait de Parfum 100 ml.
+- **Vanilla 01:** official US page https://us.swissarabian.com/products/vanilla-01 identifies Extrait de Parfum 50 ml.
+- **Tobacco 01:** official US page https://us.swissarabian.com/products/tobacco-01 identifies Extrait de Parfum 50 ml.
+
+Each was added once with a matching size variant. Enigma of Taif deliberately has no concentration field because the individual brand-owned page inspected does not expose one. Gift sets on the same new-launch collection were excluded.
+

@@ -33844,6 +33844,110 @@
       "formats_ml": [
         50
       ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-ENIGMA-OF-TAIF",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Enigma of Taif",
+      "name": "Enigma of Taif",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Enigma of Taif",
+      "aliases": [
+        "Enigma of Taif",
+        "Swiss Arabian Enigma of Taif"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/collections/new-launches/products/enigma-of-taif",
+      "source_product_url": "https://swissarabian.com/collections/new-launches/products/enigma-of-taif",
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/enigma-of-taif",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-AMBER-INFUSION",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Shaghaf Amber Infusion",
+      "name": "Shaghaf Amber Infusion",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Shaghaf Amber Infusion",
+      "aliases": [
+        "Shaghaf Amber Infusion",
+        "Swiss Arabian Shaghaf Amber Infusion"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/collections/new-launches/products/shaghaf-amber-infusion",
+      "source_product_url": "https://swissarabian.com/collections/new-launches/products/shaghaf-amber-infusion",
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/shaghaf-amber-infusion",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-SOUL-OF-BALI",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Soul of Bali",
+      "name": "Soul of Bali",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Soul of Bali",
+      "aliases": [
+        "Soul of Bali",
+        "Swiss Arabian Soul of Bali"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://swissarabian.com/collections/new-launches/products/soul-of-bali",
+      "source_product_url": "https://swissarabian.com/collections/new-launches/products/soul-of-bali",
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/soul-of-bali",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-VANILLA-01",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Vanilla 01",
+      "name": "Vanilla 01",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Vanilla 01",
+      "aliases": [
+        "Vanilla 01",
+        "Swiss Arabian Vanilla 01"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.swissarabian.com/products/vanilla-01",
+      "source_product_url": "https://us.swissarabian.com/products/vanilla-01",
+      "source_evidence_url": "https://us.swissarabian.com/products/vanilla-01",
+      "formats_ml": [
+        50
+      ],
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-SWISS-ARABIAN-TOBACCO-01",
+      "brand": "Swiss Arabian",
+      "brand_name": "Swiss Arabian",
+      "canonical_name": "Tobacco 01",
+      "name": "Tobacco 01",
+      "family_id": "swiss_arabian_catalog",
+      "family_name": "Tobacco 01",
+      "aliases": [
+        "Tobacco 01",
+        "Swiss Arabian Tobacco 01"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.swissarabian.com/products/tobacco-01",
+      "source_product_url": "https://us.swissarabian.com/products/tobacco-01",
+      "source_evidence_url": "https://us.swissarabian.com/products/tobacco-01",
+      "formats_ml": [
+        50
+      ],
+      "concentration": "Extrait de Parfum"
     }
   ],
   "variants": [
@@ -36829,6 +36933,50 @@
       "size_ml": 50,
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://us.swissarabian.com/products/patchouli-01"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-ENIGMA-OF-TAIF-V-100",
+      "product_id": "SH-SWISS-ARABIAN-ENIGMA-OF-TAIF",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Enigma of Taif",
+      "size_ml": 100,
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/enigma-of-taif"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-SHAGHAF-AMBER-INFUSION-V-75-EXTRAIT",
+      "product_id": "SH-SWISS-ARABIAN-SHAGHAF-AMBER-INFUSION",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Shaghaf Amber Infusion",
+      "size_ml": 75,
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/shaghaf-amber-infusion",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-SOUL-OF-BALI-V-100-EXTRAIT",
+      "product_id": "SH-SWISS-ARABIAN-SOUL-OF-BALI",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Soul of Bali",
+      "size_ml": 100,
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/soul-of-bali",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-VANILLA-01-V-50-EXTRAIT",
+      "product_id": "SH-SWISS-ARABIAN-VANILLA-01",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Vanilla 01",
+      "size_ml": 50,
+      "source_evidence_url": "https://us.swissarabian.com/products/vanilla-01",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "variant_id": "SH-SWISS-ARABIAN-TOBACCO-01-V-50-EXTRAIT",
+      "product_id": "SH-SWISS-ARABIAN-TOBACCO-01",
+      "brand": "Swiss Arabian",
+      "canonical_name": "Tobacco 01",
+      "size_ml": 50,
+      "source_evidence_url": "https://us.swissarabian.com/products/tobacco-01",
+      "concentration": "Extrait de Parfum"
     }
   ]
 }

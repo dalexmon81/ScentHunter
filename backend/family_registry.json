@@ -10713,6 +10713,56 @@
           "formats_ml": [
             50
           ]
+        },
+        {
+          "canonical_name": "Enigma of Taif",
+          "aliases": [
+            "Enigma of Taif",
+            "Swiss Arabian Enigma of Taif"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Amber Infusion",
+          "aliases": [
+            "Shaghaf Amber Infusion",
+            "Swiss Arabian Shaghaf Amber Infusion"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Soul of Bali",
+          "aliases": [
+            "Soul of Bali",
+            "Swiss Arabian Soul of Bali"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanilla 01",
+          "aliases": [
+            "Vanilla 01",
+            "Swiss Arabian Vanilla 01"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Tobacco 01",
+          "aliases": [
+            "Tobacco 01",
+            "Swiss Arabian Tobacco 01"
+          ],
+          "formats_ml": [
+            50
+          ]
         }
       ]
     },

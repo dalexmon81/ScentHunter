@@ -13,6 +13,11 @@ EXPECTED = {
     "Echoes of St. Moritz": ("https://swissarabian.com/collections/new-launches/products/echoes-of-st-moritz", 100, "Extrait de Parfum"),
     "Shaghaf Nectar Blush": ("https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush", 75, "Eau de Parfum"),
     "Patchouli 01": ("https://us.swissarabian.com/products/patchouli-01", 50, "Extrait de Parfum"),
+    "Enigma of Taif": ("https://swissarabian.com/collections/new-launches/products/enigma-of-taif", 100, None),
+    "Shaghaf Amber Infusion": ("https://swissarabian.com/collections/new-launches/products/shaghaf-amber-infusion", 75, "Extrait de Parfum"),
+    "Soul of Bali": ("https://swissarabian.com/collections/new-launches/products/soul-of-bali", 100, "Extrait de Parfum"),
+    "Vanilla 01": ("https://us.swissarabian.com/products/vanilla-01", 50, "Extrait de Parfum"),
+    "Tobacco 01": ("https://us.swissarabian.com/products/tobacco-01", 50, "Extrait de Parfum"),
 }
 
 
