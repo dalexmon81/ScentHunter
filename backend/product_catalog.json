@@ -33765,7 +33765,7 @@
       ]
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-026",
+      "product_id": "SH-LATTAFA-RAGHAD",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Raghad",
@@ -33784,7 +33784,7 @@
       ]
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-027",
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Badee Al Oud Amethyst Fusion",
@@ -33899,7 +33899,7 @@
       "source_evidence_url": "https://lattafa.com/product/lattafa-pride-stop-wait-go/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-033",
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-MAJD-AL-SULTAN-BLACK-INTENSE",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Majd Al Sultan Black Intense",
@@ -33937,7 +33937,7 @@
       "source_evidence_url": "https://lattafa.com/product/ramaad-al-oud/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-035",
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-FARFASHA",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Farfasha",
@@ -33975,7 +33975,7 @@
       "source_evidence_url": "https://lattafa.com/product/dream-of-haze/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-037",
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Atlas Canyon",
@@ -33994,7 +33994,7 @@
       "source_evidence_url": "https://lattafa.com/product/atlas-canyon/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-038",
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Atlas Glacial Valley",
@@ -34013,7 +34013,7 @@
       "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-039",
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Asad Polar",
@@ -34032,7 +34032,7 @@
       "source_evidence_url": "https://lattafa.com/product/asad-polar/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-040",
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Beyond Precious",
@@ -34051,7 +34051,7 @@
       "source_evidence_url": "https://lattafa.com/product/beyond-precious/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-041",
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Harlequin Cream – Give Me Gourmand",
@@ -34167,7 +34167,7 @@
       "source_evidence_url": "https://lattafa.com/product/raw-human/"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-047",
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Khamrah Mira",
@@ -34186,7 +34186,7 @@
       ]
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-048",
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND",
       "brand": "Lattafa",
       "brand_name": "Lattafa",
       "canonical_name": "Matcha Swirl – Give Me Gourmand",
@@ -37927,22 +37927,22 @@
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-025-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-026",
+      "product_id": "SH-LATTAFA-RAGHAD",
       "size_ml": 100,
       "aliases": [
         "Raghad 100 ml",
         "Lattafa Raghad 100 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-026-100-000"
+      "variant_id": "SHV-SH-LATTAFA-RAGHAD-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-027",
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
       "size_ml": 100,
       "aliases": [
         "Badee Al Oud Amethyst Fusion 100 ml",
         "Lattafa Badee Al Oud Amethyst Fusion 100 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-027-100-000"
+      "variant_id": "SHV-SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION-100-000"
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-028",
@@ -37991,13 +37991,13 @@
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-032-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-033",
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-MAJD-AL-SULTAN-BLACK-INTENSE",
       "size_ml": 100,
       "aliases": [
         "Majd Al Sultan Black Intense 100 ml",
         "Lattafa Majd Al Sultan Black Intense 100 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-033-100-000"
+      "variant_id": "SHV-SH-LATTAFA-NEW-LAUNCH-MAJD-AL-SULTAN-BLACK-INTENSE-100-000"
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-034",
@@ -38009,13 +38009,13 @@
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-034-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-035",
+      "product_id": "SH-LATTAFA-NEW-LAUNCH-FARFASHA",
       "size_ml": 100,
       "aliases": [
         "Farfasha 100 ml",
         "Lattafa Farfasha 100 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-035-100-000"
+      "variant_id": "SHV-SH-LATTAFA-NEW-LAUNCH-FARFASHA-100-000"
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-036",
@@ -38027,49 +38027,49 @@
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-036-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-037",
+      "product_id": "SH-LATTAFA-ATLAS-CANYON",
       "size_ml": 55,
       "aliases": [
         "Atlas Canyon 55 ml",
         "Lattafa Atlas Canyon 55 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-037-55-000"
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-CANYON-55-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-038",
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
       "size_ml": 55,
       "aliases": [
         "Atlas Glacial Valley 55 ml",
         "Lattafa Atlas Glacial Valley 55 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-038-55-000"
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-GLACIAL-VALLEY-55-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-039",
+      "product_id": "SH-LATTAFA-ASAD-POLAR",
       "size_ml": 100,
       "aliases": [
         "Asad Polar 100 ml",
         "Lattafa Asad Polar 100 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-039-100-000"
+      "variant_id": "SHV-SH-LATTAFA-ASAD-POLAR-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-040",
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS",
       "size_ml": 100,
       "aliases": [
         "Beyond Precious 100 ml",
         "Lattafa Beyond Precious 100 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-040-100-000"
+      "variant_id": "SHV-SH-LATTAFA-BEYOND-PRECIOUS-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-041",
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND",
       "size_ml": 75,
       "aliases": [
         "Harlequin Cream – Give Me Gourmand 75 ml",
         "Lattafa Harlequin Cream – Give Me Gourmand 75 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-041-75-000"
+      "variant_id": "SHV-SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND-75-000"
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-042",
@@ -38118,22 +38118,22 @@
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-046-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-047",
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA",
       "size_ml": 100,
       "aliases": [
         "Khamrah Mira 100 ml",
         "Lattafa Khamrah Mira 100 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-047-100-000"
+      "variant_id": "SHV-SH-LATTAFA-KHAMRAH-MIRA-100-000"
     },
     {
-      "product_id": "SH-LATTAFA-EU-HARVEST-048",
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND",
       "size_ml": 75,
       "aliases": [
         "Matcha Swirl – Give Me Gourmand 75 ml",
         "Lattafa Matcha Swirl – Give Me Gourmand 75 ml"
       ],
-      "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-048-75-000"
+      "variant_id": "SHV-SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND-75-000"
     },
     {
       "product_id": "SH-LATTAFA-EU-HARVEST-049",
