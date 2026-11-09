@@ -421,3 +421,17 @@ The official collection has 74 fragrance listings across its seven pages. The ca
 The source review exposed two catalog identities for the same fragrance: **Black** (retailer/listing provenance) and **Black Grapefruit** (official collection listing). The official collection links Black Grapefruit to the individual Maison Asrar product page titled **BLACK**; the page's scent profile explicitly names grapefruit, lavender and tonka, matching the collection card. The independent retailer's Black page also reproduces the brand's same note pyramid.
 
 The duplicate canonical **Black** row was removed from both `product_catalog.json` and `family_registry.json`. **Black Grapefruit** remains the canonical product, with **Black** retained as an alias and its official 100 ml EDP variant. This reduces Maison Asrar from 120 to **119 distinct canonical identities** without losing a fragrance or variant.
+
+
+### Maison Asrar: four additional individual product pages from best-seller discovery (9 November 2026)
+
+The official best-seller collection and exact-name search surfaced individual brand-owned pages for four remaining listing-level identities:
+
+- Faris Al Arab — direct product page; no size/concentration inferred
+- Vanilla Voyage — direct product page identifies Eau de Parfum; no size inferred
+- Gold Noir — direct product page identifies Eau de Parfum; no size inferred
+- Hilm — direct product page; no size/concentration inferred
+
+These four identities now have individual product provenance. No variants were created because the official individual pages do not state a bottle size in the source inspected.
+
+After merging the duplicate Black listing into Black Grapefruit and verifying these four pages, Maison Asrar now has **119 distinct canonical identities: 88 individually sourced and 31 still at collection-listing confidence**. The brand still has 52 structured variants in this catalog pass.
