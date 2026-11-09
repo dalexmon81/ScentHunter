@@ -31,7 +31,7 @@ MINIMUM_BRAND_COUNTS = {
     "Arabiyat Prestige": 118,
     "Gulf Orchid": 32,
     "Afnan": 87,
-    "Lattafa": 122,
+    "Lattafa": 123,
     "Aromatix": 12,
     "Zimaya": 76,
     "Al Haramain": 107,
@@ -1526,6 +1526,44 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(len(matches), 1)
                     self.assertEqual(matches[0].get("source_url"), source)
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+    def test_lattafa_new_official_detail_pages_and_variants_are_verified(self):
+        expected = {
+            "Ajwad Pink to Pink Creamy Elixir": (
+                "https://lattafaparfum.eu/fr-de/products/ajwad-pink-to-pink-creamy-elixir",
+                60, "Eau de Parfum", None,
+            ),
+            "Petra Viola": (
+                "https://www.lattafa-usa.com/products/petra-viola",
+                100, None, "6298043161732",
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Lattafa"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size, concentration, gtin) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertIn(size, row.get("formats_ml", []))
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                    and variant.get("size_ml") == size
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("source_url"), source)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+                if concentration:
+                    self.assertEqual(matches[0].get("concentration"), concentration)
+                if gtin:
+                    self.assertEqual(matches[0].get("gtin"), gtin)
 
 
 if __name__ == "__main__":
