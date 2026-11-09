@@ -15014,10 +15014,15 @@
         "The Lion's Club Majestueux",
         "Armaf The Lion's Club Majestueux"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=13",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=13",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.eu/products/the-lions-club-majestueux",
+      "source_evidence_url": "https://armaf.eu/products/the-lions-club-majestueux",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.eu/products/the-lions-club-majestueux",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-df3e27f4",
@@ -15132,9 +15137,15 @@
         "The Lion's Club Feroce",
         "Armaf The Lion's Club Feroce"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=15",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=15"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.eu/products/the-lions-club-feroce",
+      "source_evidence_url": "https://armaf.eu/products/the-lions-club-feroce",
+      "source_product_url": "https://armaf.eu/products/the-lions-club-feroce",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men"
     },
     {
       "product_id": "SH-ARMAF-8f54e3e4",
@@ -46005,6 +46016,30 @@
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://armaf.eu/products/the-lions-club-monarque",
       "source_url": "https://armaf.eu/products/the-lions-club-monarque"
+    },
+    {
+      "product_id": "SH-ARMAF-137341e2",
+      "size_ml": 100,
+      "aliases": [
+        "The Lion's Club Feroce 100 ml",
+        "Armaf The Lion's Club Feroce 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-137341e2-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://armaf.eu/products/the-lions-club-feroce",
+      "source_url": "https://armaf.eu/products/the-lions-club-feroce"
+    },
+    {
+      "product_id": "SH-ARMAF-cc78d86f",
+      "size_ml": 100,
+      "aliases": [
+        "The Lion's Club Majestueux 100 ml",
+        "Armaf The Lion's Club Majestueux 100ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-cc78d86f-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://armaf.eu/products/the-lions-club-majestueux",
+      "source_url": "https://armaf.eu/products/the-lions-club-majestueux"
     }
   ]
 }
