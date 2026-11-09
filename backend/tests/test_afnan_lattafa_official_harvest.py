@@ -282,5 +282,105 @@ class AfnanLattafaOfficialHarvestTests(unittest.TestCase):
         self.assertIn(100, family_product.get("formats_ml", []))
 
 
+
+    def test_nine_lattafa_official_launches_have_variants_and_family_registry_entries(self):
+        expected = {
+        \1: {
+                \1: "SH-LATTAFA-KHAMRAH-MIRA",
+                \1: 100,
+                \1: "Eau de Parfum",
+                \1: "https://www.lattafa-usa.com/products/lattafa-khamrah-mira-eau-de-parfum"
+        },
+        \1: {
+                \1: "SH-LATTAFA-GIVE-ME-GOURMAND-MATCHA-SWIRL",
+                \1: 75,
+                \1: "Eau de Parfum",
+                \1: "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-matcha-swirl-eau-de-parfum-75ml"
+        },
+        \1: {
+                \1: "SH-LATTAFA-BEYOND-PRECIOUS",
+                \1: 100,
+                \1: "Eau de Parfum",
+                \1: "https://www.lattafa-usa.com/products/lattafa-beyond-precious-eau-de-parfum-100ml"
+        },
+        \1: {
+                \1: "SH-LATTAFA-ATLAS-CANYON",
+                \1: 55,
+                \1: "Eau de Parfum",
+                \1: "https://www.lattafa-usa.com/products/lattafa-atlas-canyon-eau-de-parfum-55ml"
+        },
+        \1: {
+                \1: "SH-LATTAFA-GIVE-ME-GOURMAND-HARLEQUIN-CREAM",
+                \1: 75,
+                \1: "Eau de Parfum",
+                \1: "https://www.lattafa-usa.com/products/lattafa-give-me-gourmand-harlequin-cream-eau-de-parfum-75ml"
+        },
+        \1: {
+                \1: "SH-LATTAFA-ATLAS-GLACIAL-VALLEY",
+                \1: 55,
+                \1: "Eau de Parfum",
+                \1: "https://www.lattafa-usa.com/products/lattafa-atlas-glacial-valley-eau-de-parfum-55ml"
+        },
+        \1: {
+                \1: "SH-LATTAFA-BADEE-AL-OUD-AMETHYST-FUSION",
+                \1: 100,
+                \1: "https://www.lattafa-usa.com/products/badee-al-oud-amethyst-fusion"
+        },
+        \1: {
+                \1: "SH-LATTAFA-RAGHAD",
+                \1: 100,
+                \1: "https://www.lattafa-usa.com/products/raghad"
+        },
+        \1: {
+                \1: "SH-LATTAFA-PETRA-VIOLA",
+                \1: 100,
+                \1: "https://www.lattafa-usa.com/products/petra-viola"
+        }
+}
+
+        family_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with family_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        lattafa_family = next(
+            f for f in registry["families"] if f.get("family_id") == "lattafa_catalog"
+        )
+
+        for name, evidence in expected.items():
+            with self.subTest(name=name):
+                product = next(
+                    p for p in self.catalog["products"]
+                    if p.get("brand") == "Lattafa" and p.get("canonical_name") == name
+                )
+                self.assertEqual(product.get("product_id"), evidence["id"])
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), evidence["url"])
+                self.assertEqual(product.get("source_product_url"), evidence["url"])
+                self.assertEqual(product.get("source_evidence_url"), evidence["url"])
+                self.assertEqual(product.get("formats_ml"), [evidence["size"]])
+                if "concentration" in evidence:
+                    self.assertEqual(product.get("concentration"), evidence["concentration"])
+                else:
+                    self.assertNotIn("concentration", product)
+
+                variants = [
+                    v for v in self.catalog["variants"]
+                    if v.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0].get("size_ml"), evidence["size"])
+                self.assertEqual(variants[0].get("source_evidence_url"), evidence["url"])
+                if "concentration" in evidence:
+                    self.assertEqual(variants[0].get("concentration"), evidence["concentration"])
+                else:
+                    self.assertNotIn("concentration", variants[0])
+
+                family_product = next(
+                    p for p in lattafa_family["products"]
+                    if p.get("canonical_name") == name
+                )
+                self.assertEqual(family_product.get("aliases"), product.get("aliases"))
+                self.assertEqual(family_product.get("formats_ml"), [evidence["size"]])
+
+
 if __name__ == "__main__":
     unittest.main()
