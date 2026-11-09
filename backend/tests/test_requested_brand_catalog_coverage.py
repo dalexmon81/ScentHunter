@@ -576,6 +576,56 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
         self.assertEqual(matches[0].get("source_evidence_url"), source)
 
+    def test_afnan_kiaana_vibes_and_lynked_trio_have_official_100ml_edp_variants(self):
+        expected = {
+            "Kiaana Vibes": "https://www.at.afnan.com/en/products/kiaana-vibes",
+            "Lynked Forever": "https://www.at.afnan.com/en/products/lynked-forever",
+            "Lynked Freedom": "https://www.at.afnan.com/en/products/lynked-freedom",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Afnan"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertIn(100, row.get("formats_ml", []))
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+    def test_paris_corner_molten_caramel_official_100ml_variant(self):
+        rows = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+            and row.get("canonical_name") == "Molten Caramel"
+        ]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        source = "https://www.pariscornerperfumes.com/products/molten-caramel"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), source)
+        self.assertIn(100, row.get("formats_ml", []))
+        matching = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+            and variant.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].get("source_evidence_url"), source)
+        self.assertNotIn("concentration", matching[0])
+
 
 if __name__ == "__main__":
     unittest.main()
