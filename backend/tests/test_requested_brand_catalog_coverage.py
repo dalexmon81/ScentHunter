@@ -22,7 +22,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Maison Asrar": 120,
     "Swiss Arabian": 41,
-    "Paris Corner": 247,
+    "Paris Corner": 253,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Assaf": 140,
@@ -1086,6 +1086,56 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                         and variant.get("size_ml") == size
                     ]
                     self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+    def test_paris_corner_official_storefront_batch_e_detail_pages_and_sizes(self):
+        expected = {
+            "Ministry of Oud Greatest": ("https://www.pariscornerperfumes.com/products/ministry-of-oud-greatest", 100),
+            "Ministry of Oud Gladiators Oath": ("https://www.pariscornerperfumes.com/products/ministry-of-oud-gladiators-oath", 100),
+            "Ministry of Oud Maestro's Symphony": ("https://www.pariscornerperfumes.com/products/ministry-of-oud-maestro-s-symphony", 100),
+            "Ministry of Oud Nile Whispers": ("https://www.pariscornerperfumes.com/products/ministry-of-oud-nile-whispers", 100),
+            "Ministry of Oud Oud Beyond the Wall": ("https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-beyond-the-wall", 100),
+            "Ministry of Oud Romance Reverie": ("https://www.pariscornerperfumes.com/products/ministry-of-oud-romance-reverie", 100),
+            "Minya": ("https://www.pariscornerperfumes.com/products/minya-100ml", 100),
+            "Minya Coco Lush": ("https://www.pariscornerperfumes.com/products/minya-coco-lush", None),
+            "Misty Dawn Musk Collection": ("https://www.pariscornerperfumes.com/products/misty-dawn-musk-collection-1", None),
+            "Mysterium": ("https://www.pariscornerperfumes.com/products/mysterium", 100),
+            "Nada Blumingle": ("https://www.pariscornerperfumes.com/products/nada-blumingle", 100),
+            "Nada Whimsical": ("https://www.pariscornerperfumes.com/products/nada-whimsical", 100),
+            "Nada Wink": ("https://www.pariscornerperfumes.com/products/nada-wink", 100),
+            "Nectarine Haze": ("https://www.pariscornerperfumes.com/products/nectarine-haze", 100),
+            "Neon Star": ("https://www.pariscornerperfumes.com/products/neon-star", 100),
+            "Noir d'Arabie": ("https://www.pariscornerperfumes.com/products/noir-darabie", None),
+            "Nouf": ("https://www.pariscornerperfumes.com/products/nouf", None),
+            "Ophidian Black Cherry": ("https://www.pariscornerperfumes.com/products/ophidian-black-cherry-100ml", 100),
+            "Ophidian Mango Bliss": ("https://www.pariscornerperfumes.com/products/ophidian-mango-bliss", None),
+            "Ophidian Sweet Surrender": ("https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender", None),
+            "Opulentia Empyreal Emir": ("https://www.pariscornerperfumes.com/products/opulentia-empyreal-emir", 100),
+            "Opulentia Flame Emir": ("https://www.pariscornerperfumes.com/products/opulentia-flame-emir", 100),
+            "Opulentia Inverno Emir": ("https://www.pariscornerperfumes.com/products/opulentia-inverno-emir", 100),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_url"), source)
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
