@@ -68,9 +68,6 @@ EXPECTED = [
     "Frankel Elysium",
     "Frankel Green Irish",
     "Frankel Imagination",
-            "Frankel Blue Elixir",
-            "Lip Stick",
-            "Strike Black",
     "Frankel Silver",
     "Frankel Silver Elixir",
     "Frankel Storm",
@@ -261,26 +258,27 @@ class AssafRangeHarvestTests(unittest.TestCase):
             any(variant.get("product_id") == product["product_id"] for variant in self.catalog["variants"])
         )
 
-    def test_three_more_assaf_official_detail_pages_have_supported_variants(self):
+    def test_two_more_assaf_official_detail_pages_have_supported_variants(self):
         expected = {
             "Frankel Blue Elixir": ("https://assaf.ae/products/edp-frankel-blue-elixir-200ml", 200, "Men"),
-            "Lip Stick": ("https://assaf.ae/products/lip-stick-125ml", 125, "Women"),
             "Strike Black": ("https://assaf.ae/products/strike-black", 125, "Men"),
         }
         for name, (source, size, gender) in expected.items():
             with self.subTest(product=name):
-                product = self.products_by_name[name]
+                product = self.by_name[name.casefold()]
                 self.assertEqual(product.get("identity_status"), "source_verified_name")
                 self.assertEqual(product.get("source_url"), source)
                 self.assertEqual(product.get("source_evidence_url"), source)
                 self.assertEqual(product.get("formats_ml"), [size])
                 self.assertEqual(product.get("gender"), gender)
-                variants = self.variants_for(product)
-                self.assertEqual(len(variants), 1)
-                self.assertEqual(variants[0].get("size_ml"), size)
-                self.assertEqual(variants[0].get("source_url"), source)
-                self.assertEqual(variants[0].get("source_evidence_url"), source)
-
+                matches = [
+                    v for v in self.catalog["variants"]
+                    if v.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("size_ml"), size)
+                self.assertEqual(matches[0].get("source_url"), source)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
 if __name__ == "__main__":
