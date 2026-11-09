@@ -254,6 +254,7 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
             assert variant is not None, "mapped Liquid Brun variant row missing"
             assert variant.size_ml == Decimal("100")
             assert variant.concentration == "Eau de Parfum"
+            assert variant.gtin == "6290360375694"
             store = session.scalar(select(Store).where(Store.slug == "bplatz"))
             # This is an isolated CI database. Provisioning the retailer row here
             # does not activate a production connector or write to staging.
@@ -289,9 +290,7 @@ def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_
 
             decision = match_staged_offer(session, raw.id)
             assert decision.status == "matched"
-            assert decision.method in {
-                "gtin_exact", "canonical_key_exact", "normalized_attributes_exact"
-            }
+            assert decision.method == "gtin_exact"
             assert decision.product_variant_id == variant.id
             session.commit()
             raw_id = raw.id
