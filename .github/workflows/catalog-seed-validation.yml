@@ -55,6 +55,7 @@ jobs:
           backend.tests.test_zimaya_detail_evidence
           backend.tests.test_maison_asrar_royal_collection
           backend.tests.test_maison_asrar_lock_and_key
+          backend.tests.test_maison_asrar_new_arrival_evidence
           backend.tests.test_al_haramain_catalog
           backend.tests.test_al_wataniah_detail_evidence
           backend.tests.test_french_avenue_catalog
