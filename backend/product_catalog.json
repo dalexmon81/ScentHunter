@@ -7404,8 +7404,15 @@
         "L'Aventure Gold",
         "Al Haramain L'Aventure Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-gold.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-gold.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100,
+        200
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-AL-HARAMAIN-75972e8d",
@@ -37593,6 +37600,47 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2065",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain ACAI",
+      "name": "Haramain ACAI",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain ACAI",
+      "aliases": [
+        "Haramain ACAI",
+        "Al Haramain ACAI"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-acai-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-acai-100ml-eau-de-parfum.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2097",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain L'Aventure Sport",
+      "name": "Haramain L'Aventure Sport",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain L'Aventure Sport",
+      "aliases": [
+        "Haramain L'Aventure Sport",
+        "Al Haramain L'Aventure Sport"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-sport-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-sport-100ml-extrait-de-parfum.html",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
     }
   ],
   "variants": [
@@ -45456,6 +45504,53 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/odyssey-french-kiss",
       "source_evidence_url": "https://armaf.com/products/odyssey-french-kiss"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2065",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain ACAI 100 ml",
+        "Al Haramain ACAI 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2065-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-acai-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-acai-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2097",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain L'Aventure Sport 100 ml",
+        "Al Haramain L'Aventure Sport 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2097-100-000",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-sport-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-sport-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f7954db1",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Gold 100 ml",
+        "Al Haramain L'Aventure Gold 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-f7954db1-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-gold.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-gold.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-f7954db1",
+      "size_ml": 200,
+      "aliases": [
+        "L'Aventure Gold 200 ml",
+        "Al Haramain L'Aventure Gold 200 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-f7954db1-200-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/l-aventure-gold-spray-200ml.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/l-aventure-gold-spray-200ml.html"
     }
   ]
 }
