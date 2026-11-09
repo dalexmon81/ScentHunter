@@ -237,7 +237,8 @@ def audit() -> int:
     print(
         f"Cross-PR catalog audit: baseline={BASE_REF}; "
         f"candidate_prs={loaded}; direct_changes_only=true; "
-        "trailing_volume_suffix_excluded_from_product_identity=true"
+        "trailing_volume_suffix_excluded_from_product_identity=true; "
+        "variant_identity_includes_concentration=true"
     )
     print(
         "Baseline sizes: "
