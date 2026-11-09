@@ -676,5 +676,44 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+
+    def test_maison_asrar_products_on_gulf_orchid_store_keep_maison_asrar_brand(self):
+        expected = {
+            "Plot Twist": "https://shop-gulforchid.com/products/plot-twist",
+            "Love Key": "https://shop-gulforchid.com/products/love-key",
+            "Unsolved Mystery": "https://shop-gulforchid.com/products/unsolved-mystery",
+        }
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        ]
+        variants = CATALOG.get("variants", [])
+        for name, source in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertIn(100, product.get("formats_ml", []))
+                matching_variants = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                    and row.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matching_variants), 1)
+                self.assertEqual(
+                    matching_variants[0].get("concentration"),
+                    "Eau de Parfum",
+                )
+                self.assertEqual(
+                    matching_variants[0].get("source_evidence_url"),
+                    source,
+                )
+
 if __name__ == "__main__":
     unittest.main()
