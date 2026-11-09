@@ -354,6 +354,49 @@ EXPECTED = {
     ]
 }
 
+VERIFIED_DETAIL_URLS = {
+    "Abyat": "https://www.alwataniah.com/products/abyat",
+    "Ain Emarat": "https://www.alwataniah.com/products/ain-emarat",
+    "Ain Emarat Extrait": "https://www.alwataniah.com/products/ain-emarat-extrait",
+    "Al Daiem": "https://www.alwataniah.com/products/al-daiem",
+    "Al Daiem Elixir": "https://www.alwataniah.com/products/al-daiem-elixir",
+    "Al Layl": "https://www.alwataniah.com/products/al-layl",
+    "Alya": "https://www.alwataniah.com/products/alya",
+    "Ameerati": "https://www.alwataniah.com/products/ameerati",
+    "Ameeri": "https://www.alwataniah.com/products/ameeri",
+    "Arya": "https://www.alwataniah.com/products/arya",
+    "Arya Peony Rose": "https://www.alwataniah.com/products/arya-peony-rose",
+    "Attar Al Wesal": "https://www.alwataniah.com/products/attar-al-wesal",
+    "Baraa": "https://www.alwataniah.com/products/baraa",
+    "Bareeq Al Dhahab": "https://www.alwataniah.com/products/bareeq-al-dhahab",
+    "Brownie Bite": "https://www.alwataniah.com/products/brownie-bite",
+    "Castilla": "https://www.alwataniah.com/products/castilla",
+    "Choco Truffle": "https://www.alwataniah.com/products/choco-truffle",
+    "Cloud": "https://www.alwataniah.com/products/cloud",
+    "Emiran": "https://www.alwataniah.com/products/emiran",
+    "Fayroz": "https://www.alwataniah.com/products/fayroz",
+    "Golden Honey": "https://www.alwataniah.com/products/golden-honey",
+    "Kayaan Classic": "https://www.alwataniah.com/products/kayaan-classic",
+    "Kayaan Gold": "https://www.alwataniah.com/products/kayaan-gold",
+    "Kayaan Midnight": "https://www.alwataniah.com/products/kayaan-midnight",
+    "Kayaan Terra": "https://www.alwataniah.com/products/kayaan-terra",
+    "Layali": "https://www.alwataniah.com/products/layali",
+    "Lemon Souffle": "https://www.alwataniah.com/products/lemon-souffle",
+    "Nada": "https://www.alwataniah.com/products/nada",
+    "Oud Mystery Intense": "https://www.alwataniah.com/products/oud-mystery-intense",
+    "Praline Toffee": "https://www.alwataniah.com/products/praline-toffee",
+    "Rose Eclat": "https://www.alwataniah.com/products/rose-eclat",
+    "Rose Mystery Intense": "https://www.alwataniah.com/products/rose-mystery-intense",
+    "Royal Oak I": "https://www.alwataniah.com/products/royal-oak-i",
+    "Royal Oak II": "https://www.alwataniah.com/products/royal-oak-ii",
+    "Sabah Al Ward": "https://www.alwataniah.com/products/sabah-al-ward",
+    "Sabah Al Ward Sugar": "https://www.alwataniah.com/products/saba-al-ward-sugar",
+    "Sahari": "https://www.alwataniah.com/products/sahari",
+    "Special Oud": "https://www.alwataniah.com/products/special-oud",
+    "Sultan Al Lail": "https://www.alwataniah.com/products/sultan-al-lail",
+    "Turquois": "https://www.alwataniah.com/products/turquois"
+}
+
 
 class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
     def test_all_official_collection_fragrances_are_present_once(self):
@@ -369,10 +412,11 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                 self.assertEqual(product.get("collection_name"), collection)
                 self.assertEqual(product.get("brand_name"), "Al Wataniah")
                 self.assertIn(product.get("identity_status"), {"source_listed_name", "source_verified_name"})
-                detail_verified = {"Lemon Souffle", "Choco Truffle", "Ameeri", "Sultan Al Lail", "Abyat", "Ameerati", "Baraa", "Al Layl", "Alya"}
-                if name in detail_verified:
+                if name in VERIFIED_DETAIL_URLS:
                     self.assertEqual(product.get("identity_status"), "source_verified_name")
-                    self.assertTrue("/products/" in product.get("source_url", ""))
+                    self.assertEqual(product.get("source_url"), VERIFIED_DETAIL_URLS[name])
+                    self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                    self.assertIn(100, product.get("formats_ml", []))
                 else:
                     self.assertEqual(product.get("identity_status"), "source_listed_name")
                     self.assertEqual(product.get("source_url"), listing_url)
@@ -391,11 +435,16 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
             if p.get("brand") == "Al Wataniah"
         }
         variants = [v for v in CATALOG["variants"] if v.get("product_id") in alwataniah_ids]
-        self.assertEqual(len(variants), 9)
-        self.assertEqual(
-            {next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"]) for v in variants},
-            {"Lemon Souffle", "Choco Truffle", "Ameeri", "Sultan Al Lail", "Abyat", "Ameerati", "Baraa", "Al Layl", "Alya"},
-        )
+        variant_names = {
+            next(p["canonical_name"] for p in CATALOG["products"] if p["product_id"] == v["product_id"])
+            for v in variants
+        }
+        self.assertEqual(len(variants), len(VERIFIED_DETAIL_URLS))
+        self.assertEqual(variant_names, set(VERIFIED_DETAIL_URLS))
+        for variant in variants:
+            with self.subTest(variant=variant.get("variant_id")):
+                self.assertEqual(variant.get("size_ml"), 100)
+                self.assertEqual(variant.get("concentration"), "Eau de Parfum")
 
 
 if __name__ == "__main__":
