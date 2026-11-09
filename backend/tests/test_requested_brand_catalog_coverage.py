@@ -821,5 +821,83 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         )
         self.assertEqual(linked[0].get("size_ml"), 15)
 
+
+    def test_maison_asrar_official_edp_product_pages_and_variants(self):
+        expected = {
+            "Bloom Bloom": (
+                "https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml",
+                100,
+            ),
+            "Lolita": (
+                "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+                100,
+            ),
+            "Bonita": (
+                "https://maisonasrar.com/products/bonita-eau-de-parfum-100ml",
+                100,
+            ),
+            "Lily": (
+                "https://maisonasrar.com/products/lily-eau-de-parfum-100ml",
+                100,
+            ),
+            "Kiss My Lips": (
+                "https://maisonasrar.com/products/kiss-my-lips-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Never Forget Me": (
+                "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Night in Paris": (
+                "https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Sunset in Capri": (
+                "https://maisonasrar.com/products/sunset-in-capri-maison-asrar-eau-de-perfum-90ml",
+                90,
+            ),
+            "Dear Jasmine": (
+                "https://maisonasrar.com/products/dear-jasmine-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+            "Patchouli with Love": (
+                "https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+            "Fresh Iris": (
+                "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+            "Vanilla Rouge": (
+                "https://maisonasrar.com/products/vanilla-rouge-maison-asrar-eau-de-perfum-100-ml",
+                100,
+            ),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("formats_ml"), [size])
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("size_ml"), size)
+                self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
 if __name__ == "__main__":
     unittest.main()
