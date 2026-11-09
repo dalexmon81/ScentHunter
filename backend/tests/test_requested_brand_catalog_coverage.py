@@ -921,5 +921,41 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     if variant.get("product_id") == row["product_id"]
                 ])
 
+    def test_maison_asrar_fourth_new_arrival_page_has_verified_owned_products_only(self):
+        expected = {
+            "Date Night": "https://maisonasrar.com/products/date-night",
+            "Larimar": "https://maisonasrar.com/products/larimar",
+            "Rubellite": "https://maisonasrar.com/products/rubellite",
+            "Nada": "https://maisonasrar.com/products/nada",
+            "Omniya": "https://maisonasrar.com/products/omniya",
+            "Coffee Blend": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertFalse(row.get("concentration"))
+                self.assertFalse(row.get("formats_ml"))
+                self.assertFalse([
+                    variant for variant in CATALOG.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ])
+
+        # The Maison Asrar storefront also lists third-party Gulf Orchid
+        # products. Do not silently reattribute them to Maison Asrar.
+        for name in ("Emerald", "Gold Noir"):
+            with self.subTest(third_party_name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("source_url"), "https://maisonasrar.com/collections/all")
+
 if __name__ == "__main__":
     unittest.main()
