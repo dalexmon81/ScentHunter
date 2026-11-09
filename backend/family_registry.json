@@ -15641,6 +15641,9 @@
           "aliases": [
             "L'Aventure Fraiche",
             "Al Haramain L'Aventure Fraiche"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -16407,6 +16410,126 @@
           "aliases": [
             "Haramain Taj Malaki Noir",
             "Al Haramain Taj Malaki Noir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Gold Crystal Sapphire",
+          "aliases": [
+            "Haramain Gold Crystal Sapphire",
+            "Al Haramain Gold Crystal Sapphire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Emotion Irisee",
+          "aliases": [
+            "Haramain Emotion Irisee",
+            "Al Haramain Emotion Irisee"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain CACAU",
+          "aliases": [
+            "Haramain CACAU",
+            "Al Haramain CACAU"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain CAJU",
+          "aliases": [
+            "Haramain CAJU",
+            "Al Haramain CAJU"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Habibi Dubai Desert",
+          "aliases": [
+            "Haramain Habibi Dubai Desert",
+            "Al Haramain Habibi Dubai Desert"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Habibi Dubai Night",
+          "aliases": [
+            "Haramain Habibi Dubai Night",
+            "Al Haramain Habibi Dubai Night"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Artisan De Haramain Noir",
+          "aliases": [
+            "Artisan De Haramain Noir",
+            "Al Haramain Artisan De Haramain Noir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Artisan De Haramain",
+          "aliases": [
+            "Artisan De Haramain",
+            "Al Haramain Artisan De Haramain"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Empire Aromatique Lumen",
+          "aliases": [
+            "Haramain Empire Aromatique Lumen",
+            "Al Haramain Empire Aromatique Lumen"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Ayaat Malika",
+          "aliases": [
+            "Haramain Ayaat Malika",
+            "Al Haramain Ayaat Malika"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Green Dubai",
+          "aliases": [
+            "Haramain Green Dubai",
+            "Al Haramain Green Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Miracle Dubai",
+          "aliases": [
+            "Haramain Miracle Dubai",
+            "Al Haramain Miracle Dubai"
           ],
           "formats_ml": [
             100
