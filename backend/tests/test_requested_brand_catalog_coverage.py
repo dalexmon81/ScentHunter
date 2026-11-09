@@ -497,21 +497,23 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
 
-    def test_armaf_uniq_oud_forever_official_detail_page_is_a_provenance_candidate(self):
+    def test_armaf_uniq_oud_forever_individual_official_page_is_verified(self):
         row = next(
             product for product in CATALOG.get("products", [])
             if product.get("brand_name") == "Armaf"
             and product.get("canonical_name") == "Uniq Oud Forever"
         )
-        # The canonical identity already exists. A later provenance update
-        # must preserve this product ID and must never append a second row.
+        source = "https://armaf.com/products/uniq-oud-forever-spr"
         self.assertEqual(row.get("product_id"), "SH-ARMAF-f650f6a8")
-        self.assertEqual(row.get("identity_status"), "source_listed_name")
-        self.assertNotEqual(
-            row.get("source_url"),
-            "https://armaf.com/products/uniq-oud-forever-spr",
-            "Promote only in a dedicated provenance update after page fields are rechecked.",
-        )
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), source)
+        self.assertEqual(row.get("source_evidence_url"), source)
+        self.assertNotIn("concentration", row)
+        self.assertNotIn("formats_ml", row)
+        self.assertFalse(any(
+            variant.get("product_id") == row["product_id"]
+            for variant in CATALOG.get("variants", [])
+        ))
 
 
     def test_lattafa_asad_polar_official_100ml_identity(self):
@@ -1099,24 +1101,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 ))
 
 
-    def test_armaf_uniq_oud_forever_uses_individual_official_page_without_inferred_variant(self):
-        rows = [
-            row for row in CATALOG.get("products", [])
-            if row.get("brand_name") == "Armaf"
-            and row.get("canonical_name") == "Uniq Oud Forever"
-        ]
-        self.assertEqual(len(rows), 1)
-        row = rows[0]
-        source = "https://armaf.com/products/uniq-oud-forever-spr"
-        self.assertEqual(row.get("identity_status"), "source_verified_name")
-        self.assertEqual(row.get("source_url"), source)
-        self.assertEqual(row.get("source_evidence_url"), source)
-        self.assertNotIn("concentration", row)
-        self.assertNotIn("formats_ml", row)
-        self.assertFalse(any(
-            variant.get("product_id") == row["product_id"]
-            for variant in CATALOG.get("variants", [])
-        ))
+
 
 if __name__ == "__main__":
     unittest.main()
