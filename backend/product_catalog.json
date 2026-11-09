@@ -29633,8 +29633,13 @@
         "Arrogate Addict Elixir",
         "Assaf Arrogate Addict Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/edp-arogate-addict-elixir-150ml",
+      "source_evidence_url": "https://assaf.ae/products/edp-arogate-addict-elixir-150ml",
+      "formats_ml": [
+        150
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ASSAF-HARVEST-002",
@@ -29678,8 +29683,12 @@
         "Arrogate Blue de Elixir",
         "Assaf Arrogate Blue de Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-blue-de-elixir-200ml",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-blue-de-elixir-200ml",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-005",
@@ -29693,8 +29702,13 @@
         "Arrogate Blue Exclusive",
         "Assaf Arrogate Blue Exclusive"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-blue-exclusive",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-blue-exclusive",
+      "formats_ml": [
+        200
+      ],
+      "gender": "Men"
     },
     {
       "product_id": "SH-ASSAF-HARVEST-006",
@@ -29708,8 +29722,12 @@
         "Arrogate Colt",
         "Assaf Arrogate Colt"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-colt",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-colt",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-007",
@@ -29723,8 +29741,12 @@
         "Arrogate Comete",
         "Assaf Arrogate Comete"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/edp-arrogate-comete-200ml-copy",
+      "source_evidence_url": "https://assaf.ae/products/edp-arrogate-comete-200ml-copy",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-008",
@@ -29738,8 +29760,12 @@
         "Arrogate Euphoria",
         "Assaf Arrogate Euphoria"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-euphoria-150ml",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-euphoria-150ml",
+      "formats_ml": [
+        150
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-009",
@@ -29753,8 +29779,12 @@
         "Arrogate Girl",
         "Assaf Arrogate Girl"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assafperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/arrogate-girl",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-girl",
+      "formats_ml": [
+        200
+      ]
     },
     {
       "product_id": "SH-ASSAF-HARVEST-010",
@@ -42144,6 +42174,76 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-009",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Girl 200 ml",
+        "Assaf Arrogate Girl 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-009-200-000",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-girl"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-006",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Colt 200 ml",
+        "Assaf Arrogate Colt 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-006-200-000",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-colt"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-007",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Comete 200 ml",
+        "Assaf Arrogate Comete 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-007-200-000",
+      "source_evidence_url": "https://assaf.ae/products/edp-arrogate-comete-200ml-copy"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-001",
+      "size_ml": 150,
+      "aliases": [
+        "Arrogate Addict Elixir 150 ml",
+        "Assaf Arrogate Addict Elixir 150 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-001-150-000",
+      "source_evidence_url": "https://assaf.ae/products/edp-arogate-addict-elixir-150ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-008",
+      "size_ml": 150,
+      "aliases": [
+        "Arrogate Euphoria 150 ml",
+        "Assaf Arrogate Euphoria 150 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-008-150-000",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-euphoria-150ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-004",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Blue de Elixir 200 ml",
+        "Assaf Arrogate Blue de Elixir 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-004-200-000",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-blue-de-elixir-200ml"
+    },
+    {
+      "product_id": "SH-ASSAF-HARVEST-005",
+      "size_ml": 200,
+      "aliases": [
+        "Arrogate Blue Exclusive 200 ml",
+        "Assaf Arrogate Blue Exclusive 200 ml"
+      ],
+      "variant_id": "SHV-SH-ASSAF-HARVEST-005-200-000",
+      "source_evidence_url": "https://assaf.ae/products/arrogate-blue-exclusive"
     }
   ]
 }
