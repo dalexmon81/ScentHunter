@@ -34238,6 +34238,101 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-LOULOU-ROSE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Loulou Rose",
+      "name": "Haramain Loulou Rose",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Loulou Rose",
+      "aliases": [
+        "Haramain Loulou Rose",
+        "Al Haramain Loulou Rose"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-loulou-rose-100ml-eau-de-parfum.html",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-PALM-DUBAI",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Palm Dubai",
+      "name": "Haramain Palm Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Palm Dubai",
+      "aliases": [
+        "Haramain Palm Dubai",
+        "Al Haramain Palm Dubai"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-palm-dubai-100ml-extrait-de-parfum.html",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-GOLD-CRYSTAL-OUDH",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Gold Crystal Oudh",
+      "name": "Haramain Gold Crystal Oudh",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Gold Crystal Oudh",
+      "aliases": [
+        "Haramain Gold Crystal Oudh",
+        "Al Haramain Gold Crystal Oudh"
+      ],
+      "concentration": "Extrait de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-gold-crystal-oudh-spray-100ml.html",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-BLACK-MUSK",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Black Musk",
+      "name": "Haramain Black Musk",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Black Musk",
+      "aliases": [
+        "Haramain Black Musk",
+        "Al Haramain Black Musk"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-black-musk-100ml-spray.html",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-MARYAM",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Maryam",
+      "name": "Haramain Maryam",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Maryam",
+      "aliases": [
+        "Haramain Maryam",
+        "Al Haramain Maryam"
+      ],
+      "concentration": "Eau de Parfum",
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/maryam-spray.html",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -37826,6 +37921,61 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-CAMELLIA-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-camellia-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-LOULOU-ROSE",
+      "size_ml": 100,
+      "variant_name": "Haramain Loulou Rose 100 ml Eau de Parfum",
+      "aliases": [
+        "Al Haramain Loulou Rose 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-LOULOU-ROSE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-loulou-rose-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-PALM-DUBAI",
+      "size_ml": 100,
+      "variant_name": "Haramain Palm Dubai 100 ml Extrait de Parfum",
+      "aliases": [
+        "Al Haramain Palm Dubai 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-PALM-DUBAI-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-palm-dubai-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-GOLD-CRYSTAL-OUDH",
+      "size_ml": 100,
+      "variant_name": "Haramain Gold Crystal Oudh 100 ml Extrait de Parfum",
+      "aliases": [
+        "Al Haramain Gold Crystal Oudh 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-GOLD-CRYSTAL-OUDH-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-gold-crystal-oudh-spray-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-BLACK-MUSK",
+      "size_ml": 100,
+      "variant_name": "Haramain Black Musk 100 ml Eau de Parfum",
+      "aliases": [
+        "Al Haramain Black Musk 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-BLACK-MUSK-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-black-musk-100ml-spray.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-HARAMAIN-MARYAM",
+      "size_ml": 100,
+      "variant_name": "Haramain Maryam 100 ml Eau de Parfum",
+      "aliases": [
+        "Al Haramain Maryam 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-HARAMAIN-MARYAM-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/maryam-spray.html"
     }
   ]
 }
