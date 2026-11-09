@@ -34737,6 +34737,26 @@
         100
       ],
       "gender": "Women"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CONFIDENTIAL-100ML",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Confidential 100ML",
+      "name": "Confidential 100ML",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Confidential 100ML",
+      "aliases": [
+        "Confidential 100ML",
+        "Paris Corner Confidential 100ml"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "collection_name": "Paris Corner",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -38679,6 +38699,17 @@
       "gtin": "6290360599236",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CONFIDENTIAL-100ML",
+      "size_ml": 100,
+      "aliases": [
+        "Confidential 100 ml",
+        "Paris Corner Confidential 100 ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-CONFIDENTIAL-100ML-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/confidential-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/confidential-100ml"
     }
   ]
 }
