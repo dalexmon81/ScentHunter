@@ -2500,5 +2500,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_lattafa_official_pages_for_eleven_more_catalog_identities(self):
+        expected = {
+            "Maahir Black Edition": ("https://lattafa.com/product/maahir-black-edition/", 100, "Unisex"),
+            "Maahir": ("https://lattafa.com/product/maahir/", 100, "Unisex"),
+            "Opulent Musk": ("https://lattafa.com/product/opulent-musk/", 100, "Unisex"),
+            "Qaaed": ("https://lattafa.com/product/qaaed/", 100, "Men"),
+            "Raed Luxe": ("https://lattafa.com/product/raed-luxe/", 100, "Unisex"),
+            "Qimmah For Women": ("https://lattafa.com/product/qimmah-for-women/", 100, "Women"),
+            "Qaed Al Fursan": ("https://lattafa.com/product/qaed-al-fursan/", 90, "Men"),
+            "Ramz Lattafa Gold": ("https://lattafa.com/product/ramz-lattafa-gold/", 100, "Women"),
+            "Ramz Lattafa Silver": ("https://lattafa.com/product/ramz-lattafa-silver/", 100, "Men"),
+            "Velvet Oud": ("https://lattafa.com/product/velvet-oud/", 100, "Unisex"),
+            "Oud Mood": ("https://lattafa.com/product/oud-mood/", 100, "Unisex"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Lattafa"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size, gender) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("gender"), gender)
+                self.assertIn(size, row.get("formats_ml", []))
+                matching = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row["product_id"]
+                    and variant.get("size_ml") == size
+                ]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
