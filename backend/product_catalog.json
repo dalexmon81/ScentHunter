@@ -33918,7 +33918,10 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/uniq-effects-of-uniq-spr",
-      "gender": "Men"
+      "gender": "Men",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-LATTAFA-ASAD-POLAR",
