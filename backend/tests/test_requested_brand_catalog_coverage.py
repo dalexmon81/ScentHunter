@@ -496,20 +496,26 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
 
     def test_armaf_uniq_oud_forever_official_detail_page_is_a_provenance_candidate(self):
-        row = next(
+        rows = [
             product for product in CATALOG.get("products", [])
             if product.get("brand_name") == "Armaf"
             and product.get("canonical_name") == "Uniq Oud Forever"
-        )
-        # The canonical identity already exists. A later provenance update
-        # must preserve this product ID and must never append a second row.
+        ]
+        # The identity is upgraded in place after the official page was
+        # rechecked. Preserve its canonical ID and do not add size variants
+        # because the accessible page does not explicitly state a size.
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
         self.assertEqual(row.get("product_id"), "SH-ARMAF-f650f6a8")
-        self.assertEqual(row.get("identity_status"), "source_listed_name")
-        self.assertNotEqual(
-            row.get("source_url"),
-            "https://armaf.com/products/uniq-oud-forever-spr",
-            "Promote only in a dedicated provenance update after page fields are rechecked.",
-        )
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), "https://armaf.com/products/uniq-oud-forever-spr")
+        self.assertEqual(row.get("source_evidence_url"), row.get("source_url"))
+        self.assertEqual(row.get("source_product_url"), row.get("source_url"))
+        variants = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+        ]
+        self.assertEqual(variants, [])
 
 
     def test_lattafa_asad_polar_official_100ml_identity(self):
