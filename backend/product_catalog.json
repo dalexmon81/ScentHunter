@@ -23762,9 +23762,14 @@
         "Khamrah",
         "Lattafa Khamrah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/khamrah/",
+      "source_evidence_url": "https://lattafa.com/product/khamrah/",
+      "source_product_url": "https://lattafa.com/product/khamrah/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-SUQARAAT",
@@ -23778,9 +23783,14 @@
         "Suqaraat",
         "Lattafa Suqaraat"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/suqaraat/",
+      "source_evidence_url": "https://lattafa.com/product/suqaraat/",
+      "source_product_url": "https://lattafa.com/product/suqaraat/",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-AL-NOBLE-SAFEER",
@@ -23794,9 +23804,14 @@
         "Al Noble Safeer",
         "Lattafa Al Noble Safeer"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-noble-safeer/",
+      "source_evidence_url": "https://lattafa.com/product/al-noble-safeer/",
+      "source_product_url": "https://lattafa.com/product/al-noble-safeer/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-AL-NOBLE-WAZEER",
@@ -23810,9 +23825,14 @@
         "Al Noble Wazeer",
         "Lattafa Al Noble Wazeer"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-noble-wazeer/",
+      "source_evidence_url": "https://lattafa.com/product/al-noble-wazeer/",
+      "source_product_url": "https://lattafa.com/product/al-noble-wazeer/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-AL-NOBLE-AMEER",
@@ -23826,9 +23846,14 @@
         "Al Noble Ameer",
         "Lattafa Al Noble Ameer"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/al-noble-ameer/",
+      "source_evidence_url": "https://lattafa.com/product/al-noble-ameer/",
+      "source_product_url": "https://lattafa.com/product/al-noble-ameer/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-CONFIDENTIAL-PRIVATE-GOLD",
@@ -23842,9 +23867,14 @@
         "Confidential Private Gold",
         "Lattafa Confidential Private Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/confidential-private-gold/",
+      "source_evidence_url": "https://lattafa.com/product/confidential-private-gold/",
+      "source_product_url": "https://lattafa.com/product/confidential-private-gold/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-RAGHBA",
@@ -23858,9 +23888,14 @@
         "Raghba",
         "Lattafa Raghba"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raghba/",
+      "source_evidence_url": "https://lattafa.com/product/raghba/",
+      "source_product_url": "https://lattafa.com/product/raghba/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-VELVET-ROSE",
@@ -23874,9 +23909,14 @@
         "Velvet Rose",
         "Lattafa Velvet Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/velvet-rose/",
+      "source_evidence_url": "https://lattafa.com/product/velvet-rose/",
+      "source_product_url": "https://lattafa.com/product/velvet-rose/",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-QAED-AL-FURSAN-UNLIMITED",
@@ -23890,9 +23930,14 @@
         "Qaed Al Fursan Unlimited",
         "Lattafa Qaed Al Fursan Unlimited"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/qaed-al-fursan-unlimited/",
+      "source_evidence_url": "https://lattafa.com/product/qaed-al-fursan-unlimited/",
+      "source_product_url": "https://lattafa.com/product/qaed-al-fursan-unlimited/",
+      "gender": "Women",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-LATTAFA-HAYAATI-FLORENCE",
@@ -23906,9 +23951,14 @@
         "Hayaati Florence",
         "Lattafa Hayaati Florence"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/hayaati-florence/",
+      "source_evidence_url": "https://lattafa.com/product/hayaati-florence/",
+      "source_product_url": "https://lattafa.com/product/hayaati-florence/",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-BADEE-AL-OUD-SUBLIME",
@@ -23922,9 +23972,14 @@
         "Badee AL Oud Sublime",
         "Lattafa Badee AL Oud Sublime"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/badee-al-oud-sublime/",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-sublime/",
+      "source_product_url": "https://lattafa.com/product/badee-al-oud-sublime/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-MAAHIR-BLACK-EDITION",
@@ -47491,6 +47546,127 @@
       "variant_id": "SHV-SH-ASSAF-HARVEST-049-200-000",
       "source_url": "https://assaf.ae/products/edp-frankel-blue-elixir-200ml",
       "source_evidence_url": "https://assaf.ae/products/edp-frankel-blue-elixir-200ml"
+    },
+    {
+      "product_id": "SH-LATTAFA-SUQARAAT",
+      "size_ml": 100,
+      "aliases": [
+        "Suqaraat 100 ml",
+        "Lattafa Suqaraat 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-SUQARAAT-100-000",
+      "source_url": "https://lattafa.com/product/suqaraat/",
+      "source_evidence_url": "https://lattafa.com/product/suqaraat/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HAYAATI-FLORENCE",
+      "size_ml": 100,
+      "aliases": [
+        "Hayaati Florence 100 ml",
+        "Lattafa Hayaati Florence 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-HAYAATI-FLORENCE-100-000",
+      "source_url": "https://lattafa.com/product/hayaati-florence/",
+      "source_evidence_url": "https://lattafa.com/product/hayaati-florence/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NOBLE-SAFEER",
+      "size_ml": 100,
+      "aliases": [
+        "Al Noble Safeer 100 ml",
+        "Lattafa Al Noble Safeer 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AL-NOBLE-SAFEER-100-000",
+      "source_url": "https://lattafa.com/product/al-noble-safeer/",
+      "source_evidence_url": "https://lattafa.com/product/al-noble-safeer/"
+    },
+    {
+      "product_id": "SH-LATTAFA-CONFIDENTIAL-PRIVATE-GOLD",
+      "size_ml": 100,
+      "aliases": [
+        "Confidential Private Gold 100 ml",
+        "Lattafa Confidential Private Gold 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-CONFIDENTIAL-PRIVATE-GOLD-100-000",
+      "source_url": "https://lattafa.com/product/confidential-private-gold/",
+      "source_evidence_url": "https://lattafa.com/product/confidential-private-gold/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QAED-AL-FURSAN-UNLIMITED",
+      "size_ml": 90,
+      "aliases": [
+        "Qaed Al Fursan Unlimited 90 ml",
+        "Lattafa Qaed Al Fursan Unlimited 90 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-QAED-AL-FURSAN-UNLIMITED-90-000",
+      "source_url": "https://lattafa.com/product/qaed-al-fursan-unlimited/",
+      "source_evidence_url": "https://lattafa.com/product/qaed-al-fursan-unlimited/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BADEE-AL-OUD-SUBLIME",
+      "size_ml": 100,
+      "aliases": [
+        "Badee AL Oud Sublime 100 ml",
+        "Lattafa Badee AL Oud Sublime 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BADEE-AL-OUD-SUBLIME-100-000",
+      "source_url": "https://lattafa.com/product/badee-al-oud-sublime/",
+      "source_evidence_url": "https://lattafa.com/product/badee-al-oud-sublime/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NOBLE-AMEER",
+      "size_ml": 100,
+      "aliases": [
+        "Al Noble Ameer 100 ml",
+        "Lattafa Al Noble Ameer 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AL-NOBLE-AMEER-100-000",
+      "source_url": "https://lattafa.com/product/al-noble-ameer/",
+      "source_evidence_url": "https://lattafa.com/product/al-noble-ameer/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AL-NOBLE-WAZEER",
+      "size_ml": 100,
+      "aliases": [
+        "Al Noble Wazeer 100 ml",
+        "Lattafa Al Noble Wazeer 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AL-NOBLE-WAZEER-100-000",
+      "source_url": "https://lattafa.com/product/al-noble-wazeer/",
+      "source_evidence_url": "https://lattafa.com/product/al-noble-wazeer/"
+    },
+    {
+      "product_id": "SH-LATTAFA-VELVET-ROSE",
+      "size_ml": 100,
+      "aliases": [
+        "Velvet Rose 100 ml",
+        "Lattafa Velvet Rose 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-VELVET-ROSE-100-000",
+      "source_url": "https://lattafa.com/product/velvet-rose/",
+      "source_evidence_url": "https://lattafa.com/product/velvet-rose/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHBA",
+      "size_ml": 100,
+      "aliases": [
+        "Raghba 100 ml",
+        "Lattafa Raghba 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-RAGHBA-100-000",
+      "source_url": "https://lattafa.com/product/raghba/",
+      "source_evidence_url": "https://lattafa.com/product/raghba/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH",
+      "size_ml": 100,
+      "aliases": [
+        "Khamrah 100 ml",
+        "Lattafa Khamrah 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KHAMRAH-100-000",
+      "source_url": "https://lattafa.com/product/khamrah/",
+      "source_evidence_url": "https://lattafa.com/product/khamrah/"
     }
   ]
 }
