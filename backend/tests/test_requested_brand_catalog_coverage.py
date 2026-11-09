@@ -1151,5 +1151,65 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     if row.get("product_id") == product["product_id"]
                 ])
 
+
+    def test_maison_asrar_best_seller_collection_pages_and_variants(self):
+        expected = {
+            "Coffee Blend": ("https://maisonasrar.com/products/coffee-blend-eau-de-parfum", "Eau de Parfum", None),
+            "Soirée": ("https://maisonasrar.com/products/soiree", None, None),
+            "Date Night": ("https://maisonasrar.com/products/date-night", None, None),
+            "Oh Honey!": ("https://maisonasrar.com/products/oh-honey-eau-de-parfum", "Eau de Parfum", None),
+            "Nada": ("https://maisonasrar.com/products/nada", None, None),
+            "Qamar": ("https://maisonasrar.com/products/qamar", None, None),
+            "Joy": ("https://maisonasrar.com/products/joy-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Rosé Absolute": ("https://maisonasrar.com/products/absolute-eau-de-perfum-100ml", "Eau de Parfum", 100),
+            "Rubellite": ("https://maisonasrar.com/products/rubellite", None, None),
+            "Lumiere": ("https://maisonasrar.com/products/lumiere", None, None),
+            "Luna": ("https://maisonasrar.com/products/luna-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Muharib": ("https://maisonasrar.com/products/muharib", None, None),
+            "DXB": ("https://maisonasrar.com/products/dxb", None, None),
+            "Vision": ("https://maisonasrar.com/products/vision", None, None),
+            "Rey": ("https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar", "Eau de Parfum", 100),
+            "Wadi": ("https://maisonasrar.com/products/wadi", None, None),
+            "Tornado": ("https://maisonasrar.com/products/tornado", None, None),
+            "Hunter": ("https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Masterpiece": ("https://maisonasrar.com/products/gulf-orchid-masterpiece-eau-de-parfum", "Eau de Parfum", None),
+            "Cascade": ("https://maisonasrar.com/products/cascade", None, None),
+            "Leo": ("https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml", "Eau de Parfum", 100),
+            "Flair": ("https://maisonasrar.com/products/gulf-orchid-flaire-eau-de-parfum", "Eau de Parfum", None),
+            "Silver Elixer": ("https://maisonasrar.com/products/gulf-orchid-silver-elixer-eau-de-parfum", "Eau de Parfum", None),
+            "Timeless": ("https://maisonasrar.com/products/gulf-orchid-timeless-eau-de-parfum", "Eau de Parfum", None),
+            "Larimar": ("https://maisonasrar.com/products/larimar", None, None),
+            "Hikaya": ("https://maisonasrar.com/products/hikaya", None, None),
+        }
+        products = CATALOG.get("products", [])
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, size) in expected.items():
+            with self.subTest(name=name):
+                matches = [
+                    row for row in products
+                    if row.get("brand_name") == "Maison Asrar"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("source_evidence_url"), source)
+                self.assertEqual(product.get("source_product_url"), source)
+                self.assertEqual(product.get("concentration"), concentration)
+                matching = [
+                    row for row in variants
+                    if row.get("product_id") == product["product_id"]
+                ]
+                if size is None:
+                    self.assertFalse(product.get("formats_ml"))
+                    self.assertEqual(matching, [])
+                else:
+                    self.assertEqual(product.get("formats_ml"), [size])
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("size_ml"), size)
+                    self.assertEqual(matching[0].get("concentration"), concentration)
+                    self.assertEqual(matching[0].get("source_evidence_url"), source)
+
 if __name__ == "__main__":
     unittest.main()
