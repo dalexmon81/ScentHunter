@@ -4631,11 +4631,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://de.afnan.com/en/products/9pm-night-out",
-      "source_evidence_url": "https://afnan.com/collections/all",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9pm-night-out",
       "concentration": "Extrait de Parfum",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_product_url": "https://de.afnan.com/en/products/9pm-night-out"
     },
     {
       "product_id": "SH-AFNAN-ab1ea63f",
@@ -4665,9 +4666,14 @@
         "9 AM",
         "Afnan 9 AM"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-am",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-am",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-5de78540",
@@ -4681,9 +4687,14 @@
         "9 AM Pour Femme",
         "Afnan 9 AM Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-9e3c80fa",
@@ -4697,9 +4708,14 @@
         "9 AM Dive",
         "Afnan 9 AM Dive"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-am-dive",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-dive",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-am-dive",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-816ce12c",
@@ -4713,9 +4729,14 @@
         "Supremacy Gold",
         "Afnan Supremacy Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-gold",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-gold",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-gold",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -4729,15 +4750,15 @@
         "Supremacy Not Only Intense",
         "Afnan Supremacy Not Only Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://it.afnan.com/products/supremacy-not-only-intense",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense",
       "formats_ml": [
         100,
         150
       ],
       "concentration": "Extrait de Parfum",
-      "source_product_url": "https://it.afnan.com/products/supremacy-not-only-intense"
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-AFNAN-e408d61b",
@@ -4767,9 +4788,14 @@
         "9 PM Rebel",
         "Afnan 9 PM Rebel"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm-rebel",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-rebel",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm-rebel",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-5cdc0bae",
@@ -4783,9 +4809,14 @@
         "Turathi Brown Homme",
         "Afnan Turathi Brown Homme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.afnan.com/en/products/turathi-brown-homme",
+      "source_evidence_url": "https://fr.afnan.com/en/products/turathi-brown-homme",
+      "source_product_url": "https://fr.afnan.com/en/products/turathi-brown-homme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-13721551",
@@ -4895,9 +4926,14 @@
         "Supremacy Pink",
         "Afnan Supremacy Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-pink",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-pink",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-pink",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-aa93308c",
@@ -4911,9 +4947,14 @@
         "Supremacy Purple",
         "Afnan Supremacy Purple"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-purple",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-purple",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-purple",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-387345b5",
@@ -4943,14 +4984,14 @@
         "9 PM",
         "Afnan 9 PM"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://www.bjutip.com/men-perfumes",
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm",
       "formats_ml": [
         100
       ],
       "concentration": "Eau de Parfum",
-      "source_product_url": "https://uae.afnan.com/products/9-pm-perfume",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm",
       "gtins": [
         "6290171002338"
       ]
@@ -4967,9 +5008,14 @@
         "9 PM Pour Femme",
         "Afnan 9 PM Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-f8622945",
@@ -5015,9 +5061,14 @@
         "Turathi Blue",
         "Afnan Turathi Blue"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-dc43e01b",
@@ -5031,9 +5082,14 @@
         "Turathi Electric",
         "Afnan Turathi Electric"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/turathi-electric",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-electric",
+      "source_product_url": "https://www.fr.afnan.com/en/products/turathi-electric",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-d0bee594",
@@ -5223,9 +5279,14 @@
         "Turathi Purple",
         "Afnan Turathi Purple"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme",
+      "source_product_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-779646c3",
@@ -5335,9 +5396,14 @@
         "9 PM Elixir",
         "Afnan 9 PM Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/9-pm-elixir",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-elixir",
+      "source_product_url": "https://www.fr.afnan.com/en/products/9-pm-elixir",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-583391fb",
@@ -5351,9 +5417,15 @@
         "Supremacy Silver",
         "Afnan Supremacy Silver"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-silver",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-silver",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-silver",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100,
+        150
+      ]
     },
     {
       "product_id": "SH-AFNAN-544372b1",
@@ -5367,9 +5439,14 @@
         "Supremacy Collector's Edition",
         "Afnan Supremacy Collector's Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-fc437465",
@@ -22663,9 +22740,14 @@
         "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
         "Supremacy Tapis Rouge"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=3",
-      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge",
+      "source_product_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-TASNEEM",
@@ -22711,9 +22793,14 @@
         "TURATHI RED",
         "Afnan TURATHI RED"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=3",
-      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/products/turathi-red-femme",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-red-femme",
+      "source_product_url": "https://www.fr.afnan.com/products/turathi-red-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-VIOLET-BOUQUET",
@@ -34831,7 +34918,8 @@
       ],
       "variant_id": "SHV-SH-AFNAN-823a97f5-100-000",
       "concentration": "Eau de Parfum",
-      "gtin": "6290171002338"
+      "gtin": "6290171002338",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm"
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -34841,7 +34929,8 @@
         "Afnan Supremacy Not Only Intense 100ml"
       ],
       "variant_id": "SHV-SH-AFNAN-d1fee769-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -34851,7 +34940,8 @@
         "Afnan Supremacy Not Only Intense 150ml"
       ],
       "variant_id": "SHV-SH-AFNAN-d1fee769-150-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-8a079897",
@@ -36623,7 +36713,8 @@
       "aliases": [
         "9 PM Night Out 100 ml",
         "Afnan 9 PM Night Out 100ml"
-      ]
+      ],
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9pm-night-out"
     },
     {
       "product_id": "SH-ZIMAYA-KIBRIA-SUPREMO",
@@ -38315,6 +38406,204 @@
       "variant_id": "SHV-SH-AL-WATANIAH-ALYA-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.alwataniah.com/products/alya"
+    },
+    {
+      "product_id": "SH-AFNAN-69527fa0",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Elixir 100 ml",
+        "Afnan 9 PM Elixir 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-69527fa0-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-elixir"
+    },
+    {
+      "product_id": "SH-AFNAN-dec689ab",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Pour Femme 100 ml",
+        "Afnan 9 PM Pour Femme 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-dec689ab-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-pour-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-be149290",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM 100 ml",
+        "Afnan 9 AM 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-be149290-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am"
+    },
+    {
+      "product_id": "SH-AFNAN-5de78540",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM Pour Femme 100 ml",
+        "Afnan 9 AM Pour Femme 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5de78540-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-pour-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-9e3c80fa",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM Dive 100 ml",
+        "Afnan 9 AM Dive 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-9e3c80fa-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-am-dive"
+    },
+    {
+      "product_id": "SH-AFNAN-068d05a5",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Rebel 100 ml",
+        "Afnan 9 PM Rebel 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-068d05a5-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/9-pm-rebel"
+    },
+    {
+      "product_id": "SH-AFNAN-816ce12c",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Gold 100 ml",
+        "Afnan Supremacy Gold 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-816ce12c-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-gold"
+    },
+    {
+      "product_id": "SH-AFNAN-583391fb",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Silver 100 ml",
+        "Afnan Supremacy Silver 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-583391fb-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-silver"
+    },
+    {
+      "product_id": "SH-AFNAN-583391fb",
+      "size_ml": 150,
+      "aliases": [
+        "Supremacy Silver 150 ml",
+        "Afnan Supremacy Silver 150ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-583391fb-150-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-silver"
+    },
+    {
+      "product_id": "SH-AFNAN-544372b1",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Collector's Edition 100 ml",
+        "Afnan Supremacy Collector's Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-544372b1-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-collectors-edition"
+    },
+    {
+      "product_id": "SH-AFNAN-d587de8a",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Pink 100 ml",
+        "Afnan Supremacy Pink 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-d587de8a-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-pink"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-TAPIS-ROUGE-LUXURY-COLLECTION",
+      "size_ml": 90,
+      "aliases": [
+        "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION 90 ml",
+        "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-SUPREMACY-TAPIS-ROUGE-LUXURY-COLLECTION-90-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-tapis-rouge"
+    },
+    {
+      "product_id": "SH-AFNAN-aa93308c",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Purple 100 ml",
+        "Afnan Supremacy Purple 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-aa93308c-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/supremacy-purple"
+    },
+    {
+      "product_id": "SH-AFNAN-5cdc0bae",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Brown Homme 90 ml",
+        "Afnan Turathi Brown Homme 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5cdc0bae-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://fr.afnan.com/en/products/turathi-brown-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-e9bc6ab8",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Blue 90 ml",
+        "Afnan Turathi Blue 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-e9bc6ab8-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-blue-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-dc43e01b",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Electric 90 ml",
+        "Afnan Turathi Electric 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-dc43e01b-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-electric"
+    },
+    {
+      "product_id": "SH-AFNAN-5971cbd6",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Purple 90 ml",
+        "Afnan Turathi Purple 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5971cbd6-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/en/products/turathi-purple-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-TURATHI-RED",
+      "size_ml": 90,
+      "aliases": [
+        "TURATHI RED 90 ml",
+        "Afnan TURATHI RED 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-TURATHI-RED-90-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-red-femme"
     }
   ]
 }

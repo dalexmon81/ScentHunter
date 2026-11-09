@@ -12118,6 +12118,9 @@
           "aliases": [
             "9 PM Night Out",
             "Afnan 9 PM Night Out"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12132,6 +12135,9 @@
           "aliases": [
             "9 AM",
             "Afnan 9 AM"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12139,6 +12145,9 @@
           "aliases": [
             "9 AM Pour Femme",
             "Afnan 9 AM Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12146,6 +12155,9 @@
           "aliases": [
             "9 AM Dive",
             "Afnan 9 AM Dive"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12153,6 +12165,9 @@
           "aliases": [
             "Supremacy Gold",
             "Afnan Supremacy Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12178,6 +12193,9 @@
           "aliases": [
             "9 PM Rebel",
             "Afnan 9 PM Rebel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12185,6 +12203,9 @@
           "aliases": [
             "Turathi Brown Homme",
             "Afnan Turathi Brown Homme"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -12234,6 +12255,9 @@
           "aliases": [
             "Supremacy Pink",
             "Afnan Supremacy Pink"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12241,6 +12265,9 @@
           "aliases": [
             "Supremacy Purple",
             "Afnan Supremacy Purple"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12265,6 +12292,9 @@
           "aliases": [
             "9 PM Pour Femme",
             "Afnan 9 PM Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12286,6 +12316,9 @@
           "aliases": [
             "Turathi Blue",
             "Afnan Turathi Blue"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -12293,6 +12326,9 @@
           "aliases": [
             "Turathi Electric",
             "Afnan Turathi Electric"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -12377,6 +12413,9 @@
           "aliases": [
             "Turathi Purple",
             "Afnan Turathi Purple"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -12426,6 +12465,9 @@
           "aliases": [
             "9 PM Elixir",
             "Afnan 9 PM Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12433,6 +12475,10 @@
           "aliases": [
             "Supremacy Silver",
             "Afnan Supremacy Silver"
+          ],
+          "formats_ml": [
+            100,
+            150
           ]
         },
         {
@@ -12440,6 +12486,9 @@
           "aliases": [
             "Supremacy Collector's Edition",
             "Afnan Supremacy Collector's Edition"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12658,6 +12707,9 @@
             "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
             "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
             "Supremacy Tapis Rouge"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -12679,6 +12731,9 @@
           "aliases": [
             "TURATHI RED",
             "Afnan TURATHI RED"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
