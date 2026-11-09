@@ -311,3 +311,30 @@ The official “Slow Living” detail page explicitly distinguishes 50 ml Eau de
 All 23 existing identities are now marked `source_verified_name`, and their size-specific variant evidence URLs point to their individual product pages. Existing 15 ml travel-size selector variants are retained with their separate evidence and are not altered by this batch.
 
 A regression test checks all 23 individual URLs, concentration handling, size-specific variant evidence and one canonical row per product. Combined with the first two batches, all 53 standalone perfume identities appearing across the current official 54-item all-products collection now have individual brand-owned product-page evidence. The 54th item is the generic Travel Size 15ML selector, not a separate canonical perfume identity. This conclusion is limited to the current official collection and does not prove exhaustive coverage of all historical, regional, or discontinued Mykonos fragrances.
+
+
+### Gulf Orchid: official perfume collection detail-page reconciliation (9 November 2026)
+
+The brand-owned Gulf Orchid Perfume collection was opened directly. Its current collection page distinguishes the Gulf Orchid brand from other brands also sold by the storefront, including Maison Asrar. The visible perfume collection includes standalone Gulf Orchid fragrances and two gift sets. The Sweet Edition and Flirt Edition bundles were excluded as separate canonical perfume identities.
+
+Thirteen existing Gulf Orchid canonical identities were matched to individual brand-owned detail pages. Their existing product IDs were preserved and their identity status was upgraded to `source_verified_name`:
+
+- Vanilla Addiction — https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum — 100 ml Eau de Parfum
+- Mango Ice — https://shop-gulforchid.com/products/mango_ice_eau_de_parfum — 100 ml Eau de Parfum
+- Cotton Candy Musk — https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-cotton-candy — detail page confirms the name; size and concentration are not exposed in the inspected page content
+- Tahara Vanilla Musk — https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml — detail page confirms the name; size and concentration are not exposed in the inspected page content, so the URL slug was not used as sole variant evidence
+- Sweet Heaven 20ML — https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml — 20 ml Eau de Parfum
+- Pink Marshmallow — https://shop-gulforchid.com/products/pink-marshmallow — 100 ml Eau de Parfum
+- Coco Blanco — https://shop-gulforchid.com/products/coco-blanco — 100 ml Eau de Parfum
+- Exotic Oud — https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum — 100 ml Eau de Parfum
+- Vanilla Latte — https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum — 100 ml Eau de Parfum
+- Cookie Bite — https://shop-gulforchid.com/products/cookie-bite — 100 ml Eau de Parfum
+- Sweet Like Candy — https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum — 100 ml Eau de Parfum
+- Sweet Heaven Extreme 20ML — https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml — 20 ml Eau de Parfum
+- Piña Colada Musk — https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada — 60 ml Eau de Parfum
+
+Eleven size/concentration combinations were explicitly shown on their product detail pages and received one variant each, with matching `formats_ml`, concentration and `source_evidence_url`. Cotton Candy Musk and Tahara Vanilla Musk received no size or concentration fields and no variants because the inspected product-page body did not explicitly expose those attributes. No size was inferred from the Tahara URL slug alone.
+
+The collection page also shows Sweet Edition and Flirt Edition gift sets; these were intentionally excluded from the fragrance identity count. This pass verifies the 13 current standalone Gulf Orchid products visible in the dedicated perfume collection, not the remaining legacy/regionally listed Gulf Orchid identities already present in the catalog. No prices, availability, or retailer offer data were copied.
+
+Regression tests now cover all 13 individual product URLs, source status, explicit size/concentration variants, deliberate omissions for the two incomplete pages, and variant-ID uniqueness.
