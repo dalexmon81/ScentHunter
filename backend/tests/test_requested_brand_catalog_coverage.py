@@ -2615,5 +2615,62 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     )
 
 
+    def test_al_haramain_amber_oud_official_pages_and_size_variants(self):
+        expected = {
+            "Amber Oud Ultra Violet": (
+                "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-120ml.html",
+                "Women",
+                {
+                    60: "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-60ml.html",
+                    120: "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-ultra-violet-120ml.html",
+                    200: "https://shop.alharamainperfumes.com/default/haramain-amber-oud-ultra-violet-200ml.html",
+                },
+            ),
+            "Amber Oud Private Edition": (
+                "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-100ml.html",
+                "Unisex",
+                {
+                    60: "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-60ml-spray.html",
+                    100: "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-private-edition-100ml.html",
+                    120: "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf",
+                },
+            ),
+            "Amber Oud Black Edition": (
+                "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html",
+                None,
+                {
+                    60: "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf",
+                    100: "https://shop.alharamainperfumes.com/E-Catalog/e-catalog.pdf",
+                    200: "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-black-edition.html",
+                },
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Al Haramain"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, gender, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                if gender is not None:
+                    self.assertEqual(row.get("gender"), gender)
+                self.assertEqual(set(row.get("formats_ml", [])), set(sizes))
+                for size, evidence in sizes.items():
+                    matching = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
+                    self.assertEqual(matching[0].get("source_evidence_url"), evidence)
+
+
 if __name__ == "__main__":
     unittest.main()
