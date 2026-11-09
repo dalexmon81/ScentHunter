@@ -3018,8 +3018,14 @@
         "Bayn Al Asrar",
         "Paris Corner Bayn Al Asrar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-804ac919",
@@ -3033,8 +3039,14 @@
         "Caramel Bash",
         "Paris Corner Caramel Bash"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-caramel-bash-edp-u-100-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-caramel-bash-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-caramel-bash-edp-u-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-e8b7fc40",
@@ -3097,8 +3109,14 @@
         "Cosmic Giardino",
         "Paris Corner Cosmic Giardino"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-cosmic-giardino-edp-u-100-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-cosmic-giardino-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-cosmic-giardino-edp-u-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-918f26d8",
@@ -3157,8 +3175,14 @@
         "December Rose",
         "Paris Corner December Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ef841988",
@@ -39253,6 +39277,54 @@
       ],
       "source_url": "https://de.pariscornereurope.com/en/products/qissa-pink",
       "source_evidence_url": "https://de.pariscornereurope.com/en/products/qissa-pink"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cd8b1f8e",
+      "variant_id": "SHV-SH-PARIS-CORNER-cd8b1f8e-80-EDP",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Bayn Al Asrar 80 ml",
+        "Paris Corner Bayn Al Asrar 80 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-804ac919",
+      "variant_id": "SHV-SH-PARIS-CORNER-804ac919-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Caramel Bash 100 ml",
+        "Paris Corner Caramel Bash 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-caramel-bash-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-caramel-bash-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-5239463e",
+      "variant_id": "SHV-SH-PARIS-CORNER-5239463e-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "December Rose 85 ml",
+        "Paris Corner December Rose 85 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-41eeb4a5",
+      "variant_id": "SHV-SH-PARIS-CORNER-41eeb4a5-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cosmic Giardino 100 ml",
+        "Paris Corner Cosmic Giardino 100 ml"
+      ],
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-cosmic-giardino-edp-u-100-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-cosmic-giardino-edp-u-100-ml"
     }
   ]
 }
