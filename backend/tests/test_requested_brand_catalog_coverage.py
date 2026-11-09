@@ -786,16 +786,16 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
 
     def test_maison_alhambra_new_in_official_pages_and_gtin_variants_are_verified(self):
         expected = {
-            "Jubilant Vitality": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-jubilant-vitality-eau-de-parfum-for-everyone", 100, "6290362343530"),
-            "In Perfect Harmony": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-in-perfect-harmony-eau-de-parfum-for-everyone", 60, "6290362340676"),
-            "Sceptre Desert": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-sceptre-desert-eau-de-parfum-for-everyone", 100, "6290362340621"),
-            "Eclat De Lune": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-eclat-de-lune-eau-de-parfum-for-women", 100, "6290360599212"),
-            "Lava": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-lava-eau-de-parfum-for-everyone", 100, "6290360599267"),
-            "La Charmante": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-la-charmante-eau-de-parfum-for-everyone", 100, "6290362340164"),
-            "La Charmante Eclatant": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-la-charmante-eclatant-eau-de-parfum-for-everyone", 100, "6290362340171"),
+            "Jubilant Vitality": ("https://maisonalhambra-usa.com/products/maison-alhambra-jubilant-vitality-eau-de-parfum-for-everyone", 100, "6290362343530"),
+            "In Perfect Harmony": ("https://maisonalhambra-usa.com/products/maison-alhambra-in-perfect-harmony-eau-de-parfum-for-everyone", 60, "6290362340676"),
+            "Sceptre Desert": ("https://maisonalhambra-usa.com/products/maison-alhambra-sceptre-desert-eau-de-parfum-for-everyone", 100, "6290362340621"),
+            "Eclat De Lune": ("https://maisonalhambra-usa.com/products/maison-alhambra-eclat-de-lune-eau-de-parfum-for-women", 100, "6290360599212"),
+            "Lava": ("https://maisonalhambra-usa.com/products/maison-alhambra-lava-eau-de-parfum-for-everyone", 100, "6290360599267"),
+            "La Charmante": ("https://maisonalhambra-usa.com/products/maison-alhambra-la-charmante-eau-de-parfum-for-everyone", 100, "6290362340164"),
+            "La Charmante Eclatant": ("https://maisonalhambra-usa.com/products/maison-alhambra-la-charmante-eclatant-eau-de-parfum-for-everyone", 100, "6290362340171"),
             "Your Touch Santal": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-your-touch-santal-eau-de-parfum-for-everyone", 100, "6290362347989"),
             "Victoria Flower Rosa Lilium": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-victoria-flower-rosa-lilium-eau-de-parfum-for-women", 100, "6290362340966"),
-            "Victorioso Heroic": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men", 100, "6290362340584"),
+            "Victorioso Heroic": ("https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men", 100, "6290362340584"),
             "Rose Origami": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone", 100, "6290362340928"),
             "Opera Rouge": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone", 100, "6290362340881"),
         }
