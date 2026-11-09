@@ -17,6 +17,7 @@ on:
       - work/lattafa-nine-launches-2026-11-09
       - work/alwataniah-ten-details-2026-11-09
       - work/alwataniah-twenty-details-2026-11-09
+      - work/alwataniah-final-details-2026-11-09
       - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
@@ -25,6 +26,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - work/alwataniah-final-details-2026-11-09
       - work/alwataniah-twenty-details-2026-11-09
       - work/alwataniah-ten-details-2026-11-09
       - work/lattafa-nine-launches-2026-11-09
