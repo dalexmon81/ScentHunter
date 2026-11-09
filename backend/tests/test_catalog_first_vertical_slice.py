@@ -373,7 +373,7 @@ def test_liquid_brun_bplatz_fixture_flows_through_postgres_to_catalog_search(mon
     assert len(records) == 1
     record = replace(
         records[0],
-        external_product_id=meta["shopify_variant_id"],
+        external_product_id=meta["shopify_variant_id"] + "-lifecycle",
         captured_at=meta["acquired_at_utc"],
     )
     assert record.gtin == "6290360375694"
