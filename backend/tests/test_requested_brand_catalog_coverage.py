@@ -1496,7 +1496,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
     def test_armaf_club_de_nuit_and_odyssey_official_pages_and_sizes(self):
         expected = {
             "Club de Nuit Intense Man": ("https://armaf.com/products/club-de-nuit-intense-for-man", "Eau de Parfum", [200,30,250]),
-            "Club de Nuit Elite": ("https://armaf.com/products/club-de-nuit-elite-1", "Eau de Parfum", []),
+            "Club de Nuit Elite": ("https://armaf.com/products/club-de-nuit-elite-1", "Eau de Parfum", [100]),
             "Club de Nuit Intense Overdose": ("https://armaf.com/products/club-de-nuit-intense-overdose", "Extrait de Parfum", [105]),
             "Odyssey Mandarin Sky": ("https://armaf.com/products/odyssey-mega-for-men", "Eau de Parfum", [200,100,60,10]),
             "Club de Nuit Blue Iconic": ("https://armaf.com/products/club-de-nuit-blue-iconic-200ml", "Eau de Parfum", [200,105,30,10]),
