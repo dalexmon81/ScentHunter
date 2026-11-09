@@ -168,3 +168,21 @@ The first-party detail page confirms the existing fragrance identity, Extrait de
 - Fursan White — https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae (100 ml, Eau de Parfum, SKU 6291107977751)
 
 These three Khadlaj listing-level identities already had one 100 ml variant each. The official detail pages confirm the same size and concentration, so only provenance/status were upgraded; no duplicate products or variants were created. Sara was not upgraded because the official product page heading says Extrait de Parfum while other collection-card text labels it EDP; that discrepancy needs reconciliation before changing the catalog.
+
+### Aromatix: ten official signature-collection variants (9 November 2026)
+
+The official Aromatix Signature Collection page lists ten collaboration fragrances, each explicitly labelled Eau de Parfum and 100 ml:
+- Teas Me
+- Frostbite
+- Naughty Dates
+- Sun Kissed
+- Forbidden Fruit
+- Magnetiq
+- Platine Blanc
+- X Xandal
+- Royal Taboo
+- Carnal Desire
+
+Source: https://shoparomatix.com/pages/aromatic-collection
+
+All ten identities already existed in the catalog as Aromatix names. Their records now carry the first-party collection source, explicit Eau de Parfum concentration, and one 100 ml variant each. They remain listing-level evidence because the cited source is a collection page rather than individual detail pages. No prices or availability data were imported.
