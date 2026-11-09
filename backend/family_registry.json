@@ -14661,6 +14661,36 @@
             "Opera Rouge",
             "Maison Alhambra Opera Rouge"
           ]
+        },
+        {
+          "canonical_name": "Domino Essence",
+          "aliases": [
+            "Domino Essence",
+            "Maison Alhambra Domino Essence"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Encode Mountain",
+          "aliases": [
+            "Encode Mountain",
+            "Maison Alhambra Encode Mountain"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Exquisite Club",
+          "aliases": [
+            "Exquisite Club",
+            "Maison Alhambra Exquisite Club"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },

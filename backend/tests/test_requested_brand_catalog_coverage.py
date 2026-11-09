@@ -1691,5 +1691,76 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("source_url"), source)
 
 
+
+    def test_maison_alhambra_three_newly_reconciled_detail_pages(self):
+        expected = {
+            "Domino Essence": (
+                "SH-MAISON-ALHAMBRA-DOMINO-ESSENCE",
+                "https://maisonalhambra-usa.com/products/maison-alhambra-domino-essence-eau-de-parfum-for-everyone",
+                "6290360590684",
+                "Unisex",
+            ),
+            "Encode Mountain": (
+                "SH-MAISON-ALHAMBRA-ENCODE-MOUNTAIN",
+                "https://maisonalhambra-usa.com/products/maison-alhambra-encode-mountain-eau-de-parfum-for-men",
+                "6290362340812",
+                "Men",
+            ),
+            "Exquisite Club": (
+                "SH-MAISON-ALHAMBRA-EXQUISITE-CLUB",
+                "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-club-eau-de-parfum-for-men",
+                "6290362340836",
+                "Men",
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (product_id, source, gtin, gender) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("product_id"), product_id)
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("source_product_url"), source)
+                self.assertEqual(row.get("source_evidence_url"), source)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertEqual(row.get("gender"), gender)
+                self.assertEqual(row.get("formats_ml"), [100])
+                self.assertEqual(row.get("gtins"), [gtin])
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == product_id
+                    and variant.get("size_ml") == 100
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(
+                    matches[0].get("variant_id"),
+                    "SHV-SH-MAISON-ALHAMBRA-" + name.upper().replace(" ", "-") + "-100-000",
+                )
+                self.assertEqual(matches[0].get("gtin"), gtin)
+                self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matches[0].get("source_url"), source)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
+                self.assertNotIn("price", row)
+                self.assertNotIn("stock", row)
+
+    def test_maison_alhambra_three_new_products_are_in_family_registry(self):
+        registry_path = BACKEND / "family_registry.json"
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        family = next(
+            row for row in registry.get("families", [])
+            if row.get("family_id") == "maison_alhambra_catalog"
+        )
+        names = {row.get("canonical_name") for row in family.get("products", [])}
+        for name in ("Domino Essence", "Encode Mountain", "Exquisite Club"):
+            with self.subTest(name=name):
+                self.assertIn(name, names)
+
+
 if __name__ == "__main__":
     unittest.main()

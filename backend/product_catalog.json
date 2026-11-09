@@ -36420,6 +36420,81 @@
       "source_url": "https://armaf.com/products/odyssey-soda-pop",
       "source_evidence_url": "https://armaf.com/products/odyssey-soda-pop",
       "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-DOMINO-ESSENCE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Domino Essence",
+      "name": "Domino Essence",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Domino Essence",
+      "aliases": [
+        "Domino Essence",
+        "Maison Alhambra Domino Essence"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-domino-essence-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-domino-essence-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-domino-essence-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290360590684"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-ENCODE-MOUNTAIN",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Encode Mountain",
+      "name": "Encode Mountain",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Encode Mountain",
+      "aliases": [
+        "Encode Mountain",
+        "Maison Alhambra Encode Mountain"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-encode-mountain-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-encode-mountain-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-encode-mountain-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340812"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-EXQUISITE-CLUB",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Exquisite Club",
+      "name": "Exquisite Club",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Exquisite Club",
+      "aliases": [
+        "Exquisite Club",
+        "Maison Alhambra Exquisite Club"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-club-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-club-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-club-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340836"
+      ]
     }
   ],
   "variants": [
@@ -43072,6 +43147,45 @@
       "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-imperium-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-imperium-eau-de-parfum-for-everyone",
       "gtin": "6290360599274"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-DOMINO-ESSENCE",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-DOMINO-ESSENCE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Domino Essence 100 ml",
+        "Maison Alhambra Domino Essence 100 ml"
+      ],
+      "gtin": "6290360590684",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-domino-essence-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-domino-essence-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-ENCODE-MOUNTAIN",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-ENCODE-MOUNTAIN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Encode Mountain 100 ml",
+        "Maison Alhambra Encode Mountain 100 ml"
+      ],
+      "gtin": "6290362340812",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-encode-mountain-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-encode-mountain-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-EXQUISITE-CLUB",
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-EXQUISITE-CLUB-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Exquisite Club 100 ml",
+        "Maison Alhambra Exquisite Club 100 ml"
+      ],
+      "gtin": "6290362340836",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-club-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-club-eau-de-parfum-for-men"
     }
   ]
 }
