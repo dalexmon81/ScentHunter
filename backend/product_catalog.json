@@ -21923,9 +21923,13 @@
         "Spectre Wraith",
         "French Avenue Spectre Wraith"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/spectre-wraith",
+      "source_evidence_url": "https://frenchavenue.com/products/spectre-wraith",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-COCOA-MORADO",
@@ -26197,9 +26201,13 @@
         "Royal Blend Nero",
         "French Avenue Royal Blend Nero"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all",
-      "source_evidence_url": "https://frenchavenue.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/royal-blend-nero",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-blend-nero",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-5eb62801",
@@ -36753,6 +36761,27 @@
       "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
       "concentration": "Extrait de Parfum",
       "gender": "Women"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ECLAIR-AFFAIR",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Eclair Affair",
+      "name": "Eclair Affair",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Eclair Affair",
+      "aliases": [
+        "Eclair Affair",
+        "French Avenue Eclair Affair"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/eclair-affair",
+      "source_evidence_url": "https://frenchavenue.com/products/eclair-affair",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
     }
   ],
   "variants": [
@@ -44067,6 +44096,42 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/ombre-oud-intense",
       "source_evidence_url": "https://armaf.com/products/ombre-oud-intense"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-SPECTRE-WRAITH",
+      "size_ml": 80,
+      "aliases": [
+        "Spectre Wraith 80 ml",
+        "French Avenue Spectre Wraith 80 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-SPECTRE-WRAITH-80-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/spectre-wraith",
+      "source_evidence_url": "https://frenchavenue.com/products/spectre-wraith"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-ECLAIR-AFFAIR",
+      "size_ml": 100,
+      "aliases": [
+        "Eclair Affair 100 ml",
+        "French Avenue Eclair Affair 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-ECLAIR-AFFAIR-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/eclair-affair",
+      "source_evidence_url": "https://frenchavenue.com/products/eclair-affair"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-4a1695d9",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Blend Nero 100 ml",
+        "French Avenue Royal Blend Nero 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-4a1695d9-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/royal-blend-nero",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-blend-nero"
     }
   ]
 }
