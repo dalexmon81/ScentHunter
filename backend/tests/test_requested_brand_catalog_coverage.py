@@ -504,11 +504,14 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         # The canonical identity already exists. A later provenance update
         # must preserve this product ID and must never append a second row.
         self.assertEqual(row.get("product_id"), "SH-ARMAF-f650f6a8")
-        self.assertEqual(row.get("identity_status"), "source_listed_name")
-        self.assertNotEqual(
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(
             row.get("source_url"),
             "https://armaf.com/products/uniq-oud-forever-spr",
-            "Promote only in a dedicated provenance update after page fields are rechecked.",
+        )
+        self.assertEqual(
+            row.get("source_evidence_url"),
+            "https://armaf.com/products/uniq-oud-forever-spr",
         )
 
 
