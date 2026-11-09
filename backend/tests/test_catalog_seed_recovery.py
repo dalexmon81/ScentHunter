@@ -30,11 +30,17 @@ class CatalogSeedRecoveryTests(unittest.TestCase):
             "Blind Bid", "Bluff", "Bonus", "Boston", "Diamond", "Double Bonus",
             "Emerald", "Full House Refresh", "Gold", "High Roller", "Jackpot", "Moon",
             "No Limit", "Opal", "Platinum", "Rouge", "Royale", "Ruby", "Topaz",
-            "Trick", "Win", "Yellow Sapphire",
+            "Trick", "Win", "Yellow Sapphire", "Blue Sapphire", "Emerald Extrait", "Rouge Extrait",
         }
         products = [p for p in CATALOG["products"] if p.get("brand") == "Games of Spades"]
         self.assertEqual({p["canonical_name"] for p in products}, expected)
-        self.assertTrue(all("jomilanoparis.com" in p.get("source_url", "") for p in products))
+        for product in products:
+            if product["canonical_name"] == "Ace":
+                self.assertEqual(product["identity_status"], "source_listed_name")
+                self.assertIn("jhonyusa.com", product.get("source_url", ""))
+            else:
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertIn("jomilanoparis.com/products/", product.get("source_url", ""))
 
     def test_mykonos_collaboration_names_are_aliases_not_duplicate_identities(self):
         aliases = [

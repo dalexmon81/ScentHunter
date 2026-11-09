@@ -13,6 +13,11 @@ EXPECTED = {
     "Club de Nuit Woman": ("Eau de Parfum", {200, 105, 30, 250, 10}),
     "Club de Nuit Urban Man Elixir": ("Eau de Parfum", {105, 30, 10, 250}),
     "Club de Nuit Iconic": ("Eau de Parfum", {200, 105, 30, 10}),
+    "Uniq Oud Forever": ("Eau de Parfum", set()),
+    "Eter Desert Breeze": ("Eau de Parfum", set()),
+    "Eter Desert Night": ("Eau de Parfum", set()),
+    "Eter Perfume Oasis": ("Eau de Parfum", set()),
+    "Eter Magical Oud": ("Eau de Parfum", set()),
 }
 
 
@@ -36,6 +41,30 @@ class ArmafDetailEvidenceTests(unittest.TestCase):
                     if v["product_id"] == p["product_id"]
                 }
                 self.assertTrue(expected_sizes.issubset(sizes))
+
+
+    def test_dubai_nights_official_pages_are_verified_without_assuming_concentration(self):
+        expected = {
+            "Dubai Nights Midnight": (
+                "https://armaf.com/products/dubai-nights-midnight-spr", "Men"
+            ),
+            "Dubai Nights Umbra": (
+                "https://armaf.com/products/dubai-nights-umbra-spr", "Unisex"
+            ),
+        }
+        products = {
+            p.get("canonical_name"): p for p in CATALOG.get("products", [])
+            if p.get("brand") == "Armaf"
+        }
+        for name, (source, gender) in expected.items():
+            with self.subTest(product=name):
+                self.assertIn(name, products)
+                product = products[name]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source)
+                self.assertEqual(product.get("gender"), gender)
+                self.assertNotIn("concentration", product)
+
 
 
 if __name__ == "__main__":

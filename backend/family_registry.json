@@ -793,6 +793,10 @@
           "aliases": [
             "Aphrodite",
             "Velixir Aphrodite"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -814,6 +818,10 @@
           "aliases": [
             "Artemis",
             "Velixir Artemis"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -821,6 +829,10 @@
           "aliases": [
             "Asteria",
             "Velixir Asteria"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -842,6 +854,10 @@
           "aliases": [
             "Concordia",
             "Velixir Concordia"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -849,6 +865,10 @@
           "aliases": [
             "Demeter",
             "Velixir Demeter"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -863,6 +883,10 @@
           "aliases": [
             "Galatea",
             "Velixir Galatea"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -870,6 +894,10 @@
           "aliases": [
             "Harmonia",
             "Velixir Harmonia"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -884,6 +912,10 @@
           "aliases": [
             "Hera",
             "Velixir Hera"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -891,6 +923,10 @@
           "aliases": [
             "Himeros",
             "Velixir Himeros"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -898,6 +934,10 @@
           "aliases": [
             "Icarus",
             "Velixir Icarus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -905,6 +945,10 @@
           "aliases": [
             "Morpheus",
             "Velixir Morpheus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -919,6 +963,10 @@
           "aliases": [
             "Nyx",
             "Velixir Nyx"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -954,6 +1002,10 @@
           "aliases": [
             "Persephone",
             "Velixir Persephone"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -961,6 +1013,10 @@
           "aliases": [
             "Poseidon",
             "Velixir Poseidon"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -968,6 +1024,10 @@
           "aliases": [
             "Selene",
             "Velixir Selene"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -975,6 +1035,10 @@
           "aliases": [
             "Uranus",
             "Velixir Uranus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         }
       ]
@@ -2549,6 +2613,9 @@
           "aliases": [
             "Gold Coast Shiraz",
             "Bujairami Gold Coast Shiraz"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2556,6 +2623,9 @@
           "aliases": [
             "G’Day",
             "Bujairami G’Day"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2563,6 +2633,9 @@
           "aliases": [
             "Midnight in Melbourne",
             "Bujairami Midnight in Melbourne"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2570,6 +2643,9 @@
           "aliases": [
             "Sunrise in Sydney",
             "Bujairami Sunrise in Sydney"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5537,6 +5613,65 @@
             "Un I Expressions North Stag",
             "Paris Corner Un I Expressions North Stag"
           ]
+        },
+        {
+          "canonical_name": "Confidential 100ML",
+          "aliases": [
+            "Confidential 100ML",
+            "Paris Corner Confidential 100ml"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ministry of Oud Greatest",
+          "aliases": [
+            "Ministry of Oud Greatest",
+            "Paris Corner Ministry of Oud Greatest"
+          ]
+        },
+        {
+          "canonical_name": "Ministry of Oud Gladiators Oath",
+          "aliases": [
+            "Ministry of Oud Gladiators Oath",
+            "Paris Corner Ministry of Oud Gladiators Oath"
+          ]
+        },
+        {
+          "canonical_name": "Ministry of Oud Maestro's Symphony",
+          "aliases": [
+            "Ministry of Oud Maestro's Symphony",
+            "Paris Corner Ministry of Oud Maestro's Symphony"
+          ]
+        },
+        {
+          "canonical_name": "Ministry of Oud Nile Whispers",
+          "aliases": [
+            "Ministry of Oud Nile Whispers",
+            "Paris Corner Ministry of Oud Nile Whispers"
+          ]
+        },
+        {
+          "canonical_name": "Ministry of Oud Oud Beyond the Wall",
+          "aliases": [
+            "Ministry of Oud Oud Beyond the Wall",
+            "Paris Corner Ministry of Oud Oud Beyond the Wall"
+          ]
+        },
+        {
+          "canonical_name": "Ministry of Oud Romance Reverie",
+          "aliases": [
+            "Ministry of Oud Romance Reverie",
+            "Paris Corner Ministry of Oud Romance Reverie"
+          ]
+        },
+        {
+          "canonical_name": "Tiramisu Speculoos",
+          "aliases": [
+            "Tiramisu Speculoos",
+            "Paris Corner Tiramisu Speculoos"
+          ]
         }
       ]
     },
@@ -7256,6 +7391,11 @@
           "aliases": [
             "Club de Nuit Intense Man",
             "Armaf Club de Nuit Intense Man"
+          ],
+          "formats_ml": [
+            200,
+            30,
+            250
           ]
         },
         {
@@ -7263,6 +7403,9 @@
           "aliases": [
             "Club de Nuit Elite",
             "Armaf Club de Nuit Elite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7270,6 +7413,9 @@
           "aliases": [
             "Club de Nuit Intense Overdose",
             "Armaf Club de Nuit Intense Overdose"
+          ],
+          "formats_ml": [
+            105
           ]
         },
         {
@@ -7291,6 +7437,12 @@
           "aliases": [
             "Odyssey Mandarin Sky",
             "Armaf Odyssey Mandarin Sky"
+          ],
+          "formats_ml": [
+            200,
+            100,
+            60,
+            10
           ]
         },
         {
@@ -7353,6 +7505,12 @@
           "aliases": [
             "Club de Nuit Blue Iconic",
             "Armaf Club de Nuit Blue Iconic"
+          ],
+          "formats_ml": [
+            200,
+            105,
+            30,
+            10
           ]
         },
         {
@@ -7367,6 +7525,9 @@
           "aliases": [
             "Club de Nuit Bling Gold",
             "Armaf Club de Nuit Bling Gold"
+          ],
+          "formats_ml": [
+            75
           ]
         },
         {
@@ -7395,6 +7556,9 @@
           "aliases": [
             "Club de Nuit Oud",
             "Armaf Club de Nuit Oud"
+          ],
+          "formats_ml": [
+            105
           ]
         },
         {
@@ -7402,6 +7566,11 @@
           "aliases": [
             "Club de Nuit Milestone",
             "Armaf Club de Nuit Milestone"
+          ],
+          "formats_ml": [
+            200,
+            105,
+            30
           ]
         },
         {
@@ -7472,6 +7641,10 @@
           "aliases": [
             "Club de Nuit Man",
             "Armaf Club de Nuit Man"
+          ],
+          "formats_ml": [
+            10,
+            105
           ]
         },
         {
@@ -7479,6 +7652,9 @@
           "aliases": [
             "Club de Nuit Intense Man Extreme Edition",
             "Armaf Club de Nuit Intense Man Extreme Edition"
+          ],
+          "formats_ml": [
+            105
           ]
         },
         {
@@ -7507,6 +7683,11 @@
           "aliases": [
             "Odyssey Aqua",
             "Armaf Odyssey Aqua"
+          ],
+          "formats_ml": [
+            200,
+            100,
+            60
           ]
         },
         {
@@ -7514,6 +7695,12 @@
           "aliases": [
             "Odyssey Mega",
             "Armaf Odyssey Mega"
+          ],
+          "formats_ml": [
+            200,
+            100,
+            60,
+            10
           ]
         },
         {
@@ -7561,6 +7748,10 @@
           "aliases": [
             "Odyssey Mandarin Sky Elixir",
             "Armaf Odyssey Mandarin Sky Elixir"
+          ],
+          "formats_ml": [
+            100,
+            60
           ]
         },
         {
@@ -7568,6 +7759,11 @@
           "aliases": [
             "Club de Nuit Imperiale",
             "Armaf Club de Nuit Imperiale"
+          ],
+          "formats_ml": [
+            200,
+            105,
+            10
           ]
         },
         {
@@ -7610,6 +7806,11 @@
           "aliases": [
             "Club de Nuit Intense Woman",
             "Armaf Club de Nuit Intense Woman"
+          ],
+          "formats_ml": [
+            105,
+            10,
+            30
           ]
         },
         {
@@ -7617,6 +7818,11 @@
           "aliases": [
             "Odyssey Limoni",
             "Armaf Odyssey Limoni"
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
           ]
         },
         {
@@ -7638,6 +7844,9 @@
           "aliases": [
             "Ombre Oud Intense Man",
             "Armaf Ombre Oud Intense Man"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7687,6 +7896,11 @@
           "aliases": [
             "Odyssey Homme White Edition",
             "Armaf Odyssey Homme White Edition"
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
           ]
         },
         {
@@ -7708,6 +7922,10 @@
           "aliases": [
             "Ventana Marine",
             "Armaf Ventana Marine"
+          ],
+          "formats_ml": [
+            10,
+            105
           ]
         },
         {
@@ -7750,6 +7968,9 @@
           "aliases": [
             "Miss Armaf Chic",
             "Armaf Miss Armaf Chic"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7757,6 +7978,11 @@
           "aliases": [
             "Odyssey Spectra",
             "Armaf Odyssey Spectra"
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
           ]
         },
         {
@@ -7764,6 +7990,9 @@
           "aliases": [
             "Old Money",
             "Armaf Old Money"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7820,6 +8049,9 @@
           "aliases": [
             "Miss Armaf Catwalk",
             "Armaf Miss Armaf Catwalk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7827,6 +8059,9 @@
           "aliases": [
             "Tag Him Uomo Rosso",
             "Armaf Tag Him Uomo Rosso"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8598,6 +8833,240 @@
             "Futura La Homme",
             "Armaf Futura La Homme"
           ]
+        },
+        {
+          "canonical_name": "Uniq Effects of Uniq",
+          "aliases": [
+            "Uniq Effects of Uniq",
+            "Armaf Uniq Effects of Uniq"
+          ]
+        },
+        {
+          "canonical_name": "Eter Desert Breeze",
+          "aliases": [
+            "Eter Desert Breeze",
+            "Armaf Eter Desert Breeze"
+          ]
+        },
+        {
+          "canonical_name": "Eter Desert Night",
+          "aliases": [
+            "Eter Desert Night",
+            "Armaf Eter Desert Night"
+          ]
+        },
+        {
+          "canonical_name": "Eter Perfume Oasis",
+          "aliases": [
+            "Eter Perfume Oasis",
+            "Armaf Eter Perfume Oasis"
+          ]
+        },
+        {
+          "canonical_name": "Eter Magical Oud",
+          "aliases": [
+            "Eter Magical Oud",
+            "Armaf Eter Magical Oud"
+          ]
+        },
+        {
+          "canonical_name": "Dubai Nights Midnight",
+          "aliases": [
+            "Dubai Nights Midnight",
+            "Armaf Dubai Nights Midnight"
+          ]
+        },
+        {
+          "canonical_name": "Dubai Nights Umbra",
+          "aliases": [
+            "Dubai Nights Umbra",
+            "Armaf Dubai Nights Umbra"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Tyrant",
+          "aliases": [
+            "Odyssey Tyrant",
+            "Armaf Odyssey Tyrant"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Dubai Chocolate",
+          "aliases": [
+            "Odyssey Dubai Chocolate",
+            "Armaf Odyssey Dubai Chocolate"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Scentasy Noir De Peche",
+          "aliases": [
+            "Scentasy Noir De Peche",
+            "Armaf Scentasy Noir De Peche"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Soda Pop",
+          "aliases": [
+            "Odyssey Soda Pop",
+            "Armaf Odyssey Soda Pop"
+          ]
+        },
+        {
+          "canonical_name": "Club de Nuit Woman Extrait de Parfum",
+          "aliases": [
+            "Club de Nuit Woman Extrait de Parfum",
+            "Armaf Club de Nuit Woman Extrait de Parfum",
+            "Club De Nuit Woman Extrait de Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Bloody Hot",
+          "aliases": [
+            "Odyssey Bloody Hot",
+            "Armaf Odyssey Bloody Hot"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Pink Pop",
+          "aliases": [
+            "Odyssey Pink Pop",
+            "Armaf Odyssey Pink Pop",
+            "Odyssey Pink Pop EDP"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Ring My Bell",
+          "aliases": [
+            "Odyssey Ring My Bell",
+            "Armaf Odyssey Ring My Bell"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Spartacus",
+          "aliases": [
+            "Spartacus",
+            "Armaf Spartacus",
+            "Spartacus EDP",
+            "Armaf Spartacus EDP"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey French Kiss",
+          "aliases": [
+            "Odyssey French Kiss",
+            "Armaf Odyssey French Kiss"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Eau de Montagne",
+          "aliases": [
+            "Odyssey Eau de Montagne",
+            "Armaf Odyssey Eau de Montagne"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 13 Tanta Roba",
+          "aliases": [
+            "Profumi D'Art 13 Tanta Roba",
+            "Armaf Profumi D'Art 13 Tanta Roba"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Craze Man Parfum",
+          "aliases": [
+            "Craze Man Parfum",
+            "Armaf Craze Man Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Voyage Brown Man",
+          "aliases": [
+            "Voyage Brown Man",
+            "Armaf Voyage Brown Man"
+          ]
+        },
+        {
+          "canonical_name": "Checkmate Queen",
+          "aliases": [
+            "Checkmate Queen",
+            "Armaf Checkmate Queen"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Aoud",
+          "aliases": [
+            "Odyssey Aoud",
+            "Armaf Odyssey Aoud"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Kunafa Chocolate",
+          "aliases": [
+            "Kunafa Chocolate",
+            "Armaf Kunafa Chocolate"
+          ]
+        },
+        {
+          "canonical_name": "Ombre Fresh EDP",
+          "aliases": [
+            "Ombre Fresh EDP",
+            "Armaf Ombre Fresh EDP"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Wild One",
+          "aliases": [
+            "Odyssey Wild One",
+            "Armaf Odyssey Wild One"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aura Fresh",
+          "aliases": [
+            "Aura Fresh",
+            "Armaf Aura Fresh"
+          ]
+        },
+        {
+          "canonical_name": "The Lion's Club Monarque",
+          "aliases": [
+            "The Lion's Club Monarque",
+            "The Lion's Club - Monarque",
+            "Armaf The Lion's Club Monarque"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
@@ -8633,6 +9102,9 @@
           "aliases": [
             "Azzure Aoud",
             "French Avenue Azzure Aoud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8640,6 +9112,9 @@
           "aliases": [
             "Royal Blend",
             "French Avenue Royal Blend"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8647,6 +9122,9 @@
           "aliases": [
             "Spectre Ghost",
             "French Avenue Spectre Ghost"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -8661,6 +9139,9 @@
           "aliases": [
             "Vulcan Feu",
             "French Avenue Vulcan Feu"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8668,6 +9149,9 @@
           "aliases": [
             "Jasmere",
             "French Avenue Jasmere"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8689,6 +9173,9 @@
           "aliases": [
             "Spectre Wraith",
             "French Avenue Spectre Wraith"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -8696,13 +9183,9 @@
           "aliases": [
             "Cocoa Morado",
             "French Avenue Cocoa Morado"
-          ]
-        },
-        {
-          "canonical_name": "Dusk Till Dawn",
-          "aliases": [
-            "Dusk Till Dawn",
-            "French Avenue Dusk Till Dawn"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8710,6 +9193,9 @@
           "aliases": [
             "Royal Blend Sequoia",
             "French Avenue Royal Blend Sequoia"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8717,6 +9203,9 @@
           "aliases": [
             "Noble Cedar",
             "French Avenue Noble Cedar"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8724,6 +9213,9 @@
           "aliases": [
             "Atlantis Extrait",
             "French Avenue Atlantis Extrait"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8731,6 +9223,9 @@
           "aliases": [
             "Ambroise Pour Femme",
             "French Avenue Ambroise Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8738,6 +9233,9 @@
           "aliases": [
             "Aether",
             "French Avenue Aether"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8745,6 +9243,9 @@
           "aliases": [
             "Imperial Ocean",
             "French Avenue Imperial Ocean"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8759,6 +9260,9 @@
           "aliases": [
             "Spirito Mystic",
             "French Avenue Spirito Mystic"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8892,6 +9396,9 @@
           "aliases": [
             "Royal Blend Nero",
             "French Avenue Royal Blend Nero"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9175,13 +9682,6 @@
           ]
         },
         {
-          "canonical_name": "Papa Yeah!",
-          "aliases": [
-            "Papa Yeah!",
-            "French Avenue Papa Yeah!"
-          ]
-        },
-        {
           "canonical_name": "Paradigm",
           "aliases": [
             "Paradigm",
@@ -9271,7 +9771,46 @@
             "Western Shisha",
             "French Avenue Western Shisha"
           ]
+        },
+        {
+          "canonical_name": "Eclipse",
+          "aliases": [
+            "Eclipse",
+            "French Avenue Eclipse"
+          ]
+        },
+        {
+          "canonical_name": "Eclipse Nova",
+          "aliases": [
+            "Eclipse Nova",
+            "French Avenue Eclipse Nova"
+          ]
+        },
+        {
+          "canonical_name": "Eclair Affair",
+          "aliases": [
+            "Eclair Affair",
+            "French Avenue Eclair Affair"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Papa Yeah",
+          "aliases": [
+            "Papa Yeah",
+            "French Avenue Papa Yeah",
+            "Papa Yeah!"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
+      ],
+      "excluded_products": [
+        "Dusk Till Dawn",
+        "French Avenue Dusk Till Dawn"
       ]
     },
     {
@@ -9565,6 +10104,9 @@
           "aliases": [
             "Lychee Musk",
             "Arabiyat Prestige Lychee Musk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10322,6 +10864,9 @@
           "aliases": [
             "Vanilla Addiction",
             "Gulf Orchid Vanilla Addiction"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10329,6 +10874,9 @@
           "aliases": [
             "Mango Ice",
             "Gulf Orchid Mango Ice"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10350,6 +10898,9 @@
           "aliases": [
             "Sweet Heaven 20ML",
             "Gulf Orchid Sweet Heaven 20ML"
+          ],
+          "formats_ml": [
+            20
           ]
         },
         {
@@ -10357,6 +10908,9 @@
           "aliases": [
             "Pink Marshmallow",
             "Gulf Orchid Pink Marshmallow"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10364,6 +10918,9 @@
           "aliases": [
             "Coco Blanco",
             "Gulf Orchid Coco Blanco"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10406,6 +10963,96 @@
           "aliases": [
             "Piña Colada Musk",
             "Gulf Orchid Piña Colada Musk"
+          ]
+        },
+        {
+          "canonical_name": "Belle",
+          "aliases": [
+            "Belle",
+            "Gulf Orchid Belle"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Amour",
+          "aliases": [
+            "Amour",
+            "Gulf Orchid Amour"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Chic",
+          "aliases": [
+            "Chic",
+            "Gulf Orchid Chic"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Cloud 9",
+          "aliases": [
+            "Cloud 9",
+            "Gulf Orchid Cloud 9"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Phantom",
+          "aliases": [
+            "Phantom",
+            "Gulf Orchid Phantom"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Flamma",
+          "aliases": [
+            "Flamma",
+            "Gulf Orchid Flamma"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vortex",
+          "aliases": [
+            "Vortex",
+            "Gulf Orchid Vortex"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rosalia",
+          "aliases": [
+            "Rosalia",
+            "Gulf Orchid Rosalia"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Maestro",
+          "aliases": [
+            "Maestro",
+            "Gulf Orchid Maestro"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
@@ -10648,6 +11295,96 @@
           "aliases": [
             "Incense 01",
             "Swiss Arabian Incense 01"
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Oud Marine",
+          "aliases": [
+            "Shaghaf Oud Marine",
+            "Swiss Arabian Shaghaf Oud Marine"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Echoes of St. Moritz",
+          "aliases": [
+            "Echoes of St. Moritz",
+            "Swiss Arabian Echoes of St. Moritz"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Nectar Blush",
+          "aliases": [
+            "Shaghaf Nectar Blush",
+            "Swiss Arabian Shaghaf Nectar Blush"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Patchouli 01",
+          "aliases": [
+            "Patchouli 01",
+            "Swiss Arabian Patchouli 01"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Enigma of Taif",
+          "aliases": [
+            "Enigma of Taif",
+            "Swiss Arabian Enigma of Taif"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shaghaf Amber Infusion",
+          "aliases": [
+            "Shaghaf Amber Infusion",
+            "Swiss Arabian Shaghaf Amber Infusion"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Soul of Bali",
+          "aliases": [
+            "Soul of Bali",
+            "Swiss Arabian Soul of Bali"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vanilla 01",
+          "aliases": [
+            "Vanilla 01",
+            "Swiss Arabian Vanilla 01"
+          ],
+          "formats_ml": [
+            50
+          ]
+        },
+        {
+          "canonical_name": "Tobacco 01",
+          "aliases": [
+            "Tobacco 01",
+            "Swiss Arabian Tobacco 01"
+          ],
+          "formats_ml": [
+            50
           ]
         }
       ]
@@ -10892,6 +11629,44 @@
             "Yellow Sapphire",
             "Games of Spades Yellow Sapphire",
             "Game of Spades Yellow Sapphire"
+          ]
+        },
+        {
+          "canonical_name": "Blue Sapphire",
+          "aliases": [
+            "Blue Sapphire",
+            "Games of Spades Blue Sapphire",
+            "Game of Spades Blue Sapphire"
+          ],
+          "formats_ml": [
+            90,
+            30
+          ]
+        },
+        {
+          "canonical_name": "Emerald Extrait",
+          "aliases": [
+            "Emerald Extrait",
+            "Games of Spades Emerald Extrait",
+            "Game of Spades Emerald Extrait"
+          ],
+          "formats_ml": [
+            90,
+            50,
+            10
+          ]
+        },
+        {
+          "canonical_name": "Rouge Extrait",
+          "aliases": [
+            "Rouge Extrait",
+            "Games of Spades Rouge Extrait",
+            "Game of Spades Rouge Extrait"
+          ],
+          "formats_ml": [
+            100,
+            30,
+            10
           ]
         }
       ]
@@ -11735,7 +12510,11 @@
           "canonical_name": "Ajwad Pink to Pink Creamy Elixir",
           "aliases": [
             "Ajwad Pink to Pink Creamy Elixir",
-            "Lattafa Ajwad Pink to Pink Creamy Elixir"
+            "Lattafa Ajwad Pink to Pink Creamy Elixir",
+            "Ajwad Pink To Pink Creamy Elixir"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -11750,6 +12529,222 @@
           "aliases": [
             "Ajwad Pink to Pink",
             "Lattafa Ajwad Pink to Pink"
+          ]
+        },
+        {
+          "canonical_name": "Asad Polar",
+          "aliases": [
+            "Asad Polar",
+            "Lattafa Asad Polar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Atlas Canyon",
+          "aliases": [
+            "Atlas Canyon",
+            "Lattafa Atlas Canyon"
+          ],
+          "formats_ml": [
+            55
+          ]
+        },
+        {
+          "canonical_name": "Atlas Glacial Valley",
+          "aliases": [
+            "Atlas Glacial Valley",
+            "Lattafa Atlas Glacial Valley"
+          ],
+          "formats_ml": [
+            55
+          ]
+        },
+        {
+          "canonical_name": "Raghad",
+          "aliases": [
+            "Raghad",
+            "Lattafa Raghad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ramaad Al Oud",
+          "aliases": [
+            "Ramaad Al Oud",
+            "Ramad Al Oud",
+            "Lattafa Ramaad Al Oud",
+            "Lattafa Ramad Al Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Majd Al Sultan Black Intense",
+          "aliases": [
+            "Majd Al Sultan Black Intense",
+            "Lattafa Majd Al Sultan Black Intense"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Badee Al Oud Amethyst Fusion",
+          "aliases": [
+            "Badee Al Oud Amethyst Fusion",
+            "Lattafa Badee Al Oud Amethyst Fusion"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Farfasha",
+          "aliases": [
+            "Farfasha",
+            "Lattafa Farfasha"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Petra Viola",
+          "aliases": [
+            "Petra Viola",
+            "Lattafa Petra Viola"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Khamrah Mira",
+          "aliases": [
+            "Khamrah Mira",
+            "Lattafa Khamrah Mira"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "London the City of Contrast",
+          "aliases": [
+            "London the City of Contrast",
+            "Lattafa London the City of Contrast"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Atheeri",
+          "aliases": [
+            "Atheeri",
+            "Lattafa Atheeri"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Fearless",
+          "aliases": [
+            "Fearless",
+            "Lattafa Fearless"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Matcha Swirl – Give Me Gourmand",
+          "aliases": [
+            "Matcha Swirl – Give Me Gourmand",
+            "Lattafa Matcha Swirl – Give Me Gourmand",
+            "Matcha Swirl",
+            "Give Me Gourmand Matcha Swirl"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Harlequin Cream – Give Me Gourmand",
+          "aliases": [
+            "Harlequin Cream – Give Me Gourmand",
+            "Lattafa Harlequin Cream – Give Me Gourmand",
+            "Harlequin Cream",
+            "Give Me Gourmand Harlequin Cream"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Beyond Precious",
+          "aliases": [
+            "Beyond Precious",
+            "Lattafa Beyond Precious"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Creative Art",
+          "aliases": [
+            "Creative Art",
+            "Lattafa Creative Art"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Queen of Roses",
+          "aliases": [
+            "Queen of Roses",
+            "Lattafa Queen of Roses"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "New York the City of Dreams",
+          "aliases": [
+            "New York the City of Dreams",
+            "Lattafa New York the City of Dreams"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "King of Arabia",
+          "aliases": [
+            "King of Arabia",
+            "Lattafa King of Arabia"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Love In Paris",
+          "aliases": [
+            "Love In Paris",
+            "Lattafa Love In Paris"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
@@ -12392,6 +13387,9 @@
           "aliases": [
             "Carnal Desire",
             "Aromatix Carnal Desire"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12399,6 +13397,9 @@
           "aliases": [
             "Forbidden Fruit",
             "Aromatix Forbidden Fruit"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12406,6 +13407,9 @@
           "aliases": [
             "Frostbite",
             "Aromatix Frostbite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12413,6 +13417,9 @@
           "aliases": [
             "Magnetiq",
             "Aromatix Magnetiq"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12420,6 +13427,9 @@
           "aliases": [
             "Naughty Dates",
             "Aromatix Naughty Dates"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12443,6 +13453,9 @@
           "aliases": [
             "Royal Taboo",
             "Aromatix Royal Taboo"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12457,6 +13470,9 @@
           "aliases": [
             "Sun Kissed",
             "Aromatix Sun Kissed"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12464,6 +13480,9 @@
           "aliases": [
             "Teas Me",
             "Aromatix Teas Me"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12471,6 +13490,9 @@
           "aliases": [
             "X Xandal",
             "Aromatix X Xandal"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
@@ -12623,7 +13645,9 @@
           "canonical_name": "Aquilo",
           "aliases": [
             "Aquilo",
-            "Maison Alhambra Aquilo"
+            "Maison Alhambra Aquilo",
+            "Aquilo Pour Homme",
+            "Maison Alhambra Aquilo Pour Homme"
           ]
         },
         {
@@ -12776,6 +13800,9 @@
           "aliases": [
             "Candid Tonight",
             "Maison Alhambra Candid Tonight"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12832,6 +13859,9 @@
           "aliases": [
             "Como Moiselle",
             "Maison Alhambra Como Moiselle"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12888,6 +13918,9 @@
           "aliases": [
             "Delilah",
             "Maison Alhambra Delilah"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -12909,6 +13942,9 @@
           "aliases": [
             "Desirable Addiction",
             "Maison Alhambra Desirable Addiction"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13154,6 +14190,9 @@
           "aliases": [
             "Glacier Bella",
             "Maison Alhambra Glacier Bella"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13161,6 +14200,9 @@
           "aliases": [
             "Glacier Bold",
             "Maison Alhambra Glacier Bold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13182,6 +14224,9 @@
           "aliases": [
             "Glacier Le Noir",
             "Maison Alhambra Glacier Le Noir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13196,6 +14241,9 @@
           "aliases": [
             "Glacier Ultra",
             "Maison Alhambra Glacier Ultra"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13245,6 +14293,9 @@
           "aliases": [
             "Imperium",
             "Maison Alhambra Imperium"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13290,6 +14341,9 @@
           "aliases": [
             "Infini Oud",
             "Maison Alhambra Infini Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13297,6 +14351,9 @@
           "aliases": [
             "Infini Rose",
             "Maison Alhambra Infini Rose"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13792,6 +14849,9 @@
           "aliases": [
             "Narissa Et Moi",
             "Maison Alhambra Narissa Et Moi"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13869,6 +14929,9 @@
           "aliases": [
             "Philos Rosso",
             "Maison Alhambra Philos Rosso"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13876,6 +14939,9 @@
           "aliases": [
             "Sceptre Malachite",
             "Maison Alhambra Sceptre Malachite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13883,6 +14949,9 @@
           "aliases": [
             "Your Touch",
             "Maison Alhambra Your Touch"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13890,6 +14959,9 @@
           "aliases": [
             "Smoky",
             "Maison Alhambra Smoky"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13897,6 +14969,9 @@
           "aliases": [
             "Victorioso Nero",
             "Maison Alhambra Victorioso Nero"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13949,6 +15024,205 @@
           "aliases": [
             "Perseus",
             "Maison Alhambra Perseus"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Minerale Gold",
+          "aliases": [
+            "Minerale Gold"
+          ]
+        },
+        {
+          "canonical_name": "Victorioso Fearless",
+          "aliases": [
+            "Victorioso Fearless"
+          ]
+        },
+        {
+          "canonical_name": "The Memory of Oud",
+          "aliases": [
+            "The Memory of Oud"
+          ]
+        },
+        {
+          "canonical_name": "Sceptre Oceana",
+          "aliases": [
+            "Sceptre Oceana"
+          ]
+        },
+        {
+          "canonical_name": "Avant",
+          "aliases": [
+            "Avant",
+            "Maison Alhambra Avant"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Camille",
+          "aliases": [
+            "Camille",
+            "Maison Alhambra Camille"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Your Touch Santal",
+          "aliases": [
+            "Your Touch Santal",
+            "Maison Alhambra Your Touch Santal"
+          ]
+        },
+        {
+          "canonical_name": "Victoria Flower Rosa Lilium",
+          "aliases": [
+            "Victoria Flower Rosa Lilium",
+            "Maison Alhambra Victoria Flower Rosa Lilium"
+          ]
+        },
+        {
+          "canonical_name": "Victorioso Heroic",
+          "aliases": [
+            "Victorioso Heroic",
+            "Maison Alhambra Victorioso Heroic"
+          ]
+        },
+        {
+          "canonical_name": "Rose Origami",
+          "aliases": [
+            "Rose Origami",
+            "Maison Alhambra Rose Origami"
+          ]
+        },
+        {
+          "canonical_name": "Opera Rouge",
+          "aliases": [
+            "Opera Rouge",
+            "Maison Alhambra Opera Rouge"
+          ]
+        },
+        {
+          "canonical_name": "Domino Essence",
+          "aliases": [
+            "Domino Essence",
+            "Maison Alhambra Domino Essence"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Encode Mountain",
+          "aliases": [
+            "Encode Mountain",
+            "Maison Alhambra Encode Mountain"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Exquisite Club",
+          "aliases": [
+            "Exquisite Club",
+            "Maison Alhambra Exquisite Club"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Queenstown Intense",
+          "aliases": [
+            "Queenstown Intense",
+            "Maison Alhambra Queenstown Intense"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vogue Night",
+          "aliases": [
+            "Vogue Night",
+            "Maison Alhambra Vogue Night"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Vogue Rouge",
+          "aliases": [
+            "Vogue Rouge",
+            "Maison Alhambra Vogue Rouge"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Pink Eclipse",
+          "aliases": [
+            "Pink Eclipse",
+            "Maison Alhambra Pink Eclipse"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "True Word",
+          "aliases": [
+            "True Word",
+            "Maison Alhambra True Word"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Galactic Elixir",
+          "aliases": [
+            "Galactic Elixir",
+            "Maison Alhambra Galactic Elixir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Tonic Malt",
+          "aliases": [
+            "Tonic Malt",
+            "Maison Alhambra Tonic Malt"
+          ],
+          "formats_ml": [
+            80
+          ]
+        },
+        {
+          "canonical_name": "Tonic Ice",
+          "aliases": [
+            "Tonic Ice",
+            "Maison Alhambra Tonic Ice"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Your Touch Leather",
+          "aliases": [
+            "Your Touch Leather",
+            "Maison Alhambra Your Touch Leather"
           ],
           "formats_ml": [
             100
@@ -14498,6 +15772,30 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Kibria Supremo",
+          "aliases": [
+            "Kibria Supremo"
+          ]
+        },
+        {
+          "canonical_name": "Oscar Platinum",
+          "aliases": [
+            "Oscar Platinum"
+          ]
+        },
+        {
+          "canonical_name": "Zukhruf Peach Please",
+          "aliases": [
+            "Zukhruf Peach Please"
+          ]
+        },
+        {
+          "canonical_name": "Mazaaj Rhythm",
+          "aliases": [
+            "Mazaaj Rhythm"
+          ]
         }
       ]
     },
@@ -14695,6 +15993,9 @@
           "aliases": [
             "L'Aventure Fraiche",
             "Al Haramain L'Aventure Fraiche"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14702,6 +16003,10 @@
           "aliases": [
             "L'Aventure Gold",
             "Al Haramain L'Aventure Gold"
+          ],
+          "formats_ml": [
+            100,
+            200
           ]
         },
         {
@@ -15213,6 +16518,477 @@
           "aliases": [
             "Areej Al Oud",
             "Al Haramain Areej Al Oud"
+          ]
+        },
+        {
+          "canonical_name": "Haramain Camellia",
+          "aliases": [
+            "Haramain Camellia",
+            "Al Haramain Haramain Camellia"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Loulou Rose",
+          "aliases": [
+            "Haramain Loulou Rose",
+            "Al Haramain Loulou Rose"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Palm Dubai",
+          "aliases": [
+            "Haramain Palm Dubai",
+            "Al Haramain Palm Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Gold Crystal Oudh",
+          "aliases": [
+            "Haramain Gold Crystal Oudh",
+            "Al Haramain Gold Crystal Oudh"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Black Musk",
+          "aliases": [
+            "Haramain Black Musk",
+            "Al Haramain Black Musk"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Maryam",
+          "aliases": [
+            "Haramain Maryam",
+            "Al Haramain Maryam"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Ayaat Malika Gold",
+          "aliases": [
+            "Haramain Ayaat Malika Gold",
+            "Al Haramain Ayaat Malika Gold"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Sameera",
+          "aliases": [
+            "Haramain Sameera",
+            "Al Haramain Sameera"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Sameera Noir",
+          "aliases": [
+            "Haramain Sameera Noir",
+            "Al Haramain Sameera Noir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Empire Aromatique Ombre",
+          "aliases": [
+            "Haramain Empire Aromatique Ombre",
+            "Al Haramain Empire Aromatique Ombre"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Conception",
+          "aliases": [
+            "Haramain Conception",
+            "Al Haramain Conception"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Oud Nomad",
+          "aliases": [
+            "Haramain Oud Nomad",
+            "Al Haramain Oud Nomad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Olaf",
+          "aliases": [
+            "Haramain Olaf",
+            "Al Haramain Olaf"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Harmony",
+          "aliases": [
+            "Haramain Harmony",
+            "Al Haramain Harmony"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Freya",
+          "aliases": [
+            "Haramain Freya",
+            "Al Haramain Freya"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Amber Oud Imagine Dubai",
+          "aliases": [
+            "Haramain Amber Oud Imagine Dubai",
+            "Al Haramain Amber Oud Imagine Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Amber Oud Future Dubai",
+          "aliases": [
+            "Haramain Amber Oud Future Dubai",
+            "Al Haramain Amber Oud Future Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain CUPUACU",
+          "aliases": [
+            "Haramain CUPUACU",
+            "Al Haramain CUPUACU"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain L'Aventure Extreme",
+          "aliases": [
+            "Haramain L'Aventure Extreme",
+            "Al Haramain L'Aventure Extreme"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Azure Mythique",
+          "aliases": [
+            "Azure Mythique",
+            "Al Haramain Azure Mythique"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Oud Escape",
+          "aliases": [
+            "Haramain Oud Escape",
+            "Al Haramain Oud Escape"
+          ]
+        },
+        {
+          "canonical_name": "Haramain Summer",
+          "aliases": [
+            "Haramain Summer",
+            "Al Haramain Summer"
+          ]
+        },
+        {
+          "canonical_name": "Haramain Adventure",
+          "aliases": [
+            "Haramain Adventure",
+            "Al Haramain Adventure"
+          ]
+        },
+        {
+          "canonical_name": "Haramain Avalon",
+          "aliases": [
+            "Haramain Avalon",
+            "Al Haramain Avalon"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Taj Malaki Velvet",
+          "aliases": [
+            "Haramain Taj Malaki Velvet",
+            "Al Haramain Taj Malaki Velvet"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Taj Malaki Noir",
+          "aliases": [
+            "Haramain Taj Malaki Noir",
+            "Al Haramain Taj Malaki Noir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Gold Crystal Sapphire",
+          "aliases": [
+            "Haramain Gold Crystal Sapphire",
+            "Al Haramain Gold Crystal Sapphire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Emotion Irisee",
+          "aliases": [
+            "Haramain Emotion Irisee",
+            "Al Haramain Emotion Irisee"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain CACAU",
+          "aliases": [
+            "Haramain CACAU",
+            "Al Haramain CACAU"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain CAJU",
+          "aliases": [
+            "Haramain CAJU",
+            "Al Haramain CAJU"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Habibi Dubai Desert",
+          "aliases": [
+            "Haramain Habibi Dubai Desert",
+            "Al Haramain Habibi Dubai Desert"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Habibi Dubai Night",
+          "aliases": [
+            "Haramain Habibi Dubai Night",
+            "Al Haramain Habibi Dubai Night"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Artisan De Haramain Noir",
+          "aliases": [
+            "Artisan De Haramain Noir",
+            "Al Haramain Artisan De Haramain Noir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Artisan De Haramain",
+          "aliases": [
+            "Artisan De Haramain",
+            "Al Haramain Artisan De Haramain"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Empire Aromatique Lumen",
+          "aliases": [
+            "Haramain Empire Aromatique Lumen",
+            "Al Haramain Empire Aromatique Lumen"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Ayaat Malika",
+          "aliases": [
+            "Haramain Ayaat Malika",
+            "Al Haramain Ayaat Malika"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Green Dubai",
+          "aliases": [
+            "Haramain Green Dubai",
+            "Al Haramain Green Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Miracle Dubai",
+          "aliases": [
+            "Haramain Miracle Dubai",
+            "Al Haramain Miracle Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain ACAI",
+          "aliases": [
+            "Haramain ACAI",
+            "Al Haramain ACAI"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain L'Aventure Sport",
+          "aliases": [
+            "Haramain L'Aventure Sport",
+            "Al Haramain L'Aventure Sport"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Amber Oud Smell Dubai",
+          "aliases": [
+            "Haramain Amber Oud Smell Dubai",
+            "Al Haramain Amber Oud Smell Dubai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Leif",
+          "aliases": [
+            "Haramain Leif",
+            "Al Haramain Leif"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Amber Oud Gold Lux",
+          "aliases": [
+            "Haramain Amber Oud Gold Lux",
+            "Al Haramain Amber Oud Gold Lux"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Amber Oud Gold Mine",
+          "aliases": [
+            "Haramain Amber Oud Gold Mine",
+            "Al Haramain Amber Oud Gold Mine"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Baqat Zuhoor Wardi",
+          "aliases": [
+            "Haramain Baqat Zuhoor Wardi",
+            "Al Haramain Baqat Zuhoor Wardi"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Baqat Zuhoor Azraq",
+          "aliases": [
+            "Haramain Baqat Zuhoor Azraq",
+            "Al Haramain Baqat Zuhoor Azraq"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Baqat Zuhoor Abyad",
+          "aliases": [
+            "Haramain Baqat Zuhoor Abyad",
+            "Al Haramain Baqat Zuhoor Abyad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Haramain Baqat Zuhoor Aswad",
+          "aliases": [
+            "Haramain Baqat Zuhoor Aswad",
+            "Al Haramain Baqat Zuhoor Aswad"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]

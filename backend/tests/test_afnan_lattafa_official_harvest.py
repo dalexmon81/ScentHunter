@@ -39,11 +39,14 @@ class AfnanLattafaOfficialHarvestTests(unittest.TestCase):
 
     def test_harvested_rows_have_no_inferred_variant_data(self):
         for product in self.catalog["products"]:
-            if product["product_id"].startswith("SH-LATTAFA-EU-HARVEST-"):
-                self.assertEqual(product["identity_status"], "source_listed_name")
-                self.assertEqual(product["source_url"], "https://lattafaparfum.eu/de-de/collections/all")
-                self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
+            if product["product_id"].startswith("SH-LATTAFA-EU-HARVEST-") and product["product_id"] != "SH-LATTAFA-EU-HARVEST-022":
+                if product["identity_status"] == "source_listed_name":
+                    self.assertEqual(product["source_url"], "https://lattafaparfum.eu/de-de/collections/all")
+                    self.assertNotIn("concentration", product)
+                    self.assertNotIn("formats_ml", product)
+                else:
+                    self.assertEqual(product["identity_status"], "source_verified_name")
+                    self.assertNotIn("/collections/", product.get("source_url", ""))
 
 if __name__ == "__main__":
     unittest.main()

@@ -43,9 +43,65 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
     def test_harvest_rows_have_no_invented_variants(self):
         for product in self.products:
             if product["product_id"].startswith(("SH-AL-HARAMAIN-STORE-", "SH-GULF-ORCHID-STORE-")):
-                self.assertEqual(product["identity_status"], "source_listed_name")
-                self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
+                if product["identity_status"] == "source_verified_name":
+                    source = product.get("source_url", "")
+                    self.assertTrue("/products/" in source or source.endswith(".html"))
+                    continue
+                if product["identity_status"] == "source_listed_name":
+                    self.assertNotIn("concentration", product)
+                    self.assertNotIn("formats_ml", product)
+                else:
+                    self.assertEqual(product["identity_status"], "source_verified_name")
+                    self.assertNotIn("/collection/", product.get("source_url", ""))
+
+    def test_gulf_orchid_individual_official_pages_and_explicit_variants(self):
+        expected = {
+            "Vanilla Addiction": ("https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum", 100),
+            "Mango Ice": ("https://shop-gulforchid.com/products/mango_ice_eau_de_parfum", 100),
+            "Sweet Heaven 20ML": ("https://shop-gulforchid.com/products/sweet-heaven-by-gulf-orchid-eau-de-parfum-20ml", 20),
+            "Pink Marshmallow": ("https://shop-gulforchid.com/products/pink-marshmallow", 100),
+            "Coco Blanco": ("https://shop-gulforchid.com/products/coco-blanco", 100),
+            "Belle": ("https://shop-gulforchid.com/products/belle", 100),
+            "Amour": ("https://shop-gulforchid.com/products/amour", 100),
+            "Chic": ("https://shop-gulforchid.com/products/chic", 100),
+            "Cloud 9": ("https://shop-gulforchid.com/products/cloud-9", 100),
+            "Phantom": ("https://shop-gulforchid.com/products/phantom", 100),
+            "Flamma": ("https://shop-gulforchid.com/products/flamma", 100),
+            "Vortex": ("https://shop-gulforchid.com/products/vortex", 100),
+            "Rosalia": ("https://shop-gulforchid.com/products/rosalia", 100),
+            "Maestro": ("https://shop-gulforchid.com/products/maestro", 100),
+        }
+        products = {
+            p["canonical_name"]: p for p in self.products
+            if p.get("brand_name") == "Gulf Orchid"
+        }
+        variants = self.catalog.get("variants", [])
+        for name, (source_url, size_ml) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                product = products[name]
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("source_url"), source_url)
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertIn(size_ml, product.get("formats_ml", []))
+                matches = [
+                    v for v in variants
+                    if v.get("product_id") == product["product_id"]
+                    and v.get("size_ml") == size_ml
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
+    def test_gulf_orchid_new_arrivals_are_unique_canonical_identities(self):
+        expected = {"Belle", "Amour", "Chic", "Cloud 9", "Phantom", "Flamma", "Vortex", "Rosalia", "Maestro"}
+        rows = [
+            p for p in self.products
+            if p.get("brand_name") == "Gulf Orchid" and p.get("canonical_name") in expected
+        ]
+        self.assertEqual({p["canonical_name"] for p in rows}, expected)
+        self.assertEqual(len(rows), len(expected))
+        self.assertEqual(len({p["product_id"] for p in rows}), len(expected))
 
 if __name__ == "__main__":
     unittest.main()

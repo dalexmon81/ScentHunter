@@ -26,19 +26,19 @@ EXPECTED = {
     ],
     "Sabah Al Ward": [
         "Classic",
-        "https://www.alwataniah.com/collections/classic"
+        "https://www.alwataniah.com/products/sabah-al-ward"
     ],
     "Sabah Al Ward Sugar": [
         "Classic",
-        "https://www.alwataniah.com/collections/classic"
+        "https://www.alwataniah.com/products/saba-al-ward-sugar"
     ],
     "Attar Al Wesal": [
         "Classic",
-        "https://www.alwataniah.com/collections/classic"
+        "https://www.alwataniah.com/products/attar-al-wesal"
     ],
     "Special Oud": [
         "Classic",
-        "https://www.alwataniah.com/collections/classic"
+        "https://www.alwataniah.com/products/special-oud"
     ],
     "Durrat Al Aroos": [
         "Classic",
@@ -58,7 +58,7 @@ EXPECTED = {
     ],
     "Ameerati": [
         "Classic",
-        "https://www.alwataniah.com/collections/classic"
+        "https://www.alwataniah.com/products/ameerati"
     ],
     "Ameeri": [
         "Classic",
@@ -198,15 +198,15 @@ EXPECTED = {
     ],
     "Kayaan Midnight": [
         "Eternal",
-        "https://www.alwataniah.com/collections/eternal"
+        "https://www.alwataniah.com/products/kayaan-midnight"
     ],
     "Kayaan Classic": [
         "Eternal",
-        "https://www.alwataniah.com/collections/eternal"
+        "https://www.alwataniah.com/products/kayaan-classic"
     ],
     "Kayaan Terra": [
         "Eternal",
-        "https://www.alwataniah.com/collections/eternal"
+        "https://www.alwataniah.com/products/kayaan-terra"
     ],
     "Lazuli": [
         "Eternal",
@@ -214,7 +214,7 @@ EXPECTED = {
     ],
     "Kayaan Gold": [
         "Eternal",
-        "https://www.alwataniah.com/collections/eternal"
+        "https://www.alwataniah.com/products/kayaan-gold"
     ],
     "House Of Oud": [
         "Eternal",
@@ -286,35 +286,35 @@ EXPECTED = {
     ],
     "Ain Emarat": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/ain-emarat"
     ],
     "Ain Emarat Extrait": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/ain-emarat-extrait"
     ],
     "Arya": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/arya"
     ],
     "Arya Peony Rose": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/arya-peony-rose"
     ],
     "Royal Oak I": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/royal-oak-i"
     ],
     "Royal Oak II": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/royal-oak-ii"
     ],
     "Al Daiem": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/al-daiem"
     ],
     "Al Daiem Elixir": [
         "Niche",
-        "https://www.alwataniah.com/collections/niche"
+        "https://www.alwataniah.com/products/al-daiem-elixir"
     ],
     "Massad Royale": [
         "Niche",
@@ -322,19 +322,19 @@ EXPECTED = {
     ],
     "Lemon Souffle": [
         "Munchies",
-        "https://www.alwataniah.com/collections/munchies"
+        "https://www.alwataniah.com/products/lemon-souffle"
     ],
     "Praline Toffee": [
         "Munchies",
-        "https://www.alwataniah.com/collections/munchies"
+        "https://www.alwataniah.com/products/praline-toffee"
     ],
     "Rose Eclat": [
         "Munchies",
-        "https://www.alwataniah.com/collections/munchies"
+        "https://www.alwataniah.com/products/rose-eclat"
     ],
     "Choco Truffle": [
         "Munchies",
-        "https://www.alwataniah.com/collections/munchies"
+        "https://www.alwataniah.com/products/choco-truffle"
     ],
     "Golden Honey": [
         "Munchies",
@@ -369,9 +369,11 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                 self.assertEqual(product.get("collection_name"), collection)
                 self.assertEqual(product.get("brand_name"), "Al Wataniah")
                 self.assertIn(product.get("identity_status"), {"source_listed_name", "source_verified_name"})
-                if name not in {"Lemon Souffle", "Choco Truffle"}:
+                if "/products/" in listing_url:
+                    self.assertEqual(product.get("identity_status"), "source_verified_name")
+                else:
                     self.assertEqual(product.get("identity_status"), "source_listed_name")
-                    self.assertEqual(product.get("source_url"), listing_url)
+                self.assertEqual(product.get("source_url"), listing_url)
 
     def test_every_catalog_identity_is_in_family_registry(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "al_wataniah_catalog")
