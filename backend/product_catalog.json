@@ -38455,6 +38455,249 @@
       ],
       "concentration": "Eau de Parfum",
       "gender": "Men"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Khamrah Mira",
+      "name": "Khamrah Mira",
+      "family_id": "lattafa_catalog",
+      "family_name": "Khamrah Mira",
+      "aliases": [
+        "Khamrah Mira",
+        "Lattafa Khamrah Mira"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/khamrah-mira/",
+      "source_evidence_url": "https://lattafa.com/product/khamrah-mira/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-LATTAFA-LONDON-THE-CITY-OF-CONTRAST-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "London the City of Contrast",
+      "name": "London the City of Contrast",
+      "family_id": "lattafa_catalog",
+      "family_name": "London the City of Contrast",
+      "aliases": [
+        "London the City of Contrast",
+        "Lattafa London the City of Contrast"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/london-the-city-of-contrast/",
+      "source_evidence_url": "https://lattafa.com/product/london-the-city-of-contrast/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATHEERI-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atheeri",
+      "name": "Atheeri",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atheeri",
+      "aliases": [
+        "Atheeri",
+        "Lattafa Atheeri"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atheeri/",
+      "source_evidence_url": "https://lattafa.com/product/atheeri/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-LATTAFA-FEARLESS-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Fearless",
+      "name": "Fearless",
+      "family_id": "lattafa_catalog",
+      "family_name": "Fearless",
+      "aliases": [
+        "Fearless",
+        "Lattafa Fearless"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/fearless/",
+      "source_evidence_url": "https://lattafa.com/product/fearless/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Matcha Swirl – Give Me Gourmand",
+      "name": "Matcha Swirl – Give Me Gourmand",
+      "family_id": "lattafa_catalog",
+      "family_name": "Matcha Swirl – Give Me Gourmand",
+      "aliases": [
+        "Matcha Swirl – Give Me Gourmand",
+        "Lattafa Matcha Swirl – Give Me Gourmand",
+        "Matcha Swirl",
+        "Give Me Gourmand Matcha Swirl"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/",
+      "formats_ml": [
+        75
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Harlequin Cream – Give Me Gourmand",
+      "name": "Harlequin Cream – Give Me Gourmand",
+      "family_id": "lattafa_catalog",
+      "family_name": "Harlequin Cream – Give Me Gourmand",
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand",
+        "Lattafa Harlequin Cream – Give Me Gourmand",
+        "Harlequin Cream",
+        "Give Me Gourmand Harlequin Cream"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/",
+      "formats_ml": [
+        75
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Beyond Precious",
+      "name": "Beyond Precious",
+      "family_id": "lattafa_catalog",
+      "family_name": "Beyond Precious",
+      "aliases": [
+        "Beyond Precious",
+        "Lattafa Beyond Precious"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/beyond-precious/",
+      "source_evidence_url": "https://lattafa.com/product/beyond-precious/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-LATTAFA-CREATIVE-ART-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Creative Art",
+      "name": "Creative Art",
+      "family_id": "lattafa_catalog",
+      "family_name": "Creative Art",
+      "aliases": [
+        "Creative Art",
+        "Lattafa Creative Art"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/creative-art/",
+      "source_evidence_url": "https://lattafa.com/product/creative-art/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-QUEEN-OF-ROSES-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Queen of Roses",
+      "name": "Queen of Roses",
+      "family_id": "lattafa_catalog",
+      "family_name": "Queen of Roses",
+      "aliases": [
+        "Queen of Roses",
+        "Lattafa Queen of Roses"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/queen-of-roses/",
+      "source_evidence_url": "https://lattafa.com/product/queen-of-roses/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEW-YORK-THE-CITY-OF-DREAMS-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "New York the City of Dreams",
+      "name": "New York the City of Dreams",
+      "family_id": "lattafa_catalog",
+      "family_name": "New York the City of Dreams",
+      "aliases": [
+        "New York the City of Dreams",
+        "Lattafa New York the City of Dreams"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
+      "source_evidence_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-LATTAFA-KING-OF-ARABIA-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "King of Arabia",
+      "name": "King of Arabia",
+      "family_id": "lattafa_catalog",
+      "family_name": "King of Arabia",
+      "aliases": [
+        "King of Arabia",
+        "Lattafa King of Arabia"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/king-of-arabia/",
+      "source_evidence_url": "https://lattafa.com/product/king-of-arabia/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men"
+    },
+    {
+      "product_id": "SH-LATTAFA-LOVE-IN-PARIS-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Love In Paris",
+      "name": "Love In Paris",
+      "family_id": "lattafa_catalog",
+      "family_name": "Love In Paris",
+      "aliases": [
+        "Love In Paris",
+        "Lattafa Love In Paris"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/love-in-paris/",
+      "source_evidence_url": "https://lattafa.com/product/love-in-paris/",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
     }
   ],
   "variants": [
@@ -46993,6 +47236,138 @@
       "variant_id": "SHV-SH-ASSAF-HARVEST-053-200-000",
       "source_url": "https://assaf.ae/products/frankel-imagination-200",
       "source_evidence_url": "https://assaf.ae/products/frankel-imagination-200"
+    },
+    {
+      "product_id": "SH-LATTAFA-KHAMRAH-MIRA-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Khamrah Mira 100 ml",
+        "Lattafa Khamrah Mira 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KHAMRAH-MIRA-20261109-100-000",
+      "source_url": "https://lattafa.com/product/khamrah-mira/",
+      "source_evidence_url": "https://lattafa.com/product/khamrah-mira/"
+    },
+    {
+      "product_id": "SH-LATTAFA-LONDON-THE-CITY-OF-CONTRAST-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "London the City of Contrast 100 ml",
+        "Lattafa London the City of Contrast 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-LONDON-THE-CITY-OF-CONTRAST-20261109-100-000",
+      "source_url": "https://lattafa.com/product/london-the-city-of-contrast/",
+      "source_evidence_url": "https://lattafa.com/product/london-the-city-of-contrast/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATHEERI-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Atheeri 100 ml",
+        "Lattafa Atheeri 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATHEERI-20261109-100-000",
+      "source_url": "https://lattafa.com/product/atheeri/",
+      "source_evidence_url": "https://lattafa.com/product/atheeri/"
+    },
+    {
+      "product_id": "SH-LATTAFA-FEARLESS-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Fearless 100 ml",
+        "Lattafa Fearless 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-FEARLESS-20261109-100-000",
+      "source_url": "https://lattafa.com/product/fearless/",
+      "source_evidence_url": "https://lattafa.com/product/fearless/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND-20261109",
+      "size_ml": 75,
+      "aliases": [
+        "Matcha Swirl – Give Me Gourmand 75 ml",
+        "Lattafa Matcha Swirl – Give Me Gourmand 75 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-MATCHA-SWIRL-GIVE-ME-GOURMAND-20261109-75-000",
+      "source_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/matcha-swirl-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND-20261109",
+      "size_ml": 75,
+      "aliases": [
+        "Harlequin Cream – Give Me Gourmand 75 ml",
+        "Lattafa Harlequin Cream – Give Me Gourmand 75 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-HARLEQUIN-CREAM-GIVE-ME-GOURMAND-20261109-75-000",
+      "source_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/",
+      "source_evidence_url": "https://lattafa.com/product/harlequin-cream-give-me-gourmand/"
+    },
+    {
+      "product_id": "SH-LATTAFA-BEYOND-PRECIOUS-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Beyond Precious 100 ml",
+        "Lattafa Beyond Precious 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-BEYOND-PRECIOUS-20261109-100-000",
+      "source_url": "https://lattafa.com/product/beyond-precious/",
+      "source_evidence_url": "https://lattafa.com/product/beyond-precious/"
+    },
+    {
+      "product_id": "SH-LATTAFA-CREATIVE-ART-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Creative Art 100 ml",
+        "Lattafa Creative Art 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-CREATIVE-ART-20261109-100-000",
+      "source_url": "https://lattafa.com/product/creative-art/",
+      "source_evidence_url": "https://lattafa.com/product/creative-art/"
+    },
+    {
+      "product_id": "SH-LATTAFA-QUEEN-OF-ROSES-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Queen of Roses 100 ml",
+        "Lattafa Queen of Roses 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-QUEEN-OF-ROSES-20261109-100-000",
+      "source_url": "https://lattafa.com/product/queen-of-roses/",
+      "source_evidence_url": "https://lattafa.com/product/queen-of-roses/"
+    },
+    {
+      "product_id": "SH-LATTAFA-NEW-YORK-THE-CITY-OF-DREAMS-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "New York the City of Dreams 100 ml",
+        "Lattafa New York the City of Dreams 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-NEW-YORK-THE-CITY-OF-DREAMS-20261109-100-000",
+      "source_url": "https://lattafa.com/product/new-york-the-city-of-dreams/",
+      "source_evidence_url": "https://lattafa.com/product/new-york-the-city-of-dreams/"
+    },
+    {
+      "product_id": "SH-LATTAFA-KING-OF-ARABIA-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "King of Arabia 100 ml",
+        "Lattafa King of Arabia 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-KING-OF-ARABIA-20261109-100-000",
+      "source_url": "https://lattafa.com/product/king-of-arabia/",
+      "source_evidence_url": "https://lattafa.com/product/king-of-arabia/"
+    },
+    {
+      "product_id": "SH-LATTAFA-LOVE-IN-PARIS-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Love In Paris 100 ml",
+        "Lattafa Love In Paris 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-LOVE-IN-PARIS-20261109-100-000",
+      "source_url": "https://lattafa.com/product/love-in-paris/",
+      "source_evidence_url": "https://lattafa.com/product/love-in-paris/"
     }
   ]
 }
