@@ -28,7 +28,7 @@ class AlHaramainCatalogTests(unittest.TestCase):
         catalog_names = {p["canonical_name"].casefold() for p in self.products}
         registry_names = {p["canonical_name"].casefold() for p in self.family["products"]}
         self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 139)
+        self.assertEqual(len(self.products), 141)
 
     def test_all_products_use_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "al_haramain_catalog" for p in self.products))
@@ -254,6 +254,39 @@ class AlHaramainCatalogTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("source_evidence_url"), source)
                 if concentration:
                     self.assertEqual(matches[0].get("concentration"), concentration)
+
+
+    def test_acai_and_laventure_sport_official_pages(self):
+        expected = {
+            "Haramain ACAI": ("https://us.alharamainperfumes.com/en/haramain-acai-100ml-eau-de-parfum.html", "Eau de Parfum"),
+            "Haramain L'Aventure Sport": ("https://us.alharamainperfumes.com/en/haramain-l-aventure-sport-100ml-extrait-de-parfum.html", None),
+        }
+        for name, (source, concentration) in expected.items():
+            with self.subTest(product=name):
+                product = self.products_by_name[name]
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_url"], source)
+                self.assertIn(100, product.get("formats_ml", []))
+                matches = [v for v in self.variants_for(product) if v.get("size_ml") == 100]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("source_url"), source)
+                if concentration:
+                    self.assertEqual(product.get("concentration"), concentration)
+
+    def test_laventure_gold_official_100ml_and_200ml_variants(self):
+        product = self.products_by_name["L'Aventure Gold"]
+        self.assertEqual(product["identity_status"], "source_verified_name")
+        self.assertEqual(product["formats_ml"], [100, 200])
+        expected = {
+            100: "https://us.alharamainperfumes.com/en/haramain-l-aventure-gold.html",
+            200: "https://us.alharamainperfumes.com/en/l-aventure-gold-spray-200ml.html",
+        }
+        matches = {v["size_ml"]: v for v in self.variants_for(product)}
+        self.assertEqual(set(matches), {100, 200})
+        for size, source in expected.items():
+            self.assertEqual(matches[size].get("source_url"), source)
+            self.assertEqual(matches[size].get("source_evidence_url"), source)
+            self.assertEqual(matches[size].get("concentration"), "Eau de Parfum")
 
 
 if __name__ == "__main__":
