@@ -7,30 +7,30 @@ from pathlib import Path
 BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
 
-# Lower bounds from the reconciled 2026-11-08 catalog snapshot. These are
-# canonical fragrance identities, not SKU/variant counts or claims of
-# worldwide historical completeness.
+# Lower bounds from the verified 2026-11-09 catalog snapshot, including the
+# Al Haramain official-page additions. These are canonical fragrance
+# identities, not SKU/variant counts or claims of worldwide historical completeness.
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
     "Maison Asrar": 120,
     "Khadlaj": 116,
     "Bujairami": 142,
-    "Paris Corner": 245,
+    "Paris Corner": 246,
     "Assaf": 140,
     "Al Wataniah": 86,
     "Armaf": 191,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 23,
-    "Swiss Arabian": 32,
-    "Games of Spades": 29,
+    "Gulf Orchid": 32,
+    "Swiss Arabian": 41,
+    "Games of Spades": 32,
     "Lattafa": 115,
     "Afnan": 87,
     "Aromatix": 12,
-    "Maison Alhambra": 203,
-    "Zimaya": 72,
-    "Al Haramain": 101,
+    "Maison Alhambra": 207,
+    "Zimaya": 76,
+    "Al Haramain": 119,
 }
 
 
