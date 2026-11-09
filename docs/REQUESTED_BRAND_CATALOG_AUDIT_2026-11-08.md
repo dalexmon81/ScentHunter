@@ -225,3 +225,29 @@ Three additional standalone fragrances were added from individual official produ
 - **Rouge Extrait** — Extrait de Parfum; 100 ml, 30 ml and 10 ml
 
 Gift sets and coffrets remain excluded as standalone perfume identities. Other Jo Milano Paris lines outside the Games of Spades family were not added in this focused pass.
+
+
+### Mykonos: first 15 current assortment items upgraded to individual official-page evidence (9 November 2026)
+
+The official Mykonos all-products collection currently reports 54 products. The first 15 collection entries were opened individually and reconciled against the existing canonical seed. All 15 already existed as canonical identities, so their product IDs and variant rows were preserved. Their `source_url` values now point to the matching first-party product-detail pages and `identity_status` is upgraded from `source_listed_name` to `source_verified_name`.
+
+Verified identities:
+- Aphrodite — https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml
+- Baby Love — https://officialmykonos.com/products/mykonos-baby-love-edp-50ml
+- Black Opera — https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml
+- Bonfire Vanilla — https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml
+- Cafe Drops — https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml
+- California Blue — https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml
+- California Club — https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml
+- California — https://officialmykonos.com/products/mykonos-california-signature-50ml
+- Caramel Fudge Cookie — https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml
+- Coconut Dreams — https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml
+- Conquer — https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml
+- Constantine — https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml
+- Crimson — https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml
+- Dark Secret — https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml
+- Dreamscape — https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml
+
+The inspected product-page titles support the recorded product names, stated concentrations and listed 50/100 ml formats. No additional variants were created in this pass, and no prices or availability were copied. Existing 15 ml travel-size variants continue to retain the separate travel-size selector page as their own `source_evidence_url`; concentration was not inferred from that generic selector.
+
+A regression test checks the 15 individual URLs, source status, concentrations, size variants and exactly one canonical row per identity. The remaining 57 Mykonos identities still require individual-page review; this is a first batch, not a claim of full brand completeness.
