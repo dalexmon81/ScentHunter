@@ -17994,9 +17994,13 @@
         "Deux II Expressions",
         "Paris Corner Deux II Expressions"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=2",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FIG-FETE",
@@ -42244,6 +42248,17 @@
       ],
       "variant_id": "SHV-SH-ASSAF-HARVEST-005-200-000",
       "source_evidence_url": "https://assaf.ae/products/arrogate-blue-exclusive"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-DEUX-II-EXPRESSIONS",
+      "variant_id": "SHV-PARIS-CORNER-DEUX-II-EXPRESSIONS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Deux II Expressions 100 ml",
+        "North Stag Deux II Expressions 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml"
     }
   ]
 }
