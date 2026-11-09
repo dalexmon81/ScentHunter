@@ -44,8 +44,10 @@ class MaisonAsrarLockAndKeyTests(unittest.TestCase):
         products = [p for p in CATALOG["products"] if p.get("brand") == "Maison Asrar"]
         black_grapefruit = [p for p in products if p["canonical_name"] == "Black Grapefruit"]
         self.assertEqual(len(black_grapefruit), 1)
-        self.assertEqual(black_grapefruit[0]["identity_status"], "source_listed_name")
-        self.assertEqual(black_grapefruit[0]["source_url"], "https://maisonasrar.com/collections/all")
+        self.assertEqual(black_grapefruit[0]["identity_status"], "source_verified_name")
+        self.assertEqual(black_grapefruit[0]["source_url"], "https://maisonasrar.com/products/black-eau-de-perfum-100ml")
+        self.assertIn("Black", black_grapefruit[0]["aliases"])
+        self.assertEqual(black_grapefruit[0]["formats_ml"], [100])
 
         # The official listing calls this fragrance "Bloom Bloom", not "Bloom".
         self.assertFalse(any(p["canonical_name"] == "Bloom" for p in products))
