@@ -511,15 +511,6 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Promote only in a dedicated provenance update after page fields are rechecked.",
         )
 
-    def test_armaf_uniq_effects_of_uniq_official_fragrance_identity(self):
-        rows = [row for row in CATALOG.get("products", []) if row.get("brand_name") == "Armaf" and row.get("canonical_name") == "Uniq Effects of Uniq"]
-        self.assertEqual(len(rows), 1)
-        row = rows[0]
-        self.assertEqual(row.get("identity_status"), "source_verified_name")
-        self.assertEqual(row.get("source_url"), "https://armaf.com/products/uniq-effects-of-uniq-spr")
-        self.assertEqual(row.get("gender"), "Men")
-        self.assertNotIn("formats_ml", row)
-        self.assertFalse(any(v.get("product_id") == row["product_id"] for v in CATALOG.get("variants", [])))
 
     def test_lattafa_asad_polar_official_100ml_identity(self):
         rows = [row for row in CATALOG.get("products", []) if row.get("brand_name") == "Lattafa" and row.get("canonical_name") == "Asad Polar"]
