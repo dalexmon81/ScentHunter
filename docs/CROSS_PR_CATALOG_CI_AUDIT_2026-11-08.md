@@ -111,14 +111,28 @@ The family registry should contain one canonical row for each fragrance identity
 
 ## Follow-up verification — 2026-11-09 (PR #592)
 
-Latest cross-PR CI: [run 42574689960](https://github.com/dalexmon81/ScentHunter/actions/runs/42574689960), **failure as intended**: 19 unresolved conflicting product identity findings and 93 identical additions reported as non-blocking overlaps. The audit was corrected to treat trailing bottle volume as variant metadata; two false-positive Gulf Orchid product-ID reuse findings were removed. This is a cross-branch collision gate, not a failure of the standalone catalog seed integrity tests.
+**Latest CI gate: PASS.** The selected 25-PR audit completed with zero conflicting product or variant identities, and the catalog regression suite passed all 136 tests.
 
-Current blocking breakdown from the CI log:
+- Audit run: [42575614913](https://github.com/dalexmon81/ScentHunter/actions/runs/42575614913)
+- Cross-PR audit: `PASS: no conflicting product or variant identities detected.`
+- Regression tests: `Ran 136 tests`, `OK`.
+- Baseline: 2,061 products, 291 variants and 34 families.
+- Candidate set: 25 PRs, direct changes compared with each actual base branch.
+- Informational overlap: 115 identical additions across PRs. These share the same canonical product/variant identities and do not represent conflicting IDs; they are reported for review but do not block CI.
 
-- **Armaf:** 2 canonical-name/product-ID collisions (Check Mate White Knight; Odyssey French Kiss) across #558, #564, #565 and #593.
-- **Gulf Orchid:** 5 canonical-name/product-ID collisions (Al Qasr, Amour, Belle, Chic, Riwaya) across baseline and #584/#587/#588; additionally 2 existing product IDs are reused with differing normalized names because a 20 ml size suffix is included in one spelling of Sweet Heaven and Sweet Heaven Extreme.
-- **Lattafa:** 12 canonical-name/product-ID collisions (Asad Polar, Atlas Canyon, Atlas Glacial Valley, Badee Al Oud Amethyst Fusion, Beyond Precious, Farfasha, Harlequin Cream Give Me Gourmand, Khamrah Mira, Majd Al Sultan Black Intense, Matcha Swirl Give Me Gourmand, Petra Viola, Raghad).
+### Reconciliations completed
 
-The remaining blocking breakdown is **2 Armaf + 5 Gulf Orchid + 12 Lattafa = 19 findings**. Two previous `PRODUCT ID REUSED` findings were false positives caused by a trailing `20ml` token in canonical product names; bottle volume is variant metadata and is now stripped only for product-identity comparison. The report is intentionally red until the selected source branches are reconciled into one canonical identity scheme. Do not drop candidates solely to make the audit green; first retain source evidence, pick one stable product ID per normalized identity, map aliases, and ensure variant foreign keys point to the surviving ID. The 93 repeated additions are informational and must not be double-counted as new products.
+- **Armaf:** Check Mate White Knight and Odyssey French Kiss now use one product ID across the selected source branches. The French Kiss 60 ml EDP variant also uses one variant ID. Dashed spelling remains an alias.
+- **Gulf Orchid:** Al Qasr and Riwaya now reuse their pre-existing canonical product IDs. Amour, Belle and Chic use the same canonical IDs across #584, #587, #588 and the stacked #591 integration branch. Sweet Heaven and Sweet Heaven Extreme bottle volume is treated as variant metadata, not as a second product identity.
+- **Lattafa:** Asad Polar, Atlas Canyon, Atlas Glacial Valley, Amethyst Fusion, Beyond Precious, Farfasha, Harlequin Cream Give Me Gourmand, Khamrah Mira, Majd Al Sultan Black Intense, Matcha Swirl Give Me Gourmand, Petra Viola and Raghad now use one product ID per normalized identity across the candidate branches. Stacked PR branches were refreshed against their updated bases so inherited rows are not misclassified as new additions.
+- **Audit hardening:** trailing metric volume suffixes are excluded from canonical product identity comparison; variant identity continues to include product, size and concentration.
 
-**Architecture handoff:** PR #424 is separate from this collision gate. Its catalog-first staging API and PostgreSQL vertical-slice checks passed in runs [42574207596](https://github.com/dalexmon81/ScentHunter/actions/runs/42574207596) and [42574207608](https://github.com/dalexmon81/ScentHunter/actions/runs/42574207608). Catalog collision reconciliation must precede any consolidated seed migration, but architecture work can continue on isolated staging without merging or deploying to production.
+The 115 identical additions are retained as informational evidence because multiple source PRs independently contain the same stable identity. They must not be double-counted when building the consolidated seed. The audit does not silently suppress distinct product IDs or distinct variant tuples.
+
+### Architecture handoff
+
+PR #424 remains separate and open/draft. Its current head `a45a0a1cabf09dd926b5bd158a34dcbd4880a9e0` passed:
+- [Catalog-first PostgreSQL vertical slice — run 42574270479](https://github.com/dalexmon81/ScentHunter/actions/runs/42574270479)
+- [Catalog-first staging API contract — run 42574270516](https://github.com/dalexmon81/ScentHunter/actions/runs/42574270516)
+
+This is a green catalog collision gate and a green isolated architecture CI slice, not acceptance of all architecture phases or live retailer ingestion. No PR was merged, no live retailer was activated, and no production deployment or traffic rollout was performed.
