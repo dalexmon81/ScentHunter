@@ -676,5 +676,51 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+
+    def test_mykonos_first_fifteen_products_have_individual_official_page_provenance(self):
+        expected = {
+            "Aphrodite": ("https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml", "Extrait de Parfum", (50, 100)),
+            "Baby Love": ("https://officialmykonos.com/products/mykonos-baby-love-edp-50ml", "Eau de Parfum", (50,)),
+            "Black Opera": ("https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml", "Extrait de Parfum", (100,)),
+            "Bonfire Vanilla": ("https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "Cafe Drops": ("https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "California Blue": ("https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml", "Extrait de Parfum", (50, 100)),
+            "California Club": ("https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "California": ("https://officialmykonos.com/products/mykonos-california-signature-50ml", "Extrait de Parfum", (50, 100)),
+            "Caramel Fudge Cookie": ("https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml", "Eau de Parfum", (50,)),
+            "Coconut Dreams": ("https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "Conquer": ("https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml", "Extrait de Parfum", (50, 100)),
+            "Constantine": ("https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "Crimson": ("https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml", "Extrait de Parfum", (100,)),
+            "Dark Secret": ("https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml", "Extrait de Parfum", (100,)),
+            "Dreamscape": ("https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml", "Extrait de Parfum", (50, 100)),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, concentration, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("product_id"), next(
+                    product.get("product_id") for product in CATALOG.get("products", [])
+                    if product.get("brand_name") == "Mykonos"
+                    and product.get("canonical_name") == name
+                ))
+                for size in sizes:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    self.assertTrue(any(
+                        variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == size
+                        and variant.get("concentration") == concentration
+                        for variant in variants
+                    ))
+
 if __name__ == "__main__":
     unittest.main()
