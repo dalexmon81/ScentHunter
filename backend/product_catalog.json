@@ -13161,9 +13161,12 @@
         "Club de Nuit Precieux IV",
         "Armaf Club de Nuit Precieux IV"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-precieux-iv",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-precieux-iv",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-precieux-iv",
+      "gender": "Women",
+      "concentration": "Eau de Toilette"
     },
     {
       "product_id": "SH-ARMAF-8c539773",
@@ -13338,9 +13341,12 @@
         "Club de Nuit Lionheart Woman",
         "Armaf Club de Nuit Lionheart Woman"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "gender": "Women",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARMAF-4e9fde0c",
@@ -14427,10 +14433,12 @@
         "Delights Dubai Delicacy Cotton Candy",
         "Armaf Delights Dubai Delicacy Cotton Candy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/cotton-candy",
+      "source_evidence_url": "https://armaf.com/products/cotton-candy",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/cotton-candy",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-d1a51dbe",
@@ -14444,9 +14452,11 @@
         "Ombre D'Or",
         "Armaf Ombre D'Or"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=6"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/ombre-dor",
+      "source_evidence_url": "https://armaf.com/products/ombre-dor",
+      "source_product_url": "https://armaf.com/products/ombre-dor",
+      "gender": "Men"
     },
     {
       "product_id": "SH-ARMAF-7becf4c9",
@@ -14460,10 +14470,12 @@
         "Odyssey Toffee Coffee",
         "Armaf Odyssey Toffee Coffee"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-38558c30",
@@ -14477,10 +14489,12 @@
         "Odyssey Black Forest",
         "Armaf Odyssey Black Forest"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-a60b16e9",
@@ -14494,10 +14508,12 @@
         "Beach Party",
         "Armaf Beach Party"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/beach-party-spr",
+      "source_evidence_url": "https://armaf.com/products/beach-party-spr",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/beach-party-spr",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-ea35890e",
@@ -14511,10 +14527,15 @@
         "Miss Armaf Chic",
         "Armaf Miss Armaf Chic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=6",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/miss-armaf-chic",
+      "source_evidence_url": "https://armaf.com/products/miss-armaf-chic",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/miss-armaf-chic",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-4fc99a50",
@@ -37641,6 +37662,46 @@
         100
       ],
       "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-EAU-DE-MONTAGNE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Eau de Montagne",
+      "name": "Odyssey Eau de Montagne",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Eau de Montagne",
+      "aliases": [
+        "Odyssey Eau de Montagne",
+        "Armaf Odyssey Eau de Montagne"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_product_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_evidence_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-PROFUMI-DART-13-TANTA-ROBA",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Profumi D'Art 13 Tanta Roba",
+      "name": "Profumi D'Art 13 Tanta Roba",
+      "family_id": "armaf_catalog",
+      "family_name": "Profumi D'Art 13 Tanta Roba",
+      "aliases": [
+        "Profumi D'Art 13 Tanta Roba",
+        "Armaf Profumi D'Art 13 Tanta Roba"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba",
+      "source_product_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba",
+      "source_evidence_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -45551,6 +45612,30 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://us.alharamainperfumes.com/en/l-aventure-gold-spray-200ml.html",
       "source_evidence_url": "https://us.alharamainperfumes.com/en/l-aventure-gold-spray-200ml.html"
+    },
+    {
+      "product_id": "SH-ARMAF-ea35890e",
+      "variant_id": "SHV-SH-ARMAF-ea35890e-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Miss Armaf Chic 100 ml",
+        "Armaf Miss Armaf Chic 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/miss-armaf-chic",
+      "source_evidence_url": "https://armaf.com/products/miss-armaf-chic"
+    },
+    {
+      "product_id": "SH-ARMAF-PROFUMI-DART-13-TANTA-ROBA",
+      "variant_id": "SHV-SH-ARMAF-PROFUMI-DART-13-TANTA-ROBA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Profumi D'Art 13 Tanta Roba 100 ml",
+        "Armaf Profumi D'Art 13 Tanta Roba 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba",
+      "source_evidence_url": "https://armaf.com/products/profumi-dart-13-e-tanta-roba"
     }
   ]
 }

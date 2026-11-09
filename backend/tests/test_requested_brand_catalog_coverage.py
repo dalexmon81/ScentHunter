@@ -38,7 +38,7 @@ MINIMUM_BRAND_COUNTS = {
     "Games of Spades": 32,
     "Maison Alhambra": 214,
     "Mykonos": 72,
-    "Armaf": 207,
+    "Armaf": 209,
 }
 
 
@@ -2045,6 +2045,55 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         registry = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
         family = next(row for row in registry.get("families", []) if row.get("family_id") == "armaf_catalog")
         self.assertIn("Odyssey French Kiss", {row.get("canonical_name") for row in family.get("products", [])})
+
+
+
+    def test_armaf_page_six_official_reconciliation(self):
+        expected = {
+            "Delights Dubai Delicacy Cotton Candy": ("https://armaf.com/products/cotton-candy", "Eau de Parfum", "Unisex", []),
+            "Ombre D'Or": ("https://armaf.com/products/ombre-dor", None, "Men", []),
+            "Odyssey Toffee Coffee": ("https://armaf.com/products/odyssey-toffee-coffee", "Eau de Parfum", "Unisex", []),
+            "Odyssey Black Forest": ("https://armaf.com/products/odyssey-toffee-coffee-copy-1", "Eau de Parfum", "Unisex", []),
+            "Beach Party": ("https://armaf.com/products/beach-party-spr", "Eau de Parfum", "Unisex", []),
+            "Miss Armaf Chic": ("https://armaf.com/products/miss-armaf-chic", "Eau de Parfum", "Women", [100]),
+            "Club de Nuit Precieux IV": ("https://armaf.com/products/club-de-nuit-precieux-iv", "Eau de Toilette", "Women", []),
+            "Club de Nuit Lionheart Woman": ("https://armaf.com/products/cdn-lion-heart-spr", "Eau de Parfum", "Women", []),
+            "Odyssey Eau de Montagne": ("https://armaf.com/products/odyssey-eau-de-montagne", None, "Unisex", []),
+            "Profumi D'Art 13 Tanta Roba": ("https://armaf.com/products/profumi-dart-13-e-tanta-roba", "Eau de Parfum", "Unisex", [100]),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, gender, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("source_product_url"), source)
+                self.assertEqual(row.get("source_evidence_url"), source)
+                self.assertEqual(row.get("gender"), gender)
+                if concentration:
+                    self.assertEqual(row.get("concentration"), concentration)
+                else:
+                    self.assertNotIn("concentration", row)
+                self.assertEqual(row.get("formats_ml", []), sizes)
+                matching = [v for v in variants if v.get("product_id") == row.get("product_id")]
+                self.assertEqual(sorted(v.get("size_ml") for v in matching), sorted(sizes))
+                for size in sizes:
+                    variant = next(v for v in matching if v.get("size_ml") == size)
+                    self.assertEqual(variant.get("source_url"), source)
+                    self.assertEqual(variant.get("source_evidence_url"), source)
+
+    def test_armaf_page_six_new_products_are_in_family_registry(self):
+        registry = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+        family = next(row for row in registry.get("families", []) if row.get("family_id") == "armaf_catalog")
+        registered = {row.get("canonical_name") for row in family.get("products", [])}
+        self.assertIn("Odyssey Eau de Montagne", registered)
+        self.assertIn("Profumi D'Art 13 Tanta Roba", registered)
 
 
 if __name__ == "__main__":

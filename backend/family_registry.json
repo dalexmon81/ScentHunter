@@ -7968,6 +7968,9 @@
           "aliases": [
             "Miss Armaf Chic",
             "Armaf Miss Armaf Chic"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8951,6 +8954,23 @@
           "aliases": [
             "Odyssey French Kiss",
             "Armaf Odyssey French Kiss"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Eau de Montagne",
+          "aliases": [
+            "Odyssey Eau de Montagne",
+            "Armaf Odyssey Eau de Montagne"
+          ]
+        },
+        {
+          "canonical_name": "Profumi D'Art 13 Tanta Roba",
+          "aliases": [
+            "Profumi D'Art 13 Tanta Roba",
+            "Armaf Profumi D'Art 13 Tanta Roba"
           ],
           "formats_ml": [
             100
