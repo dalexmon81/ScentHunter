@@ -388,7 +388,13 @@ VERIFIED_DETAIL_URLS = {
     "Rose Mystery Intense": "https://www.alwataniah.com/products/rose-mystery-intense",
     "Golden Honey": "https://www.alwataniah.com/products/golden-honey",
     "Bareeq Al Dhahab": "https://www.alwataniah.com/products/bareeq-al-dhahab",
-    "Brownie Bite": "https://www.alwataniah.com/products/brownie-bite"
+    "Brownie Bite": "https://www.alwataniah.com/products/brownie-bite",
+    "Abyat": "https://www.alwataniah.com/products/abyat",
+    "Al Layl": "https://www.alwataniah.com/products/al-layl",
+    "Alya": "https://www.alwataniah.com/products/alya",
+    "Ameeri": "https://www.alwataniah.com/products/ameeri",
+    "Baraa": "https://www.alwataniah.com/products/baraa",
+    "Sultan Al Lail": "https://www.alwataniah.com/products/sultan-al-lail",
 }
 
 
