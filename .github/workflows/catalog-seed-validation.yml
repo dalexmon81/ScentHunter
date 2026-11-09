@@ -14,6 +14,7 @@ on:
       - catalog/al-wataniah-ameeri-sultan-details-2026-11-09
       - catalog/afnan-9-series-official-details-2026-11-09
       - catalog/afnan-stardust-detail-variant-2026-11-09
+      - work/lattafa-nine-launches-2026-11-09
       - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
@@ -22,6 +23,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - work/lattafa-nine-launches-2026-11-09
       - catalog/afnan-stardust-detail-variant-2026-11-09
       - catalog/afnan-9-series-official-details-2026-11-09
       - catalog/al-wataniah-five-more-details-2026-11-09
