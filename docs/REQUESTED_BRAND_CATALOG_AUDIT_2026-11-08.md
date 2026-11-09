@@ -458,3 +458,42 @@ Primary sources:
 - Official 9 PM Rebel page: https://afnan.com/products/9-pm-rebel
 
 Regression tests cover all 15 individual page URLs and keep perfume oils separate from deodorant / gift-set listings.
+
+
+### Al Haramain: official new-launch detail-page reconciliation (9 November 2026)
+
+The official Al Haramain EU/UAE storefront's New Launches collection was reconciled against the current 107 Al Haramain canonical identities. Twelve additional standalone fragrances were absent from the seed and are now recorded from individual official product pages. Each page explicitly documents a 100 ml bottle and a concentration that is consistent between the product title and specification:
+
+- Amber Oud Smell Dubai — Extrait de Parfum, 100 ml
+- Empire Aromatique Ombre — Extrait de Parfum, 100 ml
+- Haramain Olaf — Eau de Parfum, 100 ml
+- Haramain Leif — Eau de Parfum, 100 ml
+- Amber Oud Imagine Dubai — Extrait de Parfum, 100 ml
+- Amber Oud Gold Lux — Extrait de Parfum, 100 ml
+- Haramain Sameera — Extrait de Parfum, 100 ml
+- Haramain Sameera Noir — Extrait de Parfum, 100 ml
+- Haramain Freya — Eau de Parfum, 100 ml
+- Haramain Harmony — Eau de Parfum, 100 ml
+- Haramain CACAU — Eau de Parfum, 100 ml
+- Haramain CAJU — Eau de Parfum, 100 ml
+
+The product IDs are new and unique; each canonical identity has exactly one 100 ml variant with the same official detail URL as its evidence URL. The family registry is synchronized. The Al Haramain seed now contains 119 identities.
+
+Three visible candidates were deliberately held back because the official detail page has conflicting concentration fields: Haramain Adventure, Haramain Ayaat Malika Gold, and Amber Oud Future Dubai. Amber Oud Gold Mine was also held because the indexed official detail page resolves to a URL slugged "sport", so its canonical page URL needs corroboration before promotion. No prices, stock states, shipping data or retailer offers were added.
+
+Primary official sources:
+- New Launches: https://shop.alharamainperfumes.com/eu/new-arrivals.html
+- Amber Oud Smell Dubai: https://shop.alharamainperfumes.com/uae/haramain-amber-oud-smell-dubai-100ml-extrait-de-parfum.html
+- Empire Aromatique Ombre: https://shop.alharamainperfumes.com/uae/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html
+- Haramain Olaf: https://shop.alharamainperfumes.com/uae/haramain-olaf-100ml-eau-de-parfum.html
+- Haramain Leif: https://shop.alharamainperfumes.com/uae/haramain-leif-100ml-eau-de-parfum.html
+- Amber Oud Imagine Dubai: https://shop.alharamainperfumes.com/eu/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html
+- Amber Oud Gold Lux: https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html
+- Haramain Sameera: https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html
+- Haramain Sameera Noir: https://shop.alharamainperfumes.com/qatar/haramain-sameera-noir-100ml-extrait-de-parfum.html
+- Haramain Freya: https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html
+- Haramain Harmony: https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html
+- Haramain CACAU: https://shop.alharamainperfumes.com/eu/haramain-cacau-100ml-eau-de-parfum.html
+- Haramain CAJU: https://shop.alharamainperfumes.com/eu/haramain-caju-100ml-eau-de-parfum.html
+
+Regression tests verify all 12 detail URLs, source status, 100 ml size, concentration, variant evidence URL and family-registry membership. They also guard the unresolved candidates against premature promotion.
