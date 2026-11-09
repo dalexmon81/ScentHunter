@@ -255,9 +255,11 @@ Sources reviewed:
 
 Fourteen existing Mykonos identities were matched to their individual product pages on the brand-owned storefront. Their product-level source URL, evidence URL and product URL now point to the exact official page, and their confidence is upgraded from collection-listing evidence to individual-page evidence. The 14 identities are: Xoxo Rosy, Vanilla Clouds, Utopia, Sparkling Rosé, Pink Beach, Paradise, Musk Aura, Moroccan Vanilla, Hawaiian Crush, Enchanted, Caramel Fudge Cookie, California Club, Baby Love and Aphrodite.
 
-The review also found a systematic source-attribution error: multiple 15 ml travel-size variants pointed to the official **Sansa 15 ml** product page, even though those variants belonged to other fragrances. The unsupported 15 ml variants were removed from 17 affected product records in total across this correction sequence; the valid Sansa 15 ml record was retained. No alternative size was inferred. The official product pages support the remaining variants for the 14 reconciled identities, and their variant-level evidence URLs now point to the corresponding product page.
+A later direct inspection of the shared official **Travel Size 15ML** product page corrected an earlier interpretation: this is not a Sansa-only product page. It explicitly presents a selectable list of **18 Mykonos fragrance options** at 15 ml, including Dark Secret, Musk Aura, Sansa, Satin Blanc, Sparkling Rosé, Black Opera, Moroccan Vanilla, Affair, Utopia, Tea Poetry, Hawaiian Crush, On The Rocks, Royal Ispahan, Crimson, California, California Blue, Penthouse and Monaco Royale. The page itself is the shared source for all 18 selectable options.
 
-This correction deliberately removes unsupported variant claims rather than preserving apparent catalogue breadth. The official /collections/product page showed all 14 listed items sold out and 0 in stock when checked; this is transient availability context only and is not copied as live offer data.
+The 17 variants that had been removed during the initial source review were therefore restored, together with their 15 ml format claims. The Sansa 15 ml variant was retained throughout. Their common evidence URL is correct because the official page explicitly lists all 18 options. Concentration is left unspecified for these travel variants because the shared page does not state it for each selection. Regression coverage now checks all 18 names, size and shared source URL, while separate tests check the direct full-size product pages.
+
+The official /collections/product page showed all 14 listed items sold out and 0 in stock when checked; this is transient availability context only and is not copied as live offer data.
 
 Sources:
 - Official Mykonos product collection (14 products; 0 in stock): https://officialmykonos.com/collections/product
@@ -319,3 +321,10 @@ Sources:
 - Official Maison Asrar perfume-sprays collection: https://maisonasrar.com/collections/perfume-sprays
 - Individual official product pages linked from that collection for the 12 additions above.
 - Existing official individual pages for the 19 previously verified identities.
+
+
+### Mykonos 15 ml shared travel-size page clarification (9 November 2026)
+
+The initial interpretation of the URL containing `sansa-edp-travel-size-15ml` as Sansa-only was incorrect. The live official page title is **Mykonos - Travel Size 15ML** and its product content lists 18 selectable fragrance options. The shared URL is therefore valid variant-level evidence for all 18 listed options, not a misattribution. The 17 variants temporarily removed during review were restored. No concentration was inferred for those 15 ml variants because the page does not state concentration per option.
+
+Official source: https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml
