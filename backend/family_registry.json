@@ -3831,7 +3831,11 @@
           "aliases": [
             "Coconut Lagoon",
             "Paris Corner Coconut Lagoon"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Confidential",
@@ -4002,7 +4006,11 @@
           "aliases": [
             "Eshal Vanilla",
             "Paris Corner Eshal Vanilla"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Eternal Coffee",
@@ -4051,14 +4059,22 @@
           "aliases": [
             "Fayora",
             "Paris Corner Fayora"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Fayora Oshino",
           "aliases": [
             "Fayora Oshino",
             "Paris Corner Fayora Oshino"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Fig Fete",
@@ -4157,14 +4173,22 @@
           "aliases": [
             "Hurriya",
             "Paris Corner Hurriya"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ibisco Nirvana",
           "aliases": [
             "Ibisco Nirvana",
             "Paris Corner Ibisco Nirvana"
-          ]
+          ],
+          "formats_ml": [
+            65
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Identity Oud Crescent",
@@ -4506,7 +4530,11 @@
           "aliases": [
             "Miel Vanille",
             "Paris Corner Miel Vanille"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ministry of Oud - Amber Oud",
@@ -4930,28 +4958,44 @@
           "aliases": [
             "Qissa",
             "Paris Corner Qissa"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Qissa Delicious",
           "aliases": [
             "Qissa Delicious",
             "Paris Corner Qissa Delicious"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Qissa Gala",
           "aliases": [
             "Qissa Gala",
             "Paris Corner Qissa Gala"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Qissa Pink",
           "aliases": [
             "Qissa Pink",
             "Paris Corner Qissa Pink"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Quatre IV Expressions, North Stag",
