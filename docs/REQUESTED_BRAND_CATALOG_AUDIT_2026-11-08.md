@@ -186,3 +186,15 @@ The official Aromatix Signature Collection page lists ten collaboration fragranc
 Source: https://shoparomatix.com/pages/aromatic-collection
 
 All ten identities already existed in the catalog as Aromatix names. Their records now carry the first-party collection source, explicit Eau de Parfum concentration, and one 100 ml variant each. They remain listing-level evidence because the cited source is a collection page rather than individual detail pages. No prices or availability data were imported.
+
+### Al Haramain: five additional verified fragrance variants (9 November 2026)
+
+Five further identities from the official EU new-launch range were absent from the current seed and verified on individual first-party product pages:
+
+- Avalon — 100 ml Eau de Parfum
+- Azure Mythique — 100 ml Eau de Parfum
+- Gold Crystal Oudh — 100 ml Extrait de Parfum
+- Gold Crystal Sapphire — 100 ml Extrait de Parfum
+- Acai — 100 ml Eau de Parfum
+
+Each has a source URL and one explicit 100 ml variant. No prices, stock or retailer offers were copied into the catalog.
