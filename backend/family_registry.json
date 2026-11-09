@@ -8998,6 +8998,9 @@
           "aliases": [
             "Spectre Wraith",
             "French Avenue Spectre Wraith"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -9215,6 +9218,9 @@
           "aliases": [
             "Royal Blend Nero",
             "French Avenue Royal Blend Nero"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9607,6 +9613,16 @@
           "aliases": [
             "Eclipse Nova",
             "French Avenue Eclipse Nova"
+          ]
+        },
+        {
+          "canonical_name": "Eclair Affair",
+          "aliases": [
+            "Eclair Affair",
+            "French Avenue Eclair Affair"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ],
