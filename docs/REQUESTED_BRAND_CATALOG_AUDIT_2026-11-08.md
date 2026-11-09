@@ -184,3 +184,32 @@ The brand-owned Bujairami UAE homepage highlights eight recent arrivals. All eig
 - Suns Out — https://bujairami.ae/products/suns-out-inspired-by-my-way-sunny-vanilla-giorgio-armani
 
 No bottle size, concentration beyond the three explicit Extrait labels, price or stock status was inferred. The product descriptions' "inspired by" references are retained as marketing context, not treated as equivalence to the referenced designer fragrances.
+
+
+### Velixir: official storefront and 20 individual fragrance pages reconciled (9 November 2026)
+
+The brand-owned Velixir Parfums storefront identifies 20 current products. All 20 were matched to existing canonical identities and upgraded in place to their individual product-page URLs. The product-page titles confirm the concentration for each fragrance. Sixteen Eau de Parfum pages explicitly offer both 35 ml and 100 ml sizes; those 32 variants were added and mirrored in the product and family-registry format lists. The four Extrait de Parfum products (Panacea, Comus, Orpheus, Ether) did not expose explicit sizes in the inspected page content, so no variants were invented for them.
+
+Current storefront products reconciled:
+- Panacea — Extrait de Parfum; size not explicitly stated
+- Comus — Extrait de Parfum; size not explicitly stated
+- Harmonia — Eau de Parfum; 35 ml and 100 ml
+- Nyx — Eau de Parfum; 35 ml and 100 ml
+- Morpheus — Eau de Parfum; 35 ml and 100 ml
+- Aphrodite — Eau de Parfum; 35 ml and 100 ml
+- Artemis — Eau de Parfum; 35 ml and 100 ml
+- Asteria — Eau de Parfum; 35 ml and 100 ml
+- Concordia — Eau de Parfum; 35 ml and 100 ml
+- Himeros — Eau de Parfum; 35 ml and 100 ml
+- Demeter — Eau de Parfum; 35 ml and 100 ml
+- Galatea — Eau de Parfum; 35 ml and 100 ml
+- Hera — Eau de Parfum; 35 ml and 100 ml
+- Icarus — Eau de Parfum; 35 ml and 100 ml
+- Persephone — Eau de Parfum; 35 ml and 100 ml
+- Poseidon — Eau de Parfum; 35 ml and 100 ml
+- Uranus — Eau de Parfum; 35 ml and 100 ml
+- Selene — Eau de Parfum; 35 ml and 100 ml
+- Orpheus — Extrait de Parfum; size not explicitly stated
+- Ether — Extrait de Parfum; size not explicitly stated
+
+The storefront collection page shows all 20 as sold out/unavailable at the time inspected. This is transient store availability, not a reason to remove the canonical identities. No current price or stock values were copied into the catalog. Eight additional Velixir identities remain in the seed but are not in the 20-item current storefront listing; they were not altered or treated as current availability evidence.
