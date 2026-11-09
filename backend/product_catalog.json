@@ -26865,17 +26865,23 @@
       "product_id": "SH-FRENCH-AVENUE-d3b3bd11",
       "brand": "French Avenue",
       "brand_name": "French Avenue",
-      "canonical_name": "Papa Yeah!",
-      "name": "Papa Yeah!",
+      "canonical_name": "Papa Yeah",
+      "name": "Papa Yeah",
       "family_id": "french_avenue_catalog",
-      "family_name": "French Avenue",
+      "family_name": "Papa Yeah",
       "aliases": [
         "Papa Yeah!",
-        "French Avenue Papa Yeah!"
+        "French Avenue Papa Yeah!",
+        "Papa Yeah",
+        "French Avenue Papa Yeah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/French-Avenue.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/French-Avenue.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/papa-yeah",
+      "source_evidence_url": "https://frenchavenue.com/products/papa-yeah",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-ec89776e",
@@ -36788,27 +36794,6 @@
       "gender": "Unisex"
     },
     {
-      "product_id": "SH-FRENCH-AVENUE-PAPA-YEAH",
-      "brand": "French Avenue",
-      "brand_name": "French Avenue",
-      "canonical_name": "Papa Yeah",
-      "name": "Papa Yeah",
-      "family_id": "french_avenue_catalog",
-      "family_name": "Papa Yeah",
-      "aliases": [
-        "Papa Yeah",
-        "French Avenue Papa Yeah"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://frenchavenue.com/products/papa-yeah",
-      "source_evidence_url": "https://frenchavenue.com/products/papa-yeah",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        100
-      ],
-      "gender": "Unisex"
-    },
-    {
       "product_id": "SH-ARMAF-ODYSSEY-BLOODY-HOT",
       "brand": "Armaf",
       "brand_name": "Armaf",
@@ -44648,13 +44633,13 @@
       "source_evidence_url": "https://frenchavenue.com/products/royal-blend-nero"
     },
     {
-      "product_id": "SH-FRENCH-AVENUE-PAPA-YEAH",
+      "product_id": "SH-FRENCH-AVENUE-d3b3bd11",
       "size_ml": 100,
       "aliases": [
         "Papa Yeah 100 ml",
         "French Avenue Papa Yeah 100 ml"
       ],
-      "variant_id": "SHV-SH-FRENCH-AVENUE-PAPA-YEAH-100-000",
+      "variant_id": "SHV-SH-FRENCH-AVENUE-d3b3bd11-100-000",
       "concentration": "Eau de Parfum",
       "source_url": "https://frenchavenue.com/products/papa-yeah",
       "source_evidence_url": "https://frenchavenue.com/products/papa-yeah"
