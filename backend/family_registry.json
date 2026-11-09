@@ -1947,13 +1947,6 @@
           ]
         },
         {
-          "canonical_name": "Masterpiece",
-          "aliases": [
-            "Masterpiece",
-            "Maison Asrar Masterpiece"
-          ]
-        },
-        {
           "canonical_name": "Milky Way",
           "aliases": [
             "Milky Way",
@@ -2206,13 +2199,6 @@
           ]
         },
         {
-          "canonical_name": "Emerald",
-          "aliases": [
-            "Emerald",
-            "Maison Asrar Emerald"
-          ]
-        },
-        {
           "canonical_name": "Emessa",
           "aliases": [
             "Emessa",
@@ -2241,13 +2227,6 @@
           ]
         },
         {
-          "canonical_name": "Flair",
-          "aliases": [
-            "Flair",
-            "Maison Asrar Flair"
-          ]
-        },
-        {
           "canonical_name": "Fresh Iris",
           "aliases": [
             "Fresh Iris",
@@ -2259,13 +2238,6 @@
           "aliases": [
             "Gentle Oud",
             "Maison Asrar Gentle Oud"
-          ]
-        },
-        {
-          "canonical_name": "Gold Noir",
-          "aliases": [
-            "Gold Noir",
-            "Maison Asrar Gold Noir"
           ]
         },
         {
@@ -2430,13 +2402,6 @@
           ]
         },
         {
-          "canonical_name": "Silver Elixer",
-          "aliases": [
-            "Silver Elixer",
-            "Maison Asrar Silver Elixer"
-          ]
-        },
-        {
           "canonical_name": "Soirée",
           "aliases": [
             "Soirée",
@@ -2469,13 +2434,6 @@
           "aliases": [
             "Throne Eclipse",
             "Maison Asrar Throne Eclipse"
-          ]
-        },
-        {
-          "canonical_name": "Timeless",
-          "aliases": [
-            "Timeless",
-            "Maison Asrar Timeless"
           ]
         },
         {
@@ -10362,20 +10320,6 @@
           ]
         },
         {
-          "canonical_name": "Asala",
-          "aliases": [
-            "Asala",
-            "Gulf Orchid Asala"
-          ]
-        },
-        {
-          "canonical_name": "Hamsat",
-          "aliases": [
-            "Hamsat",
-            "Gulf Orchid Hamsat"
-          ]
-        },
-        {
           "canonical_name": "Hikma",
           "aliases": [
             "Hikma",
@@ -10383,45 +10327,10 @@
           ]
         },
         {
-          "canonical_name": "Jawhara",
-          "aliases": [
-            "Jawhara",
-            "Gulf Orchid Jawhara"
-          ]
-        },
-        {
-          "canonical_name": "Jewel",
-          "aliases": [
-            "Jewel",
-            "Gulf Orchid Jewel"
-          ]
-        },
-        {
           "canonical_name": "Riwaya",
           "aliases": [
             "Riwaya",
             "Gulf Orchid Riwaya"
-          ]
-        },
-        {
-          "canonical_name": "Turath",
-          "aliases": [
-            "Turath",
-            "Gulf Orchid Turath"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Aura",
-          "aliases": [
-            "Vanilla Aura",
-            "Gulf Orchid Vanilla Aura"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Voyage",
-          "aliases": [
-            "Vanilla Voyage",
-            "Gulf Orchid Vanilla Voyage"
           ]
         },
         {
@@ -10513,6 +10422,48 @@
           "aliases": [
             "Piña Colada Musk",
             "Gulf Orchid Piña Colada Musk"
+          ]
+        },
+        {
+          "canonical_name": "Emerald",
+          "aliases": [
+            "Emerald",
+            "Gulf Orchid Emerald"
+          ]
+        },
+        {
+          "canonical_name": "Gold Noir",
+          "aliases": [
+            "Gold Noir",
+            "Gulf Orchid Gold Noir"
+          ]
+        },
+        {
+          "canonical_name": "Silver Elixer",
+          "aliases": [
+            "Silver Elixer",
+            "Gulf Orchid Silver Elixer"
+          ]
+        },
+        {
+          "canonical_name": "Flair",
+          "aliases": [
+            "Flair",
+            "Gulf Orchid Flair"
+          ]
+        },
+        {
+          "canonical_name": "Timeless",
+          "aliases": [
+            "Timeless",
+            "Gulf Orchid Timeless"
+          ]
+        },
+        {
+          "canonical_name": "Masterpiece",
+          "aliases": [
+            "Masterpiece",
+            "Gulf Orchid Masterpiece"
           ]
         }
       ]
