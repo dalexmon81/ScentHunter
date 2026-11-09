@@ -14651,10 +14651,12 @@
         "Checkmate Black Knight",
         "Armaf Checkmate Black Knight"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/checkmate-black-knight",
+      "source_evidence_url": "https://armaf.com/products/checkmate-black-knight",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/checkmate-black-knight",
+      "gender": "Men"
     },
     {
       "product_id": "SH-ARMAF-33637953",
@@ -14668,10 +14670,12 @@
         "Eter Desert Star",
         "Armaf Eter Desert Star"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/eter-desert-star",
+      "source_evidence_url": "https://armaf.com/products/eter-desert-star",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/eter-desert-star",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-a454bae6",
@@ -14685,10 +14689,12 @@
         "Odyssey Spectra Blue Edition",
         "Armaf Odyssey Spectra Blue Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=8",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-spectra-blue-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-spectra-blue-edition",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/odyssey-spectra-blue-edition",
+      "gender": "Men"
     },
     {
       "product_id": "SH-ARMAF-f650f6a8",
@@ -37781,6 +37787,48 @@
       "source_evidence_url": "https://armaf.com/products/checkmate-queen",
       "concentration": "Eau de Parfum",
       "gender": "Women"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-AOUD",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Aoud",
+      "name": "Odyssey Aoud",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Aoud",
+      "aliases": [
+        "Odyssey Aoud",
+        "Armaf Odyssey Aoud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-aoud-edition",
+      "source_product_url": "https://armaf.com/products/odyssey-aoud-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-aoud-edition",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        60,
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-KUNAFA-CHOCOLATE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Kunafa Chocolate",
+      "name": "Kunafa Chocolate",
+      "family_id": "armaf_catalog",
+      "family_name": "Kunafa Chocolate",
+      "aliases": [
+        "Kunafa Chocolate",
+        "Armaf Kunafa Chocolate"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/kunafa-chocolate",
+      "source_product_url": "https://armaf.com/products/kunafa-chocolate",
+      "source_evidence_url": "https://armaf.com/products/kunafa-chocolate",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
     }
   ],
   "variants": [
@@ -45775,6 +45823,30 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/armaf-craze",
       "source_evidence_url": "https://armaf.com/products/armaf-craze"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-AOUD",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-AOUD-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Aoud 60 ml",
+        "Armaf Odyssey Aoud 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-aoud-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-aoud-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-AOUD",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-AOUD-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Aoud 100 ml",
+        "Armaf Odyssey Aoud 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-aoud-edition",
+      "source_evidence_url": "https://armaf.com/products/odyssey-aoud-edition"
     }
   ]
 }

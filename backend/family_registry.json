@@ -9007,6 +9007,24 @@
             "Checkmate Queen",
             "Armaf Checkmate Queen"
           ]
+        },
+        {
+          "canonical_name": "Odyssey Aoud",
+          "aliases": [
+            "Odyssey Aoud",
+            "Armaf Odyssey Aoud"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Kunafa Chocolate",
+          "aliases": [
+            "Kunafa Chocolate",
+            "Armaf Kunafa Chocolate"
+          ]
         }
       ]
     },
