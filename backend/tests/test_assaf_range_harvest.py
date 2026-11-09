@@ -188,9 +188,6 @@ class AssafRangeHarvestTests(unittest.TestCase):
                 with self.subTest(product=product["canonical_name"]):
                     self.assertEqual(product["identity_status"], "source_listed_name")
                     self.assertEqual(product["source_url"], "https://assafperfumes.eu/perfumes/")
-                    if name == "Arrogate Addict Elixir":
-                    self.assertEqual(product.get("concentration"), "Eau de Parfum")
-                else:
                     self.assertNotIn("concentration", product)
                     self.assertNotIn("formats_ml", product)
 
@@ -223,7 +220,10 @@ class AssafRangeHarvestTests(unittest.TestCase):
                 }
                 self.assertEqual(actual_sizes, sizes)
                 self.assertTrue(set(map(int, sizes)).issubset(set(product["formats_ml"])))
-                self.assertNotIn("concentration", product)
+                if name == "Arrogate Addict Elixir":
+                    self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                else:
+                    self.assertNotIn("concentration", product)
 
 if __name__ == "__main__":
     unittest.main()
