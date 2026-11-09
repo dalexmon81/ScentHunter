@@ -36892,6 +36892,410 @@
       "source_evidence_url": "https://armaf.com/products/spartacus-edp",
       "concentration": "Eau de Parfum",
       "gender": "Men"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP1995",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Ayaat Malika Gold",
+      "name": "Haramain Ayaat Malika Gold",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Ayaat Malika Gold",
+      "aliases": [
+        "Haramain Ayaat Malika Gold",
+        "Al Haramain Ayaat Malika Gold"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-ayaat-malika-gold-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-ayaat-malika-gold-100ml-extrait-de-parfum.html",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2004",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Sameera",
+      "name": "Haramain Sameera",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Sameera",
+      "aliases": [
+        "Haramain Sameera",
+        "Al Haramain Sameera"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-sameera-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-sameera-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2005",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Sameera Noir",
+      "name": "Haramain Sameera Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Sameera Noir",
+      "aliases": [
+        "Haramain Sameera Noir",
+        "Al Haramain Sameera Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2000",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Empire Aromatique Ombre",
+      "name": "Haramain Empire Aromatique Ombre",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Empire Aromatique Ombre",
+      "aliases": [
+        "Haramain Empire Aromatique Ombre",
+        "Al Haramain Empire Aromatique Ombre"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2087",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Conception",
+      "name": "Haramain Conception",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Conception",
+      "aliases": [
+        "Haramain Conception",
+        "Al Haramain Conception"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-conception-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-conception-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2088",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Oud Nomad",
+      "name": "Haramain Oud Nomad",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Oud Nomad",
+      "aliases": [
+        "Haramain Oud Nomad",
+        "Al Haramain Oud Nomad"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-oud-nomad-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-oud-nomad-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2090",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Olaf",
+      "name": "Haramain Olaf",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Olaf",
+      "aliases": [
+        "Haramain Olaf",
+        "Al Haramain Olaf"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-olaf-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-olaf-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2086",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Harmony",
+      "name": "Haramain Harmony",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Harmony",
+      "aliases": [
+        "Haramain Harmony",
+        "Al Haramain Harmony"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-harmony-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-harmony-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2085",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Freya",
+      "name": "Haramain Freya",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Freya",
+      "aliases": [
+        "Haramain Freya",
+        "Al Haramain Freya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-freya-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-freya-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2072",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Amber Oud Imagine Dubai",
+      "name": "Haramain Amber Oud Imagine Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Amber Oud Imagine Dubai",
+      "aliases": [
+        "Haramain Amber Oud Imagine Dubai",
+        "Al Haramain Amber Oud Imagine Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2071",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Amber Oud Future Dubai",
+      "name": "Haramain Amber Oud Future Dubai",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Amber Oud Future Dubai",
+      "aliases": [
+        "Haramain Amber Oud Future Dubai",
+        "Al Haramain Amber Oud Future Dubai"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2068",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain CUPUACU",
+      "name": "Haramain CUPUACU",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain CUPUACU",
+      "aliases": [
+        "Haramain CUPUACU",
+        "Al Haramain CUPUACU"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-cupuacu-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-cupuacu-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2096",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain L'Aventure Extreme",
+      "name": "Haramain L'Aventure Extreme",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain L'Aventure Extreme",
+      "aliases": [
+        "Haramain L'Aventure Extreme",
+        "Al Haramain L'Aventure Extreme"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2116",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Azure Mythique",
+      "name": "Azure Mythique",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Azure Mythique",
+      "aliases": [
+        "Azure Mythique",
+        "Al Haramain Azure Mythique"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/azure-mythique-eau-de-parfum-100ml.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/azure-mythique-eau-de-parfum-100ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-OUD-ESCAPE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Oud Escape",
+      "name": "Haramain Oud Escape",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Oud Escape",
+      "aliases": [
+        "Haramain Oud Escape",
+        "Al Haramain Oud Escape"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-oud-escape.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-oud-escape.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-SUMMER",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Summer",
+      "name": "Haramain Summer",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Summer",
+      "aliases": [
+        "Haramain Summer",
+        "Al Haramain Summer"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-summer.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-summer.html",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ADVENTURE",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Adventure",
+      "name": "Haramain Adventure",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Adventure",
+      "aliases": [
+        "Haramain Adventure",
+        "Al Haramain Adventure"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-adventure.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-adventure.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2117",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Avalon",
+      "name": "Haramain Avalon",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Avalon",
+      "aliases": [
+        "Haramain Avalon",
+        "Al Haramain Avalon"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/avalon-eau-de-parfum-100ml.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/avalon-eau-de-parfum-100ml.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2067",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Taj Malaki Velvet",
+      "name": "Haramain Taj Malaki Velvet",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Taj Malaki Velvet",
+      "aliases": [
+        "Haramain Taj Malaki Velvet",
+        "Al Haramain Taj Malaki Velvet"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Women"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2066",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Haramain Taj Malaki Noir",
+      "name": "Haramain Taj Malaki Noir",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Haramain Taj Malaki Noir",
+      "aliases": [
+        "Haramain Taj Malaki Noir",
+        "Al Haramain Taj Malaki Noir"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-noir-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-noir-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -44290,6 +44694,209 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/odyssey-ring-my-bell",
       "source_evidence_url": "https://armaf.com/products/odyssey-ring-my-bell"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP1995",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Ayaat Malika Gold 100 ml",
+        "Al Haramain Ayaat Malika Gold 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP1995-100-000",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-ayaat-malika-gold-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-ayaat-malika-gold-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2004",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Sameera 100 ml",
+        "Al Haramain Sameera 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2004-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-sameera-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-sameera-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2005",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Sameera Noir 100 ml",
+        "Al Haramain Sameera Noir 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2005-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2000",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Empire Aromatique Ombre 100 ml",
+        "Al Haramain Empire Aromatique Ombre 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2000-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2087",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Conception 100 ml",
+        "Al Haramain Conception 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2087-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-conception-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-conception-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2088",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Oud Nomad 100 ml",
+        "Al Haramain Oud Nomad 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2088-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-oud-nomad-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-oud-nomad-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2090",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Olaf 100 ml",
+        "Al Haramain Olaf 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2090-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-olaf-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-olaf-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2086",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Harmony 100 ml",
+        "Al Haramain Harmony 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2086-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-harmony-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-harmony-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2085",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Freya 100 ml",
+        "Al Haramain Freya 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2085-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-freya-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-freya-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2072",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Amber Oud Imagine Dubai 100 ml",
+        "Al Haramain Amber Oud Imagine Dubai 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2072-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-imagine-duabi-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2071",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Amber Oud Future Dubai 100 ml",
+        "Al Haramain Amber Oud Future Dubai 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2071-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-amber-oud-future-duabi-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2068",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain CUPUACU 100 ml",
+        "Al Haramain CUPUACU 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2068-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-cupuacu-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-cupuacu-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2096",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain L'Aventure Extreme 100 ml",
+        "Al Haramain L'Aventure Extreme 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2096-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2116",
+      "size_ml": 100,
+      "aliases": [
+        "Azure Mythique 100 ml",
+        "Al Haramain Azure Mythique 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2116-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/azure-mythique-eau-de-parfum-100ml.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/azure-mythique-eau-de-parfum-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2117",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Avalon 100 ml",
+        "Al Haramain Avalon 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2117-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/avalon-eau-de-parfum-100ml.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/avalon-eau-de-parfum-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2067",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Taj Malaki Velvet 100 ml",
+        "Al Haramain Taj Malaki Velvet 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2067-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-velvet-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-AHP2066",
+      "size_ml": 100,
+      "aliases": [
+        "Haramain Taj Malaki Noir 100 ml",
+        "Al Haramain Taj Malaki Noir 100 ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-AHP2066-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-noir-100ml-eau-de-parfum.html",
+      "source_evidence_url": "https://us.alharamainperfumes.com/en/haramain-taj-malaki-noir-100ml-eau-de-parfum.html"
     }
   ]
 }
