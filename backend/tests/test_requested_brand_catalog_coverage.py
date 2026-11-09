@@ -1412,5 +1412,62 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_paris_corner_official_storefront_batch_h_detail_pages_and_sizes(self):
+        expected = {
+            "Veteran Oud": ("https://www.pariscornerperfumes.com/products/veteran-oud", None),
+            "Vibrant Orange and Neroli Emir": ("https://www.pariscornerperfumes.com/products/vibrant-orange-and-neroli-emir", 100),
+            "Vibrant Sensual Saffron Emir": ("https://www.pariscornerperfumes.com/products/vibrant-sensual-saffron-emir", 100),
+            "Vibrant Spicy Tobacco Emir": ("https://www.pariscornerperfumes.com/products/vibrant-spicy-tobacco-emir", 100),
+            "Vibrant Vetiver Delight Emir": ("https://www.pariscornerperfumes.com/products/vibrant-vetiver-delight-emir-1", 100),
+            "Virilis": ("https://www.pariscornerperfumes.com/products/virilis", None),
+            "Vivant Sunlit": ("https://www.pariscornerperfumes.com/products/vivant-sunlit", 100),
+            "Voux Blue Oud Emir": ("https://www.pariscornerperfumes.com/products/voux-blue-oud-emir", 100),
+            "Voux Alma Verde": ("https://www.pariscornerperfumes.com/products/voux-alma-verde", 100),
+            "Voux Elegante Emir": ("https://www.pariscornerperfumes.com/products/voux-elegante-emir", 100),
+            "Voux Patisserie": ("https://www.pariscornerperfumes.com/products/voux-patisserie", None),
+            "Voux Spices Emir": ("https://www.pariscornerperfumes.com/products/voux-spices-emir", 100),
+            "Voux Turquoise Emir": ("https://www.pariscornerperfumes.com/products/voux-turquoise-emir", 100),
+            "Voux Violette Emir": ("https://www.pariscornerperfumes.com/products/voux-violette-emir", 100),
+            "Voux Zeste": ("https://www.pariscornerperfumes.com/products/voux-zeste", 100),
+            "Voux Zingy": ("https://www.pariscornerperfumes.com/products/voux-zingy", 100),
+            "Warm Leather Emir Factory Edition": ("https://www.pariscornerperfumes.com/products/warm-leather-emir-factory-edition", 100),
+            "Wayfarer Eau de Parfum": ("https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum", 100),
+            "Wayward Charlie Emir": ("https://www.pariscornerperfumes.com/products/wayward-charlie-emir", 100),
+            "When Soul Gets High Emir": ("https://www.pariscornerperfumes.com/products/when-soul-gets-high-emir", 100),
+            "Wild and Tobacco Emir": ("https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir", 75),
+            "You're Drugged Emir": ("https://www.pariscornerperfumes.com/products/youre-drugged-emir", 100),
+            "Zahi": ("https://www.pariscornerperfumes.com/products/zahi", 85),
+            "Zahri Amara": ("https://www.pariscornerperfumes.com/products/zahri-amara", 100),
+            "Zaman Al Ula": ("https://www.pariscornerperfumes.com/products/zaman-al-ula", 100),
+            "Zariya": ("https://www.pariscornerperfumes.com/products/zariya", 100),
+            "Zodiac": ("https://www.pariscornerperfumes.com/products/zodiac-100ml", 100),
+            "Zodiac Lunaris": ("https://www.pariscornerperfumes.com/products/zodiac-lunaris", 100),
+            "Zodiac Solmaris": ("https://www.pariscornerperfumes.com/products/zodiac-solmaris", 100),
+            "Zodiac Stratos": ("https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml", 100),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_url"), source)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
