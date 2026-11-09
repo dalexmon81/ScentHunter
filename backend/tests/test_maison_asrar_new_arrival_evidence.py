@@ -20,6 +20,17 @@ EXPECTED = {
     "Harmony": "https://maisonasrar.com/products/harmony",
     "Fairyland": "https://maisonasrar.com/products/fairyland",
     "Whisper": "https://maisonasrar.com/products/whisper",
+    "Dubai Milano": "https://maisonasrar.com/products/dubai-milano",
+    "Dubai London": "https://maisonasrar.com/products/dubai-london",
+    "Dubai Miami": "https://maisonasrar.com/products/dubai-miami",
+    "III Thriller": "https://maisonasrar.com/products/iii-thriller",
+    "Milky Way": "https://maisonasrar.com/products/milky-way",
+    "Muharib": "https://maisonasrar.com/products/muharib",
+    "Faris Al Arab": "https://maisonasrar.com/products/faris-al-arab",
+    "Vanilla Seduction": "https://maisonasrar.com/products/vanilla-seduction",
+    "Vanilla Aura": "https://maisonasrar.com/products/vanilla-aura",
+    "Throne Eclipse": "https://maisonasrar.com/products/throne-eclipse",
+    "Throne": "https://maisonasrar.com/products/throne",
 }
 
 
