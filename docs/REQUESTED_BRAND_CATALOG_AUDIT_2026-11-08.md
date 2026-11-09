@@ -306,3 +306,35 @@ After the Gulf Orchid official-page harvest, the catalog and family registry wer
 - Identities not represented in the family registry: **0**
 
 The three identities outside the requested 20 brands remain Giorgio Armani (1) and Al Ambra (2). The catalog remains an identity seed, not an offer inventory. A failed CI run occurred on the intermediate catalog-only commit before the matching family-registry and regression-test updates landed; subsequent runs on the completed data/test changes are the relevant validation.
+
+### Aromatix: official French Avenue collection reconciliation (9 November 2026)
+
+The official French Avenue Aromatix Collection currently lists ten individual fragrances. All ten were matched to existing Aromatix canonical identities and upgraded from listing-level evidence to their own individual product pages:
+
+- Carnal Desire — Eau de Parfum, 100 ml
+- Forbidden Fruit — Eau de Parfum, 100 ml
+- Frostbite — Extrait de Parfum, 100 ml
+- Magnetiq — Eau de Parfum, 100 ml
+- Naughty Dates — Eau de Parfum, 100 ml
+- Platine Blanc (official page spells the product title “Plantine Blanc”) — individual page verified; size and concentration are not stated in the extracted product specification, so no variant or concentration was added
+- Royal Taboo — Extrait de Parfum, 100 ml
+- Sun Kissed — Eau de Parfum, 100 ml
+- Teas Me — Eau de Parfum, 100 ml
+- X Xandal — Extrait de Parfum, 100 ml
+
+Nine explicit 100 ml variants were added with individual product-page provenance. The family registry was synchronized. The two Aromatix Summer Vibes entries remain excluded as multi-fragrance gift sets rather than being treated as standalone perfume identities. Existing Ora and Roza entries were not changed because the current official collection did not provide individual detail-page evidence for them.
+
+Primary sources:
+- Official Aromatix collection: https://frenchavenue.com/collections/aromatix
+- Plantine Blanc: https://frenchavenue.com/products/aromatix-plantine-blanc
+- Naughty Dates: https://frenchavenue.com/products/aromatix-naughty-dates
+- Frostbite: https://frenchavenue.com/products/aromatix-frostbite
+- Magnetiq: https://frenchavenue.com/products/aromatix-magnetiq
+- Carnal Desire: https://frenchavenue.com/products/carnal-desire
+- Teas Me: https://frenchavenue.com/products/aromatix-teas-me
+- Royal Taboo: https://frenchavenue.com/products/royal-taboo
+- X Xandal: https://frenchavenue.com/products/aromatix-x-xandal
+- Forbidden Fruit: https://frenchavenue.com/products/aromatix-forbidden-fruit
+- Sun Kissed: https://frenchavenue.com/products/aromatix-sunkissed
+
+Regression tests were added to the catalog-seed validation workflow for all ten individual page URLs, explicit concentration/size fields, and the exclusion of gift sets.
