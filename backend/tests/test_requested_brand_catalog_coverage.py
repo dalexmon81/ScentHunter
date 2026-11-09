@@ -2233,5 +2233,30 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertIn(name, registered)
 
 
+    def test_armaf_lions_club_monarque_official_page_and_100ml_variant(self):
+        row = next(
+            (
+                product for product in CATALOG.get("products", [])
+                if product.get("brand_name") == "Armaf"
+                and product.get("canonical_name") == "The Lion's Club Monarque"
+            ),
+            None,
+        )
+        self.assertIsNotNone(row)
+        source = "https://armaf.eu/products/the-lions-club-monarque"
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(row.get("source_url"), source)
+        self.assertEqual(row.get("concentration"), "Eau de Parfum")
+        self.assertIn(100, row.get("formats_ml", []))
+        matches = [
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == row["product_id"]
+            and variant.get("size_ml") == 100
+        ]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
+        self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
