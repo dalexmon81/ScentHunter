@@ -435,3 +435,14 @@ The official best-seller collection and exact-name search surfaced individual br
 These four identities now have individual product provenance. No variants were created because the official individual pages do not state a bottle size in the source inspected.
 
 After merging the duplicate Black listing into Black Grapefruit and verifying these four pages, Maison Asrar now has **119 distinct canonical identities: 88 individually sourced and 31 still at collection-listing confidence**. The brand still has 52 structured variants in this catalog pass.
+
+
+### Maison Asrar: best-seller collection detail-page reconciliation (9 November 2026)
+
+The official best-seller collection linked individual product pages for 26 more existing identities that were still listing-level in the seed:
+
+Coffee Blend, Soirée, Date Night, Oh Honey!, Nada, Qamar, Joy, Rosé Absolute, Rubellite, Lumiere, Luna, Muharib, DXB, Vision, Rey, Wadi, Tornado, Hunter, Masterpiece, Cascade, Leo, Flair, Silver Elixer, Timeless, Larimar and Hikaya.
+
+All 26 now have individual official product provenance. Six product URLs explicitly include **100 ml Eau de Parfum** and therefore gained a matching variant: Joy, Rosé Absolute, Luna, Rey, Hunter and Leo. The remaining 20 retain identity-level verification only. Where the URL identifies Eau de Parfum but omits the size, concentration is recorded but no size or variant is invented.
+
+Maison Asrar now has **119 canonical identities, 114 individually sourced identities, 5 still at collection-listing confidence, and 58 structured variants**. The five remaining listing-only identities require more precise product evidence or a determination that they are historical/discontinued entries.
