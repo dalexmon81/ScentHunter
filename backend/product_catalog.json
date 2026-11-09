@@ -3286,8 +3286,8 @@
         "Hareem Al Sultan Gold",
         "Khadlaj Hareem Al Sultan Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
       "formats_ml": [
         35
       ]
@@ -3304,8 +3304,8 @@
         "Panache Angel Dust",
         "Khadlaj Panache Angel Dust"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
       "formats_ml": [
         100
       ],
@@ -3372,8 +3372,8 @@
         "Fursan White",
         "Khadlaj Fursan White"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae",
       "formats_ml": [
         100
       ],
@@ -3391,8 +3391,8 @@
         "Cloud Candy",
         "Khadlaj Cloud Candy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
       "formats_ml": [
         100
       ],
@@ -3410,8 +3410,8 @@
         "Island Vanilla Dunes",
         "Khadlaj Island Vanilla Dunes"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men",
       "formats_ml": [
         100
       ],
@@ -3448,8 +3448,8 @@
         "Caffe Latte",
         "Khadlaj Caffe Latte"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray",
       "formats_ml": [
         100
       ],
@@ -3486,8 +3486,8 @@
         "Empire Victor",
         "Khadlaj Empire Victor"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
       "formats_ml": [
         100
       ],
@@ -3505,8 +3505,8 @@
         "Oud Pour Klassik",
         "Khadlaj Oud Pour Klassik"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/oud-pour-klassik-spray-shop-online-best-price-in-dubai-uae",
       "formats_ml": [
         100
       ],
@@ -3524,8 +3524,8 @@
         "Nafais Sharq",
         "Khadlaj Nafais Sharq"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-nafais-sharq-edp-designer-fragrance-for-women-dubai-uae",
       "formats_ml": [
         100
       ],
@@ -3543,8 +3543,8 @@
         "Karus Gold Absolu",
         "Khadlaj Karus Gold Absolu"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/karus-gold-absolu-100-ml-edp-spray",
       "formats_ml": [
         100
       ],
@@ -3562,8 +3562,8 @@
         "Ria",
         "Khadlaj Ria"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-ria-100-ml-eau-de-parfum-spray-for-women-fruity-sweet-fragrance-for-women",
       "formats_ml": [
         100
       ],
@@ -35931,7 +35931,9 @@
         "Hareem Al Sultan Gold 35 ml",
         "Khadlaj Hareem Al Sultan Gold 35ml"
       ],
-      "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000"
+      "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000",
+      "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -35951,7 +35953,9 @@
         "Khadlaj Fursan White 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-cdaa81f2-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-sellers-latest/products/khadlaj-fursan-white-100-ml-edp-spray-perfume-for-women-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-04832397",
@@ -35971,7 +35975,9 @@
         "Khadlaj Caffe Latte 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-263fcf43-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/caffe-latte-100-ml-extrait-de-parfum-spray"
     },
     {
       "product_id": "SH-KHADLAJ-dd1434f1",
@@ -35991,7 +35997,9 @@
         "Khadlaj Empire Victor 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-935bcf95-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-c7ff964c",
@@ -36001,7 +36009,9 @@
         "Khadlaj Oud Pour Klassik 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-c7ff964c-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/oud-pour-klassik-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/oud-pour-klassik-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-70d32855",
@@ -36011,7 +36021,9 @@
         "Khadlaj Nafais Sharq 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-70d32855-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-nafais-sharq-edp-designer-fragrance-for-women-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-nafais-sharq-edp-designer-fragrance-for-women-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-baaea0ac",
@@ -36021,7 +36033,9 @@
         "Khadlaj Karus Gold Absolu 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-baaea0ac-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/karus-gold-absolu-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/karus-gold-absolu-100-ml-edp-spray"
     },
     {
       "product_id": "SH-KHADLAJ-a1c6306a",
@@ -36031,7 +36045,9 @@
         "Khadlaj Ria 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-a1c6306a-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-ria-100-ml-eau-de-parfum-spray-for-women-fruity-sweet-fragrance-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/khadlaj-ria-100-ml-eau-de-parfum-spray-for-women-fruity-sweet-fragrance-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-ce6dbd60",
@@ -36325,7 +36341,9 @@
         "Khadlaj Panache Angel Dust 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-f26d9535-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -36335,7 +36353,9 @@
         "Khadlaj Island Vanilla Dunes 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-47b079b3-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
     },
     {
       "product_id": "SH-KHADLAJ-78fd361a",
@@ -36345,7 +36365,9 @@
         "Khadlaj Cloud Candy 100 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-78fd361a-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/cloud-candy-100-ml-extrait-de-parfum-fruity-marshmallow-fragrance-for-women-to-shop-online-in-dubai-uae"
     },
     {
       "product_id": "SH-AFNAN-823a97f5",
