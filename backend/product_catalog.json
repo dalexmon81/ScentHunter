@@ -34762,6 +34762,106 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-AMOUR",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Amour",
+      "name": "Amour",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Amour",
+      "aliases": [
+        "Amour",
+        "Gulf Orchid Amour"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/amour",
+      "source_evidence_url": "https://shop-gulforchid.com/products/amour",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-BELLE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Belle",
+      "name": "Belle",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Belle",
+      "aliases": [
+        "Belle",
+        "Gulf Orchid Belle"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/belle",
+      "source_evidence_url": "https://shop-gulforchid.com/products/belle",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CHIC",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Chic",
+      "name": "Chic",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Chic",
+      "aliases": [
+        "Chic",
+        "Gulf Orchid Chic"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/chic",
+      "source_evidence_url": "https://shop-gulforchid.com/products/chic",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Cloud 9",
+      "name": "Cloud 9",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Cloud 9",
+      "aliases": [
+        "Cloud 9",
+        "Gulf Orchid Cloud 9"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/cloud-9",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-PHANTOM",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Phantom",
+      "name": "Phantom",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Phantom",
+      "aliases": [
+        "Phantom",
+        "Gulf Orchid Phantom"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/phantom",
+      "source_evidence_url": "https://shop-gulforchid.com/products/phantom",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -38486,6 +38586,61 @@
       "variant_id": "SHV-SH-GULF-ORCHID-SWEET-HEAVEN-TOBACCO-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/sweet_heaven_tobacco_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-AMOUR",
+      "size_ml": 100,
+      "aliases": [
+        "Amour 100 ml",
+        "Gulf Orchid Amour 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-AMOUR-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/amour"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-BELLE",
+      "size_ml": 100,
+      "aliases": [
+        "Belle 100 ml",
+        "Gulf Orchid Belle 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-BELLE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/belle"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CHIC",
+      "size_ml": 100,
+      "aliases": [
+        "Chic 100 ml",
+        "Gulf Orchid Chic 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-CHIC-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/chic"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CLOUD-9",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud 9 100 ml",
+        "Gulf Orchid Cloud 9 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-CLOUD-9-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cloud-9"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-PHANTOM",
+      "size_ml": 100,
+      "aliases": [
+        "Phantom 100 ml",
+        "Gulf Orchid Phantom 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-PHANTOM-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/phantom"
     }
   ]
 }
