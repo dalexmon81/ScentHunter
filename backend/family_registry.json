@@ -8049,6 +8049,9 @@
           "aliases": [
             "Miss Armaf Catwalk",
             "Armaf Miss Armaf Catwalk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8056,6 +8059,9 @@
           "aliases": [
             "Tag Him Uomo Rosso",
             "Armaf Tag Him Uomo Rosso"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9024,6 +9030,31 @@
           "aliases": [
             "Kunafa Chocolate",
             "Armaf Kunafa Chocolate"
+          ]
+        },
+        {
+          "canonical_name": "Ombre Fresh EDP",
+          "aliases": [
+            "Ombre Fresh EDP",
+            "Armaf Ombre Fresh EDP"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Wild One",
+          "aliases": [
+            "Odyssey Wild One",
+            "Armaf Odyssey Wild One"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Aura Fresh",
+          "aliases": [
+            "Aura Fresh",
+            "Armaf Aura Fresh"
           ]
         }
       ]

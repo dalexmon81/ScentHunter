@@ -38,7 +38,7 @@ MINIMUM_BRAND_COUNTS = {
     "Games of Spades": 32,
     "Maison Alhambra": 214,
     "Mykonos": 72,
-    "Armaf": 214,
+    "Armaf": 217,
 }
 
 
@@ -2183,6 +2183,54 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         registered = {row.get("canonical_name") for row in family.get("products", [])}
         self.assertIn("Odyssey Aoud", registered)
         self.assertIn("Kunafa Chocolate", registered)
+
+
+
+    def test_armaf_page_nine_official_reconciliation(self):
+        expected = {
+            "Miss Armaf Catwalk": ("https://armaf.com/products/miss-armaf-catwalk", "Eau de Parfum", "Women", [100]),
+            "Tag Him Uomo Rosso": ("https://armaf.com/products/tag-him-uomo-rosso-red", "Eau de Parfum", "Men", [100]),
+            "Delights Bon Bon": ("https://armaf.com/products/bon-bon", "Eau de Parfum", "Unisex", []),
+            "Scentasy Matcha Magix": ("https://armaf.com/products/scentasy-matcha-magix", "Eau de Parfum", "Unisex", []),
+            "The Lion's Club Valer": ("https://armaf.com/products/the-lions-club-valer", "Eau de Parfum", "Men", []),
+            "Ombre Fresh EDP": ("https://armaf.com/products/ombre-fresh-edp", "Eau de Parfum", None, []),
+            "Odyssey Wild One": ("https://armaf.com/products/odyssey-wild-one", "Eau de Parfum", "Men", [60, 100]),
+            "Aura Fresh": ("https://armaf.com/products/armaf-aura-fresh", "Eau de Parfum", "Men", []),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, gender, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("source_product_url"), source)
+                self.assertEqual(row.get("source_evidence_url"), source)
+                self.assertEqual(row.get("concentration"), concentration)
+                if gender is None:
+                    self.assertNotIn("gender", row)
+                else:
+                    self.assertEqual(row.get("gender"), gender)
+                self.assertEqual(row.get("formats_ml", []), sizes)
+                matching = [v for v in variants if v.get("product_id") == row.get("product_id")]
+                self.assertEqual(sorted(v.get("size_ml") for v in matching), sorted(sizes))
+                for size in sizes:
+                    variant = next(v for v in matching if v.get("size_ml") == size)
+                    self.assertEqual(variant.get("source_url"), source)
+                    self.assertEqual(variant.get("source_evidence_url"), source)
+
+    def test_armaf_page_nine_new_products_are_registered(self):
+        registry = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+        family = next(row for row in registry.get("families", []) if row.get("family_id") == "armaf_catalog")
+        registered = {row.get("canonical_name") for row in family.get("products", [])}
+        for name in ("Ombre Fresh EDP", "Odyssey Wild One", "Aura Fresh"):
+            with self.subTest(name=name):
+                self.assertIn(name, registered)
 
 
 if __name__ == "__main__":

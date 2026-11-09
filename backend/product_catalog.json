@@ -14726,10 +14726,15 @@
         "Miss Armaf Catwalk",
         "Armaf Miss Armaf Catwalk"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/miss-armaf-catwalk",
+      "source_evidence_url": "https://armaf.com/products/miss-armaf-catwalk",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/miss-armaf-catwalk",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-e2c21b5a",
@@ -14743,10 +14748,15 @@
         "Tag Him Uomo Rosso",
         "Armaf Tag Him Uomo Rosso"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/tag-him-uomo-rosso-red",
+      "source_evidence_url": "https://armaf.com/products/tag-him-uomo-rosso-red",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/tag-him-uomo-rosso-red",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-35c790a8",
@@ -14760,10 +14770,12 @@
         "Delights Bon Bon",
         "Armaf Delights Bon Bon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/bon-bon",
+      "source_evidence_url": "https://armaf.com/products/bon-bon",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/bon-bon",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-fd692df6",
@@ -14777,10 +14789,12 @@
         "Scentasy Matcha Magix",
         "Armaf Scentasy Matcha Magix"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/scentasy-matcha-magix",
+      "source_evidence_url": "https://armaf.com/products/scentasy-matcha-magix",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/scentasy-matcha-magix",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ARMAF-51019b70",
@@ -14794,10 +14808,12 @@
         "The Lion's Club Valer",
         "Armaf The Lion's Club Valer"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=9",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/the-lions-club-valer",
+      "source_evidence_url": "https://armaf.com/products/the-lions-club-valer",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://armaf.com/products/the-lions-club-valer",
+      "gender": "Men"
     },
     {
       "product_id": "SH-ARMAF-dce90f87",
@@ -37829,6 +37845,66 @@
       "source_evidence_url": "https://armaf.com/products/kunafa-chocolate",
       "concentration": "Eau de Parfum",
       "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-OMBRE-FRESH-EDP",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Ombre Fresh EDP",
+      "name": "Ombre Fresh EDP",
+      "family_id": "armaf_catalog",
+      "family_name": "Ombre Fresh EDP",
+      "aliases": [
+        "Ombre Fresh EDP",
+        "Armaf Ombre Fresh EDP"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/ombre-fresh-edp",
+      "source_product_url": "https://armaf.com/products/ombre-fresh-edp",
+      "source_evidence_url": "https://armaf.com/products/ombre-fresh-edp",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-WILD-ONE",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Wild One",
+      "name": "Odyssey Wild One",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Wild One",
+      "aliases": [
+        "Odyssey Wild One",
+        "Armaf Odyssey Wild One"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/odyssey-wild-one",
+      "source_product_url": "https://armaf.com/products/odyssey-wild-one",
+      "source_evidence_url": "https://armaf.com/products/odyssey-wild-one",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        60,
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-AURA-FRESH",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Aura Fresh",
+      "name": "Aura Fresh",
+      "family_id": "armaf_catalog",
+      "family_name": "Aura Fresh",
+      "aliases": [
+        "Aura Fresh",
+        "Armaf Aura Fresh"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/armaf-aura-fresh",
+      "source_product_url": "https://armaf.com/products/armaf-aura-fresh",
+      "source_evidence_url": "https://armaf.com/products/armaf-aura-fresh",
+      "concentration": "Eau de Parfum",
+      "gender": "Men"
     }
   ],
   "variants": [
@@ -45847,6 +45923,54 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/odyssey-aoud-edition",
       "source_evidence_url": "https://armaf.com/products/odyssey-aoud-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-3eb5a44e",
+      "variant_id": "SHV-SH-ARMAF-3eb5a44e-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Miss Armaf Catwalk 100 ml",
+        "Armaf Miss Armaf Catwalk 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/miss-armaf-catwalk",
+      "source_evidence_url": "https://armaf.com/products/miss-armaf-catwalk"
+    },
+    {
+      "product_id": "SH-ARMAF-e2c21b5a",
+      "variant_id": "SHV-SH-ARMAF-e2c21b5a-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Tag Him Uomo Rosso 100 ml",
+        "Armaf Tag Him Uomo Rosso 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/tag-him-uomo-rosso-red",
+      "source_evidence_url": "https://armaf.com/products/tag-him-uomo-rosso-red"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-WILD-ONE",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-WILD-ONE-60-000",
+      "size_ml": 60,
+      "aliases": [
+        "Odyssey Wild One 60 ml",
+        "Armaf Odyssey Wild One 60ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-wild-one",
+      "source_evidence_url": "https://armaf.com/products/odyssey-wild-one"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-WILD-ONE",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-WILD-ONE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Odyssey Wild One 100 ml",
+        "Armaf Odyssey Wild One 100ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/odyssey-wild-one",
+      "source_evidence_url": "https://armaf.com/products/odyssey-wild-one"
     }
   ]
 }
