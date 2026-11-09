@@ -38,7 +38,7 @@ MINIMUM_BRAND_COUNTS = {
     "Games of Spades": 32,
     "Maison Alhambra": 214,
     "Mykonos": 72,
-    "Armaf": 197,
+    "Armaf": 201,
 }
 
 
@@ -1606,6 +1606,49 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matches[0].get("gtin"), gtin)
                 self.assertEqual(matches[0].get("source_url"), source)
                 self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
+    def test_armaf_odyssey_and_scentasy_official_detail_pages_are_verified(self):
+        expected = {
+            "Odyssey Tyrant": (
+                "https://armaf.com/products/odyssey-tyrant-special-edition",
+                "Eau de Parfum", [60, 100],
+            ),
+            "Odyssey Dubai Chocolate": (
+                "https://armaf.com/products/odyssey-dubai-chocolat-copy",
+                "Eau de Parfum", [100],
+            ),
+            "Scentasy Noir De Peche": (
+                "https://armaf.com/products/scentasy-noir-de-peche", None, [],
+            ),
+            "Odyssey Soda Pop": (
+                "https://armaf.com/products/odyssey-soda-pop", None, [],
+            ),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, concentration, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if concentration:
+                    self.assertEqual(row.get("concentration"), concentration)
+                for size in sizes:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_url"), source)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
 if __name__ == "__main__":
