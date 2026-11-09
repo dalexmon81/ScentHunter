@@ -491,3 +491,24 @@ Cotton Candy Musk has an individual product page and EDP identity, but the page 
 The two size-bearing records **Sweet Heaven 20ML** and **Sweet Heaven Extreme 20ML** were normalized to the canonical product names **Sweet Heaven** and **Sweet Heaven Extreme**, with the 20 ml format represented as a variant alongside the 100 ml full-size variant.
 
 Gulf Orchid now contains **13 distinct fragrance identities and 14 structured EDP variants**. The product catalog total falls by ten because collection labels and cross-brand duplicates were removed; no actual Gulf Orchid or Maison Asrar fragrance was lost.
+
+
+### Gulf Orchid: second official storefront page (9 November 2026)
+
+The second page of the brand-owned Gulf Orchid perfume collection contains 15 listings. Two are the already-catalogued **Sweet Heaven** and **Sweet Heaven Extreme**; the other 13 are new fragrance identities and were added from their individual official product pages:
+
+- Angel Musk — 60 ml EDP
+- Cloud 9 — 100 ml EDP
+- Naughty Vanilla — 100 ml EDP
+- Yacht Club — 100 ml EDP
+- Sweet Heaven Cherry — 20 ml EDP
+- Candy Bite — 100 ml EDP
+- Sweet Cherry Kiss — 100 ml EDP
+- Creamy Pistachio — 100 ml EDP
+- Marshmallow — 100 ml EDP
+- Sweet Heaven Ice — 100 ml EDP
+- Crème Caramel — 100 ml EDP
+- Mysterious Tahara Musk — 60 ml EDP
+- Pomegranate Musk — 60 ml EDP
+
+Each new identity has a direct official product URL and one size-specific EDP variant. The Gulf Orchid catalog now contains **26 verified fragrance identities and 27 variants** (14 from the first pass plus 13 newly added). The 8 collection labels and 2 Maison Asrar retailer duplicates remain excluded.
