@@ -36,7 +36,7 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 107,
     "Games of Spades": 32,
-    "Maison Alhambra": 207,
+    "Maison Alhambra": 214,
     "Mykonos": 72,
     "Armaf": 191,
 }
@@ -782,6 +782,45 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("source_evidence_url"), source)
         self.assertNotIn("concentration", product)
         self.assertNotIn("concentration", matches[0])
+
+
+    def test_maison_alhambra_new_in_official_pages_and_gtin_variants_are_verified(self):
+        expected = {
+            "Jubilant Vitality": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-jubilant-vitality-eau-de-parfum-for-everyone", 100, "6290362343530"),
+            "In Perfect Harmony": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-in-perfect-harmony-eau-de-parfum-for-everyone", 60, "6290362340676"),
+            "Sceptre Desert": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-sceptre-desert-eau-de-parfum-for-everyone", 100, "6290362340621"),
+            "Eclat De Lune": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-eclat-de-lune-eau-de-parfum-for-women", 100, "6290360599212"),
+            "Lava": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-lava-eau-de-parfum-for-everyone", 100, "6290360599267"),
+            "La Charmante": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-la-charmante-eau-de-parfum-for-everyone", 100, "6290362340164"),
+            "La Charmante Eclatant": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-la-charmante-eclatant-eau-de-parfum-for-everyone", 100, "6290362340171"),
+            "Your Touch Santal": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-your-touch-santal-eau-de-parfum-for-everyone", 100, "6290362347989"),
+            "Victoria Flower Rosa Lilium": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-victoria-flower-rosa-lilium-eau-de-parfum-for-women", 100, "6290362340966"),
+            "Victorioso Heroic": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men", 100, "6290362340584"),
+            "Rose Origami": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone", 100, "6290362340928"),
+            "Opera Rouge": ("https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone", 100, "6290362340881"),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size, gtin) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
+                self.assertIn(gtin, row.get("gtins", []))
+                matches = [
+                    variant for variant in variants
+                    if variant.get("product_id") == row.get("product_id")
+                    and variant.get("size_ml") == size
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("gtin"), gtin)
+                self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
 if __name__ == "__main__":
