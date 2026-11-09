@@ -35635,6 +35635,84 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Canyon",
+      "name": "Atlas Canyon",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Canyon",
+      "aliases": [
+        "Atlas Canyon",
+        "Lattafa Atlas Canyon"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-canyon/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-canyon/",
+      "formats_ml": [
+        55
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Atlas Glacial Valley",
+      "name": "Atlas Glacial Valley",
+      "family_id": "lattafa_catalog",
+      "family_name": "Atlas Glacial Valley",
+      "aliases": [
+        "Atlas Glacial Valley",
+        "Lattafa Atlas Glacial Valley"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/atlas-glacial-valley/",
+      "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/",
+      "formats_ml": [
+        55
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Raghad",
+      "name": "Raghad",
+      "family_id": "lattafa_catalog",
+      "family_name": "Raghad",
+      "aliases": [
+        "Raghad",
+        "Lattafa Raghad"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raghad/",
+      "source_evidence_url": "https://lattafa.com/product/raghad/",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-LATTAFA-RAMAAD-AL-OUD-20261109",
+      "brand": "Lattafa",
+      "brand_name": "Lattafa",
+      "canonical_name": "Ramaad Al Oud",
+      "name": "Ramaad Al Oud",
+      "family_id": "lattafa_catalog",
+      "family_name": "Ramaad Al Oud",
+      "aliases": [
+        "Ramaad Al Oud",
+        "Ramad Al Oud",
+        "Lattafa Ramaad Al Oud",
+        "Lattafa Ramad Al Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ramaad-al-oud/",
+      "source_evidence_url": "https://lattafa.com/product/ramaad-al-oud/",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -41132,6 +41210,46 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/rich-santal-emir-factory-edition",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/rich-santal-emir-factory-edition"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-CANYON-20261109",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Canyon 55 ml",
+        "Lattafa Atlas Canyon 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-CANYON-20261109-55-000",
+      "source_evidence_url": "https://lattafa.com/product/atlas-canyon/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ATLAS-GLACIAL-VALLEY-20261109",
+      "size_ml": 55,
+      "aliases": [
+        "Atlas Glacial Valley 55 ml",
+        "Lattafa Atlas Glacial Valley 55 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ATLAS-GLACIAL-VALLEY-20261109-55-000",
+      "source_evidence_url": "https://lattafa.com/product/atlas-glacial-valley/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAGHAD-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Raghad 100 ml",
+        "Lattafa Raghad 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-RAGHAD-20261109-100-000",
+      "source_evidence_url": "https://lattafa.com/product/raghad/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RAMAAD-AL-OUD-20261109",
+      "size_ml": 100,
+      "aliases": [
+        "Ramaad Al Oud 100 ml",
+        "Lattafa Ramaad Al Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-RAMAAD-AL-OUD-20261109-100-000",
+      "source_evidence_url": "https://lattafa.com/product/ramaad-al-oud/"
     }
   ]
 }
