@@ -11989,6 +11989,96 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Khamrah Mira",
+          "aliases": [
+            "Khamrah Mira",
+            "Lattafa Khamrah Mira"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Give Me Gourmand Matcha Swirl",
+          "aliases": [
+            "Give Me Gourmand Matcha Swirl",
+            "Lattafa Give Me Gourmand Matcha Swirl"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Beyond Precious",
+          "aliases": [
+            "Beyond Precious",
+            "Lattafa Beyond Precious"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Atlas Canyon",
+          "aliases": [
+            "Atlas Canyon",
+            "Lattafa Atlas Canyon"
+          ],
+          "formats_ml": [
+            55
+          ]
+        },
+        {
+          "canonical_name": "Give Me Gourmand Harlequin Cream",
+          "aliases": [
+            "Give Me Gourmand Harlequin Cream",
+            "Lattafa Give Me Gourmand Harlequin Cream"
+          ],
+          "formats_ml": [
+            75
+          ]
+        },
+        {
+          "canonical_name": "Atlas Glacial Valley",
+          "aliases": [
+            "Atlas Glacial Valley",
+            "Lattafa Atlas Glacial Valley"
+          ],
+          "formats_ml": [
+            55
+          ]
+        },
+        {
+          "canonical_name": "Badee Al Oud Amethyst Fusion",
+          "aliases": [
+            "Badee Al Oud Amethyst Fusion",
+            "Lattafa Badee Al Oud Amethyst Fusion"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Raghad",
+          "aliases": [
+            "Raghad",
+            "Lattafa Raghad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Petra Viola",
+          "aliases": [
+            "Petra Viola",
+            "Lattafa Petra Viola"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
