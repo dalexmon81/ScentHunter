@@ -440,8 +440,59 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
         conn.close()
     return len(offers)
 
+def _require_authorized_feed_import() -> None:
+    """Fail closed on canonical retailer consent before any legacy feed access/write."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from app.db import make_session_factory
+    from app.models import Store, StoreAuthorization
+
+    factory = make_session_factory()
+    try:
+        now = datetime.now(timezone.utc)
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == STORE_KEY))
+            if store is None or store.status != "active":
+                raise FeedImportError("notino_feed_store_not_active")
+            grants = session.scalars(
+                select(StoreAuthorization)
+                .where(
+                    StoreAuthorization.store_id == store.id,
+                    StoreAuthorization.status == "approved",
+                    StoreAuthorization.collection_method.in_(("feed", "affiliate_feed")),
+                    StoreAuthorization.approved_at.is_not(None),
+                    StoreAuthorization.revoked_at.is_(None),
+                    (StoreAuthorization.valid_from.is_(None) | (StoreAuthorization.valid_from <= now)),
+                    (StoreAuthorization.expires_at.is_(None) | (StoreAuthorization.expires_at > now)),
+                )
+                .order_by(StoreAuthorization.approved_at.desc(), StoreAuthorization.created_at.desc())
+            ).all()
+            for grant in grants:
+                scopes = set(grant.scopes or [])
+                evidence = urllib.parse.urlparse(str(grant.evidence_url or ""))
+                if (
+                    {"product_discovery", "offer_data"}.issubset(scopes)
+                    and str(grant.authorization_reference or "").strip()
+                    and evidence.scheme == "https"
+                    and bool(evidence.netloc)
+                ):
+                    return
+            raise FeedImportError("notino_feed_authorization_required")
+    except FeedImportError:
+        raise
+    except Exception:
+        # Missing canonical DB/configuration is never permission to fall back
+        # to the legacy catalog database or to contact the affiliate feed.
+        raise FeedImportError("notino_feed_authorization_unavailable") from None
+    finally:
+        factory.kw["bind"].dispose()
+
+
 def import_feed_bytes(data: bytes) -> dict:
-    """Parse completely before opening the DB so malformed feeds cannot affect offers."""
+    """Import feed bytes only after canonical authorization has been verified."""
+    _require_authorized_feed_import()
     offers = parse_feed(data)
     count = _persist_offers(offers)
     LOGGER.info("Notino authorized feed import completed: offers=%d", count)
@@ -454,13 +505,22 @@ def import_feed_bytes(data: bytes) -> dict:
 
 
 def import_configured_feed() -> dict:
-    """Fetch/import from env config. Diagnostics deliberately omit URL and credentials."""
+    """Fetch/import only after canonical approval; diagnostics omit credentials."""
+    _require_authorized_feed_import()
     payload = _fetch_feed()
     return import_feed_bytes(payload)
 
 
 def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
-    """Read fresh feed-backed Notino variants for normal search without site scraping."""
+    """Read fresh feed-backed variants only while written feed permission is current."""
+    try:
+        _require_authorized_feed_import()
+    except FeedImportError as exc:
+        return {
+            "status": "unavailable", "verified": False, "results": [],
+            "error": str(exc),
+            "details": {"source": "cj_viv_authorized_xml", "authorization_required": True},
+        }
     query = re.sub(r"\s+", " ", str(query or "")).strip()
     if not query:
         return {"status": "success", "verified": True, "results": [], "error": None,

@@ -17,7 +17,18 @@ def test_phase2_declares_all_core_tables():
         "offers", "price_history", "match_audit", "ingestion_runs",
         "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
         "canonical_identity_reviews", "ingestion_artifacts", "ingestion_dead_letters",
+        "store_authorizations", "store_shipping_rates",
+        "user_accounts", "user_delivery_destinations", "user_sessions",
     }
+
+def test_account_and_delivery_destination_are_distinct_schema_entities():
+    from app.models import UserAccount, UserDeliveryDestination
+    assert "password_hash" in UserAccount.__table__.columns
+    assert "password" not in UserAccount.__table__.columns
+    assert "residence_country_code" in UserAccount.__table__.columns
+    assert "country_code" in UserDeliveryDestination.__table__.columns
+    assert "postal_code" in UserDeliveryDestination.__table__.columns
+
 
 def test_canonical_identity_is_separate_from_retailer_offers():
     assert "canonical_key" in ProductVariant.__table__.columns

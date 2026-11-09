@@ -23,6 +23,7 @@ from app.models import (
     Offer,
     ProductVariant,
     Store,
+    StoreAuthorization,
 )
 
 router = APIRouter(prefix="/catalog/admin", tags=["catalog-admin"])
@@ -293,6 +294,46 @@ def catalog_admin_dead_letters(
                     }
                     for row in rows
                 ],
+            }
+    finally:
+        factory.kw["bind"].dispose()
+
+
+@router.get("/authorizations")
+def catalog_admin_store_authorizations(
+    _authorized: bool = Depends(require_admin_token),
+):
+    """Show retailer permission state and scope without enabling collection."""
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            rows = session.execute(
+                select(Store, StoreAuthorization)
+                .outerjoin(StoreAuthorization, StoreAuthorization.store_id == Store.id)
+                .order_by(Store.slug.asc(), StoreAuthorization.created_at.desc())
+            ).all()
+            items = []
+            for store, grant in rows:
+                items.append({
+                    "store": store.slug,
+                    "store_name": store.name,
+                    "store_status": store.status,
+                    "authorization_id": str(grant.id) if grant else None,
+                    "authorization_status": grant.status if grant else "missing",
+                    "collection_method": grant.collection_method if grant else None,
+                    "scopes": grant.scopes or [] if grant else [],
+                    "authorization_reference": grant.authorization_reference if grant else None,
+                    "evidence_url": grant.evidence_url if grant else None,
+                    "approved_by": grant.approved_by if grant else None,
+                    "approved_at": grant.approved_at.isoformat() if grant and grant.approved_at else None,
+                    "valid_from": grant.valid_from.isoformat() if grant and grant.valid_from else None,
+                    "expires_at": grant.expires_at.isoformat() if grant and grant.expires_at else None,
+                    "revoked_at": grant.revoked_at.isoformat() if grant and grant.revoked_at else None,
+                })
+            return {
+                "count": len(items),
+                "collection_enabled_by_this_endpoint": False,
+                "items": items,
             }
     finally:
         factory.kw["bind"].dispose()

@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.connectors.base import OfferRecord
-from app.models import Base, IngestionRaw, IngestionRun, Store
+from app.models import Base, IngestionRaw, IngestionRun, Store, StoreAuthorization
 from app.workers.connector_ingestion import run_connector_once
 
 
@@ -66,7 +66,15 @@ def make_session_factory():
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
-        session.add(Store(name="Fake Store", slug="fake-store", currency="EUR", status="active"))
+        store = Store(name="Fake Store", slug="fake-store", currency="EUR", status="active")
+        session.add(store)
+        session.flush()
+        session.add(StoreAuthorization(
+            store_id=store.id, status="approved", collection_method="other",
+            scopes=["product_discovery", "offer_data"],
+            authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.commit()
     return factory
 
@@ -197,7 +205,7 @@ def test_notino_fixture_matches_and_promotes_exact_dior_sauvage_edp_100ml():
     engine.dispose()
 
 
-def test_notino_live_preflight_requires_exact_and_explicitly_available_candidate():
+def test_notino_live_preflight_requires_exact_gtin_and_explicitly_available_candidate():
     import importlib.util
     from pathlib import Path
 
@@ -208,15 +216,15 @@ def test_notino_live_preflight_requires_exact_and_explicitly_available_candidate
 
     record = OfferRecord(
         store="notino",
-        external_product_id="fixture-notino-sauvage-edp-100",
-        brand="Dior",
-        fragrance="sauvage",
+        external_product_id="fixture-notino-liquid-brun-edp-100",
+        brand="French Avenue",
+        fragrance="liquid brun",
         concentration="edp",
         size_ml=100,
-        gtin=None,
-        title="Dior Sauvage Eau de Parfum 100 ml",
-        url="https://www.notino.fr/dior/sauvage-eau-de-parfum/",
-        price=Decimal("99.90"),
+        gtin="6290360375694",
+        title="French Avenue Liquid Brun Eau de Parfum 100 ml",
+        url="https://www.notino.fr/french-avenue/liquid-brun/",
+        price=Decimal("29.00"),
         currency="EUR",
         availability="in_stock",
         captured_at=datetime.now(timezone.utc).isoformat(),
@@ -225,13 +233,24 @@ def test_notino_live_preflight_requires_exact_and_explicitly_available_candidate
     report = module.summarize_candidates([record])
     assert report["status"] == "ready_for_staging_review"
     assert report["ready_for_staging_review"] is True
+    assert report["candidates"][0]["gtin_match"] is True
     assert report["database_written"] is False
     assert report["offer_published"] is False
 
+    missing_gtin = OfferRecord(**{**record.__dict__, "gtin": None})
+    blocked_gtin = module.summarize_candidates([missing_gtin])
+    assert blocked_gtin["status"] == "candidate_requires_gtin_review"
+    assert blocked_gtin["ready_for_staging_review"] is False
+
+    wrong_gtin = OfferRecord(**{**record.__dict__, "gtin": "0000000000000"})
+    blocked_mismatch = module.summarize_candidates([wrong_gtin])
+    assert blocked_mismatch["status"] == "candidate_gtin_mismatch"
+    assert blocked_mismatch["ready_for_staging_review"] is False
+
     unknown = OfferRecord(**{**record.__dict__, "availability": "unknown"})
-    blocked = module.summarize_candidates([unknown])
-    assert blocked["status"] == "candidate_requires_availability_review"
-    assert blocked["ready_for_staging_review"] is False
+    blocked_availability = module.summarize_candidates([unknown])
+    assert blocked_availability["status"] == "candidate_requires_availability_review"
+    assert blocked_availability["ready_for_staging_review"] is False
 
     wrong_concentration = OfferRecord(**{**record.__dict__, "concentration": "edt"})
     unmatched = module.summarize_candidates([wrong_concentration])
@@ -344,7 +363,15 @@ def test_discovery_failure_marks_its_own_run_without_touching_another_running_ru
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
-        session.add(Store(name="Fake Store", slug="fake-store", currency="EUR", status="active"))
+        store = Store(name="Fake Store", slug="fake-store", currency="EUR", status="active")
+        session.add(store)
+        session.flush()
+        session.add(StoreAuthorization(
+            store_id=store.id, status="approved", collection_method="other",
+            scopes=["product_discovery", "offer_data"],
+            authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.commit()
     with factory() as session:
         store = session.scalar(select(Store).where(Store.slug == "fake-store"))

@@ -15,6 +15,7 @@ from .notino import NotinoAffiliateFeedConnector
 from .orioudh import OrioudhConnector
 from .parfumcity import ParfumCityConnector
 from .perfumemarket import PerfumeMarketConnector
+from .perfumesmem import PerfumesMemConnector
 from .parfumzentrum import ParfumzentrumConnector
 from .sabina import SabinaConnector
 
@@ -28,6 +29,7 @@ __all__ = [
     "OrioudhConnector",
     "ParfumCityConnector",
     "PerfumeMarketConnector",
+    "PerfumesMemConnector",
     "OfferRecord",
     "RateLimiter",
     "RetryPolicy",

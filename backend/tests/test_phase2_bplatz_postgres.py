@@ -7,6 +7,7 @@ import subprocess
 import sys
 import unittest
 from decimal import Decimal
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import create_engine, delete, func, select
@@ -17,7 +18,7 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 
 from app.models import (  # noqa: E402
-    Base, Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap,
+    Base, Brand, Fragrance, ProductVariant, Store, StoreAuthorization, LegacyProductIdMap,
     LegacyVariantIdMap, IngestionRaw, Offer, PriceHistory, MatchAudit,
 )
 from app.services.bplatz_phase2_adapter import persist_bplatz_record  # noqa: E402
@@ -198,6 +199,17 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
             cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
         )
         assert seeded.returncode == 0, seeded.stdout + "\\n" + seeded.stderr
+        # This isolated integration fixture represents an explicitly approved
+        # retailer grant; no production or staging authorization is created.
+        with Session(engine) as session, session.begin():
+            store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            assert store is not None
+            session.add(StoreAuthorization(
+                store_id=store.id, status="approved", collection_method="other",
+                scopes=["offer_data", "price_stock"],
+                authorization_reference="isolated-postgres-fixture-consent",
+                approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+            ))
         _configure_fixture_store_ttl(engine)
 
         fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"

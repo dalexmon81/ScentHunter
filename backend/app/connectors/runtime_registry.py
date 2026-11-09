@@ -1,9 +1,11 @@
-"""Runtime construction for the nine universal store connectors.
+"""Runtime construction for the ten registered store connectors.
 
 Discovery terms are supplied as JSON in SCENTHUNTER_DISCOVERY_TERMS_JSON,
 for example {"deloox":["Dior Sauvage 100 ml"],"sabina":["Chanel No 5"]}.
-No live discovery is attempted for a store without configured terms, except
-Notino where the authorized affiliate feed is its discovery source.
+No live discovery is attempted for a store without configured terms. Notino's
+CJ/VIV feed adapter is registered but is not evidence of an approved program,
+feed entitlement, or working credentials. Do not enable its store until the
+retailer/affiliate authorization and feed access have been verified.
 """
 from __future__ import annotations
 
@@ -13,7 +15,7 @@ from typing import Any
 
 from app.connectors import (
     BplatzConnector, DelooxConnector, EasycosmeticConnector,
-    NotinoAffiliateFeedConnector, OrioudhConnector, ParfumCityConnector,
+    NotinoAffiliateFeedConnector, OrioudhConnector, ParfumCityConnector, PerfumesMemConnector,
     PerfumeMarketConnector, ParfumzentrumConnector, SabinaConnector,
 )
 
@@ -43,6 +45,9 @@ def build_connectors() -> dict[str, Any]:
         "parfumcity": ParfumCityConnector(terms.get("parfumcity", ())),
         "bplatz": BplatzConnector(terms.get("bplatz", ())),
         "orioudh": OrioudhConnector(terms.get("orioudh", ())),
+        # Published terms prohibit crawling/extraction and commercial reuse;
+        # this connector remains fail-closed until written permission is recorded.
+        "perfumesmem": PerfumesMemConnector(),
     }
 
 def get_connector(store_key: str):

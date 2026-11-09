@@ -1,8 +1,11 @@
-"""Notino adapter backed by the authorized CJ/VIV XML affiliate feed.
+"""Notino adapter for a CJ/VIV XML affiliate feed.
 
-This adapter is deliberately side-effect free: it parses feed evidence into the
-universal connector contract and never persists to the legacy or canonical DB.
-The worker/orchestrator owns persistence and quarantine policy.
+The adapter requires verified program/feed entitlement and valid credentials
+before any live fetch. Its presence in the registry does not establish that
+authorization has been granted. It is deliberately side-effect free: it parses
+feed evidence into the universal connector contract and never persists to the
+legacy or canonical DB. The worker/orchestrator owns persistence and quarantine
+policy.
 """
 from __future__ import annotations
 

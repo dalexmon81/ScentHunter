@@ -1,0 +1,61 @@
+name: Catalog-first staging API contract
+
+on:
+  pull_request:
+    branches:
+      - phase10/ops-phase11-integrated
+    paths:
+      - "backend/catalog_first_api.py"
+      - "backend/start_api.sh"
+      - "backend/Dockerfile.worker"
+      - "backend/app/api/catalog_search.py"
+      - "backend/app/services/catalog_search.py"
+      - "backend/tests/test_catalog_first_api.py"
+      - "fly.staging-catalog.toml"
+      - ".github/workflows/catalog-first-staging-api-ci.yml"
+
+jobs:
+  postgres-catalog-api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: catalog_api
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: catalog_api_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U catalog_api -d catalog_api_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://catalog_api:ci_only_password@127.0.0.1:5432/catalog_api_test
+      SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest
+      - name: Apply canonical catalog migrations
+        run: alembic -c backend/alembic.ini upgrade head
+      - name: Seed canonical product identities
+        run: python backend/scripts/seed_catalog.py --apply
+      - name: Test staging API, frontend contract and PostgreSQL search
+        run: |
+          pytest -q \
+            backend/tests/test_catalog_first_api.py \
+            backend/tests/test_catalog_search_api.py \
+            backend/tests/test_catalog_search_fail_closed.py \
+            backend/tests/test_db_postgresql_policy.py
+      - name: Compile isolated API entrypoint
+        run: python -m py_compile backend/catalog_first_api.py

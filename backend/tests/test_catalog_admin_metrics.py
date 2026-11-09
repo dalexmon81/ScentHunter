@@ -17,6 +17,7 @@ from app.models import (
     MatchAudit,
     Offer,
     Store,
+    StoreAuthorization,
 )
 
 
@@ -212,3 +213,97 @@ def test_admin_can_configure_store_offer_ttl(monkeypatch, tmp_path):
         assert missing.status_code == 404
     finally:
         engine.dispose()
+
+
+
+def test_store_authorizations_endpoint_is_read_only_and_reports_missing_pending_and_approved(monkeypatch, tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'catalog-authorizations.db'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+
+    with factory.begin() as session:
+        missing = Store(name="Missing Grant", slug="missing-grant", status="active")
+        pending = Store(name="Pending Grant", slug="pending-grant", status="inactive")
+        approved = Store(name="Approved Grant", slug="approved-grant", status="active")
+        session.add_all([missing, pending, approved])
+        session.flush()
+        session.add_all([
+            StoreAuthorization(
+                store_id=pending.id,
+                status="pending",
+                collection_method="affiliate_feed",
+                scopes=["product_discovery"],
+                authorization_reference="application-123",
+                evidence_url="https://example.invalid/pending-evidence",
+            ),
+            StoreAuthorization(
+                store_id=approved.id,
+                status="approved",
+                collection_method="feed",
+                scopes=["product_discovery", "offer_data"],
+                authorization_reference="agreement-456",
+                evidence_url="https://example.invalid/approved-evidence",
+                approved_by="operator@example.invalid",
+                approved_at=datetime.now(timezone.utc),
+            ),
+        ])
+
+    monkeypatch.setattr(admin_catalog, "make_session_factory", lambda: factory)
+    monkeypatch.setenv("SCENTHUNTER_ADMIN_TOKEN", "ci-admin-secret")
+    client = _client()
+    headers = {"X-ScentHunter-Admin-Token": "ci-admin-secret"}
+
+    try:
+        response = client.get("/catalog/admin/authorizations", headers=headers)
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["count"] == 3
+        assert payload["collection_enabled_by_this_endpoint"] is False
+        items = {item["store"]: item for item in payload["items"]}
+
+        assert items["missing-grant"]["authorization_status"] == "missing"
+        assert items["missing-grant"]["authorization_id"] is None
+        assert items["missing-grant"]["scopes"] == []
+
+        assert items["pending-grant"]["authorization_status"] == "pending"
+        assert items["pending-grant"]["scopes"] == ["product_discovery"]
+        assert items["pending-grant"]["approved_at"] is None
+
+        assert items["approved-grant"]["authorization_status"] == "approved"
+        assert items["approved-grant"]["scopes"] == ["product_discovery", "offer_data"]
+        assert items["approved-grant"]["authorization_reference"] == "agreement-456"
+        assert items["approved-grant"]["approved_by"] == "operator@example.invalid"
+        assert items["approved-grant"]["approved_at"] is not None
+
+        # Reading the audit endpoint must not change a store or grant state.
+        with factory() as session:
+            assert session.scalar(
+                select(Store).where(Store.slug == "missing-grant")
+            ).status == "active"
+            assert session.scalar(
+                select(StoreAuthorization).where(
+                    StoreAuthorization.authorization_reference == "application-123"
+                )
+            ).status == "pending"
+            assert session.scalar(
+                select(StoreAuthorization).where(
+                    StoreAuthorization.authorization_reference == "agreement-456"
+                )
+            ).status == "approved"
+    finally:
+        engine.dispose()
+
+
+def test_store_authorizations_endpoint_uses_admin_token_guard(monkeypatch):
+    monkeypatch.delenv("SCENTHUNTER_ADMIN_TOKEN", raising=False)
+    disabled = _client().get("/catalog/admin/authorizations")
+    assert disabled.status_code == 503
+    assert disabled.json()["detail"] == "catalog_admin_disabled"
+
+    monkeypatch.setenv("SCENTHUNTER_ADMIN_TOKEN", "ci-admin-secret")
+    denied = _client().get(
+        "/catalog/admin/authorizations",
+        headers={"X-ScentHunter-Admin-Token": "wrong"},
+    )
+    assert denied.status_code == 401
+    assert denied.json()["detail"] == "invalid_admin_token"

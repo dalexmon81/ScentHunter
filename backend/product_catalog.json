@@ -29531,7 +29531,9 @@
       "variant_id": "VAR-f87146c82d167f4c",
       "product_id": "SH-0030",
       "size_ml": 100,
-      "gtins": [],
+      "gtins": [
+        "6290360375694"
+      ],
       "mpns": [],
       "aliases": [
         "French Avenue Liquid Brun",
@@ -29539,7 +29541,8 @@
         "Liquid Brun Eau de Parfum",
         "Liquid Brun 100 ML"
       ],
-      "store_mappings": []
+      "store_mappings": [],
+      "source_evidence_url": "https://www.french-avenue-parfum.com/produit/eau-de-parfum-liquid-brun/"
     },
     {
       "variant_id": "VAR-f5aff76b4bb5de8a",
