@@ -3719,7 +3719,11 @@
           "aliases": [
             "Bayn Al Asrar",
             "Paris Corner Bayn Al Asrar"
-          ]
+          ],
+          "formats_ml": [
+            80
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Blackberry Wish",
@@ -3754,7 +3758,11 @@
           "aliases": [
             "Caramel Bash",
             "Paris Corner Caramel Bash"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Cedrat Essence Emir",
@@ -3857,7 +3865,11 @@
           "aliases": [
             "Cosmic Giardino",
             "Paris Corner Cosmic Giardino"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Cosmopolitan Dubai",
@@ -3913,7 +3925,11 @@
           "aliases": [
             "December Rose",
             "Paris Corner December Rose"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "December Vanilla",
