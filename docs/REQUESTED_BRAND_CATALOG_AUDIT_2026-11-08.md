@@ -251,3 +251,28 @@ Verified identities:
 The inspected product-page titles support the recorded product names, stated concentrations and listed 50/100 ml formats. No additional variants were created in this pass, and no prices or availability were copied. Existing 15 ml travel-size variants continue to retain the separate travel-size selector page as their own `source_evidence_url`; concentration was not inferred from that generic selector.
 
 A regression test checks the 15 individual URLs, source status, concentrations, size variants and exactly one canonical row per identity. The remaining 57 Mykonos identities still require individual-page review; this is a first batch, not a claim of full brand completeness.
+
+
+### Mykonos: second 15 current-assortment identities upgraded to individual official-page evidence (9 November 2026)
+
+The second page of the official all-products collection was reconciled against the existing canonical seed. Fifteen existing identities were upgraded in place to their own brand-owned detail pages. No canonical product was appended and no product ID was changed:
+
+- Enchanted — https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml (50 ml and 100 ml)
+- Hawaiian Crush — https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml (50 ml)
+- Imperium — https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml (100 ml)
+- Inception — https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml (50 ml and 100 ml)
+- Inferno — https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml (50 ml and 100 ml)
+- Luminos — https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml (50 ml)
+- Marbella — https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml (50 ml and 100 ml)
+- Matcha Latte — https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml (50 ml)
+- Mayfair — https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml (50 ml and 100 ml)
+- Milk Drops — https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml (50 ml)
+- Monaco Royale — https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml (50 ml and 100 ml)
+- Moroccan Vanilla — https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml (100 ml)
+- Musk Aura — https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml (100 ml)
+- Nautilus — https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml (100 ml)
+- On The Rocks — https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml (100 ml)
+
+All 15 official detail pages identify these products as Extrait de Parfum and state the size or size selector. The existing variant rows for the sizes displayed on the respective product pages now point to the corresponding individual detail page as `source_evidence_url`. Pre-existing 15 ml travel-size variants retain their separate selector-page evidence and are not assigned concentration from these detail pages.
+
+A second regression test checks the 15 product URLs, source status, concentration, one canonical identity per name, and the corresponding explicit size variants. Together with the first batch, 30 of the 54 products in the current official Mykonos all-products collection now have individual detail-page provenance. This is not yet a complete audit of every remaining identity or of all legacy/region-specific products.
