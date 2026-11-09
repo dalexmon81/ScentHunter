@@ -22,7 +22,7 @@ MINIMUM_BRAND_COUNTS = {
     "Armaf": 190,
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
-    "Gulf Orchid": 70,
+    "Gulf Orchid": 75,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 114,
