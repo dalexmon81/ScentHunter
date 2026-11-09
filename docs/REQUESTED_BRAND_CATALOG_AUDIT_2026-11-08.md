@@ -225,3 +225,152 @@ Three additional standalone fragrances were added from individual official produ
 - **Rouge Extrait** — Extrait de Parfum; 100 ml, 30 ml and 10 ml
 
 Gift sets and coffrets remain excluded as standalone perfume identities. Other Jo Milano Paris lines outside the Games of Spades family were not added in this focused pass.
+
+
+### Mykonos: first 15 current assortment items upgraded to individual official-page evidence (9 November 2026)
+
+The official Mykonos all-products collection currently reports 54 products. The first 15 collection entries were opened individually and reconciled against the existing canonical seed. All 15 already existed as canonical identities, so their product IDs and variant rows were preserved. Their `source_url` values now point to the matching first-party product-detail pages and `identity_status` is upgraded from `source_listed_name` to `source_verified_name`.
+
+Verified identities:
+- Aphrodite — https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml
+- Baby Love — https://officialmykonos.com/products/mykonos-baby-love-edp-50ml
+- Black Opera — https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml
+- Bonfire Vanilla — https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml
+- Cafe Drops — https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml
+- California Blue — https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml
+- California Club — https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml
+- California — https://officialmykonos.com/products/mykonos-california-signature-50ml
+- Caramel Fudge Cookie — https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml
+- Coconut Dreams — https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml
+- Conquer — https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml
+- Constantine — https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml
+- Crimson — https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml
+- Dark Secret — https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml
+- Dreamscape — https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml
+
+The inspected product-page titles support the recorded product names, stated concentrations and listed 50/100 ml formats. No additional variants were created in this pass, and no prices or availability were copied. Existing 15 ml travel-size variants continue to retain the separate travel-size selector page as their own `source_evidence_url`; concentration was not inferred from that generic selector.
+
+A regression test checks the 15 individual URLs, source status, concentrations, size variants and exactly one canonical row per identity. The remaining 57 Mykonos identities still require individual-page review; this is a first batch, not a claim of full brand completeness.
+
+
+### Mykonos: second 15 current-assortment identities upgraded to individual official-page evidence (9 November 2026)
+
+The second page of the official all-products collection was reconciled against the existing canonical seed. Fifteen existing identities were upgraded in place to their own brand-owned detail pages. No canonical product was appended and no product ID was changed:
+
+- Enchanted — https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml (50 ml and 100 ml)
+- Hawaiian Crush — https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml (50 ml)
+- Imperium — https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml (100 ml)
+- Inception — https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml (50 ml and 100 ml)
+- Inferno — https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml (50 ml and 100 ml)
+- Luminos — https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml (50 ml)
+- Marbella — https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml (50 ml and 100 ml)
+- Matcha Latte — https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml (50 ml)
+- Mayfair — https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml (50 ml and 100 ml)
+- Milk Drops — https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml (50 ml)
+- Monaco Royale — https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml (50 ml and 100 ml)
+- Moroccan Vanilla — https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml (100 ml)
+- Musk Aura — https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml (100 ml)
+- Nautilus — https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml (100 ml)
+- On The Rocks — https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml (100 ml)
+
+All 15 official detail pages identify these products as Extrait de Parfum and state the size or size selector. The existing variant rows for the sizes displayed on the respective product pages now point to the corresponding individual detail page as `source_evidence_url`. Pre-existing 15 ml travel-size variants retain their separate selector-page evidence and are not assigned concentration from these detail pages.
+
+A second regression test checks the 15 product URLs, source status, concentration, one canonical identity per name, and the corresponding explicit size variants. Together with the first batch, 30 of the 54 products in the current official Mykonos all-products collection now have individual detail-page provenance. This is not yet a complete audit of every remaining identity or of all legacy/region-specific products.
+
+
+### Mykonos: final current-collection pages reconciled to individual official product pages (9 November 2026)
+
+The third and fourth pages of the brand-owned 54-item all-products collection were opened and reconciled against the seed. The 23 standalone perfume identities below already existed in the catalog and were upgraded in place; no canonical product was duplicated.
+
+- Paradise — https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+- Penthouse — https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Pink Beach — https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml (Eau de Parfum, 50 ml)
+- Pink Drops — https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+- Reflection Elixir — https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+- Reflection — https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Royal Ispahan — https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Satin Blanc — https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Senja — https://officialmykonos.com/products/mykonos-senja-edp-50ml (official page title states Extrait de Parfum, 50 ml; the legacy URL slug contains “edp” but is not used to override the displayed product title)
+- Silent Whisper — https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Slow Living — https://officialmykonos.com/products/mykonos-slow-living-edp-50ml (50 ml Eau de Parfum and 100 ml Extrait de Parfum)
+- Sorrento — https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Sparkling Rosé — https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Stilettos — https://officialmykonos.com/products/mykonos-stilettos-edp-50ml (Eau de Parfum, 50 ml)
+- Untamed — https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Utopia — https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml (Extrait de Parfum, 100 ml)
+- Vanilla Clouds — https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1 (Extrait de Parfum, 50 ml)
+- Verve — https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml (official page title states Extrait de Parfum, 50 ml; the legacy URL slug is not used to override the displayed title)
+- Xoxo Rosy — https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml (Eau de Parfum, 50 ml)
+- MyEgo — https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Empire x RRQ — https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml (Extrait de Parfum, 50 ml and 100 ml)
+- Glitch — https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml and 100 ml)
+- Invade — https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml (Extrait de Parfum, 50 ml)
+
+The official “Slow Living” detail page explicitly distinguishes 50 ml Eau de Parfum from 100 ml Extrait de Parfum. Accordingly, concentration remains variant-specific and the product-level concentration is intentionally blank. The Senja and Verve pages have legacy URL slugs containing “edp” but their displayed official product titles say Extrait de Parfum; the catalog follows the title and product detail, not the URL slug.
+
+All 23 existing identities are now marked `source_verified_name`, and their size-specific variant evidence URLs point to their individual product pages. Existing 15 ml travel-size selector variants are retained with their separate evidence and are not altered by this batch.
+
+A regression test checks all 23 individual URLs, concentration handling, size-specific variant evidence and one canonical row per product. Combined with the first two batches, all 53 standalone perfume identities appearing across the current official 54-item all-products collection now have individual brand-owned product-page evidence. The 54th item is the generic Travel Size 15ML selector, not a separate canonical perfume identity. This conclusion is limited to the current official collection and does not prove exhaustive coverage of all historical, regional, or discontinued Mykonos fragrances.
+
+
+### Armaf: Uniq Oud Forever official detail-page provenance (9 November 2026)
+
+The existing canonical identity `SH-ARMAF-f650f6a8` was retained and upgraded from the official all-perfumes collection URL to its individual brand-owned detail page:
+
+- Uniq Oud Forever — https://armaf.com/products/uniq-oud-forever-spr
+
+The individual page confirms the standalone fragrance name and identifies it as unisex. The page's marketing title includes “EAU DE PARFUM Spray”, but its visible product specification does not expose a structured bottle size or concentration field. To avoid promoting title/marketing text into unsupported SKU data, the catalog records only the individual-page identity evidence; concentration and size variants remain unset. No duplicate canonical identity or variant was created.
+
+
+### Maison Asrar: second new-arrivals page provenance upgrades (9 November 2026)
+
+The second page of the brand-owned New Arrivals collection was checked. Eleven existing canonical identities were matched to their individual Maison Asrar product pages and upgraded in place:
+
+- Dubai Milano — https://maisonasrar.com/products/dubai-milano
+- Dubai London — https://maisonasrar.com/products/dubai-london
+- Dubai Miami — https://maisonasrar.com/products/dubai-miami
+- III Thriller — https://maisonasrar.com/products/iii-thriller
+- Milky Way — https://maisonasrar.com/products/milky-way
+- Muharib — https://maisonasrar.com/products/muharib
+- Faris Al Arab — https://maisonasrar.com/products/faris-al-arab
+- Vanilla Seduction — https://maisonasrar.com/products/vanilla-seduction
+- Vanilla Aura — https://maisonasrar.com/products/vanilla-aura
+- Throne Eclipse — https://maisonasrar.com/products/throne-eclipse
+- Throne — https://maisonasrar.com/products/throne
+
+All eleven names were already present in the canonical seed. Their existing product IDs were preserved. The accessible official detail pages confirm the individual product names but do not expose explicit size or concentration fields; no variants or concentration values were added. Vanguard was already individually verified in the earlier pass and was not changed. This is a second-page sample, not a complete audit of the 81-item New Arrivals collection.
+
+
+### Maison Asrar: third new-arrivals page provenance upgrades (9 November 2026)
+
+The third page of the brand-owned New Arrivals collection was opened and its twelve standalone fragrance cards were checked against the canonical seed. Legacy was already individually verified. The following eleven existing identities were upgraded in place to their matching individual product pages:
+
+- Khayyal — https://maisonasrar.com/products/khayyal
+- Mohra — https://maisonasrar.com/products/mohrab
+- Hikaya — https://maisonasrar.com/products/hikaya
+- Hilm — https://maisonasrar.com/products/hilm
+- Cascade — https://maisonasrar.com/products/cascade
+- Tornado — https://maisonasrar.com/products/tornado
+- Wadi — https://maisonasrar.com/products/wadi
+- DXB — https://maisonasrar.com/products/dxb
+- Vanilla Voyage — https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum
+- Vision — https://maisonasrar.com/products/vision
+- Oh Honey! — https://maisonasrar.com/products/oh-honey-eau-de-parfum
+
+All eleven canonical identities already existed and retain their original product IDs. The accessible individual pages do not provide structured bottle-size or concentration specifications for these entries. Although some page titles or URL slugs contain EDP wording, no concentration or size was inferred from those labels; no variant rows were added. This is a provenance-only update and a sample of page 3, not a full audit of the 80/81-item New Arrivals collection.
+
+
+### Maison Asrar: fourth new-arrivals page and brand-attribution safeguard (9 November 2026)
+
+The fourth page of the brand-owned New Arrivals collection was checked. Six existing Maison Asrar identities were upgraded in place to individual detail-page provenance:
+
+- Date Night — https://maisonasrar.com/products/date-night
+- Larimar — https://maisonasrar.com/products/larimar
+- Rubellite — https://maisonasrar.com/products/rubellite
+- Nada — https://maisonasrar.com/products/nada
+- Omniya — https://maisonasrar.com/products/omniya
+- Coffee Blend — https://maisonasrar.com/products/coffee-blend-eau-de-parfum
+
+The individual pages do not expose structured bottle-size or concentration fields in the accessible text, so no variants or concentrations were inferred. Existing canonical IDs were retained.
+
+**Attribution safeguard:** the same storefront page also displays Emerald and Gold Noir, but their individual product-page titles identify them as Gulf Orchid fragrances (Emerald is explicitly titled “Gulf Orchid Emerald Eau De Parfum 110ml”; Gold Noir is likewise titled as a Gulf Orchid product). These two were deliberately not promoted as Maison Asrar-owned fragrances. The existing Maison Asrar rows remain listing-level pending reconciliation with the actual brand owner and the Gulf Orchid catalog. This prevents a retailer assortment from being mistaken for the retailer's own brand catalog.

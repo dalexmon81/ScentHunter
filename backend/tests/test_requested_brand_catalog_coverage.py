@@ -504,11 +504,14 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         # The canonical identity already exists. A later provenance update
         # must preserve this product ID and must never append a second row.
         self.assertEqual(row.get("product_id"), "SH-ARMAF-f650f6a8")
-        self.assertEqual(row.get("identity_status"), "source_listed_name")
-        self.assertNotEqual(
+        self.assertEqual(row.get("identity_status"), "source_verified_name")
+        self.assertEqual(
             row.get("source_url"),
             "https://armaf.com/products/uniq-oud-forever-spr",
-            "Promote only in a dedicated provenance update after page fields are rechecked.",
+        )
+        self.assertEqual(
+            row.get("source_evidence_url"),
+            "https://armaf.com/products/uniq-oud-forever-spr",
         )
 
 
@@ -675,6 +678,284 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         self.assertEqual(matches[0].get("concentration"), "Eau de Parfum")
         self.assertEqual(matches[0].get("source_evidence_url"), source)
 
+
+
+    def test_mykonos_first_fifteen_products_have_individual_official_page_provenance(self):
+        expected = {
+            "Aphrodite": ("https://officialmykonos.com/products/mykonos-aphrodite-extrait-de-parfum-50ml-100ml", "Extrait de Parfum", (50, 100)),
+            "Baby Love": ("https://officialmykonos.com/products/mykonos-baby-love-edp-50ml", "Eau de Parfum", (50,)),
+            "Black Opera": ("https://officialmykonos.com/products/mykonos-black-opera-extrait-de-parfum-100ml", "Extrait de Parfum", (100,)),
+            "Bonfire Vanilla": ("https://officialmykonos.com/products/mykonos-bonfire-vanilla-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "Cafe Drops": ("https://officialmykonos.com/products/mykonos-cafe-drops-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "California Blue": ("https://officialmykonos.com/products/mykonos-california-blue-extrait-de-parfum-50ml", "Extrait de Parfum", (50, 100)),
+            "California Club": ("https://officialmykonos.com/products/mykonos-california-club-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "California": ("https://officialmykonos.com/products/mykonos-california-signature-50ml", "Extrait de Parfum", (50, 100)),
+            "Caramel Fudge Cookie": ("https://officialmykonos.com/products/mykonos-caramel-fudge-cookie-edp-50ml", "Eau de Parfum", (50,)),
+            "Coconut Dreams": ("https://officialmykonos.com/products/mykonos-coconut-dreams-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "Conquer": ("https://officialmykonos.com/products/mykonos-conquer-extrait-de-parfum-100ml", "Extrait de Parfum", (50, 100)),
+            "Constantine": ("https://officialmykonos.com/products/mykonos-constantine-extrait-de-parfum-50ml", "Extrait de Parfum", (50,)),
+            "Crimson": ("https://officialmykonos.com/products/mykonos-crimson-extrait-de-parfum-100ml", "Extrait de Parfum", (100,)),
+            "Dark Secret": ("https://officialmykonos.com/products/mykonos-dark-secret-extrait-de-parfum-100ml", "Extrait de Parfum", (100,)),
+            "Dreamscape": ("https://officialmykonos.com/products/mykonos-dreamscape-extrait-de-parfum-50ml-100ml", "Extrait de Parfum", (50, 100)),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, concentration, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                matching_products = [
+                    product for product in CATALOG.get("products", [])
+                    if product.get("brand_name") == "Mykonos"
+                    and product.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matching_products), 1)
+                self.assertEqual(row.get("product_id"), matching_products[0].get("product_id"))
+                for size in sizes:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    self.assertTrue(any(
+                        variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == size
+                        and variant.get("concentration") == concentration
+                        for variant in variants
+                    ))
+
+
+    def test_mykonos_second_fifteen_products_have_individual_official_page_provenance(self):
+        expected = {
+            "Enchanted": ("https://officialmykonos.com/products/mykonos-enchanted-extrait-de-parfum-50ml-100ml", (50, 100)),
+            "Hawaiian Crush": ("https://officialmykonos.com/products/mykonos-hawaiian-crush-extrait-de-parfum-50ml", (50,)),
+            "Imperium": ("https://officialmykonos.com/products/mykonos-imperium-extrait-de-parfum-100ml", (100,)),
+            "Inception": ("https://officialmykonos.com/products/mykonos-inception-extrait-de-parfum-50ml", (50, 100)),
+            "Inferno": ("https://officialmykonos.com/products/mykonos-inferno-extrait-de-parfum-100ml", (50, 100)),
+            "Luminos": ("https://officialmykonos.com/products/mykonos-luminos-extrait-de-parfum-50ml", (50,)),
+            "Marbella": ("https://officialmykonos.com/products/mykonos-marbella-extrait-de-parfum-100ml", (50, 100)),
+            "Matcha Latte": ("https://officialmykonos.com/products/mykonos-matcha-latte-extrait-de-parfum-50ml", (50,)),
+            "Mayfair": ("https://officialmykonos.com/products/mykonos-mayfair-extrait-de-parfum-100ml", (50, 100)),
+            "Milk Drops": ("https://officialmykonos.com/products/mykonos-milk-drops-extrait-de-parfum-50ml", (50,)),
+            "Monaco Royale": ("https://officialmykonos.com/products/mykonos-monaco-royale-extrait-de-parfum-50ml-100ml", (50, 100)),
+            "Moroccan Vanilla": ("https://officialmykonos.com/products/mykonos-moroccan-vanilla-extrait-de-parfum-100ml", (100,)),
+            "Musk Aura": ("https://officialmykonos.com/products/mykonos-musk-aura-extrait-de-parfum-100ml", (100,)),
+            "Nautilus": ("https://officialmykonos.com/products/mykonos-nautilus-extrait-de-parfum-100ml", (100,)),
+            "On The Rocks": ("https://officialmykonos.com/products/mykonos-on-the-rocks-extrait-de-parfum-100ml", (100,)),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), "Extrait de Parfum")
+                matching_products = [
+                    product for product in CATALOG.get("products", [])
+                    if product.get("brand_name") == "Mykonos"
+                    and product.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matching_products), 1)
+                for size in sizes:
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("concentration"), "Extrait de Parfum")
+                    self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
+
+    def test_mykonos_remaining_current_collection_products_have_individual_official_page_provenance(self):
+        expected = {
+            "Paradise": ("https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+            "Penthouse": ("https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Pink Beach": ("https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml", {"50": "Eau de Parfum"}),
+            "Pink Drops": ("https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+            "Reflection Elixir": ("https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+            "Reflection": ("https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Royal Ispahan": ("https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Satin Blanc": ("https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Senja": ("https://officialmykonos.com/products/mykonos-senja-edp-50ml", {"50": "Extrait de Parfum"}),
+            "Silent Whisper": ("https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Slow Living": ("https://officialmykonos.com/products/mykonos-slow-living-edp-50ml", {"50": "Eau de Parfum", "100": "Extrait de Parfum"}),
+            "Sorrento": ("https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Sparkling Rosé": ("https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Stilettos": ("https://officialmykonos.com/products/mykonos-stilettos-edp-50ml", {"50": "Eau de Parfum"}),
+            "Untamed": ("https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Utopia": ("https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Vanilla Clouds": ("https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1", {"50": "Extrait de Parfum"}),
+            "Verve": ("https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml", {"50": "Extrait de Parfum"}),
+            "Xoxo Rosy": ("https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml", {"50": "Eau de Parfum"}),
+            "MyEgo": ("https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Empire x RRQ": ("https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Glitch": ("https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Invade": ("https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                matching_products = [
+                    product for product in CATALOG.get("products", [])
+                    if product.get("brand_name") == "Mykonos"
+                    and product.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matching_products), 1)
+                if name == "Slow Living":
+                    self.assertNotIn("concentration", row)
+                else:
+                    self.assertTrue(row.get("concentration"))
+                for size, concentration in sizes.items():
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == int(size)
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("concentration"), concentration)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
+    def test_armaf_uniq_oud_forever_uses_individual_official_page_without_inferred_variant(self):
+        matches = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Armaf"
+            and row.get("canonical_name") == "Uniq Oud Forever"
+        ]
+        self.assertEqual(len(matches), 1)
+        product = matches[0]
+        official_url = "https://armaf.com/products/uniq-oud-forever-spr"
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(product.get("source_url"), official_url)
+        self.assertEqual(product.get("source_evidence_url"), official_url)
+        # The accessible first-party detail page does not expose a structured
+        # bottle size or concentration field; do not invent a SKU variant.
+        self.assertFalse(product.get("concentration"))
+        self.assertFalse(product.get("formats_ml"))
+        self.assertFalse([
+            variant for variant in CATALOG.get("variants", [])
+            if variant.get("product_id") == product["product_id"]
+        ])
+
+    def test_maison_asrar_second_new_arrival_page_has_individual_provenance(self):
+        expected = {
+            "Dubai Milano": "https://maisonasrar.com/products/dubai-milano",
+            "Dubai London": "https://maisonasrar.com/products/dubai-london",
+            "Dubai Miami": "https://maisonasrar.com/products/dubai-miami",
+            "III Thriller": "https://maisonasrar.com/products/iii-thriller",
+            "Milky Way": "https://maisonasrar.com/products/milky-way",
+            "Muharib": "https://maisonasrar.com/products/muharib",
+            "Faris Al Arab": "https://maisonasrar.com/products/faris-al-arab",
+            "Vanilla Seduction": "https://maisonasrar.com/products/vanilla-seduction",
+            "Vanilla Aura": "https://maisonasrar.com/products/vanilla-aura",
+            "Throne Eclipse": "https://maisonasrar.com/products/throne-eclipse",
+            "Throne": "https://maisonasrar.com/products/throne",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertFalse(row.get("concentration"))
+                self.assertFalse(row.get("formats_ml"))
+                self.assertFalse([
+                    variant for variant in CATALOG.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ])
+
+    def test_maison_asrar_third_new_arrival_page_has_individual_provenance(self):
+        expected = {
+            "Khayyal": "https://maisonasrar.com/products/khayyal",
+            "Mohra": "https://maisonasrar.com/products/mohrab",
+            "Hikaya": "https://maisonasrar.com/products/hikaya",
+            "Hilm": "https://maisonasrar.com/products/hilm",
+            "Cascade": "https://maisonasrar.com/products/cascade",
+            "Tornado": "https://maisonasrar.com/products/tornado",
+            "Wadi": "https://maisonasrar.com/products/wadi",
+            "DXB": "https://maisonasrar.com/products/dxb",
+            "Vanilla Voyage": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+            "Vision": "https://maisonasrar.com/products/vision",
+            "Oh Honey!": "https://maisonasrar.com/products/oh-honey-eau-de-parfum",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertFalse(row.get("concentration"))
+                self.assertFalse(row.get("formats_ml"))
+                self.assertFalse([
+                    variant for variant in CATALOG.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ])
+
+    def test_maison_asrar_fourth_new_arrival_page_has_verified_owned_products_only(self):
+        expected = {
+            "Date Night": "https://maisonasrar.com/products/date-night",
+            "Larimar": "https://maisonasrar.com/products/larimar",
+            "Rubellite": "https://maisonasrar.com/products/rubellite",
+            "Nada": "https://maisonasrar.com/products/nada",
+            "Omniya": "https://maisonasrar.com/products/omniya",
+            "Coffee Blend": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("source_evidence_url"), source_url)
+                self.assertFalse(row.get("concentration"))
+                self.assertFalse(row.get("formats_ml"))
+                self.assertFalse([
+                    variant for variant in CATALOG.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ])
+
+        # The Maison Asrar storefront also lists third-party Gulf Orchid
+        # products. Do not silently reattribute them to Maison Asrar.
+        for name in ("Emerald", "Gold Noir"):
+            with self.subTest(third_party_name=name):
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_listed_name")
+                self.assertEqual(row.get("source_url"), "https://maisonasrar.com/collections/all")
 
 if __name__ == "__main__":
     unittest.main()
