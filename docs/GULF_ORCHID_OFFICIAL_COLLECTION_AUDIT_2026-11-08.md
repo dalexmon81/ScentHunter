@@ -14,7 +14,9 @@ The official store separates Perfumes from Body Mist, Hair Mist, Deodorant, Room
 
 ## Catalog result
 
-The catalog now contains **70 Gulf Orchid canonical EDP identities** with individual official product-page URLs. This includes the original 26 identities from the filtered perfume collections and 44 additional EDP identities discovered on the broader Gulf Orchid brand collection pages.
+The catalog now contains **75 Gulf Orchid canonical EDP identities** with individual official product-page URLs. This includes the original 26 identities from the filtered perfume collections and 44 additional EDP identities discovered on the broader Gulf Orchid brand collection pages.
+
+A follow-up source-discovery pass also verified five additional Gulf Orchid EDPs from individual product pages: Amour, Belle, Chic, Cloud 9 and Phantom. The storefront's current homepage also exposes other launches attributed to Maison Asrar; those were deliberately not added to Gulf Orchid.
 
 The additional verified names include Al Qasr, Al Qasr Dahab, Mango Heaven, Heavenly Lychee, Mawj, Pistachio Musk, Dark Chocolate, Rare Rose, Coffee Note, Nobilty, Baklava Bite, El Capitan Legacy, El Capitan Extreme, El Capitan Elixir, El Capitan, Sweet Heaven Tobacco, Ruby Fizz, Mangotini, Mojito Obsession, Old Fashioned, Tahiti Colada, Vanilla on the Beach, Pacific, Shisha, Melody, Evening Dance, Mood for Oud, Love Me Now, Toxic Love, Arabian Nights, Love & Beyond, Naseem, Omsiah, Riwaya Chapter I, Riwaya Chapter II, Riwaya, Romantic For Him, Romantic For Her, Shiekh Aloud Navy, Marine, Angham, Flame, Almalek and Bali.
 
@@ -41,8 +43,8 @@ No price, stock state, availability claim, retailer offer or GTIN was imported. 
 
 ## Completeness limitation
 
-The first five pages of the broader Gulf Orchid brand collection were inspected. Page 5 still displays a “Load More” control, and page 6 could not be retrieved reliably during this pass. Therefore 70 is a verified minimum for the audited snapshot, not a claim that every historical or currently listed Gulf Orchid perfume has been exhausted.
+The first five pages of the broader Gulf Orchid brand collection were inspected. Page 5 still displays a “Load More” control, and pages 6–8 could not be retrieved reliably. Follow-up searches of individual official product pages added five further verified EDPs. Therefore 75 is a verified minimum for the audited snapshot, not a claim that every historical or currently listed Gulf Orchid perfume has been exhausted.
 
 ## Validation
 
-The dedicated regression suite checks the 70-name canonical set, official product-page provenance, explicit variants, no invented sizes, category exclusions, Maison Asrar attribution, and family-registry consistency.
+The dedicated regression suite checks the 75-name canonical set, official product-page provenance, explicit variants, no invented sizes, category exclusions, Maison Asrar attribution, and family-registry consistency.
