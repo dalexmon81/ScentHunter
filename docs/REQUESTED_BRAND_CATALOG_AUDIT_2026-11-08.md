@@ -459,3 +459,35 @@ Exact-name research surfaced official individual pages for three of the five rem
 The only Maison Asrar identities still at collection-listing confidence are now **Pomme Rouge** and **Haven**. No matching individual product pages were found on the brand domain in this pass; they remain in the catalog as listing-level identities rather than being deleted or assigned invented formats.
 
 Maison Asrar now has **119 canonical identities, 117 individually sourced identities, 2 still at collection-listing confidence, and 59 structured variants**.
+
+
+### Gulf Orchid: product, collection and brand-attribution reconciliation (9 November 2026)
+
+A review of the Gulf Orchid storefront's own perfume collection and product pages found that the original 23-entry Gulf Orchid section mixed three different entity types:
+
+- **13 actual Gulf Orchid fragrance identities**
+- **8 collection labels** (Al Qasr, Asala, Hamsat, Hikma, Jawhara, Jewel, Riwaya and Turath), which are collection/family names rather than standalone perfume products
+- **2 Maison Asrar products** (Vanilla Aura and Vanilla Voyage) sold by the Gulf Orchid retailer but explicitly labeled Maison Asrar
+
+The eight collection labels and two cross-brand duplicates were removed from Gulf Orchid's product records and family registry. Vanilla Aura and Vanilla Voyage remain in the Maison Asrar brand catalog. This is a source-host versus manufacturer distinction: a retailer selling a fragrance does not become its brand.
+
+The 13 remaining Gulf Orchid products were upgraded to individual product-page provenance. Fourteen variants were added where the product pages explicitly state size and EDP concentration:
+
+- Vanilla Addiction — 100 ml EDP
+- Mango Ice — 100 ml EDP
+- Tahara Vanilla Musk — 60 ml EDP
+- Sweet Heaven — 20 ml and 100 ml EDP
+- Pink Marshmallow — 100 ml EDP
+- Coco Blanco — 100 ml EDP
+- Exotic Oud — 100 ml EDP
+- Vanilla Latte — 100 ml EDP
+- Cookie Bite — 100 ml EDP
+- Sweet Like Candy — 100 ml EDP
+- Sweet Heaven Extreme — 20 ml and 100 ml EDP
+- Piña Colada Musk — 60 ml EDP
+
+Cotton Candy Musk has an individual product page and EDP identity, but the page inspected does not state its size; no variant was invented.
+
+The two size-bearing records **Sweet Heaven 20ML** and **Sweet Heaven Extreme 20ML** were normalized to the canonical product names **Sweet Heaven** and **Sweet Heaven Extreme**, with the 20 ml format represented as a variant alongside the 100 ml full-size variant.
+
+Gulf Orchid now contains **13 distinct fragrance identities and 14 structured EDP variants**. The product catalog total falls by ten because collection labels and cross-brand duplicates were removed; no actual Gulf Orchid or Maison Asrar fragrance was lost.
