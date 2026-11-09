@@ -8360,9 +8360,18 @@
         "Candid",
         "Maison Alhambra Candid"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-candid-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-candid-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-candid-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6291108730072"
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-f7205da0",
@@ -8416,9 +8425,18 @@
         "Cassius",
         "Maison Alhambra Cassius"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-cassius-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-cassius-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-cassius-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6291108736036"
+      ],
+      "gender": "Men"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-f1a0f0b6",
@@ -8432,9 +8450,18 @@
         "Celeste",
         "Maison Alhambra Celeste"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-celeste-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-celeste-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-celeste-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340485"
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-cfd69222",
@@ -8512,9 +8539,18 @@
         "Coastal Pour Femme",
         "Maison Alhambra Coastal Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coastal-pour-femme-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coastal-pour-femme-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coastal-pour-femme-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6291107459189"
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7c1a1dcd",
@@ -8552,9 +8588,18 @@
         "Coral Blush",
         "Maison Alhambra Coral Blush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coral-blush-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coral-blush-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coral-blush-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ],
+      "gtins": [
+        "6290362343189"
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-4fc35ea9",
@@ -8584,9 +8629,18 @@
         "Dark Aoud",
         "Maison Alhambra Dark Aoud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-dark-aoud-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-dark-aoud-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-dark-aoud-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ],
+      "gtins": [
+        "6291108735817"
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-48e8ef43",
@@ -8632,9 +8686,18 @@
         "Decadent Dream",
         "Maison Alhambra Decadent Dream"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-dream-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-dream-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-dream-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340775"
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-e192ddcc",
@@ -8648,9 +8711,18 @@
         "Decadent Wonder",
         "Maison Alhambra Decadent Wonder"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-wonder-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-wonder-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-wonder-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340782"
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-6c54d494",
@@ -8688,9 +8760,18 @@
         "Delilah Blanc",
         "Maison Alhambra Delilah Blanc"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-delilah-blanc-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-delilah-blanc-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-delilah-blanc-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340799"
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-f6308f45",
@@ -8760,9 +8841,18 @@
         "Ebene",
         "Maison Alhambra Ebene"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-ebene-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-ebene-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-ebene-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ],
+      "gtins": [
+        "6290362340614"
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-89824e6b",
@@ -8849,9 +8939,18 @@
         "Eternal Touch",
         "Maison Alhambra Eternal Touch"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-eternal-touch-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-eternal-touch-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-eternal-touch-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ],
+      "gtins": [
+        "6290362343233"
+      ],
+      "gender": "Men"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-ee30f910",
@@ -8993,9 +9092,18 @@
         "Exquisite Prive",
         "Maison Alhambra Exquisite Prive"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-prive-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-prive-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-prive-eau-de-parfum-for-everyone",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6290362340829"
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-1e5f4ad5",
@@ -46420,6 +46528,162 @@
       "gtin": "6291108735886",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-d2574528",
+      "size_ml": 100,
+      "aliases": [
+        "Candid 100 ml",
+        "Maison Alhambra Candid 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-d2574528-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108730072",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-candid-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-candid-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-0ef3caa8",
+      "size_ml": 100,
+      "aliases": [
+        "Cassius 100 ml",
+        "Maison Alhambra Cassius 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-0ef3caa8-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108736036",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-cassius-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-cassius-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-f1a0f0b6",
+      "size_ml": 100,
+      "aliases": [
+        "Celeste 100 ml",
+        "Maison Alhambra Celeste 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-f1a0f0b6-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340485",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-celeste-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-celeste-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-df92bec2",
+      "size_ml": 100,
+      "aliases": [
+        "Coastal Pour Femme 100 ml",
+        "Maison Alhambra Coastal Pour Femme 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-df92bec2-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107459189",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coastal-pour-femme-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coastal-pour-femme-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-8685777e",
+      "size_ml": 80,
+      "aliases": [
+        "Coral Blush 80 ml",
+        "Maison Alhambra Coral Blush 80 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-8685777e-80-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362343189",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coral-blush-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-coral-blush-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-35a98948",
+      "size_ml": 80,
+      "aliases": [
+        "Dark Aoud 80 ml",
+        "Maison Alhambra Dark Aoud 80 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-35a98948-80-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108735817",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-dark-aoud-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-dark-aoud-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-4e9091ce",
+      "size_ml": 100,
+      "aliases": [
+        "Decadent Dream 100 ml",
+        "Maison Alhambra Decadent Dream 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-4e9091ce-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340775",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-dream-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-dream-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-e192ddcc",
+      "size_ml": 100,
+      "aliases": [
+        "Decadent Wonder 100 ml",
+        "Maison Alhambra Decadent Wonder 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-e192ddcc-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340782",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-wonder-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-decadent-wonder-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-6d814da2",
+      "size_ml": 100,
+      "aliases": [
+        "Delilah Blanc 100 ml",
+        "Maison Alhambra Delilah Blanc 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-6d814da2-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340799",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-delilah-blanc-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-delilah-blanc-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-7c01c1de",
+      "size_ml": 90,
+      "aliases": [
+        "Ebene 90 ml",
+        "Maison Alhambra Ebene 90 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-7c01c1de-90-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340614",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-ebene-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-ebene-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-d3fb85bf",
+      "size_ml": 80,
+      "aliases": [
+        "Eternal Touch 80 ml",
+        "Maison Alhambra Eternal Touch 80 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-d3fb85bf-80-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362343233",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-eternal-touch-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-eternal-touch-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-a447b090",
+      "size_ml": 100,
+      "aliases": [
+        "Exquisite Prive 100 ml",
+        "Maison Alhambra Exquisite Prive 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-a447b090-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340829",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-prive-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-prive-eau-de-parfum-for-everyone"
     }
   ]
 }
