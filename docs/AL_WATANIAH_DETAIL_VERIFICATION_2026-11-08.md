@@ -60,3 +60,20 @@ Twelve existing Al Wataniah canonical identities were checked against their own 
 Regression coverage in `backend/tests/test_al_wataniah_detail_evidence.py` checks the exact 12 URLs, identity uniqueness, product-page evidence, EDP concentration, 100 ml format and one matching variant per identity.
 
 This is a focused detail-page reconciliation, not a claim that all 86 Al Wataniah catalog identities have individual product-page evidence.
+
+## Additional official product-page verification — 9 November 2026
+
+Ten more existing identities were individually verified from the brand-owned pages. Each page explicitly specifies Eau de Parfum and 100 ml:
+
+- **Kayaan Classic** — https://www.alwataniah.com/products/kayaan-classic
+- **Kayaan Terra** — https://www.alwataniah.com/products/kayaan-terra
+- **Kayaan Gold** — https://www.alwataniah.com/products/kayaan-gold
+- **Ain Emarat** — https://www.alwataniah.com/products/ain-emarat
+- **Royal Oak I** — https://www.alwataniah.com/products/royal-oak-i
+- **Al Daiem** — https://www.alwataniah.com/products/al-daiem
+- **Arya Peony Rose** — https://www.alwataniah.com/products/arya-peony-rose
+- **Arya** — https://www.alwataniah.com/products/arya
+- **Ain Emarat Extrait** — https://www.alwataniah.com/products/ain-emarat-extrait
+- **Nada** — https://www.alwataniah.com/products/nada
+
+The same identity-preserving rules apply: no duplicate products, no inferred variant details, and no commercial offer/price/stock fields.
