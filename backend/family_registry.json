@@ -8808,6 +8808,41 @@
             "Dubai Nights Umbra",
             "Armaf Dubai Nights Umbra"
           ]
+        },
+        {
+          "canonical_name": "Odyssey Tyrant",
+          "aliases": [
+            "Odyssey Tyrant",
+            "Armaf Odyssey Tyrant"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Dubai Chocolate",
+          "aliases": [
+            "Odyssey Dubai Chocolate",
+            "Armaf Odyssey Dubai Chocolate"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Scentasy Noir De Peche",
+          "aliases": [
+            "Scentasy Noir De Peche",
+            "Armaf Scentasy Noir De Peche"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey Soda Pop",
+          "aliases": [
+            "Odyssey Soda Pop",
+            "Armaf Odyssey Soda Pop"
+          ]
         }
       ]
     },
