@@ -7641,6 +7641,10 @@
           "aliases": [
             "Club de Nuit Man",
             "Armaf Club de Nuit Man"
+          ],
+          "formats_ml": [
+            10,
+            105
           ]
         },
         {
@@ -7648,6 +7652,9 @@
           "aliases": [
             "Club de Nuit Intense Man Extreme Edition",
             "Armaf Club de Nuit Intense Man Extreme Edition"
+          ],
+          "formats_ml": [
+            105
           ]
         },
         {
@@ -7889,6 +7896,11 @@
           "aliases": [
             "Odyssey Homme White Edition",
             "Armaf Odyssey Homme White Edition"
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
           ]
         },
         {
@@ -7910,6 +7922,10 @@
           "aliases": [
             "Ventana Marine",
             "Armaf Ventana Marine"
+          ],
+          "formats_ml": [
+            10,
+            105
           ]
         },
         {
@@ -8928,6 +8944,16 @@
             "Armaf Spartacus",
             "Spartacus EDP",
             "Armaf Spartacus EDP"
+          ]
+        },
+        {
+          "canonical_name": "Odyssey French Kiss",
+          "aliases": [
+            "Odyssey French Kiss",
+            "Armaf Odyssey French Kiss"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
