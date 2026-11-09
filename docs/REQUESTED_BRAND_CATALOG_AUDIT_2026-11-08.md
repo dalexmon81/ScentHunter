@@ -144,3 +144,19 @@ All entries are individual perfume sprays, not oils, home fragrance, or multipac
 - Emotion Antique — https://shop.alharamainperfumes.com/eu/haramain-emotion-antique-100ml-extrait-de-parfum.html (100 ml, Extrait de Parfum, SKU AHP1428)
 
 Each individual first-party detail page identifies the fragrance, concentration, and liquid volume; all four names were absent from the current Al Haramain canonical identities. Each was added with one explicit 100 ml variant. No retailer price or stock information was copied.
+
+### Al Haramain: nine more individually verified New Launches (9 November 2026)
+
+The official EU New Launches list was reconciled against the latest catalog branch. Nine additional absent fragrance identities have individual official product pages confirming a 100 ml bottle and concentration:
+
+- Avalon — Eau de Parfum
+- Azure Mythique — Eau de Parfum
+- Cupuacu — Eau de Parfum
+- Taj Malaki Noir — Eau de Parfum
+- Gold Crystal Oudh — Extrait de Parfum
+- Gold Crystal Sapphire — Extrait de Parfum
+- Acai — Eau de Parfum
+- Cacau — Eau de Parfum
+- Caju — Eau de Parfum
+
+Other names already reconciled in the parent branch were not duplicated. Entries with inaccessible or insufficient product-page evidence, multipacks and bukhoor products remain excluded. No prices, stock or retailer offers were copied into the canonical seed.

@@ -15395,6 +15395,96 @@
             "Emotion Antique",
             "Al Haramain Emotion Antique"
           ]
+        },
+        {
+          "canonical_name": "Avalon",
+          "aliases": [
+            "Avalon",
+            "Al Haramain Avalon"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Azure Mythique",
+          "aliases": [
+            "Azure Mythique",
+            "Al Haramain Azure Mythique"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Cupuacu",
+          "aliases": [
+            "Cupuacu",
+            "Al Haramain Cupuacu"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Taj Malaki Noir",
+          "aliases": [
+            "Taj Malaki Noir",
+            "Al Haramain Taj Malaki Noir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Gold Crystal Oudh",
+          "aliases": [
+            "Gold Crystal Oudh",
+            "Al Haramain Gold Crystal Oudh"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Gold Crystal Sapphire",
+          "aliases": [
+            "Gold Crystal Sapphire",
+            "Al Haramain Gold Crystal Sapphire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Acai",
+          "aliases": [
+            "Acai",
+            "Al Haramain Acai"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Cacau",
+          "aliases": [
+            "Cacau",
+            "Al Haramain Cacau"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Caju",
+          "aliases": [
+            "Caju",
+            "Al Haramain Caju"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
