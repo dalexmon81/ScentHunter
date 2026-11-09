@@ -33349,7 +33349,7 @@
       "identity_status": "source_verified_name"
     },
     {
-      "product_id": "SH-GULF-ORCHID-15260312",
+      "product_id": "SH-GULF-ORCHID-BELLE",
       "brand": "Gulf Orchid",
       "brand_name": "Gulf Orchid",
       "canonical_name": "Belle",
@@ -33368,7 +33368,7 @@
       "identity_status": "source_verified_name"
     },
     {
-      "product_id": "SH-GULF-ORCHID-86dec31e",
+      "product_id": "SH-GULF-ORCHID-AMOUR",
       "brand": "Gulf Orchid",
       "brand_name": "Gulf Orchid",
       "canonical_name": "Amour",
@@ -33387,7 +33387,7 @@
       "identity_status": "source_verified_name"
     },
     {
-      "product_id": "SH-GULF-ORCHID-b92538cd",
+      "product_id": "SH-GULF-ORCHID-CHIC",
       "brand": "Gulf Orchid",
       "brand_name": "Gulf Orchid",
       "canonical_name": "Chic",
@@ -35666,22 +35666,22 @@
       "source_evidence_url": "https://shop-gulforchid.com/products/ameer"
     },
     {
-      "variant_id": "SHV-SH-GULF-ORCHID-15260312-100-000",
-      "product_id": "SH-GULF-ORCHID-15260312",
+      "variant_id": "SHV-SH-GULF-ORCHID-BELLE-100-000",
+      "product_id": "SH-GULF-ORCHID-BELLE",
       "size_ml": 100,
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/belle"
     },
     {
-      "variant_id": "SHV-SH-GULF-ORCHID-86dec31e-100-000",
-      "product_id": "SH-GULF-ORCHID-86dec31e",
+      "variant_id": "SHV-SH-GULF-ORCHID-AMOUR-100-000",
+      "product_id": "SH-GULF-ORCHID-AMOUR",
       "size_ml": 100,
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/amour"
     },
     {
-      "variant_id": "SHV-SH-GULF-ORCHID-b92538cd-100-000",
-      "product_id": "SH-GULF-ORCHID-b92538cd",
+      "variant_id": "SHV-SH-GULF-ORCHID-CHIC-100-000",
+      "product_id": "SH-GULF-ORCHID-CHIC",
       "size_ml": 100,
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/chic"
