@@ -339,3 +339,22 @@ The second page of the brand-owned New Arrivals collection was checked. Eleven e
 - Throne — https://maisonasrar.com/products/throne
 
 All eleven names were already present in the canonical seed. Their existing product IDs were preserved. The accessible official detail pages confirm the individual product names but do not expose explicit size or concentration fields; no variants or concentration values were added. Vanguard was already individually verified in the earlier pass and was not changed. This is a second-page sample, not a complete audit of the 81-item New Arrivals collection.
+
+
+### Maison Asrar: third new-arrivals page provenance upgrades (9 November 2026)
+
+The third page of the brand-owned New Arrivals collection was opened and its twelve standalone fragrance cards were checked against the canonical seed. Legacy was already individually verified. The following eleven existing identities were upgraded in place to their matching individual product pages:
+
+- Khayyal — https://maisonasrar.com/products/khayyal
+- Mohra — https://maisonasrar.com/products/mohrab
+- Hikaya — https://maisonasrar.com/products/hikaya
+- Hilm — https://maisonasrar.com/products/hilm
+- Cascade — https://maisonasrar.com/products/cascade
+- Tornado — https://maisonasrar.com/products/tornado
+- Wadi — https://maisonasrar.com/products/wadi
+- DXB — https://maisonasrar.com/products/dxb
+- Vanilla Voyage — https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum
+- Vision — https://maisonasrar.com/products/vision
+- Oh Honey! — https://maisonasrar.com/products/oh-honey-eau-de-parfum
+
+All eleven canonical identities already existed and retain their original product IDs. The accessible individual pages do not provide structured bottle-size or concentration specifications for these entries. Although some page titles or URL slugs contain EDP wording, no concentration or size was inferred from those labels; no variant rows were added. This is a provenance-only update and a sample of page 3, not a full audit of the 80/81-item New Arrivals collection.
