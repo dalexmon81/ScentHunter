@@ -33328,6 +33328,170 @@
       "source_url": "https://www.alwataniah.com/collections/munchies",
       "source_evidence_url": "https://www.alwataniah.com/collections/munchies",
       "collection_name": "Munchies"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-4cc5fb94",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Ameer",
+      "name": "Ameer",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Ameer",
+      "aliases": [
+        "Ameer",
+        "Gulf Orchid Ameer"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://shop-gulforchid.com/products/ameer",
+      "identity_status": "source_verified_name"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-BELLE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Belle",
+      "name": "Belle",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Belle",
+      "aliases": [
+        "Belle",
+        "Gulf Orchid Belle"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://shop-gulforchid.com/products/belle",
+      "identity_status": "source_verified_name"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-AMOUR",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Amour",
+      "name": "Amour",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Amour",
+      "aliases": [
+        "Amour",
+        "Gulf Orchid Amour"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://shop-gulforchid.com/products/amour",
+      "identity_status": "source_verified_name"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-CHIC",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Chic",
+      "name": "Chic",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Chic",
+      "aliases": [
+        "Chic",
+        "Gulf Orchid Chic"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://shop-gulforchid.com/products/chic",
+      "identity_status": "source_verified_name"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-6df7df75",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Victorioso Heroic",
+      "name": "Victorioso Heroic",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Victorioso Heroic",
+      "aliases": [
+        "Victorioso Heroic",
+        "Maison Alhambra Victorioso Heroic"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290362340584"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-b9f1e8eb",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Rose Origami",
+      "name": "Rose Origami",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Rose Origami",
+      "aliases": [
+        "Rose Origami",
+        "Maison Alhambra Rose Origami"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290362340928"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-327c9c77",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Opera Rouge",
+      "name": "Opera Rouge",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Opera Rouge",
+      "aliases": [
+        "Opera Rouge",
+        "Maison Alhambra Opera Rouge"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290362340881"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-87c08c97",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Camille",
+      "name": "Camille",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Camille",
+      "aliases": [
+        "Camille",
+        "Maison Alhambra Camille"
+      ],
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women",
+      "identity_status": "source_verified_name",
+      "gtins": [
+        "6290360599236"
+      ]
     }
   ],
   "variants": [
@@ -35493,6 +35657,62 @@
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-26fd5518-100-EDP",
       "concentration": "Eau de Parfum"
+    },
+    {
+      "variant_id": "SHV-SH-GULF-ORCHID-4cc5fb94-100-000",
+      "product_id": "SH-GULF-ORCHID-4cc5fb94",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/ameer"
+    },
+    {
+      "variant_id": "SHV-SH-GULF-ORCHID-BELLE-100-000",
+      "product_id": "SH-GULF-ORCHID-BELLE",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/belle"
+    },
+    {
+      "variant_id": "SHV-SH-GULF-ORCHID-AMOUR-100-000",
+      "product_id": "SH-GULF-ORCHID-AMOUR",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/amour"
+    },
+    {
+      "variant_id": "SHV-SH-GULF-ORCHID-CHIC-100-000",
+      "product_id": "SH-GULF-ORCHID-CHIC",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/chic"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-6df7df75-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-6df7df75",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-victorioso-heroic-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-b9f1e8eb-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-b9f1e8eb",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-rose-origami-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-327c9c77-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-327c9c77",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-87c08c97-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-87c08c97",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-camille-eau-de-parfum-for-women"
     }
   ]
 }
