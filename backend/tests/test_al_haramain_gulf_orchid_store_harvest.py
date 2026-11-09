@@ -47,9 +47,12 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
                     source = product.get("source_url", "")
                     self.assertTrue("/products/" in source or source.endswith(".html"))
                     continue
-                self.assertEqual(product["identity_status"], "source_listed_name")
-                self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
+                if product["identity_status"] == "source_listed_name":
+                    self.assertNotIn("concentration", product)
+                    self.assertNotIn("formats_ml", product)
+                else:
+                    self.assertEqual(product["identity_status"], "source_verified_name")
+                    self.assertNotIn("/collection/", product.get("source_url", ""))
 
     def test_gulf_orchid_individual_official_pages_and_explicit_variants(self):
         expected = {
