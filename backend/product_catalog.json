@@ -22203,9 +22203,13 @@
         "Spirito Mystic",
         "French Avenue Spirito Mystic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/collections/all?page=3",
-      "source_evidence_url": "https://frenchavenue.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/spirito-mystic",
+      "source_evidence_url": "https://frenchavenue.com/products/spirito-mystic",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-RAVINE-GINGER",
@@ -36782,6 +36786,27 @@
         100
       ],
       "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-PAPA-YEAH",
+      "brand": "French Avenue",
+      "brand_name": "French Avenue",
+      "canonical_name": "Papa Yeah",
+      "name": "Papa Yeah",
+      "family_id": "french_avenue_catalog",
+      "family_name": "Papa Yeah",
+      "aliases": [
+        "Papa Yeah",
+        "French Avenue Papa Yeah"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://frenchavenue.com/products/papa-yeah",
+      "source_evidence_url": "https://frenchavenue.com/products/papa-yeah",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Unisex"
     }
   ],
   "variants": [
@@ -44132,6 +44157,30 @@
       "concentration": "Extrait de Parfum",
       "source_url": "https://frenchavenue.com/products/royal-blend-nero",
       "source_evidence_url": "https://frenchavenue.com/products/royal-blend-nero"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-PAPA-YEAH",
+      "size_ml": 100,
+      "aliases": [
+        "Papa Yeah 100 ml",
+        "French Avenue Papa Yeah 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-PAPA-YEAH-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/papa-yeah",
+      "source_evidence_url": "https://frenchavenue.com/products/papa-yeah"
+    },
+    {
+      "product_id": "SH-FRENCH-AVENUE-SPIRITO-MYSTIC",
+      "size_ml": 100,
+      "aliases": [
+        "Spirito Mystic 100 ml",
+        "French Avenue Spirito Mystic 100 ml"
+      ],
+      "variant_id": "SHV-SH-FRENCH-AVENUE-SPIRITO-MYSTIC-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/spirito-mystic",
+      "source_evidence_url": "https://frenchavenue.com/products/spirito-mystic"
     }
   ]
 }
