@@ -19030,9 +19030,10 @@
         "Veteran Oud",
         "Paris Corner Veteran Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/veteran-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/veteran-oud",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/veteran-oud"
     },
     {
       "product_id": "SH-PARIS-CORNER-VIBRANT-ORANGE-AND-NEROLI-EMIR",
@@ -19046,9 +19047,13 @@
         "Vibrant Orange and Neroli Emir",
         "Paris Corner Vibrant Orange and Neroli Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-orange-and-neroli-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-orange-and-neroli-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/vibrant-orange-and-neroli-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VIBRANT-SENSUAL-SAFFRON-EMIR",
@@ -19062,9 +19067,13 @@
         "Vibrant Sensual Saffron Emir",
         "Paris Corner Vibrant Sensual Saffron Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-sensual-saffron-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-sensual-saffron-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/vibrant-sensual-saffron-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VIBRANT-SPICY-TOBACCO-EMIR",
@@ -19078,9 +19087,13 @@
         "Vibrant Spicy Tobacco Emir",
         "Paris Corner Vibrant Spicy Tobacco Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-spicy-tobacco-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-spicy-tobacco-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/vibrant-spicy-tobacco-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VIBRANT-VETIVER-DELIGHT-EMIR",
@@ -19094,9 +19107,13 @@
         "Vibrant Vetiver Delight Emir",
         "Paris Corner Vibrant Vetiver Delight Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-vetiver-delight-emir-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-vetiver-delight-emir-1",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/vibrant-vetiver-delight-emir-1",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VIRILIS",
@@ -19110,9 +19127,10 @@
         "Virilis",
         "Paris Corner Virilis"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/virilis",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/virilis",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/virilis"
     },
     {
       "product_id": "SH-PARIS-CORNER-VIVANT-SUNLIT",
@@ -19126,9 +19144,13 @@
         "Vivant Sunlit",
         "Paris Corner Vivant Sunlit"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/vivant-sunlit",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vivant-sunlit",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/vivant-sunlit",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-BLUE-OUD-EMIR",
@@ -19142,9 +19164,13 @@
         "Voux Blue Oud Emir",
         "Paris Corner Voux Blue Oud Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-blue-oud-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-blue-oud-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-blue-oud-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-ALMA-VERDE",
@@ -19158,9 +19184,13 @@
         "Voux Alma Verde",
         "Paris Corner Voux Alma Verde"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-alma-verde",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-alma-verde",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-alma-verde",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-ELEGANTE-EMIR",
@@ -19174,9 +19204,13 @@
         "Voux Elegante Emir",
         "Paris Corner Voux Elegante Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-elegante-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-elegante-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-elegante-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-PATISSERIE",
@@ -19190,9 +19224,10 @@
         "Voux Patisserie",
         "Paris Corner Voux Patisserie"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-patisserie",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-patisserie",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-patisserie"
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-SPICES-EMIR",
@@ -19206,9 +19241,13 @@
         "Voux Spices Emir",
         "Paris Corner Voux Spices Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-spices-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-spices-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-spices-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-TURQUOISE-EMIR",
@@ -19222,9 +19261,13 @@
         "Voux Turquoise Emir",
         "Paris Corner Voux Turquoise Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-turquoise-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-turquoise-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-turquoise-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-VIOLETTE-EMIR",
@@ -19238,9 +19281,13 @@
         "Voux Violette Emir",
         "Paris Corner Voux Violette Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-violette-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-violette-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-violette-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-ZESTE",
@@ -19254,9 +19301,13 @@
         "Voux Zeste",
         "Paris Corner Voux Zeste"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-zeste",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-zeste",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-zeste",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VOUX-ZINGY",
@@ -19270,9 +19321,13 @@
         "Voux Zingy",
         "Paris Corner Voux Zingy"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-zingy",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-zingy",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/voux-zingy",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-WARM-LEATHER-EMIR-FACTORY-EDITION",
@@ -19286,9 +19341,13 @@
         "Warm Leather Emir Factory Edition",
         "Paris Corner Warm Leather Emir Factory Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/warm-leather-emir-factory-edition",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/warm-leather-emir-factory-edition",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/warm-leather-emir-factory-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM",
@@ -19302,9 +19361,13 @@
         "Wayfarer Eau de Parfum",
         "Paris Corner Wayfarer Eau de Parfum"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-WAYFARER-INFUSION",
@@ -19337,9 +19400,13 @@
         "Wayward Charlie Emir",
         "Paris Corner Wayward Charlie Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/wayward-charlie-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wayward-charlie-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/wayward-charlie-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-WHEN-SOUL-GETS-HIGH-EMIR",
@@ -19353,9 +19420,13 @@
         "When Soul Gets High Emir",
         "Paris Corner When Soul Gets High Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/when-soul-gets-high-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/when-soul-gets-high-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/when-soul-gets-high-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-ONYX-GALAXY",
@@ -25212,9 +25283,13 @@
         "Wild and Tobacco Emir",
         "Paris Corner Wild and Tobacco Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-f9894949",
@@ -25228,9 +25303,13 @@
         "You're Drugged Emir",
         "Paris Corner You're Drugged Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/youre-drugged-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/youre-drugged-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/youre-drugged-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-5b82cf01",
@@ -25244,9 +25323,13 @@
         "Zahi",
         "Paris Corner Zahi"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zahi",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zahi",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zahi",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-1e9b7293",
@@ -25260,9 +25343,13 @@
         "Zahri Amara",
         "Paris Corner Zahri Amara"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zahri-amara",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zahri-amara",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zahri-amara",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-956aa6c3",
@@ -25276,9 +25363,13 @@
         "Zaman Al Ula",
         "Paris Corner Zaman Al Ula"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zaman-al-ula",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zaman-al-ula",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zaman-al-ula",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-7f65b76f",
@@ -25292,9 +25383,13 @@
         "Zodiac",
         "Paris Corner Zodiac"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-100ml",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zodiac-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-70cc0deb",
@@ -25308,9 +25403,13 @@
         "Zodiac Lunaris",
         "Paris Corner Zodiac Lunaris"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-lunaris",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-lunaris",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zodiac-lunaris",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-8415dd43",
@@ -25324,9 +25423,13 @@
         "Zodiac Solmaris",
         "Paris Corner Zodiac Solmaris"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-solmaris",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-solmaris",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zodiac-solmaris",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-12e6ea3f",
@@ -25340,9 +25443,13 @@
         "Zodiac Stratos",
         "Paris Corner Zodiac Stratos"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=8",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=8"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-952966be",
@@ -33256,8 +33363,13 @@
         "Zariya",
         "Paris Corner Zariya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/paris-corner"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/zariya",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/zariya",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zariya",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-CREME",
@@ -41735,6 +41847,303 @@
       ],
       "variant_id": "SHV-SH-LATTAFA-FARFASHA-20261109-100-000",
       "source_evidence_url": "https://lattafa.com/product/farfasha/"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIBRANT-ORANGE-AND-NEROLI-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VIBRANT-ORANGE-AND-NEROLI-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Vibrant Orange and Neroli Emir 100 ml",
+        "Paris Corner Vibrant Orange and Neroli Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-orange-and-neroli-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-orange-and-neroli-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIBRANT-SENSUAL-SAFFRON-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VIBRANT-SENSUAL-SAFFRON-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Vibrant Sensual Saffron Emir 100 ml",
+        "Paris Corner Vibrant Sensual Saffron Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-sensual-saffron-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-sensual-saffron-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIBRANT-SPICY-TOBACCO-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VIBRANT-SPICY-TOBACCO-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Vibrant Spicy Tobacco Emir 100 ml",
+        "Paris Corner Vibrant Spicy Tobacco Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-spicy-tobacco-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-spicy-tobacco-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIBRANT-VETIVER-DELIGHT-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VIBRANT-VETIVER-DELIGHT-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Vibrant Vetiver Delight Emir 100 ml",
+        "Paris Corner Vibrant Vetiver Delight Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/vibrant-vetiver-delight-emir-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vibrant-vetiver-delight-emir-1"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIVANT-SUNLIT",
+      "variant_id": "SHV-PARIS-CORNER-VIVANT-SUNLIT-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Vivant Sunlit 100 ml",
+        "Paris Corner Vivant Sunlit 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/vivant-sunlit",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/vivant-sunlit"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-BLUE-OUD-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-BLUE-OUD-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Blue Oud Emir 100 ml",
+        "Paris Corner Voux Blue Oud Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-blue-oud-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-blue-oud-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-ALMA-VERDE",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-ALMA-VERDE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Alma Verde 100 ml",
+        "Paris Corner Voux Alma Verde 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-alma-verde",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-alma-verde"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-ELEGANTE-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-ELEGANTE-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Elegante Emir 100 ml",
+        "Paris Corner Voux Elegante Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-elegante-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-elegante-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-SPICES-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-SPICES-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Spices Emir 100 ml",
+        "Paris Corner Voux Spices Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-spices-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-spices-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-TURQUOISE-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-TURQUOISE-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Turquoise Emir 100 ml",
+        "Paris Corner Voux Turquoise Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-turquoise-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-turquoise-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-VIOLETTE-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-VIOLETTE-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Violette Emir 100 ml",
+        "Paris Corner Voux Violette Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-violette-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-violette-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-ZESTE",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-ZESTE-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Zeste 100 ml",
+        "Paris Corner Voux Zeste 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-zeste",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-zeste"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VOUX-ZINGY",
+      "variant_id": "SHV-PARIS-CORNER-VOUX-ZINGY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Voux Zingy 100 ml",
+        "Paris Corner Voux Zingy 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/voux-zingy",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/voux-zingy"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WARM-LEATHER-EMIR-FACTORY-EDITION",
+      "variant_id": "SHV-PARIS-CORNER-WARM-LEATHER-EMIR-FACTORY-EDITION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Warm Leather Emir Factory Edition 100 ml",
+        "Paris Corner Warm Leather Emir Factory Edition 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/warm-leather-emir-factory-edition",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/warm-leather-emir-factory-edition"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM",
+      "variant_id": "SHV-PARIS-CORNER-WAYFARER-EAU-DE-PARFUM-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Wayfarer Eau de Parfum 100 ml",
+        "Paris Corner Wayfarer Eau de Parfum 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wayfarer-dau-de-parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WAYWARD-CHARLIE-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-WAYWARD-CHARLIE-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Wayward Charlie Emir 100 ml",
+        "Paris Corner Wayward Charlie Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/wayward-charlie-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wayward-charlie-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-WHEN-SOUL-GETS-HIGH-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-WHEN-SOUL-GETS-HIGH-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "When Soul Gets High Emir 100 ml",
+        "Paris Corner When Soul Gets High Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/when-soul-gets-high-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/when-soul-gets-high-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-a6639186",
+      "variant_id": "SHV-PARIS-CORNER-6639186-75-000",
+      "size_ml": 75,
+      "aliases": [
+        "Wild and Tobacco Emir 75 ml",
+        "Paris Corner Wild and Tobacco Emir 75ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/wild-and-tobacco-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-f9894949",
+      "variant_id": "SHV-PARIS-CORNER-9894949-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "You're Drugged Emir 100 ml",
+        "Paris Corner You're Drugged Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/youre-drugged-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/youre-drugged-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-5b82cf01",
+      "variant_id": "SHV-PARIS-CORNER-5-82-01-85-000",
+      "size_ml": 85,
+      "aliases": [
+        "Zahi 85 ml",
+        "Paris Corner Zahi 85ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zahi",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zahi"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-1e9b7293",
+      "variant_id": "SHV-PARIS-CORNER-1-9-7293-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Zahri Amara 100 ml",
+        "Paris Corner Zahri Amara 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zahri-amara",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zahri-amara"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-956aa6c3",
+      "variant_id": "SHV-PARIS-CORNER-956-6-3-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Zaman Al Ula 100 ml",
+        "Paris Corner Zaman Al Ula 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zaman-al-ula",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zaman-al-ula"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ZARIYA",
+      "variant_id": "SHV-PARIS-CORNER-ZARIYA-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Zariya 100 ml",
+        "Paris Corner Zariya 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zariya",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zariya"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-7f65b76f",
+      "variant_id": "SHV-PARIS-CORNER-7-65-76-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Zodiac 100 ml",
+        "Paris Corner Zodiac 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-70cc0deb",
+      "variant_id": "SHV-PARIS-CORNER-70-0-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Zodiac Lunaris 100 ml",
+        "Paris Corner Zodiac Lunaris 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-lunaris",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-lunaris"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-8415dd43",
+      "variant_id": "SHV-PARIS-CORNER-8415-43-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Zodiac Solmaris 100 ml",
+        "Paris Corner Zodiac Solmaris 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-solmaris",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-solmaris"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-12e6ea3f",
+      "variant_id": "SHV-PARIS-CORNER-12-6-3-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Zodiac Stratos 100 ml",
+        "Paris Corner Zodiac Stratos 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zodiac-stratos-100ml"
     }
   ]
 }
