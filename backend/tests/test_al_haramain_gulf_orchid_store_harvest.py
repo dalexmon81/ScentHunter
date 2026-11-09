@@ -25,9 +25,6 @@ GULF_ORCHID_DETAIL_VERIFIED = {
 
 MAISON_ASRAR_REATTRIBUTED = {
     "Asala": ("https://shop-gulforchid.com/collections/asala-collection", "source_listed_name", None),
-    "Hamsat": ("https://shop-gulforchid.com/collections/hamsat-collection", "source_listed_name", None),
-    "Jawhara": ("https://shop-gulforchid.com/collections/jawhara-collection", "source_listed_name", None),
-    "Jewel": ("https://shop-gulforchid.com/collections/jewel-collection", "source_listed_name", None),
     "Turath": ("https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml", "source_verified_name", (100, "Eau de Parfum")),
     "Vanilla Aura": ("https://shop-gulforchid.com/products/vanilla-aura", "source_verified_name", (100, "Eau de Parfum")),
     "Vanilla Voyage": ("https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum", "source_verified_name", None),
@@ -172,6 +169,26 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
                     self.assertEqual(variants[0].get("size_ml"), size_ml)
                     self.assertEqual(variants[0].get("concentration"), concentration)
                     self.assertEqual(variants[0].get("source_evidence_url"), source_url)
+
+
+    def test_maison_asrar_collection_labels_are_not_canonical_perfume_identities(self):
+        # These are collection names, not standalone perfumes. The actual
+        # products displayed within those collections already have identities.
+        for name in ("Hamsat", "Jawhara", "Jewel"):
+            with self.subTest(collection=name):
+                self.assertFalse(any(
+                    row.get("canonical_name") == name
+                    for row in self.products
+                ))
+        expected_products = (
+            "Hamsat Gharam", "Hamsat Hob", "Hamsat Ghazal", "Hamsat Ishq",
+            "Jawhara Rouge", "Jawhara Black",
+            "Date Night", "Red Velvet", "Pink Crush",
+        )
+        maison_names = self._brand_names("Maison Asrar")
+        for name in expected_products:
+            with self.subTest(product=name):
+                self.assertIn(self._normalize(name), maison_names)
 
 if __name__ == "__main__":
     unittest.main()
