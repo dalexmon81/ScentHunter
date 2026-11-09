@@ -26,3 +26,5 @@ The official Afnan Perfumes Europe storefront product pages explicitly identify 
 ## Validation
 
 The dedicated regression module checks all eight product identities, their 100 ml variants, exact official evidence URLs and concentration separation.
+
+Workflow note: the stacked PR validation workflow on the target catalog branch explicitly includes this PR's base branch.
