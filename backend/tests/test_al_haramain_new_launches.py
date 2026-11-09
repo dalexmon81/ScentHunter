@@ -54,6 +54,18 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
                     self.assertEqual(matching[0]["concentration"], concentration)
                     self.assertEqual(matching[0]["source_evidence_url"], url)
 
+    def test_amber_oud_aqua_dubai_200ml_detail_page_adds_explicit_variant(self):
+        product = next(
+            p for p in CATALOG["products"]
+            if p.get("brand") == "Al Haramain" and p.get("canonical_name") == "Amber Oud Aqua Dubai"
+        )
+        url = "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html"
+        self.assertIn(200, product["formats_ml"])
+        self.assertEqual(product["concentration"], "Extrait de Parfum")
+        variant = next(v for v in CATALOG["variants"] if v["product_id"] == product["product_id"] and v["size_ml"] == 200)
+        self.assertEqual(variant["concentration"], "Extrait de Parfum")
+        self.assertEqual(variant["source_evidence_url"], url)
+
     def test_new_launches_are_registered_in_al_haramain_family(self):
         family = next(f for f in REGISTRY["families"] if f["family_id"] == "al_haramain_catalog")
         names = {p["canonical_name"] for p in family["products"]}

@@ -154,3 +154,9 @@ Each individual first-party detail page identifies the fragrance, concentration,
 - Taj Malaki Noir — https://shop.alharamainperfumes.com/default/haramain-taj-malaki-noir-100ml-eau-de-parfum.html (100 ml, Eau de Parfum, SKU AHP2066)
 
 All five individual official product pages identify the fragrance, Eau de Parfum concentration, and 100 ml volume. These names were absent from the Al Haramain catalog and were added with explicit 100 ml variants. No prices or availability data were imported.
+
+### Al Haramain: additional verified 200 ml variant (9 November 2026)
+
+- Amber Oud Aqua Dubai — https://shop.alharamainperfumes.com/eu/haramain-amber-oud-aqua-dubai-200ml-extrait-de-parfum.html (200 ml, Extrait de Parfum, SKU AHP2109)
+
+The first-party detail page confirms the existing fragrance identity, Extrait de Parfum concentration, and 200 ml liquid volume. Added a 200 ml variant to the existing canonical product; no duplicate product identity was created. No price or stock data was imported.
