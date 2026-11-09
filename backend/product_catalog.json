@@ -23365,9 +23365,14 @@
         "Dynasty",
         "Lattafa Dynasty"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/dynasty/",
+      "source_evidence_url": "https://lattafa.com/product/dynasty/",
+      "source_product_url": "https://lattafa.com/product/dynasty/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-ANA-ABIYEDH-LEATHER",
@@ -23381,9 +23386,14 @@
         "Ana Abiyedh Leather",
         "Lattafa Ana Abiyedh Leather"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/ana-abiyedh-leather/",
+      "source_evidence_url": "https://lattafa.com/product/ana-abiyedh-leather/",
+      "source_product_url": "https://lattafa.com/product/ana-abiyedh-leather/",
+      "gender": "Unisex",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-LATTAFA-FIRE-ON-ICE",
@@ -23397,9 +23407,11 @@
         "Fire On Ice",
         "Lattafa Fire On Ice"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/fire-on-ice/",
+      "source_evidence_url": "https://lattafa.com/product/fire-on-ice/",
+      "source_product_url": "https://lattafa.com/product/fire-on-ice/",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-LATTAFA-HABIK-WOMEN",
@@ -23413,9 +23425,14 @@
         "Habik Women",
         "Lattafa Habik Women"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/habik-women/",
+      "source_evidence_url": "https://lattafa.com/product/habik-women/",
+      "source_product_url": "https://lattafa.com/product/habik-women/",
+      "gender": "Women",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-HABIK-MEN",
@@ -23429,9 +23446,13 @@
         "Habik Men",
         "Lattafa Habik Men"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/3/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/habik-men/",
+      "source_evidence_url": "https://lattafa.com/product/habik-men/",
+      "source_product_url": "https://lattafa.com/product/habik-men/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-HISTORIC-SAHARA",
@@ -23717,9 +23738,14 @@
         "Mohra",
         "Lattafa Mohra"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa-perfumes/page/11/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/mohra/",
+      "source_evidence_url": "https://lattafa.com/product/mohra/",
+      "source_product_url": "https://lattafa.com/product/mohra/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-KHAMRAH",
@@ -47368,6 +47394,61 @@
       "variant_id": "SHV-SH-LATTAFA-LOVE-IN-PARIS-20261109-100-000",
       "source_url": "https://lattafa.com/product/love-in-paris/",
       "source_evidence_url": "https://lattafa.com/product/love-in-paris/"
+    },
+    {
+      "product_id": "SH-LATTAFA-ANA-ABIYEDH-LEATHER",
+      "size_ml": 60,
+      "aliases": [
+        "Ana Abiyedh Leather 60 ml",
+        "Lattafa Ana Abiyedh Leather 60 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-ANA-ABIYEDH-LEATHER-60-000",
+      "source_url": "https://lattafa.com/product/ana-abiyedh-leather/",
+      "source_evidence_url": "https://lattafa.com/product/ana-abiyedh-leather/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HABIK-WOMEN",
+      "size_ml": 100,
+      "aliases": [
+        "Habik Women 100 ml",
+        "Lattafa Habik Women 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-HABIK-WOMEN-100-000",
+      "source_url": "https://lattafa.com/product/habik-women/",
+      "source_evidence_url": "https://lattafa.com/product/habik-women/"
+    },
+    {
+      "product_id": "SH-LATTAFA-HABIK-MEN",
+      "size_ml": 100,
+      "aliases": [
+        "Habik Men 100 ml",
+        "Lattafa Habik Men 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-HABIK-MEN-100-000",
+      "source_url": "https://lattafa.com/product/habik-men/",
+      "source_evidence_url": "https://lattafa.com/product/habik-men/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MOHRA",
+      "size_ml": 100,
+      "aliases": [
+        "Mohra 100 ml",
+        "Lattafa Mohra 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-MOHRA-100-000",
+      "source_url": "https://lattafa.com/product/mohra/",
+      "source_evidence_url": "https://lattafa.com/product/mohra/"
+    },
+    {
+      "product_id": "SH-LATTAFA-DYNASTY",
+      "size_ml": 100,
+      "aliases": [
+        "Dynasty 100 ml",
+        "Lattafa Dynasty 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-DYNASTY-100-000",
+      "source_url": "https://lattafa.com/product/dynasty/",
+      "source_evidence_url": "https://lattafa.com/product/dynasty/"
     }
   ]
 }
