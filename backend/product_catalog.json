@@ -17412,7 +17412,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/lullaby",
       "source_product_url": "https://www.pariscornerperfumes.com/products/lullaby",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/lullaby"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/lullaby",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAGIC-OUD-DARK-ROSES",
@@ -17546,7 +17549,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mango-flames",
       "source_product_url": "https://www.pariscornerperfumes.com/products/mango-flames",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mango-flames"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mango-flames",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MANGO-JUGOSO",
@@ -17669,7 +17675,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mehwish",
       "source_product_url": "https://www.pariscornerperfumes.com/products/mehwish",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mehwish"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mehwish",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-METALICO-EMIR",
@@ -17686,7 +17695,10 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/metalico-emir",
       "source_product_url": "https://www.pariscornerperfumes.com/products/metalico-emir",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/metalico-emir"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/metalico-emir",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-MUSAMAM-BLACK-INTENSE",
@@ -40171,6 +40183,50 @@
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/magic-oud-sandal-wood"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-LULLABY",
+      "variant_id": "SHV-PARIS-CORNER-LULLABY-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Lullaby 100 ml",
+        "Paris Corner Lullaby 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/lullaby",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/lullaby"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MANGO-FLAMES",
+      "variant_id": "SHV-PARIS-CORNER-MANGO-FLAMES-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Mango Flames 100 ml",
+        "Paris Corner Mango Flames 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mango-flames",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mango-flames"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MEHWISH",
+      "variant_id": "SHV-PARIS-CORNER-MEHWISH-80-000",
+      "size_ml": 80,
+      "aliases": [
+        "Mehwish 80 ml",
+        "Paris Corner Mehwish 80ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mehwish",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mehwish"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-METALICO-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-METALICO-EMIR-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Metalico Emir 100 ml",
+        "Paris Corner Metalico Emir 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/metalico-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/metalico-emir"
     }
   ]
 }
