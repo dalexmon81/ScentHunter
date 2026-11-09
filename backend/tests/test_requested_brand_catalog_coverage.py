@@ -22,7 +22,7 @@ MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Maison Asrar": 120,
     "Swiss Arabian": 41,
-    "Paris Corner": 253,
+    "Paris Corner": 254,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Assaf": 140,
@@ -1327,6 +1327,58 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                 self.assertEqual(matching[0].get("gtin"), gtin)
                 self.assertEqual(matching[0].get("concentration"), "Eau de Parfum")
                 self.assertIn("/products/", matching[0].get("source_evidence_url", ""))
+
+
+    def test_paris_corner_official_storefront_batch_g_detail_pages_and_sizes(self):
+        expected = {
+            "Rifaaqat Adorn": ("https://www.pariscornerperfumes.com/products/rifaaqat-adorn", None),
+            "Rua": ("https://www.pariscornerperfumes.com/products/rua", 100),
+            "Rua Radiant Roses": ("https://www.pariscornerperfumes.com/products/rua-radiant-roses", 100),
+            "Soothing Zephyr": ("https://www.pariscornerperfumes.com/products/soothing-zephyr", None),
+            "Strawberry Pound Cake": ("https://www.pariscornerperfumes.com/products/strawberry-pound-cake", 100),
+            "Taskeen": ("https://www.pariscornerperfumes.com/products/taskeen", 100),
+            "Taskeen Caramel Cascade": ("https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade", None),
+            "Taskeen Lactéa Divina": ("https://www.pariscornerperfumes.com/products/taskeen-lactea-divina-100ml", 100),
+            "Taskeen Marina": ("https://www.pariscornerperfumes.com/products/taskeen-marina", None),
+            "Taskeen Wowie": ("https://www.pariscornerperfumes.com/products/taskeen-wowie", 100),
+            "The Aoud": ("https://www.pariscornerperfumes.com/products/the-aoud", 100),
+            "The Green": ("https://www.pariscornerperfumes.com/products/the-green", 100),
+            "The Peace": ("https://www.pariscornerperfumes.com/products/the-peace", 100),
+            "The Scent": ("https://www.pariscornerperfumes.com/products/the-scent", 100),
+            "The Street": ("https://www.pariscornerperfumes.com/products/the-street", 100),
+            "The Triumphant Sapphire": ("https://www.pariscornerperfumes.com/products/the-triumphant-sapphire", 100),
+            "Tiramisu Speculoos": ("https://www.pariscornerperfumes.com/products/tiramisu-speculoos-100ml", 100),
+            "Toxic Heart": ("https://www.pariscornerperfumes.com/products/toxic-heart", 100),
+            "Tranquil Night Musk Collection": ("https://www.pariscornerperfumes.com/products/tranquil-night-musk-collection-1", None),
+            "Twilight Shadow Musk Collection": ("https://www.pariscornerperfumes.com/products/twilight-shadow-musk-collection-1", None),
+            "Ultra Citrus Emir Factory Edition": ("https://www.pariscornerperfumes.com/products/ultra-citrus-emir-factory-edition", 100),
+            "Valar Series A Chaos in the Ocean": ("https://www.pariscornerperfumes.com/products/a-chaos-in-the-ocean-valar-series", None),
+            "Valar Series A Walk on Dirt": ("https://www.pariscornerperfumes.com/products/a-walk-on-dirt-valar-series", None),
+            "Valar Series Smoky Leather": ("https://www.pariscornerperfumes.com/products/smoky-leather-valar-series", None),
+            "Vanilla and Roses Emir": ("https://www.pariscornerperfumes.com/products/vanilla-and-roses-emir", 75),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Paris Corner"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_url"), source)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
 if __name__ == "__main__":
