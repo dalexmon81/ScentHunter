@@ -12146,6 +12146,48 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Atlas Canyon",
+          "aliases": [
+            "Atlas Canyon",
+            "Lattafa Atlas Canyon"
+          ],
+          "formats_ml": [
+            55
+          ]
+        },
+        {
+          "canonical_name": "Atlas Glacial Valley",
+          "aliases": [
+            "Atlas Glacial Valley",
+            "Lattafa Atlas Glacial Valley"
+          ],
+          "formats_ml": [
+            55
+          ]
+        },
+        {
+          "canonical_name": "Raghad",
+          "aliases": [
+            "Raghad",
+            "Lattafa Raghad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ramaad Al Oud",
+          "aliases": [
+            "Ramaad Al Oud",
+            "Ramad Al Oud",
+            "Lattafa Ramaad Al Oud",
+            "Lattafa Ramad Al Oud"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
