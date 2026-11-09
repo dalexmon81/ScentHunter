@@ -34865,14 +34865,16 @@
       "source_evidence_url": "https://lattafa.com/product/al-narjis/"
     },
     {
-      "product_id": "SH-ARMAF-5fce992b",
+      "product_id": "SH-ARMAF-CHECK-MATE-WHITE-KNIGHT",
       "brand": "Armaf",
       "brand_name": "Armaf",
-      "canonical_name": "Check Mate White - Knight",
-      "name": "Check Mate White - Knight",
+      "canonical_name": "Check Mate White Knight",
+      "name": "Check Mate White Knight",
       "family_id": "armaf_catalog",
-      "family_name": "Check Mate White - Knight",
+      "family_name": "Check Mate White Knight",
       "aliases": [
+        "Check Mate White Knight",
+        "Armaf Check Mate White Knight",
         "Check Mate White - Knight",
         "Armaf Check Mate White - Knight"
       ],
@@ -34885,7 +34887,7 @@
       ]
     },
     {
-      "product_id": "SH-ARMAF-1727c712",
+      "product_id": "SH-ARMAF-ODYSSEY-FRENCH-KISS",
       "brand": "Armaf",
       "brand_name": "Armaf",
       "canonical_name": "Odyssey French Kiss",
@@ -38442,24 +38444,24 @@
       "variant_id": "SHV-SH-LATTAFA-EU-HARVEST-083-100-000"
     },
     {
-      "product_id": "SH-ARMAF-5fce992b",
+      "product_id": "SH-ARMAF-CHECK-MATE-WHITE-KNIGHT",
       "size_ml": 100,
       "aliases": [
         "Check Mate White - Knight 100 ml",
         "Armaf Check Mate White - Knight 100ml"
       ],
-      "variant_id": "SHV-SH-ARMAF-5fce992b-100-000",
+      "variant_id": "SHV-SH-ARMAF-CHECK-MATE-WHITE-KNIGHT-100-000",
       "concentration": "Eau de Parfum",
       "source_url": "https://cz.armaf.eu/en/products/check-mate-white-knight"
     },
     {
-      "product_id": "SH-ARMAF-1727c712",
+      "product_id": "SH-ARMAF-ODYSSEY-FRENCH-KISS",
       "size_ml": 60,
       "aliases": [
         "Odyssey French Kiss 60 ml",
         "Armaf Odyssey French Kiss 60ml"
       ],
-      "variant_id": "SHV-SH-ARMAF-1727c712-60-000",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-FRENCH-KISS-60-000",
       "concentration": "Eau de Parfum",
       "source_url": "https://cz.armaf.eu/products/odyssey-french-kiss"
     },
