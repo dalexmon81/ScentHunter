@@ -2549,6 +2549,9 @@
           "aliases": [
             "Gold Coast Shiraz",
             "Bujairami Gold Coast Shiraz"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2556,6 +2559,9 @@
           "aliases": [
             "G’Day",
             "Bujairami G’Day"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2563,6 +2569,9 @@
           "aliases": [
             "Midnight in Melbourne",
             "Bujairami Midnight in Melbourne"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2570,6 +2579,9 @@
           "aliases": [
             "Sunrise in Sydney",
             "Bujairami Sunrise in Sydney"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {

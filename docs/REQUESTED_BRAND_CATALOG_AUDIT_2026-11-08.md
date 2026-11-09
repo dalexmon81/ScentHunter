@@ -156,3 +156,15 @@ The brand-owned Maison Asrar new-arrival collection lists 81 products. Its first
 The inspected individual pages confirm the fragrance names and standalone product pages. Their accessible page content did not explicitly state bottle size or concentration, so no size variants or concentration values were invented. The collection's note pyramids and merchandising descriptors were not treated as size/concentration evidence. Room sprays, home-fragrance products and sets remain outside the perfume identity scope. The collection page currently reports 81 products; this pass only verifies the first twelve visible new-arrival entries and is not a full 81-product reconciliation.
 
 Regression coverage was added in `backend/tests/test_maison_asrar_new_arrival_evidence.py` for the ten official detail URLs, provenance status, and the deliberate absence of unsupported variants.
+
+
+### Bujairami: four original fragrances verified from individual product pages (9 November 2026)
+
+The official Bujairami EU storefront's Shop page identifies four original fragrances and labels their concentrations: Gold Coast Shiraz (EDP), G’Day (Extrait de Parfum), Midnight in Melbourne (EDP), and Sunrise in Sydney (EDP). Each linked individual product page confirms a 100 ml size. The four canonical identities already existed in the seed, so they were upgraded in place and given one 100 ml variant each; no duplicate products were created.
+
+- Gold Coast Shiraz — https://bujairami.eu/product/gold-coast-shiraz/
+- G’Day — https://bujairami.eu/product/gday/
+- Midnight in Melbourne — https://bujairami.eu/product/midnight-in-melbourne/
+- Sunrise in Sydney — https://bujairami.eu/product/sunrise-in-sydney/
+
+The concentration labels for Gold Coast Shiraz, Midnight in Melbourne, and Sunrise in Sydney are stated on the official Shop page; their individual detail pages confirm the 100 ml size. G’Day's individual page explicitly states Extrait de Parfum with 35% essence and 100 ml. No price or stock data was copied into the catalog. This is a focused verification of four original fragrances, not a full reconciliation of the much larger Bujairami inspired-fragrance assortment.

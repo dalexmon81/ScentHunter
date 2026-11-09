@@ -3759,8 +3759,10 @@
         "Gold Coast Shiraz",
         "Bujairami Gold Coast Shiraz"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.eu/shop/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.eu/product/gold-coast-shiraz/",
+      "source_product_url": "https://bujairami.eu/product/gold-coast-shiraz/",
+      "source_evidence_url": "https://bujairami.eu/product/gold-coast-shiraz/"
     },
     {
       "product_id": "SH-BUJAIRAMI-ee29a117",
@@ -3774,8 +3776,10 @@
         "G’Day",
         "Bujairami G’Day"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.eu/shop/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.eu/product/gday/",
+      "source_product_url": "https://bujairami.eu/product/gday/",
+      "source_evidence_url": "https://bujairami.eu/product/gday/"
     },
     {
       "product_id": "SH-BUJAIRAMI-6110beb5",
@@ -3789,8 +3793,10 @@
         "Midnight in Melbourne",
         "Bujairami Midnight in Melbourne"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.eu/shop/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.eu/product/midnight-in-melbourne/",
+      "source_product_url": "https://bujairami.eu/product/midnight-in-melbourne/",
+      "source_evidence_url": "https://bujairami.eu/product/midnight-in-melbourne/"
     },
     {
       "product_id": "SH-BUJAIRAMI-e55dcd47",
@@ -3804,8 +3810,10 @@
         "Sunrise in Sydney",
         "Bujairami Sunrise in Sydney"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://bujairami.eu/shop/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://bujairami.eu/product/sunrise-in-sydney/",
+      "source_product_url": "https://bujairami.eu/product/sunrise-in-sydney/",
+      "source_evidence_url": "https://bujairami.eu/product/sunrise-in-sydney/"
     },
     {
       "product_id": "SH-ASSAF-9c4d699d",
@@ -36987,6 +36995,46 @@
       "size_ml": 50,
       "source_evidence_url": "https://us.swissarabian.com/products/tobacco-01",
       "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-370cb2f2",
+      "size_ml": 100,
+      "aliases": [
+        "Gold Coast Shiraz 100 ml",
+        "Bujairami Gold Coast Shiraz 100ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-370cb2f2-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-ee29a117",
+      "size_ml": 100,
+      "aliases": [
+        "G’Day 100 ml",
+        "Bujairami G’Day 100ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-ee29a117-100-EXTRAIT",
+      "concentration": "Extrait de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-6110beb5",
+      "size_ml": 100,
+      "aliases": [
+        "Midnight in Melbourne 100 ml",
+        "Bujairami Midnight in Melbourne 100ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-6110beb5-100-EDP",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BUJAIRAMI-e55dcd47",
+      "size_ml": 100,
+      "aliases": [
+        "Sunrise in Sydney 100 ml",
+        "Bujairami Sunrise in Sydney 100ml"
+      ],
+      "variant_id": "SHV-SH-BUJAIRAMI-e55dcd47-100-EDP",
+      "concentration": "Eau de Parfum"
     }
   ]
 }
