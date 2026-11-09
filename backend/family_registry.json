@@ -9544,13 +9544,6 @@
           ]
         },
         {
-          "canonical_name": "Papa Yeah!",
-          "aliases": [
-            "Papa Yeah!",
-            "French Avenue Papa Yeah!"
-          ]
-        },
-        {
           "canonical_name": "Paradigm",
           "aliases": [
             "Paradigm",
@@ -9669,7 +9662,8 @@
           "canonical_name": "Papa Yeah",
           "aliases": [
             "Papa Yeah",
-            "French Avenue Papa Yeah"
+            "French Avenue Papa Yeah",
+            "Papa Yeah!"
           ],
           "formats_ml": [
             100
