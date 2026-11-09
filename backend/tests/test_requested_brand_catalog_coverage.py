@@ -1178,5 +1178,42 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("source_evidence_url"), source)
 
 
+    def test_lattafa_official_detail_pages_batch_two_and_explicit_sizes(self):
+        expected = {
+            "Musamam Black Intense": ("https://lattafa.com/product/musamam-black-intense/", None),
+            "Raed Absolu": ("https://lattafa.com/product/raed-absolu/", 100),
+            "Raed Intensely": ("https://lattafa.com/product/raed-intensely/", 100),
+            "Liam Blue Shine": ("https://lattafa.com/product/liam-blue-shine/", 100),
+            "Berry On Top": ("https://lattafa.com/product/berry-on-top/", None),
+            "Washwasha": ("https://lattafa.com/product/washwasha/", 100),
+            "Musk Salama": ("https://lattafa.com/product/musk-salama/", 100),
+            "Eclaire Pistache": ("https://lattafa.com/product/eclaire-pistache/", 100),
+            "Eclaire Banoffi": ("https://lattafa.com/product/eclaire-banoffi/", 100),
+            "Ana Abiyedh Scarlet": ("https://lattafa.com/product/ana-abiyedh-scarlet/", 60),
+        }
+        products = {
+            str(row.get("canonical_name") or row.get("name") or "").strip(): row
+            for row in CATALOG.get("products", [])
+            if str(row.get("brand_name") or row.get("brand") or "").strip() == "Lattafa"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source, size) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source)
+                if size is not None:
+                    self.assertIn(size, row.get("formats_ml", []))
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row.get("product_id")
+                        and variant.get("size_ml") == size
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("source_url"), source)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()
