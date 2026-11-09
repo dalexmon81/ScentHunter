@@ -70,10 +70,22 @@ def git_json(ref: str, path: str) -> dict[str, Any]:
     return parsed
 
 
+def normalize_product_name(value: Any) -> str:
+    """Normalize product identity without treating bottle size as a new product.
+
+    Size belongs to the variant, not the canonical fragrance identity. Some
+    retailer/brand catalogs append a size to the product title (for example,
+    "Sweet Heaven Extreme 20ml"); strip only a trailing metric volume token.
+    """
+    name = str(value or "").strip()
+    name = re.sub(r"\\s+\\d+(?:[.,]\\d+)?\\s*(?:ml|mL|ML|l|L)$", "", name)
+    return normalize(name)
+
+
 def product_identity(row: dict[str, Any]) -> tuple[str, str]:
     return (
         normalize(row.get("brand_name") or row.get("brand")),
-        normalize(row.get("canonical_name") or row.get("name")),
+        normalize_product_name(row.get("canonical_name") or row.get("name")),
     )
 
 
