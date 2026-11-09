@@ -78,7 +78,7 @@ def normalize_product_name(value: Any) -> str:
     "Sweet Heaven Extreme 20ml"); strip only a trailing metric volume token.
     """
     name = str(value or "").strip()
-    name = re.sub(r"\\s+\\d+(?:[.,]\\d+)?\\s*(?:ml|mL|ML|l|L)$", "", name)
+    name = re.sub(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|mL|ML|l|L)$", "", name)
     return normalize(name)
 
 
