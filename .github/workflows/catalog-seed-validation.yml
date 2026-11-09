@@ -19,6 +19,7 @@ on:
       - work/paris-corner-eleven-details-2026-11-09
       - work/paris-corner-four-details-2026-11-09
       - work/paris-corner-five-details-2026-11-09
+      - work/maison-alhambra-twelve-details-2026-11-09
       - catalog/al-wataniah-reconciled-40-variants-2026-11-09
     paths:
       - "backend/product_catalog.json"
@@ -32,6 +33,7 @@ on:
       - work/paris-corner-eleven-details-2026-11-09
       - work/paris-corner-four-details-2026-11-09
       - work/paris-corner-five-details-2026-11-09
+      - work/maison-alhambra-twelve-details-2026-11-09
       - catalog/afnan-stardust-detail-variant-2026-11-09
       - catalog/afnan-9-series-official-details-2026-11-09
       - catalog/al-wataniah-five-more-details-2026-11-09
@@ -104,3 +106,7 @@ jobs:
       - name: Validate Paris Corner five additional official detail variants
         if: github.head_ref == 'work/paris-corner-five-details-2026-11-09'
         run: python -m unittest backend.tests.test_paris_corner_five_official_details -v
+
+      - name: Validate Maison Alhambra twelve official detail variants
+        if: github.head_ref == 'work/maison-alhambra-twelve-details-2026-11-09'
+        run: python -m unittest backend.tests.test_maison_alhambra_twelve_official_details -v

@@ -13161,7 +13161,8 @@
           ],
           "formats_ml": [
             80
-          ]
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Alive Now",
@@ -13175,7 +13176,11 @@
           "aliases": [
             "Alpine Homme Sport",
             "Maison Alhambra Alpine Homme Sport"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Amber & Leather",
@@ -13213,14 +13218,19 @@
           ],
           "formats_ml": [
             100
-          ]
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Anchor Black",
           "aliases": [
             "Anchor Black",
             "Maison Alhambra Anchor Black"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Aoud Prestigium",
@@ -13241,7 +13251,11 @@
           "aliases": [
             "Aromatic Rouge",
             "Maison Alhambra Aromatic Rouge"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Athena",
@@ -13251,28 +13265,41 @@
           ],
           "formats_ml": [
             100
-          ]
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Aura D'Eclat",
           "aliases": [
             "Aura D'Eclat",
             "Maison Alhambra Aura D'Eclat"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Avant Ruby",
           "aliases": [
             "Avant Ruby",
             "Maison Alhambra Avant Ruby"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Avant Silk",
           "aliases": [
             "Avant Silk",
             "Maison Alhambra Avant Silk"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "B.A.D. Femme",
@@ -13313,21 +13340,33 @@
           "aliases": [
             "Baroque Satin Oud",
             "Maison Alhambra Baroque Satin Oud"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Berlinetta",
           "aliases": [
             "Berlinetta",
             "Maison Alhambra Berlinetta"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Black Origami",
           "aliases": [
             "Black Origami",
             "Maison Alhambra Black Origami"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Blue de Chance",
