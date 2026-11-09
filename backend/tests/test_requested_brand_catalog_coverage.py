@@ -13,7 +13,8 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 MINIMUM_BRAND_COUNTS = {
     "Velixir": 28,
     "Mykonos": 72,
-    "Maison Asrar": 120,
+    # Corrected 2026-11-09 after the multi-brand storefront audit moved six Gulf Orchid products out of Maison Asrar.
+    "Maison Asrar": 115,
     "Khadlaj": 116,
     "Bujairami": 142,
     "Paris Corner": 245,
@@ -23,7 +24,8 @@ MINIMUM_BRAND_COUNTS = {
     "French Avenue": 119,
     "Arabiyat Prestige": 118,
     # Corrected 2026-11-09: 16 standalone Gulf Orchid identities remain after moving Maison Asrar products and removing collection labels from the old 23-row storefront harvest.
-    "Gulf Orchid": 16,
+    # Corrected 2026-11-09 after six additional Gulf Orchid identities were verified on the Maison Asrar multi-brand storefront.
+    "Gulf Orchid": 22,
     "Swiss Arabian": 32,
     "Games of Spades": 29,
     "Lattafa": 115,
@@ -962,6 +964,43 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Vanilla Voyage": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
             "Vision": "https://maisonasrar.com/products/vision",
             "Oh Honey!": "https://maisonasrar.com/products/oh-honey-eau-de-parfum",
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Asrar"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, source_url in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertNotIn("formats_ml", row)
+                self.assertNotIn("concentration", row)
+                self.assertFalse(any(
+                    variant.get("product_id") == row["product_id"]
+                    for variant in variants
+                ))
+
+
+    def test_maison_asrar_fourth_and_fifth_new_arrivals_pages_brand_owned_products(self):
+        expected = {
+            "Date Night": "https://maisonasrar.com/products/date-night",
+            "Larimar": "https://maisonasrar.com/products/larimar",
+            "Rubellite": "https://maisonasrar.com/products/rubellite",
+            "Nada": "https://maisonasrar.com/products/nada",
+            "Omniya": "https://maisonasrar.com/products/omniya",
+            "Coffee Blend": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+            "Lumiere": "https://maisonasrar.com/products/lumiere",
+            "Soirée": "https://maisonasrar.com/products/soiree",
+            "Rey": "https://maisonasrar.com/products/rey-eau-de-parfum-100ml-maison-asrar",
+            "Leo": "https://maisonasrar.com/products/maison-asrar-leo-eau-de-parfum-100ml",
+            "Hunter": "https://maisonasrar.com/products/maison-asrar-hunter-eau-de-parfum-100ml",
+            "Bloom Bloom": "https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml",
+            "Lolita": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+            "Bonita": "https://maisonasrar.com/products/bonita-eau-de-parfum-100ml",
         }
         products = {
             row.get("canonical_name"): row
