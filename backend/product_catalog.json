@@ -24620,9 +24620,11 @@
         "Mohra Silky Rose",
         "Lattafa Mohra Silky Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/mohra-silky-rose/",
+      "source_evidence_url": "https://lattafa.com/product/mohra-silky-rose/",
+      "source_product_url": "https://lattafa.com/product/mohra-silky-rose/",
+      "gender": "Women"
     },
     {
       "product_id": "SH-LATTAFA-ABRAAJ",
@@ -24684,9 +24686,14 @@
         "Raneen",
         "Lattafa Raneen"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/raneen/",
+      "source_evidence_url": "https://lattafa.com/product/raneen/",
+      "source_product_url": "https://lattafa.com/product/raneen/",
+      "gender": "Women",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-LATTAFA-VICTORIA",
@@ -24700,9 +24707,13 @@
         "Victoria",
         "Lattafa Victoria"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/victoria/",
+      "source_evidence_url": "https://lattafa.com/product/victoria/",
+      "source_product_url": "https://lattafa.com/product/victoria/",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-LAIL-MALEKI-MOROCCAN-BLUE",
@@ -24716,9 +24727,14 @@
         "Lail Maleki Moroccan Blue",
         "Lattafa Lail Maleki Moroccan Blue"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/lail-maleki-moroccan-blue/",
+      "source_evidence_url": "https://lattafa.com/product/lail-maleki-moroccan-blue/",
+      "source_product_url": "https://lattafa.com/product/lail-maleki-moroccan-blue/",
+      "gender": "Men",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-MASHRABYA",
@@ -24732,9 +24748,14 @@
         "Mashrabya",
         "Lattafa Mashrabya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/mashrabya/",
+      "source_evidence_url": "https://lattafa.com/product/mashrabya/",
+      "source_product_url": "https://lattafa.com/product/mashrabya/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-MAYAR-CHERRY-INTENSE",
@@ -24748,9 +24769,11 @@
         "Mayar Cherry Intense",
         "Lattafa Mayar Cherry Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/mayar-cherry-intense/",
+      "source_evidence_url": "https://lattafa.com/product/mayar-cherry-intense/",
+      "source_product_url": "https://lattafa.com/product/mayar-cherry-intense/",
+      "gender": "Women"
     },
     {
       "product_id": "SH-LATTAFA-AFEEF",
@@ -24764,9 +24787,14 @@
         "Afeef",
         "Lattafa Afeef"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://lattafa.com/product-category/lattafa/page/7/",
-      "source_evidence_url": "https://lattafa.com/product-category/lattafa/page/7/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafa.com/product/afeef/",
+      "source_evidence_url": "https://lattafa.com/product/afeef/",
+      "source_product_url": "https://lattafa.com/product/afeef/",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-LATTAFA-PURE-CRYSTAL",
@@ -48045,6 +48073,61 @@
       "variant_id": "SHV-SH-LATTAFA-ADEEB-80-000",
       "source_url": "https://lattafa.com/product/adeeb/",
       "source_evidence_url": "https://lattafa.com/product/adeeb/"
+    },
+    {
+      "product_id": "SH-LATTAFA-RANEEN",
+      "size_ml": 80,
+      "aliases": [
+        "Raneen 80 ml",
+        "Lattafa Raneen 80 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-RANEEN-80-000",
+      "source_url": "https://lattafa.com/product/raneen/",
+      "source_evidence_url": "https://lattafa.com/product/raneen/"
+    },
+    {
+      "product_id": "SH-LATTAFA-VICTORIA",
+      "size_ml": 100,
+      "aliases": [
+        "Victoria 100 ml",
+        "Lattafa Victoria 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-VICTORIA-100-000",
+      "source_url": "https://lattafa.com/product/victoria/",
+      "source_evidence_url": "https://lattafa.com/product/victoria/"
+    },
+    {
+      "product_id": "SH-LATTAFA-LAIL-MALEKI-MOROCCAN-BLUE",
+      "size_ml": 100,
+      "aliases": [
+        "Lail Maleki Moroccan Blue 100 ml",
+        "Lattafa Lail Maleki Moroccan Blue 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-LAIL-MALEKI-MOROCCAN-BLUE-100-000",
+      "source_url": "https://lattafa.com/product/lail-maleki-moroccan-blue/",
+      "source_evidence_url": "https://lattafa.com/product/lail-maleki-moroccan-blue/"
+    },
+    {
+      "product_id": "SH-LATTAFA-MASHRABYA",
+      "size_ml": 100,
+      "aliases": [
+        "Mashrabya 100 ml",
+        "Lattafa Mashrabya 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-MASHRABYA-100-000",
+      "source_url": "https://lattafa.com/product/mashrabya/",
+      "source_evidence_url": "https://lattafa.com/product/mashrabya/"
+    },
+    {
+      "product_id": "SH-LATTAFA-AFEEF",
+      "size_ml": 100,
+      "aliases": [
+        "Afeef 100 ml",
+        "Lattafa Afeef 100 ml"
+      ],
+      "variant_id": "SHV-SH-LATTAFA-AFEEF-100-000",
+      "source_url": "https://lattafa.com/product/afeef/",
+      "source_evidence_url": "https://lattafa.com/product/afeef/"
     }
   ]
 }
