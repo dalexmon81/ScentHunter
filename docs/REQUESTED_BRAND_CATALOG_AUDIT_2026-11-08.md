@@ -332,3 +332,23 @@ The second page of the brand-owned New Arrivals collection lists Dubai Milano, D
 The individual pages establish the standalone fragrance names and first-party product URLs. The accessible product detail text inspected for this pass does not provide reliable, explicit bottle-size and concentration fields for these identities. Therefore, no concentration or size variants were added. Existing canonical IDs, aliases and family-registry rows are preserved. The official collection's scent notes and merchandising copy are not treated as proof of concentration or bottle size.
 
 Regression coverage checks all eleven URLs, source_verified_name status, and the deliberate absence of unsupported variants. This is a page-two provenance pass, not a complete audit of all 81 new-arrival listings or the entire Maison Asrar catalog.
+
+
+### Maison Asrar: third page of new-arrival collection — 10 individual-page provenance upgrades (9 November 2026)
+
+The third page of the official New Arrivals collection lists Khayyal, Mohra Oud, Hikaya, Hilm, Cascade, Tornado, Wadi, DXB, Legacy, Vanilla Voyage, Vision and Oh Honey!. Legacy already had individual official-page provenance. Ten other entries match existing canonical identities and are upgraded in place:
+
+- Khayyal — https://maisonasrar.com/products/khayyal
+- Hikaya — https://maisonasrar.com/products/hikaya
+- Hilm — https://maisonasrar.com/products/hilm
+- Cascade — https://maisonasrar.com/products/cascade
+- Tornado — https://maisonasrar.com/products/tornado
+- Wadi — https://maisonasrar.com/products/wadi
+- DXB — https://maisonasrar.com/products/dxb
+- Vanilla Voyage — https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum
+- Vision — https://maisonasrar.com/products/vision
+- Oh Honey! — https://maisonasrar.com/products/oh-honey-eau-de-parfum
+
+The individual brand-owned pages confirm the standalone fragrance names and product URLs. The accessible detail pages do not provide reliable explicit bottle-size and concentration evidence for these ten identities, so no variant or concentration values were added. The collection card calls one item “Mohra Oud”, while its individual brand-owned detail page is titled “MOHRA”; the seed has no exact “Mohra” or “Mohra Oud” identity. This naming mismatch is held for separate reconciliation rather than creating a speculative duplicate. Existing product IDs and family-registry rows are preserved.
+
+Regression coverage checks all ten individual URLs and ensures no unsupported variants are added. This pass is limited to the page-three identities and is not a full reconciliation of the 81-item collection.
