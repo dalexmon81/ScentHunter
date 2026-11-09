@@ -36,7 +36,7 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 141,
     "Games of Spades": 32,
-    "Maison Alhambra": 227,
+    "Maison Alhambra": 239,
     "Mykonos": 72,
     "Armaf": 218,
 }
@@ -2304,6 +2304,18 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Tonic Ice": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-tonic-ice-eau-de-parfum-for-everyone", 100, "Unisex", "6290360599359"),
             "Your Touch Leather": ("https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-your-touch-leather-eau-de-parfum-for-everyone", 100, "Unisex", "6290362340997"),
             "Aquilo Pour Homme": ("https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men", 100, "Men", "6291108735886"),
+            "Candid": ("https://maisonalhambra-usa.com/products/maison-alhambra-candid-eau-de-parfum-for-women", 100, "Women", "6291108730072"),
+            "Cassius": ("https://maisonalhambra-usa.com/products/maison-alhambra-cassius-eau-de-parfum-for-men", 100, "Men", "6291108736036"),
+            "Celeste": ("https://maisonalhambra-usa.com/products/maison-alhambra-celeste-eau-de-parfum-for-women", 100, "Women", "6290362340485"),
+            "Coastal Pour Femme": ("https://maisonalhambra-usa.com/products/maison-alhambra-coastal-pour-femme-eau-de-parfum-for-women", 100, "Women", "6291107459189"),
+            "Coral Blush": ("https://maisonalhambra-usa.com/products/maison-alhambra-coral-blush-eau-de-parfum-for-everyone", 80, "Unisex", "6290362343189"),
+            "Dark Aoud": ("https://maisonalhambra-usa.com/products/maison-alhambra-dark-aoud-eau-de-parfum-for-everyone", 80, "Unisex", "6291108735817"),
+            "Decadent Dream": ("https://maisonalhambra-usa.com/products/maison-alhambra-decadent-dream-eau-de-parfum-for-women", 100, "Women", "6290362340775"),
+            "Decadent Wonder": ("https://maisonalhambra-usa.com/products/maison-alhambra-decadent-wonder-eau-de-parfum-for-everyone", 100, "Unisex", "6290362340782"),
+            "Delilah Blanc": ("https://maisonalhambra-usa.com/products/maison-alhambra-delilah-blanc-eau-de-parfum-for-women", 100, "Women", "6290362340799"),
+            "Ebene": ("https://maisonalhambra-usa.com/products/maison-alhambra-ebene-eau-de-parfum-for-everyone", 90, "Unisex", "6290362340614"),
+            "Eternal Touch": ("https://maisonalhambra-usa.com/products/maison-alhambra-eternal-touch-eau-de-parfum-for-men", 80, "Men", "6290362343233"),
+            "Exquisite Prive": ("https://maisonalhambra-usa.com/products/maison-alhambra-exquisite-prive-eau-de-parfum-for-everyone", 100, "Unisex", "6290362340829"),
         }
         products = {
             row.get("canonical_name"): row
