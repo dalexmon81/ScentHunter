@@ -360,3 +360,6 @@ The official perfume-sprays collection's second and third product pages exposed 
 For the 21 products whose official individual URLs explicitly specify 100 ml EDP, the product provenance and format fields were upgraded and one corresponding 100 ml EDP variant was created with exact page-level evidence. Emessa's individual page verifies the product and EDP concentration, but not a bottle size, so it remains without a fabricated variant.
 
 The Maison Asrar source counts after this batch are **120 canonical identities, 56 individually sourced identities, 64 still at collection-listing confidence, and 36 structured variants** (15 from the prior batch plus 21 added here). No new canonical products were created.
+
+
+The official collection labels the Black Grapefruit listing **BLACK GRAPEFRUIT**, while its linked individual product page is titled **BLACK**. The page's own fragrance description and scent journey identify grapefruit, lavender and tonka, matching the collection listing. The canonical identity remains **Black Grapefruit** and **Black** is recorded as a source-backed alias rather than creating a second product.
