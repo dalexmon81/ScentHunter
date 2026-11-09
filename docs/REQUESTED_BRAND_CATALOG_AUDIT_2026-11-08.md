@@ -311,3 +311,24 @@ The official “Slow Living” detail page explicitly distinguishes 50 ml Eau de
 All 23 existing identities are now marked `source_verified_name`, and their size-specific variant evidence URLs point to their individual product pages. Existing 15 ml travel-size selector variants are retained with their separate evidence and are not altered by this batch.
 
 A regression test checks all 23 individual URLs, concentration handling, size-specific variant evidence and one canonical row per product. Combined with the first two batches, all 53 standalone perfume identities appearing across the current official 54-item all-products collection now have individual brand-owned product-page evidence. The 54th item is the generic Travel Size 15ML selector, not a separate canonical perfume identity. This conclusion is limited to the current official collection and does not prove exhaustive coverage of all historical, regional, or discontinued Mykonos fragrances.
+
+
+### Maison Asrar: second page of new-arrival collection — 11 individual-page provenance upgrades (9 November 2026)
+
+The second page of the brand-owned New Arrivals collection lists Dubai Milano, Dubai London, Dubai Miami, III Thriller, Milky Way, Vanguard, Muharib, Faris Al Arab, Vanilla Seduction, Vanilla Aura, Throne Eclipse and Throne. Vanguard already had individual official-page provenance. The other eleven names were matched to existing canonical Maison Asrar identities and upgraded in place:
+
+- Dubai Milano — https://maisonasrar.com/products/dubai-milano
+- Dubai London — https://maisonasrar.com/products/dubai-london
+- Dubai Miami — https://maisonasrar.com/products/dubai-miami
+- III Thriller — https://maisonasrar.com/products/iii-thriller
+- Milky Way — https://maisonasrar.com/products/milky-way
+- Muharib — https://maisonasrar.com/products/muharib
+- Faris Al Arab — https://maisonasrar.com/products/faris-al-arab
+- Vanilla Seduction — https://maisonasrar.com/products/vanilla-seduction
+- Vanilla Aura — https://maisonasrar.com/products/vanilla-aura
+- Throne Eclipse — https://maisonasrar.com/products/throne-eclipse
+- Throne — https://maisonasrar.com/products/throne
+
+The individual pages establish the standalone fragrance names and first-party product URLs. The accessible product detail text inspected for this pass does not provide reliable, explicit bottle-size and concentration fields for these identities. Therefore, no concentration or size variants were added. Existing canonical IDs, aliases and family-registry rows are preserved. The official collection's scent notes and merchandising copy are not treated as proof of concentration or bottle size.
+
+Regression coverage checks all eleven URLs, source_verified_name status, and the deliberate absence of unsupported variants. This is a page-two provenance pass, not a complete audit of all 81 new-arrival listings or the entire Maison Asrar catalog.
