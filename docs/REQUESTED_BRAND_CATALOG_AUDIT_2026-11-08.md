@@ -112,3 +112,12 @@ Sameera Noir's EU listing is visible in the official 63-item New Launches collec
 - Onyx Galaxy — https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men — official product detail identifies a 100 ml Eau de Parfum spray (SKU 6298043072762).
 
 Both names were already present as listing-level identities; their records were upgraded using individual first-party detail pages and each received one explicitly evidenced 100 ml variant. No retailer price or availability data was imported.
+
+### Al Haramain: four additional verified product-detail pages (9 November 2026)
+
+- Harmony — https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html — 100 ml Eau de Parfum, SKU AHP2086.
+- Freya — https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html — 100 ml Eau de Parfum, SKU AHP2085.
+- L'Aventure Extreme — https://shop.alharamainperfumes.com/eu/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html — 100 ml Extrait de Parfum, SKU AHP2096.
+- Amber Oud Gold Lux — https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html — 100 ml Extrait de Parfum, SKU AHP2094.
+
+Each name was absent from the Al Haramain canonical identities and is now added with one explicit 100 ml variant. The Gold Mine candidate was deliberately held back: the official page title and product details identify Gold Mine, but its URL slug says "sport", so it needs a clean canonical product URL before ingestion. No prices or stock values were copied.

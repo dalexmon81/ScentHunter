@@ -16,6 +16,10 @@ class AlHaramainNewLaunchTests(unittest.TestCase):
             "Sameera": ("https://shop.alharamainperfumes.com/eu/haramain-sameera-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Empire Aromatique Ombre": ("https://shop.alharamainperfumes.com/eu/haramain-empire-aromatique-ombre-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Leif": ("https://shop.alharamainperfumes.com/eu/haramain-leif-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Harmony": ("https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "Freya": ("https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
+            "L'Aventure Extreme": ("https://shop.alharamainperfumes.com/eu/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
+            "Amber Oud Gold Lux": ("https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Sameera Noir": ("https://us.alharamainperfumes.com/en/haramain-sameera-noir-100ml-extrait-de-parfum.html", "Extrait de Parfum", 100),
             "Olaf": ("https://shop.alharamainperfumes.com/eu/haramain-olaf-100ml-eau-de-parfum.html", "Eau de Parfum", 100),
         }

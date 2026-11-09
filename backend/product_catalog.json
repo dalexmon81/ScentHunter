@@ -33860,6 +33860,82 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-386fe9f5",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Harmony",
+      "name": "Harmony",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Harmony",
+      "aliases": [
+        "Harmony",
+        "Al Haramain Harmony"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-fbc56fc6",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Freya",
+      "name": "Freya",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Freya",
+      "aliases": [
+        "Freya",
+        "Al Haramain Freya"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ffd1ae96",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "L'Aventure Extreme",
+      "name": "L'Aventure Extreme",
+      "family_id": "al_haramain_catalog",
+      "family_name": "L'Aventure Extreme",
+      "aliases": [
+        "L'Aventure Extreme",
+        "Al Haramain L'Aventure Extreme"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4b3d18b7",
+      "brand": "Al Haramain",
+      "brand_name": "Al Haramain",
+      "canonical_name": "Amber Oud Gold Lux",
+      "name": "Amber Oud Gold Lux",
+      "family_id": "al_haramain_catalog",
+      "family_name": "Amber Oud Gold Lux",
+      "aliases": [
+        "Amber Oud Gold Lux",
+        "Al Haramain Amber Oud Gold Lux"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -36880,6 +36956,50 @@
       "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-386fe9f5",
+      "size_ml": 100,
+      "aliases": [
+        "Harmony 100 ml",
+        "Al Haramain Harmony 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-386fe9f5-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-harmony-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-fbc56fc6",
+      "size_ml": 100,
+      "aliases": [
+        "Freya 100 ml",
+        "Al Haramain Freya 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-fbc56fc6-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-freya-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ffd1ae96",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Extreme 100 ml",
+        "Al Haramain L'Aventure Extreme 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-ffd1ae96-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-extreme-100ml-extrait-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4b3d18b7",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Gold Lux 100 ml",
+        "Al Haramain Amber Oud Gold Lux 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4b3d18b7-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-lux-100ml-extrait-de-parfum.html"
     }
   ]
 }
