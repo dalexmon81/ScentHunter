@@ -2969,8 +2969,10 @@
         "Arwa",
         "Paris Corner Arwa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/arwa",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/arwa",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/arwa"
     },
     {
       "product_id": "SH-PARIS-CORNER-8e21991b",
@@ -3003,8 +3005,13 @@
         "Azm",
         "Paris Corner Azm"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/azm",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/azm",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/azm",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-cd8b1f8e",
@@ -3018,8 +3025,10 @@
         "Bayn Al Asrar",
         "Paris Corner Bayn Al Asrar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar"
     },
     {
       "product_id": "SH-PARIS-CORNER-804ac919",
@@ -3033,8 +3042,13 @@
         "Caramel Bash",
         "Paris Corner Caramel Bash"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-e8b7fc40",
@@ -16142,8 +16156,10 @@
         "Atomise Intensive Men",
         "Paris Corner Atomise Intensive Men"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/atomise-intensive-men",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/atomise-intensive-men",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/atomise-intensive-men"
     },
     {
       "product_id": "SH-PARIS-CORNER-ATTRACTUS",
@@ -16177,8 +16193,13 @@
         "Banana Bliss",
         "Paris Corner Banana Bliss"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/banana-bliss-100ml",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/banana-bliss-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/banana-bliss-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-BLACKBERRY-WISH",
@@ -16192,8 +16213,13 @@
         "Blackberry Wish",
         "Paris Corner Blackberry Wish"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/blackberry-wish",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/blackberry-wish",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/blackberry-wish",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CAKE-TEMPTATION",
@@ -16207,8 +16233,13 @@
         "Cake Temptation",
         "Paris Corner Cake Temptation"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cake-temptation-100ml",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/cake-temptation-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cake-temptation-100ml",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CAMARO-HOMME-INTENSE",
@@ -16222,8 +16253,11 @@
         "Camaro Homme Intense",
         "Paris Corner Camaro Homme Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/camaro-homme-intense",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/camaro-homme-intense",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/camaro-homme-intense",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-CAMP-FIRE-EMIR-FACTORY-EDITION",
@@ -16237,8 +16271,13 @@
         "Camp Fire Emir Factory Edition",
         "Paris Corner Camp Fire Emir Factory Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/camp-fire-emir-factory-edition",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/camp-fire-emir-factory-edition",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/camp-fire-emir-factory-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CEDRAT-ESSENCE-EMIR",
@@ -16252,8 +16291,13 @@
         "Cedrat Essence Emir",
         "Paris Corner Cedrat Essence Emir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/cedart-essence-emir",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/cedart-essence-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cedart-essence-emir",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CELESTIAL-EMIR",
@@ -17609,9 +17653,10 @@
         "Arcana",
         "Paris Corner Arcana"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.pariscornerperfumes.com/collections/all?page=1",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/collections/all?page=1"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/arcana",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/arcana",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/arcana"
     },
     {
       "product_id": "SH-PARIS-CORNER-BROOCH",
@@ -39054,6 +39099,83 @@
       ],
       "source_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/collections/new-in/products/maison-alhambra-opera-rouge-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-5c9adfe6",
+      "variant_id": "SHV-PARIS-CORNER-5-9-6-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Azm 100 ml",
+        "Paris Corner Azm 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/azm",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/azm"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-BANANA-BLISS",
+      "variant_id": "SHV-PARIS-CORNER-BANANA-BLISS-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Banana Bliss 100 ml",
+        "Paris Corner Banana Bliss 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/banana-bliss-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/banana-bliss-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-BLACKBERRY-WISH",
+      "variant_id": "SHV-PARIS-CORNER-BLACKBERRY-WISH-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Blackberry Wish 100 ml",
+        "Paris Corner Blackberry Wish 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/blackberry-wish",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/blackberry-wish"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CAKE-TEMPTATION",
+      "variant_id": "SHV-PARIS-CORNER-CAKE-TEMPTATION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Cake Temptation 100 ml",
+        "Paris Corner Cake Temptation 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/cake-temptation-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cake-temptation-100ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CAMP-FIRE-EMIR-FACTORY-EDITION",
+      "variant_id": "SHV-PARIS-CORNER-CAMP-FIRE-EMIR-FACTORY-EDITION-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Camp Fire Emir Factory Edition 100 ml",
+        "Paris Corner Camp Fire Emir Factory Edition 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/camp-fire-emir-factory-edition",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/camp-fire-emir-factory-edition"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-804ac919",
+      "variant_id": "SHV-PARIS-CORNER-804-919-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Caramel Bash 100 ml",
+        "Paris Corner Caramel Bash 100ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/caramel-bash-1"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CEDRAT-ESSENCE-EMIR",
+      "variant_id": "SHV-PARIS-CORNER-CEDRAT-ESSENCE-EMIR-75-000",
+      "size_ml": 75,
+      "aliases": [
+        "Cedrat Essence Emir 75 ml",
+        "Paris Corner Cedrat Essence Emir 75ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/cedart-essence-emir",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cedart-essence-emir"
     }
   ]
 }
