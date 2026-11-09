@@ -7391,6 +7391,11 @@
           "aliases": [
             "Club de Nuit Intense Man",
             "Armaf Club de Nuit Intense Man"
+          ],
+          "formats_ml": [
+            200,
+            30,
+            250
           ]
         },
         {
@@ -7398,6 +7403,9 @@
           "aliases": [
             "Club de Nuit Elite",
             "Armaf Club de Nuit Elite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7405,6 +7413,9 @@
           "aliases": [
             "Club de Nuit Intense Overdose",
             "Armaf Club de Nuit Intense Overdose"
+          ],
+          "formats_ml": [
+            105
           ]
         },
         {
@@ -7426,6 +7437,12 @@
           "aliases": [
             "Odyssey Mandarin Sky",
             "Armaf Odyssey Mandarin Sky"
+          ],
+          "formats_ml": [
+            200,
+            100,
+            60,
+            10
           ]
         },
         {
@@ -7488,6 +7505,12 @@
           "aliases": [
             "Club de Nuit Blue Iconic",
             "Armaf Club de Nuit Blue Iconic"
+          ],
+          "formats_ml": [
+            200,
+            105,
+            30,
+            10
           ]
         },
         {
@@ -7502,6 +7525,9 @@
           "aliases": [
             "Club de Nuit Bling Gold",
             "Armaf Club de Nuit Bling Gold"
+          ],
+          "formats_ml": [
+            75
           ]
         },
         {
