@@ -6,7 +6,7 @@ from pathlib import Path
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "product_catalog.json"
 AL_HARAMAIN = ["Haramain Musk Orchid","Haramain Xplore Sapphire","Azlan Oud Bleu Edition","Amber Oud Ultra Violet","Azlan Oud Saffron Edition","Amber Oud Tobacco Edition","L'Aventure Grapefruit","L'Aventure Fraiche","L'Aventure Ciel","Azlan Oud Amber Edition","Portfolio Cupid's Rose","Portfolio Portrait Sandal","Portfolio Oriental Forest","Mystique Musk Spray","Amber Oud Gold Edition","Portfolio Euphoric Roots","Azlan Oud Charcoal Edition","Detour Noir Exclusif","Junoon Noir","Oud Cambodi","Maryam","Urbanist Femme","Mystique Femme","Mystique Homme","Detour Nasr","Musk","Detour Noir Intense","L'Aventure Rose","L'Aventure Blanche","Solitaire Musk","Musk Collection","Rawaa","Night Dreams","Khulasat Al Oud","Fall In Love Orange","Fall In Love Pink","Junoon Rose","Maze","Opposite Pink","Manege Blanche","Rafia Gold","Amber Musk","Opulent Sapphire","Royal Musk","Etoiles Silver","Madinah","Portfolio Floral Sculpture","Manege Rouge","Jameela","Musk Maliki","Oyuny","Chateau De La Haramain Argent","Das Ziel","Mystique","Treasure","Oudh Patchouli","Farasha","Asrar Khafiya","Urbanist Prive Silver","Mena","Areej Al Oud"]
-GULF_ORCHID = ["Sweet Like Candy","Sweet Heaven Extreme 20ML","Piña Colada Musk"]
+GULF_ORCHID = ["Sweet Like Candy","Sweet Heaven Extreme 20ML","Piña Colada Musk","Al Qasr","Hikma","Riwaya"]
 GULF_ORCHID_DETAIL_VERIFIED = {
     "Vanilla Addiction": ("https://shop-gulforchid.com/products/vanilla_addiction_eau_de_parfum", 100, "Eau de Parfum"),
     "Mango Ice": ("https://shop-gulforchid.com/products/mango_ice_eau_de_parfum", 100, "Eau de Parfum"),
@@ -21,6 +21,16 @@ GULF_ORCHID_DETAIL_VERIFIED = {
     "Sweet Like Candy": ("https://shop-gulforchid.com/products/sweet_like_candy_eau_de_parfum", 100, "Eau de Parfum"),
     "Sweet Heaven Extreme 20ML": ("https://shop-gulforchid.com/products/sweet-heaven-extreme-by-gulf-orchid-eau-de-parfum-20ml", 20, "Eau de Parfum"),
     "Piña Colada Musk": ("https://shop-gulforchid.com/products/gulf-orchid-musk-tahara-eau-de-parfum-pina-colada", 60, "Eau de Parfum"),
+}
+
+MAISON_ASRAR_REATTRIBUTED = {
+    "Asala": ("https://shop-gulforchid.com/collections/asala-collection", "source_listed_name", None),
+    "Hamsat": ("https://shop-gulforchid.com/collections/hamsat-collection", "source_listed_name", None),
+    "Jawhara": ("https://shop-gulforchid.com/collections/jawhara-collection", "source_listed_name", None),
+    "Jewel": ("https://shop-gulforchid.com/collections/jewel-collection", "source_listed_name", None),
+    "Turath": ("https://shop-gulforchid.com/products/turath-eau-de-perfum-100ml", "source_verified_name", (100, "Eau de Parfum")),
+    "Vanilla Aura": ("https://shop-gulforchid.com/products/vanilla-aura", "source_verified_name", (100, "Eau de Parfum")),
+    "Vanilla Voyage": ("https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum", "source_verified_name", None),
 }
 
 class OfficialStoreRangeHarvestTests(unittest.TestCase):
@@ -104,6 +114,64 @@ class OfficialStoreRangeHarvestTests(unittest.TestCase):
     def test_gulf_orchid_detail_harvest_does_not_duplicate_variant_ids(self):
         variant_ids = [variant["variant_id"] for variant in self.catalog.get("variants", [])]
         self.assertEqual(len(variant_ids), len(set(variant_ids)))
+
+
+    def test_gulf_orchid_legacy_detail_pages_and_sizes_are_verified(self):
+        expected = {
+            "Al Qasr": ("https://shop-gulforchid.com/products/al-qasr-silver", 100, "Eau de Parfum"),
+            "Hikma": ("https://shop-gulforchid.com/products/hikma-by-gulf-orchid-eau-de-parfum", 110, "Eau de Parfum"),
+            "Riwaya": ("https://shop-gulforchid.com/products/riwaya_eau_de_parfum", 100, "Eau de Parfum"),
+        }
+        for name, (source_url, size_ml, concentration) in expected.items():
+            with self.subTest(name=name):
+                rows = [
+                    row for row in self.products
+                    if row.get("brand") == "Gulf Orchid"
+                    and row.get("canonical_name") == name
+                ]
+                self.assertEqual(len(rows), 1)
+                row = rows[0]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                self.assertEqual(row.get("concentration"), concentration)
+                self.assertEqual(row.get("formats_ml"), [size_ml])
+                variants = [
+                    variant for variant in self.catalog.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0].get("size_ml"), size_ml)
+                self.assertEqual(variants[0].get("concentration"), concentration)
+                self.assertEqual(variants[0].get("source_evidence_url"), source_url)
+
+    def test_store_collection_brand_filters_correct_maison_asrar_attribution(self):
+        for name, (source_url, status, size_spec) in MAISON_ASRAR_REATTRIBUTED.items():
+            with self.subTest(name=name):
+                rows = [
+                    row for row in self.products
+                    if row.get("canonical_name") == name
+                    and row.get("brand") == "Maison Asrar"
+                ]
+                self.assertEqual(len(rows), 1)
+                row = rows[0]
+                self.assertEqual(row.get("identity_status"), status)
+                self.assertEqual(row.get("source_url"), source_url)
+                variants = [
+                    variant for variant in self.catalog.get("variants", [])
+                    if variant.get("product_id") == row["product_id"]
+                ]
+                if size_spec is None:
+                    self.assertNotIn("concentration", row)
+                    self.assertNotIn("formats_ml", row)
+                    self.assertEqual(variants, [])
+                else:
+                    size_ml, concentration = size_spec
+                    self.assertEqual(row.get("concentration"), concentration)
+                    self.assertEqual(row.get("formats_ml"), [size_ml])
+                    self.assertEqual(len(variants), 1)
+                    self.assertEqual(variants[0].get("size_ml"), size_ml)
+                    self.assertEqual(variants[0].get("concentration"), concentration)
+                    self.assertEqual(variants[0].get("source_evidence_url"), source_url)
 
 if __name__ == "__main__":
     unittest.main()
