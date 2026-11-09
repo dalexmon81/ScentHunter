@@ -183,3 +183,14 @@ The original product IDs are preserved. The family registry and two Al Wataniah 
 - Audit regression suite: 136 tests, OK.
 
 No new product IDs, retailer offers, prices, stock, shipping or deployment changes are included.
+
+
+### Follow-up cross-PR audit candidate — 9 November 2026 (PR #605)
+
+PR #605 is added to the direct-change candidate set. It upgrades two existing Al Wataniah canonical identities (Ameeri and Sultan Al Lail) to their individual official product pages and adds one explicitly evidenced 100 ml Eau de Parfum variant for each. The PR preserves both existing product IDs and does not add canonical identities.
+
+- Head branch: `catalog/al-wataniah-ameeri-sultan-details-2026-11-09`
+- Declared base: `catalog/requested-brand-harvest-2026-11-08`
+- Cross-PR collision validation is pending this audit branch's CI run.
+
+No source PR is merged or modified by this audit update.
