@@ -45,5 +45,26 @@ class AfnanLattafaOfficialHarvestTests(unittest.TestCase):
                 self.assertNotIn("concentration", product)
                 self.assertNotIn("formats_ml", product)
 
+
+    def test_nine_new_lattafa_identities_are_synchronized_with_family_registry(self):
+        family_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with family_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        family = next(f for f in registry["families"] if f.get("family_id") == "lattafa_catalog")
+        names = (
+            "Khamrah Mira", "Give Me Gourmand Matcha Swirl", "Beyond Precious",
+            "Atlas Canyon", "Give Me Gourmand Harlequin Cream", "Atlas Glacial Valley",
+            "Badee Al Oud Amethyst Fusion", "Raghad", "Petra Viola",
+        )
+        for name in names:
+            with self.subTest(product=name):
+                product = next(p for p in CATALOG.get("products", []) if p.get("brand") == "Lattafa" and p.get("canonical_name") == name)
+                variant = next(v for v in CATALOG.get("variants", []) if v.get("product_id") == product["product_id"])
+                self.assertEqual(product.get("formats_ml"), [variant["size_ml"]])
+                family_product = next(p for p in family["products"] if p.get("canonical_name") == name)
+                self.assertEqual(family_product.get("aliases"), product.get("aliases"))
+                self.assertEqual(family_product.get("formats_ml"), [variant["size_ml"]])
+
+
 if __name__ == "__main__":
     unittest.main()
