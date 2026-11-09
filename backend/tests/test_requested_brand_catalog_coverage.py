@@ -772,5 +772,64 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matches[0].get("concentration"), "Extrait de Parfum")
                     self.assertEqual(matches[0].get("source_evidence_url"), source_url)
 
+
+    def test_mykonos_remaining_current_collection_products_have_individual_official_page_provenance(self):
+        expected = {
+            "Paradise": ("https://officialmykonos.com/products/mykonos-paradise-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+            "Penthouse": ("https://officialmykonos.com/products/mykonos-penthouse-extrait-de-parfum-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Pink Beach": ("https://officialmykonos.com/products/mykonos-pink-beach-edp-50ml", {"50": "Eau de Parfum"}),
+            "Pink Drops": ("https://officialmykonos.com/products/mykonos-pink-drops-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+            "Reflection Elixir": ("https://officialmykonos.com/products/mykonos-reflection-elixir-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+            "Reflection": ("https://officialmykonos.com/products/mykonos-reflection-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Royal Ispahan": ("https://officialmykonos.com/products/mykonos-royal-ispahan-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Satin Blanc": ("https://officialmykonos.com/products/mykonos-satin-blanc-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Senja": ("https://officialmykonos.com/products/mykonos-senja-edp-50ml", {"50": "Extrait de Parfum"}),
+            "Silent Whisper": ("https://officialmykonos.com/products/mykonos-silent-whisper-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Slow Living": ("https://officialmykonos.com/products/mykonos-slow-living-edp-50ml", {"50": "Eau de Parfum", "100": "Extrait de Parfum"}),
+            "Sorrento": ("https://officialmykonos.com/products/mykonos-sorrento-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Sparkling Rosé": ("https://officialmykonos.com/products/mykonos-sparkling-rose-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Stilettos": ("https://officialmykonos.com/products/mykonos-stilettos-edp-50ml", {"50": "Eau de Parfum"}),
+            "Untamed": ("https://officialmykonos.com/products/mykonos-untamed-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Utopia": ("https://officialmykonos.com/products/mykonos-utopia-extrait-de-parfum-100ml", {"100": "Extrait de Parfum"}),
+            "Vanilla Clouds": ("https://officialmykonos.com/products/mykonos-vanilla-clouds-extrait-de-parfum-50ml-1", {"50": "Extrait de Parfum"}),
+            "Verve": ("https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml", {"50": "Extrait de Parfum"}),
+            "Xoxo Rosy": ("https://officialmykonos.com/products/mykonos-xoxo-rosy-edp-50ml", {"50": "Eau de Parfum"}),
+            "MyEgo": ("https://officialmykonos.com/products/mykonos-x-alterego-myego-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Empire x RRQ": ("https://officialmykonos.com/products/mykonos-x-rrq-empire-extrait-de-parfum-50ml-100ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Glitch": ("https://officialmykonos.com/products/mykonos-x-setiawanade-glitch-extrait-de-parfum-50ml", {"50": "Extrait de Parfum", "100": "Extrait de Parfum"}),
+            "Invade": ("https://officialmykonos.com/products/mykonos-x-setiawanade-invade-extrait-de-parfum-50ml", {"50": "Extrait de Parfum"}),
+        }
+        products = {
+            row.get("canonical_name"): row
+            for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Mykonos"
+        }
+        variants = CATALOG.get("variants", [])
+        for name, (source_url, sizes) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, products)
+                row = products[name]
+                self.assertEqual(row.get("identity_status"), "source_verified_name")
+                self.assertEqual(row.get("source_url"), source_url)
+                matching_products = [
+                    product for product in CATALOG.get("products", [])
+                    if product.get("brand_name") == "Mykonos"
+                    and product.get("canonical_name") == name
+                ]
+                self.assertEqual(len(matching_products), 1)
+                if name == "Slow Living":
+                    self.assertNotIn("concentration", row)
+                else:
+                    self.assertTrue(row.get("concentration"))
+                for size, concentration in sizes.items():
+                    matches = [
+                        variant for variant in variants
+                        if variant.get("product_id") == row["product_id"]
+                        and variant.get("size_ml") == int(size)
+                    ]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(matches[0].get("concentration"), concentration)
+                    self.assertEqual(matches[0].get("source_evidence_url"), source_url)
+
 if __name__ == "__main__":
     unittest.main()
