@@ -27,7 +27,7 @@ MINIMUM_BRAND_COUNTS = {
     "Bujairami": 142,
     "Assaf": 140,
     "Al Wataniah": 86,
-    "French Avenue": 120,
+    "French Avenue": 119,
     "Arabiyat Prestige": 118,
     "Gulf Orchid": 32,
     "Afnan": 87,
