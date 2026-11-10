@@ -44,7 +44,7 @@ The CSV ranks up to five candidate variants per retailer row using:
 
 Rows are labeled `review_high`, `review_medium`, `review_low` or
 `no_candidate`. These are **review priorities, not automatic match approvals**.
-Known size or concentration conflicts are downgraded. The tool deliberately
+Known size, concentration or gender conflicts are downgraded. Missing evidence is not treated as agreement. These labels are review priorities only, not match probabilities. The tool deliberately
 does not auto-accept any candidate and does not modify catalog, database,
 offers or GTINs. A reviewer must verify the actual product and variant before
 a GTIN or offer can be attached.
