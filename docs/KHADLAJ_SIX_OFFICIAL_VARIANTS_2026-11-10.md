@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes eighteen existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes nineteen existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -24,6 +24,7 @@ This change completes eighteen existing Khadlaj canonical identities using offic
 | Oud Pour Leather | SH-KHADLAJ-OUD-POUR-LEATHER | 100 ml | Eau de Parfum | 6291107977843 |
 | Nuha Bon Bon | SH-KHADLAJ-7ecbb58c | 85 ml | Eau de Parfum | 6298043070317 |
 | Nuha Vanilla Pearl | SH-KHADLAJ-76dd12b7 | 85 ml | Eau de Parfum | 6291107979182 |
+| Onyx Silver | SH-KHADLAJ-ce66d76f | 100 ml | Eau de Parfum | 6298043071161 |
 
 ## Official evidence
 
@@ -45,10 +46,11 @@ This change completes eighteen existing Khadlaj canonical identities using offic
 - Oud Pour Leather: https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women
 - Nuha Bon Bon: https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online
 - Nuha Vanilla Pearl: https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae
+- Onyx Silver: https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae
 
 ## Data integrity
 
-- Reused all eighteen existing canonical product IDs.
+- Reused all nineteen existing canonical product IDs.
 - Added one explicit variant per product, with size, concentration, GTIN and official evidence URL.
 - Updated the Khadlaj family registry formats.
 - Consolidated the duplicate Sueño / Sueno family-registry row into the catalog's existing canonical spelling Sueno, retaining Sueño as an alias.
