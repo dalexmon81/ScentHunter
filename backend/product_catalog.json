@@ -34053,8 +34053,14 @@
         "25 Loyalty",
         "Khadlaj 25 Loyalty"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae",
+      "source_product_url": "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae",
+      "source_evidence_url": "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-077",
@@ -34068,8 +34074,14 @@
         "25 Heritage",
         "Khadlaj 25 Heritage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-078",
@@ -34083,8 +34095,14 @@
         "25 Integrity",
         "Khadlaj 25 Integrity"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-079",
@@ -49377,6 +49395,45 @@
       "gtin": "6291107975900",
       "source_url": "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-078",
+      "size_ml": 100,
+      "aliases": [
+        "25 Integrity 100 ml",
+        "Khadlaj 25 Integrity 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-078-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975375",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-077",
+      "size_ml": 100,
+      "aliases": [
+        "25 Heritage 100 ml",
+        "Khadlaj 25 Heritage 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-077-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975368",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-076",
+      "size_ml": 100,
+      "aliases": [
+        "25 Loyalty 100 ml",
+        "Khadlaj 25 Loyalty 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-076-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975382",
+      "source_url": "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae",
+      "source_evidence_url": "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae"
     }
   ]
 }
