@@ -41,7 +41,7 @@ For Stellar Musk and Stellar Oud, the official pages identify their internal SKU
 - Reused the twelve existing canonical product IDs.
 - Upgraded product identity status and stored individual official product-page provenance.
 - Added one explicit variant for each product that did not already have one.
-- Retained and enriched the existing Empire Crown and Empire Regent variants rather than duplicating them.
+- Preserved the existing Empire Crown and Empire Regent variant IDs and evidence unchanged.
 - Added GTINs only where the official page provides a numeric identifier; no GTIN was invented for Stellar Musk or Stellar Oud.
 - Updated the correct family-registry row for each product, using its existing family ID.
 - No product identities were duplicated and no existing variants were overwritten.
