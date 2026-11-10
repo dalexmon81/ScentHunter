@@ -743,8 +743,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
-      "source_product_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
-      "concentration": "Eau de Parfum"
+      "source_product_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6d0c1431",
@@ -4780,14 +4779,9 @@
         "Marwa",
         "Arabiyat Prestige Marwa"
       ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        100
-      ]
+      "identity_status": "source_listed_name",
+      "source_url": "https://arabiyatprestige.com/collections/all",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/all"
     },
     {
       "product_id": "SH-AFNAN-dd53546f",
@@ -18593,11 +18587,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
       "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "source_product_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        60
-      ]
+      "source_product_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
     },
     {
       "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-20ML",
@@ -50492,17 +50482,6 @@
       "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver"
     },
     {
-      "product_id": "SH-GULF-ORCHID-TAHARA-VANILLA-MUSK",
-      "size_ml": 60,
-      "aliases": [
-        "Tahara Vanilla Musk 60 ml"
-      ],
-      "variant_id": "SHV-SH-GULF-ORCHID-TAHARA-VANILLA-MUSK-60-EDP",
-      "concentration": "Eau de Parfum",
-      "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
-    },
-    {
       "product_id": "SH-GULF-ORCHID-EXOTIC-OUD",
       "size_ml": 100,
       "aliases": [
@@ -50666,17 +50645,6 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml",
       "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml"
-    },
-    {
-      "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
-      "size_ml": 100,
-      "aliases": [
-        "Marwa 100 ml"
-      ],
-      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-7bf3b46e-100-EDP",
-      "concentration": "Eau de Parfum",
-      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex"
     },
     {
       "product_id": "SH-ARMAF-4c83dfcd",
