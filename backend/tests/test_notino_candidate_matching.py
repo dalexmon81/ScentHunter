@@ -168,6 +168,39 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         self.assertFalse(candidates[0]["size_match"])
         self.assertEqual(candidates[0]["confidence_band"], "low")
 
+
+    def test_intense_concentrations_remain_distinct(self):
+        self.assertEqual(
+            extract_concentration("Dior Homme Eau de Toilette Intense"),
+            "EDT_INTENSE",
+        )
+        self.assertEqual(
+            extract_concentration("Dior Homme Pure Parfum"),
+            "PARFUM",
+        )
+
+    def test_variant_concentration_is_used_when_parent_is_unspecified(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-V",
+                "brand_name": "Dior",
+                "canonical_name": "Sauvage",
+                "family_name": "Sauvage",
+                "concentration": "",
+                "aliases": [],
+            }],
+            "variants": [{
+                "variant_id": "V-V",
+                "product_id": "P-V",
+                "size_ml": 100,
+                "concentration": "Eau de Parfum",
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        index = build_catalog_index(catalog)
+        self.assertEqual(index[0]["concentration"], "EDP")
+
     def test_brand_mismatch_never_generates_candidate(self):
         row = {
             "id": "SKU-2",
