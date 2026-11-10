@@ -146,9 +146,13 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
-      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
+      "source_url": "https://velixirparfums.store/products/comus",
+      "source_product_url": "https://velixirparfums.store/products/comus",
+      "source_evidence_url": "https://velixirparfums.store/products/comus",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-6f7b377c",
@@ -208,9 +212,13 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
-      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
+      "source_url": "https://velixirparfums.store/products/ether",
+      "source_product_url": "https://velixirparfums.store/products/ether",
+      "source_evidence_url": "https://velixirparfums.store/products/ether",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-76046795",
@@ -428,9 +436,13 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
-      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
+      "source_url": "https://velixirparfums.store/products/orpheus",
+      "source_product_url": "https://velixirparfums.store/products/orpheus",
+      "source_evidence_url": "https://velixirparfums.store/products/orpheus",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-8c915ae1",
@@ -462,9 +474,13 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
-      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
+      "source_url": "https://velixirparfums.store/products/panacea",
+      "source_product_url": "https://velixirparfums.store/products/panacea",
+      "source_evidence_url": "https://velixirparfums.store/products/panacea",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-12baca03",
@@ -48746,6 +48762,94 @@
       "variant_id": "SHV-SH-ASSAF-HARVEST-011-150-000",
       "source_url": "https://assaf.ae/products/oud-bakhur-arrogate",
       "source_evidence_url": "https://assaf.ae/products/oud-bakhur-arrogate"
+    },
+    {
+      "product_id": "SH-VELIXIR-50b87cfb",
+      "size_ml": 35,
+      "aliases": [
+        "Comus 35 ml",
+        "Velixir Comus 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-50b87cfb-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/comus"
+    },
+    {
+      "product_id": "SH-VELIXIR-50b87cfb",
+      "size_ml": 100,
+      "aliases": [
+        "Comus 100 ml",
+        "Velixir Comus 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-50b87cfb-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/comus"
+    },
+    {
+      "product_id": "SH-VELIXIR-36e7a5ca",
+      "size_ml": 35,
+      "aliases": [
+        "Ether 35 ml",
+        "Velixir Ether 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-36e7a5ca-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/ether"
+    },
+    {
+      "product_id": "SH-VELIXIR-36e7a5ca",
+      "size_ml": 100,
+      "aliases": [
+        "Ether 100 ml",
+        "Velixir Ether 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-36e7a5ca-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/ether"
+    },
+    {
+      "product_id": "SH-VELIXIR-7e147c46",
+      "size_ml": 35,
+      "aliases": [
+        "Orpheus 35 ml",
+        "Velixir Orpheus 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-7e147c46-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/orpheus"
+    },
+    {
+      "product_id": "SH-VELIXIR-7e147c46",
+      "size_ml": 100,
+      "aliases": [
+        "Orpheus 100 ml",
+        "Velixir Orpheus 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-7e147c46-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/orpheus"
+    },
+    {
+      "product_id": "SH-VELIXIR-1738e7af",
+      "size_ml": 35,
+      "aliases": [
+        "Panacea 35 ml",
+        "Velixir Panacea 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-1738e7af-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/panacea"
+    },
+    {
+      "product_id": "SH-VELIXIR-1738e7af",
+      "size_ml": 100,
+      "aliases": [
+        "Panacea 100 ml",
+        "Velixir Panacea 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-1738e7af-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://velixirparfums.store/products/panacea"
     }
   ]
 }
