@@ -80,7 +80,7 @@ class KhadlajShiyaakaGourmandOfficialDetailTests(unittest.TestCase):
                 self.assertEqual(product["source_evidence_url"], item["evidence"])
                 self.assertEqual(variant["source_url"], item["url"])
                 self.assertEqual(variant["source_evidence_url"], item["url"])
-                self.assertEqual(variant["gtin"], item.get("gtin"))
+                self.assertEqual(variant.get("gtin"), item.get("gtin"))
                 family_id = "khadlaj_catalog" if item["name"] in {"Private Blend Musk Ice", "Biscotti Date Toffee"} else "khadlaj_shiyaaka"
                 family = next(f for f in REGISTRY["families"] if f["family_id"] == family_id)
                 self.assertIn(item["name"], [p["canonical_name"] for p in family["products"]])
