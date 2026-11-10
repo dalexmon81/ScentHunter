@@ -9793,9 +9793,18 @@
         "Fusion Intense",
         "Maison Alhambra Fusion Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-fusion-intense-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-fusion-intense-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-fusion-intense-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "gtins": [
+        "6291108735800"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-e3527696",
@@ -9961,9 +9970,18 @@
         "Glacier Pour Homme",
         "Maison Alhambra Glacier Pour Homme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-pour-homme-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-pour-homme-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-pour-homme-eau-de-parfum-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "gtins": [
+        "6290360590615"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-f223cc2e",
@@ -11397,9 +11415,18 @@
         "Mysterious Amber",
         "Maison Alhambra Mysterious Amber"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "gtins": [
+        "6290360599182"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7c532d35",
@@ -53463,6 +53490,48 @@
       "gender": "Women",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-7a451afc-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-7a451afc",
+      "size_ml": 100,
+      "aliases": [
+        "Glacier Pour Homme 100 ml",
+        "Maison Alhambra Glacier Pour Homme 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360590615",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-pour-homme-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-glacier-pour-homme-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-7d94b36d-80-000",
+      "product_id": "SH-MAISON-ALHAMBRA-7d94b36d",
+      "size_ml": 80,
+      "aliases": [
+        "Fusion Intense 80 ml",
+        "Maison Alhambra Fusion Intense 80 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108735800",
+      "gender": "Unisex",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-fusion-intense-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-fusion-intense-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-e51860be-80-000",
+      "product_id": "SH-MAISON-ALHAMBRA-e51860be",
+      "size_ml": 80,
+      "aliases": [
+        "Mysterious Amber 80 ml",
+        "Maison Alhambra Mysterious Amber 80 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360599182",
+      "gender": "Unisex",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone"
     }
   ]
 }
