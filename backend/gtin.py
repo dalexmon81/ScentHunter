@@ -6,7 +6,7 @@ import re
 
 def is_valid_gtin(value: str) -> bool:
     """Return True only for numeric GTIN-8/12/13/14 values with a valid GS1 check digit."""
-    if not isinstance(value, str) or not re.fullmatch(r"(?:\d{8}|\d{12}|\d{13}|\d{14})", value):
+    if not isinstance(value, str) or not re.fullmatch(r"(?:[0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14})", value):
         return False
     weighted_sum = 0
     weight = 3
