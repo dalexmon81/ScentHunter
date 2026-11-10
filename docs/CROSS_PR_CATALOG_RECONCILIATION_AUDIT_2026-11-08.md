@@ -1,0 +1,496 @@
+# Cross-PR catalog reconciliation audit
+
+**Audit date:** 2026-11-08  
+**Repository:** dalexmon81/ScentHunter  
+**Scope:** compare open catalog PRs for overlapping canonical identities, variant tuples, source URLs and family-registry entries. This is a review checkpoint, not a merge or catalog mutation.
+
+## Executive summary
+
+The open PR set contains several independent branches that each pass their own catalog validation, but do not all validate the combined state. At least five cross-PR overlap groups require reconciliation before integration.
+
+## Confirmed overlaps
+
+### 1. Gulf Orchid — PR #542 vs PR #554
+
+Two exact duplicate product records are present in both PRs:
+
+| Canonical identity | Product ID | Official source | Variant |
+|---|---|---|---|
+| Cloud 9 | SH-GULF-ORCHID-CLOUD-9 | https://shop-gulforchid.com/products/cloud-9 | 100 ml EDP |
+| Maestro | SH-GULF-ORCHID-MAESTRO | https://shop-gulforchid.com/products/maestro | 100 ml EDP |
+
+The same product IDs and variant IDs are repeated, and the family registry contains repeated canonical entries. PR #554 is also currently reported by GitHub as not mergeable. Its head is six commits ahead and one behind its base branch, so it needs a base/conflict refresh as well as duplicate removal.
+
+**Action:** keep one product row, one variant row and one family-registry entry per fragrance. Rebase/reconcile #554 against the branch containing #542 and retain only genuinely new products.
+
+### 2. Velixir — PR #465 vs PR #517
+
+Both PRs contain the same 24 product IDs and the same official Velixir product URLs. Both also introduce the same 48 product/size/concentration combinations: 35 ml EDP and 100 ml EDP for each of the 24 perfumes.
+
+The variant IDs use different naming schemes:
+- PR #465: `VAR-SH-VELIXIR-...`
+- PR #517: `SHV-SH-VELIXIR-...`
+
+Different IDs do not make these distinct variants. Combining the branches without reconciliation would create duplicate variant tuples for the same product and size.
+
+**Action:** choose one canonical variant-ID scheme and add a regression test for unique `(product_id, size_ml, concentration)` tuples, not just unique `variant_id`.
+
+### 3. Armaf — PR #564 vs PR #565
+
+Both PRs add the same fragrance from the exact same official page:
+- PR #564: `Check Mate White Knight`
+- PR #565: `Check Mate White - Knight`
+- Official page: https://cz.armaf.eu/en/products/check-mate-white-knight
+
+This is a punctuation-only difference. Keep one canonical identity and the documented 100 ml EDP variant once; use aliases for legitimate spelling differences.
+
+### 4. Armaf — PR #558 vs PR #565
+
+Both PRs add `Odyssey French Kiss` as separate canonical product rows:
+- PR #558 product ID: `SH-ARMAF-ODYSSEY-FRENCH-KISS`, source https://armaf.com/products/odyssey-french-kiss
+- PR #565 product ID: `SH-ARMAF-1727c712`, source https://cz.armaf.eu/products/odyssey-french-kiss
+
+The regional official page in #565 also documents a 60 ml EDP variant. Retain one canonical product, preserve both regional source URLs as evidence, and attach the 60 ml variant to that product.
+
+### 5. Lattafa — PR #555 vs PR #562
+
+The following identities appear in both expansions:
+- Atlas Canyon
+- Raghad
+- Badee Al Oud Amethyst Fusion
+- Farfasha
+- Majd Al Sultan Black Intense
+- Ramad / Ramaad Al Oud
+
+Reconcile official spelling, canonical identity, aliases, product IDs, variants and source URLs. Do not create a second identity for a spelling variation.
+
+## Overlapping Mykonos source-evidence work
+
+PR #539 and PR #546 both upgrade the same existing Mykonos products from collection-level evidence to official product-detail-page evidence. Fourteen official detail-page URLs occur in both patches. This is overlapping source-evidence work, not by itself proof of duplicate product rows. Select one cumulative branch as the integration path and avoid replaying the same edits independently.
+
+
+## Aromatix — identity coverage and variant-evidence gap
+
+The base catalog currently contains 12 Aromatix product identities:
+Carnal Desire, Forbidden Fruit, Frostbite, Magnetiq, Naughty Dates, Ora,
+Platine Blanc, Royal Taboo, Roza, Sun Kissed, Teas Me and X Xandal.
+All 12 are marked `source_listed_name`, point to the same Notino Belgium
+brand/category page as `source_url`, and cite the Aromatix X French Avenue
+Fragrantica designer page as `source_evidence_url`.
+
+The naming/ownership needs to remain explicit rather than being silently
+collapsed into a generic Aromatix manufacturer assumption:
+- The Fragrantica designer listing identifies the collaboration as
+  **Aromatix X French Avenue**, names French Avenue as parent company, and
+  lists 12 fragrances, including Ora and Roza (2026).
+- Shop Aromatix describes a separate “Signature Aromatix Collection” as a
+  ten-fragrance collaboration, and its collection page names those ten
+  signature scents. Its current Aromatix X French Avenue product collection
+  shows 12 items, but the last two are Summer Vibes Blue and Yellow discovery
+  sets (5 x 30 ml), not two additional single-fragrance identities.
+- The catalog's two registry families, `aromatix_catalog` (brand Aromatix)
+  and `aromatix_french_avenue` (brand French Avenue), contain the same 12
+  canonical names. These appear to be dual lookup/alias coverage for one
+  collaboration, not 12 additional product identities. Preserve one catalog
+  product row per fragrance; make the alias relationship explicit in tests or
+  documentation so future harvests do not add duplicate products under
+  French Avenue.
+- The 12 Aromatix catalog product rows currently have **no variant rows**.
+  Retailer pages show 100 ml for the ten signature scents, but concentration
+  labels are not consistent: Shop Aromatix presents the ten as EDP, while
+  Notino's current listings label some as Extrait and others as EDP. European
+  retailer listings also show 100 ml EDP for Ora and Roza. These are
+  retailer-level sources, not manufacturer product-detail pages, and the
+  concentration conflict means the size/concentration tuple should not be
+  guessed. Do not create 100 ml variants as officially verified until a
+  suitable primary product source or an approved evidence policy supports
+  each exact concentration.
+
+**Action:** keep the 12 identities as one collaboration set; distinguish the
+ten original signature scents from the two 2026 launches Ora and Roza; retain
+the French Avenue/Aromatix dual-name mapping as aliases, not duplicate
+canonical products; and leave variant rows uncreated until the evidence
+standard is met.
+
+Evidence checked on 2026-11-08:
+- https://www.fragrantica.com/designers/Aromatix-X-French-Avenue.html
+- https://www.notino.be/french-avenue/aromatix/
+- https://www.notino.be/french-avenue/aromatix-magnetiq-extrait-de-parfum-mixte/
+- https://www.notino.be/french-avenue/aromatix-frostbite-eau-de-parfum-mixte/
+- https://shoparomatix.com/pages/aromatic-collection
+- https://shoparomatix.com/collections/aromatix-x-french-avenue
+- https://olvio.co.uk/collections/aromatix-x-french-avenue-collection?sort_by=created-descending
+
+## CI status and limitation
+
+The following individual catalog validation runs were checked and passed:
+- PR #554 head: run 42517779599
+- PR #517 head: run 42499610167
+- PR #465 head: run 42470787169
+- PR #546 head: run 42513510773
+- PR #562 current head: run 42523314618
+- PR #568 cross-PR uniqueness-test head: run 42525428834
+
+These green runs validate each branch separately. They do **not** prove the combined catalog is free of cross-PR duplicate product or variant records.
+
+PR #565's current head still has no workflow run on its exact SHA. Its base branch, `catalog/lattafa-four-official-products-2026-11-08`, is not in the workflow's `pull_request.branches` allowlist; a comment was added to #565 asking for that trigger/validation gap to be addressed.
+
+PR #568 adds automated regression guards for unique normalized product identities, product/variant IDs, variant tuples, orphan variants and exact duplicate rows within each family. Its catalog validation job passed on the exact PR head. These checks validate the candidate tree in which the workflow runs; they do not magically combine all open branches into one tree. No merge has been performed as part of this audit.
+
+
+
+
+## Variant concentration completeness — base snapshot audit
+
+A read-only scan of the base catalog blob
+`a0e787b370902eb69860250b233feebe466054e2` found **88 of 291 variants
+(30.2%)** with no non-empty `concentration` field. This is a data-completeness
+gap; it does not prove the product's concentration is unknown in the source,
+and no value should be guessed from a retailer title or neighboring variant.
+
+Missing concentration by brand:
+
+| Brand | Variants missing concentration |
+|---|---:|
+| Paris Corner | 25 |
+| Armaf | 21 |
+| Mykonos | 18 |
+| French Avenue | 12 |
+| Assaf | 8 |
+| Bujairami | 2 |
+| Khadlaj | 1 |
+| Lattafa | 1 |
+| **Total** | **88** |
+
+Examples include 12 French Avenue/Aromatix variants at 100 ml, multiple Armaf
+Club de Nuit sizes, Mykonos and Paris Corner variants, plus isolated rows for
+other brands. The correct next step is an evidence-backed completion queue:
+resolve each variant against its official product/detail page, record the
+source URL, and retain an explicit unknown/unconfirmed state where the source
+does not establish concentration. Do not bulk-fill these values or treat the
+88 rows as 88 missing products.
+
+
+
+
+## French Avenue / Aromatix variant concentration review
+
+Draft PR [#571](https://github.com/dalexmon81/ScentHunter/pull/571) proposes
+seven concentration/provenance corrections using exact French Avenue product
+pages: Forbidden Fruit (EDP), Magnetiq (EDP), Naughty Dates (EDP), Royal Taboo
+(Extrait), Sun Kissed (EDP), Teas Me (EDP), and X Xandal (Extrait). The PR
+updates the corresponding existing 100 ml variant rows and replaces the
+generic `https://frenchavenue.com/products/` source with each product's exact
+manufacturer URL.
+
+**Retailer conflict:** Notino Belgium labels Magnetiq, Forbidden Fruit, Sun
+Kissed and Teas Me as Extrait, while the French Avenue manufacturer pages
+specify EDP. The draft follows the primary manufacturer product specifications
+and preserves the discrepancy here for future review.
+
+**Not changed:** Carnal Desire (the official page title/snippet says Extrait
+but its specifications say EDP), Frostbite (no clear manufacturer concentration
+found; retailer sources disagree), Platine Blanc (manufacturer page does not
+state concentration in the retrieved specifications), and Ora/Roza (no
+manufacturer detail page with explicit concentration identified). No values
+were guessed.
+
+PR #570's corrected Mykonos test suite passed on exact head
+`ad84d8894b5da3660a1bb4ed6452eacc1b86621c` (run 42526801677). PR #571 exact head `353fe5c98e5a1ef67121f6aa7d3374e9a611c55f` passed Catalog seed validation (run 42526898901). PR #570 exact head `ad84d8894b5da3660a1bb4ed6452eacc1b86621c` also passed (run 42526801677). Both remain draft and unmerged.
+
+## Mykonos 15 ml travel variants — follow-up correction
+
+Draft PR [#570](https://github.com/dalexmon81/ScentHunter/pull/570) records
+concentration and provenance on 15 existing 15 ml Mykonos travel variants.
+The concentration is copied only where the parent product already carries
+`Extrait de Parfum` and an official Mykonos source URL. The official Travel
+Size page confirms the 15 ml size and enumerates the fragrance options:
+`https://officialmykonos.com/products/mykonos-sansa-edp-travel-size-15ml`.
+Official collection pages provide the parent product concentration labels.
+
+The three travel variants deliberately left unchanged are **Sansa, Affair and
+Tea Poetry**: the current parent catalog rows do not provide an explicit
+concentration. No concentration was guessed. PR #570 adds a regression test
+to the existing requested-brand validation suite. At the time of this audit
+update, the PR head was `8c387691394ead6a578f88f120247ebe06693848`; its CI
+run had not yet appeared in the workflow-run lookup.
+
+## Progress after the concentration-gap scan
+
+A focused evidence-backed correction is now proposed in draft PR
+[#569](https://github.com/dalexmon81/ScentHunter/pull/569):
+
+- 21 existing Armaf variants across Club de Nuit Untold, Sillage, Woman,
+  Urban Man Elixir and Iconic now carry `Eau de Parfum`, matching the
+  concentration already recorded on their parent products and the linked
+  official Armaf detail pages.
+- No product, variant ID or size was added or changed.
+- A regression assertion now checks that each affected variant's
+  concentration and source URL match its parent product.
+- The exact PR head `101e60ba48862a7b2790b29d923cac1fe099f08e` passed
+  Catalog seed validation (run 42526587042).
+
+After those 21 proposed corrections, 67 variants in the original base snapshot
+remain without a variant-level concentration. A further 15 Mykonos variants
+have a concentration on their parent product row and should be reviewed for
+evidence inheritance; 52 variants have no concentration on the parent row and
+remain an evidence-research queue. Paris Corner's 25 rows remain unfilled:
+the official product pages inspected in this pass confirmed sizes and
+fragrance identity/notes but did not explicitly state EDP/EDT/Extrait, so
+concentration was deliberately not inferred.
+
+
+## Assaf Gris Erik — variant-specific concentration
+
+Draft PR [#572](https://github.com/dalexmon81/ScentHunter/pull/572) adds
+`Eau de Parfum` and direct manufacturer provenance to the existing **100 ml**
+Gris Erik variant only. The official Assaf page is explicitly titled
+`EDP GRIS ERIK 100ML`:
+`https://assaf.ae/products/edp-gris-erik-100ml`.
+
+The 200 ml variant remains unchanged because its separate official page does
+not explicitly state EDP. The parent product remains without a single
+concentration label; this is a variant-level distinction, not a reason to
+propagate EDP to every size. PR #572 exact head
+`4b097f9f93508c5079d453439660a02d996ca604` passed Catalog seed validation
+(run 42526984354).
+
+### Cumulative correction count (proposed, not merged)
+
+Across four separate draft PRs based on the same catalog snapshot:
+- #569: 21 Armaf variants
+- #570: 15 Mykonos variants
+- #571: 7 French Avenue/Aromatix variants
+- #572: 1 Assaf variant
+
+That is **44 existing variants proposed for correction**. The original
+88-row concentration gap would therefore have **44 rows remaining** after
+these four PRs are integrated. This is a cross-PR arithmetic total, not the
+current base-branch count; none of these PRs has been merged.
+
+Remaining by brand on that proposed combined view: Paris Corner 25, French
+Avenue 5, Assaf 7, Bujairami 2, Khadlaj 1, Lattafa 1, Mykonos 3.
+
+
+## Follow-on remediation — Armaf variant concentrations (PR #573)
+
+A separate draft PR, [#573](https://github.com/dalexmon81/ScentHunter/pull/573),
+fills the 21 previously blank concentration fields for five existing Armaf
+Club de Nuit products: Untold, Sillage, Woman, Urban Man Elixir and Iconic.
+All 21 values are supported by the corresponding official Armaf detail pages;
+the change adds no products or variants. It includes a focused regression test,
+a source-evidence note and a workflow invocation.
+
+Validation on the exact PR #573 head
+`c87123ee42d0790fe6b32a46e6bfa46ebdd31753` completed successfully
+(run 42526995498). Re-scanning that PR branch shows:
+- Armaf variants with blank concentration: 0 (down from 21).
+- All brands combined with blank concentration: 67 (down from 88).
+- Product count remains 2,061 and variant count remains 291.
+
+**Important:** #573 is still an open draft and has not been merged. The 67-row
+figure describes its candidate branch only; the base snapshot audited above
+still has the original 88 incomplete concentration fields.
+
+## Family-registry normalization debt found in the base snapshot
+
+A separate read-only scan of the exact base-branch registry blob
+`6981b9619abf7af30153ea2948035b99c9e2a58d` (34 families) found **18 pairs** of
+canonical labels within the same family that collapse to the same normalized
+spelling when case, punctuation and diacritics are ignored. The full list is:
+
+- Paris Corner (14): `Deux II Expressions, North Stag` / `Deux II Expressions North Stag`; `Jardin Des Papillons` / `Jardin des Papillons`; `Lueur D'Espoir Arena Intense` / `Lueur d'Espoir Arena Intense`; `Lueur D'Espoir Memories of Summer` / `Lueur d'Espoir Memories of Summer`; `Lueur D'Espoir Serene Grove` / `Lueur d'Espoir Serene Grove`; `Lueur D'Espoir Silhouette` / `Lueur d'Espoir Silhouette`; `Midnight Sin By Daniel Rene` / `Midnight Sin by Daniel René`; `Noir D'Arabie` / `Noir d'Arabie`; `Papillon Des Vents` / `Papillon des Vents`; `Quatre IV Expressions, North Stag` / `Quatre IV Expressions North Stag`; `Rua` / `RUA`; `Taskeen Lactea Divina` / `Taskeen Lactéa Divina`; `Trois III Expressions, North Stag` / `Trois III Expressions North Stag`; `Un I Expressions, North Stag` / `Un I Expressions North Stag`.
+- Arabiyat Prestige (2): `Nyla Vani-elle` / `Nyla Vani-Elle`; `Noire` / `Noirè`.
+- Lattafa (1): `Ajwad Pink To Pink` / `Ajwad Pink to Pink`.
+- Khadlaj (1): `Sueño` / `Sueno`.
+
+These are registry-label normalization collisions, not 18 confirmed duplicate
+catalog product rows: the current product catalog itself has no duplicate
+normalized brand + canonical-name identities. Some pairs may be legitimate
+orthographic variants, but they should be represented as one canonical
+registry row with aliases where they denote the same fragrance. Do not apply
+blind deletion or merge them without checking the official product identity.
+
+**Action:** keep the new uniqueness test strict for product identities and
+exact duplicate registry rows; treat normalized registry-label collisions as
+a separate cleanup queue with source-by-source review before enforcing a
+normalized registry uniqueness assertion.
+
+## Branch dependency map — important integration clarification
+
+Two of the current PRs are cumulative descendants of other catalog branches, not independent snapshots:
+
+- **PR #555** targets `catalog/gulf-orchid-official-new-arrivals-2026-11-08`. Comparing its head with that base gives a merge base equal to the current PR #554 head (`a990036c...`), with six commits ahead and zero behind. Therefore #555 already carries the #554 line of work as ancestry. Do not integrate #554 and #555 as two independent patches; treat #555 as the cumulative descendant and resolve the Gulf Orchid duplicates against #542 plus the Lattafa overlaps against #562.
+- **PR #565** targets `catalog/lattafa-four-official-products-2026-11-08`. Comparing its head with that base gives a merge base equal to the current PR #562 head (`6e33896d...`), with five commits ahead and zero behind. Therefore #565 already carries #562 as ancestry. Do not count #562's catalog rows as a second independent addition when reviewing #565; the cross-branch overlap to reconcile is the six Lattafa identities also present in #555, plus the Armaf duplicates against #558 and #564.
+
+This matters for integration order: the eventual candidate should select the cumulative descendant branch where appropriate, rather than replaying both parent and child PR diffs and accidentally duplicating the same rows.
+
+### Additional exact-head CI check
+
+- PR #555 current head: run 42520228615 — success.
+- PR #564 current head: run 42523877610 — success.
+- PR #568 current head: run 42525428834 — success.
+- PR #565 current head: no workflow run found. The branch-specific workflow trigger gap recorded above remains unresolved.
+
+## Required integration gate
+
+Before any of these catalog PRs are integrated:
+
+1. Reconcile the confirmed overlap groups above.
+2. Validate the combined candidate branch, not only its component PRs.
+3. Assert unique canonical identities by normalized brand + canonical name.
+4. Assert unique product IDs.
+5. Assert unique variant IDs.
+6. Assert unique variant tuples by product ID + size + concentration.
+7. Assert family-registry entries map one-to-one to canonical identities.
+8. Preserve official evidence URLs and only record sizes/concentrations explicitly supported by those sources.
+
+## Safety boundary
+
+This audit changes documentation only. It does not change product catalog data, family registry, variants, prices, stock, offers, `main`, or production. No PR is merged or closed by this report.
+
+
+## Paris Corner — 25 variant concentration evidence review
+
+A read-only scan of the exact base catalog blob
+`a0e787b370902eb69860250b233feebe466054e2` identifies 25 Paris Corner
+variant rows without a variant-level concentration. The matching product rows
+already carry individual official Paris Corner product URLs. The product
+detail pages were checked directly:
+
+- Affogato Al Caffe — https://www.pariscornerperfumes.com/products/affogato-al-caffe
+- Minya Caramel Dulce — https://www.pariscornerperfumes.com/products/minya-caramel-dulce
+- Reham Rose Petals — https://www.pariscornerperfumes.com/products/reham-rose-petals
+- Acadia Intenso Emir — https://www.pariscornerperfumes.com/products/acadia-intenso-emir
+- Attractus — https://www.pariscornerperfumes.com/products/attractus
+- North Stag Hypnotic Oud Quinze XV — https://www.pariscornerperfumes.com/products/north-stag-hypnotic-oud-quinze-xv
+- Midnight Sin by Daniel René — https://www.pariscornerperfumes.com/products/midnight-sin-by-daniel-rene
+- Dulzura Vanilla Envie — https://www.pariscornerperfumes.com/products/dulzura-vanilla-envie
+- Green Bet — https://www.pariscornerperfumes.com/products/green-bet
+- Heer — https://www.pariscornerperfumes.com/products/heer
+- Marshmallow Blush — https://www.pariscornerperfumes.com/products/marshmallow-blush
+- Rawq — https://www.pariscornerperfumes.com/products/rawq
+- The Show Magnifique — https://www.pariscornerperfumes.com/products/the-show-magnifique
+- Tawaaq — https://www.pariscornerperfumes.com/products/tawaaq
+- Lueur d'Espoir Noche — https://www.pariscornerperfumes.com/products/lueur-noche
+- Lueur d'Espoir Ambre — https://www.pariscornerperfumes.com/products/lueur-ambre
+- Super Crush Emir — https://www.pariscornerperfumes.com/products/super-crush-emir
+- Ministry of Oud - Thailand Oud in Cairo — https://www.pariscornerperfumes.com/products/ministry-of-oud-thailand-oud-in-cairo
+- Deux II Expressions North Stag — https://www.pariscornerperfumes.com/products/deux-ii-expressions-north-stag-100ml
+- North Stag Phenomenal Quatorze XIV — https://www.pariscornerperfumes.com/products/north-stag-phenomenal-quatorze-xiv
+- Atoof — https://www.pariscornerperfumes.com/products/atoof
+- Aira — https://www.pariscornerperfumes.com/products/aira
+- Ciao Citrus — https://www.pariscornerperfumes.com/products/ciao-citrus
+- Fatal Embrace — https://www.pariscornerperfumes.com/products/fatal-embrace
+- Wayfarer Infusion — https://www.pariscornerperfumes.com/products/wayfarer-infusion
+
+For the 24 pages successfully retrieved, the visible manufacturer detail
+content identifies the fragrance and size (mostly 100 ml; Super Crush Emir is
+75 ml) but does not explicitly label Eau de Parfum, Eau de Toilette or Extrait.
+The Attractus URL could not be retrieved by the page inspection tool, so it
+remains unverified at detail-page level. No concentration value is justified
+for any of these 25 variants by the evidence collected in this pass.
+
+**Action:** leave all 25 variant concentration fields blank. The product URLs
+remain useful provenance for identity/size, but their presence is not evidence
+of concentration. Revisit only if a manufacturer specification, packaging
+label or other approved primary evidence explicitly states the concentration.
+
+## Armaf — duplicate correction work across PR #569 and PR #573
+
+PR #569 and PR #573 both propose the same 21 variant-level changes for the
+same five Armaf Club de Nuit products. A direct patch comparison shows the
+same 21 existing variant IDs receive the same `Eau de Parfum` value and the
+same official source URLs in both PRs. They are not 42 distinct corrections.
+
+PR #573 additionally carries a separate focused test module, a workflow
+trigger update and an evidence document; PR #569 carries its own focused
+Armaf detail-evidence test. The branches have diverged (compare reports
+four commits ahead and two behind when comparing #569's branch to #573's),
+so do not integrate both catalog patches as independent work. Select one
+catalog data patch, then deliberately retain/reconcile the stronger
+complementary tests, workflow and evidence documentation in a single
+integration candidate.
+
+The exact #573 catalog patch repeats #569's 21 data edits; this is a
+cross-PR duplication finding, not a request to close either PR automatically.
+No merge or branch deletion was performed.
+
+
+## Additional remaining-brand review — Assaf, Bujairami, Khadlaj and Lattafa
+
+### Assaf — seven remaining size variants
+
+The seven still-unconfirmed variants after the proposed Gris Erik 100 ml correction
+were checked against their linked manufacturer pages:
+
+- Arrogate Pink 200 ml — official page does not state EDP/Extrait.
+- Arrogate Pink Diva 200 ml — official page identifies 200 ml but does not state EDP/Extrait.
+- Dangerous Arrogate 200 ml — the catalog URL redirects to the Arrogate collection, not a product-detail specification.
+- Gris Erik 200 ml — the old direct product URL could not be retrieved (404); the separate 100 ml page explicitly identifies EDP, but that does not prove the 200 ml variant is the same concentration.
+- Miss Arrogate 200 ml — official page does not state EDP/Extrait.
+- Rebel Enable 150 ml — the URL contains “edp”, but the retrieved page body does not explicitly identify concentration; URL slug alone is not sufficient evidence.
+- Wild Colt Elixir 200 ml — same issue: “edp” appears in the URL slug, but the retrieved manufacturer page body does not explicitly state concentration.
+
+**Action:** no further Assaf variant concentrations added. Do not propagate the Gris Erik 100 ml EDP label to 200 ml without a direct manufacturer statement.
+
+### Bujairami — Love Spell 50 ml and 100 ml
+
+The two official Bujairami product pages confirm the sizes and fragrance notes, but do
+not state EDP/EDT/Extrait. A European retailer page describes both sizes as EDP,
+but it is not the brand's own product page. The official evidence standard used
+for this catalog pass does not justify copying that retailer label into the
+variant records.
+
+Evidence:
+- https://bujairami.com.au/products/love-spell-original-creation
+- https://bujairami.com.au/products/love-spell-original-creation-50ml
+
+**Action:** leave both concentrations blank pending explicit brand evidence.
+
+### Khadlaj — Hareem Al Sultan Gold 35 ml is a concentrated perfume oil
+
+The exact official Khadlaj product page identifies Hareem Al Sultan Gold 35 ml as
+a **concentrated, non-alcoholic perfume oil**. This is not an EDP/EDT/Extrait
+spray concentration. The original catalog source was only a generic collection
+URL, so draft PR [#574](https://github.com/dalexmon81/ScentHunter/pull/574)
+updates the product and variant provenance to the direct official product page
+and adds a regression test. It deliberately leaves the `concentration` field
+unset rather than misclassifying an oil as a spray concentration.
+
+Official source:
+https://khadlaj-perfumes.com/collections/flash-sale/products/hareem-al-sultan-gold-35ml
+
+PR #574 is open and draft. Its exact head
+`56c5d5a997223b68ce433009bcbfd95bd54e6b98` passed Catalog seed validation
+(run 42527658396). No merge performed.
+
+### Lattafa — Asad Elixir 100 ml
+
+The Lattafa main-site product URL in the catalog returned 403 during direct
+inspection. A Lattafa-branded US storefront page confirms the product and 100 ml
+size but does not explicitly state EDP/EDT/Extrait in the retrieved product
+description. No concentration was inferred from the name “Elixir”.
+
+**Action:** leave the variant concentration blank until a manufacturer source
+explicitly identifies the concentration.
+
+### Mykonos — Sansa, Affair and Tea Poetry travel variants
+
+The 15 ml travel-size offering is confirmed by the official Mykonos Travel Size
+page, but the parent product records for Sansa, Affair and Tea Poetry still do
+not establish an explicit concentration. The other 15 Mykonos travel variants
+are the subject of draft PR #570; these three were intentionally excluded.
+
+**Action:** leave all three travel-variant concentrations blank.
+
+## Revised interpretation of the proposed remaining concentration queue
+
+The arithmetic total of 44 blank variant-level concentration fields after
+proposed PRs #569–#572 remains correct as a raw field count. However, the
+Khadlaj Hareem Al Sultan Gold 35 ml row is now evidenced as a concentrated
+perfume oil rather than an EDP/EDT/Extrait spray. It should be tracked as a
+formulation/type classification issue, not as a missing spray concentration.
+Accordingly, the remaining review queue is 43 spray-concentration candidates
+plus one separately classified perfume-oil row. This is still a proposed
+cross-PR view; the component catalog PRs remain unmerged.
