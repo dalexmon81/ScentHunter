@@ -33835,8 +33835,14 @@
         "Musk Pour Amber",
         "Khadlaj Musk Pour Amber"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-065",
@@ -33871,8 +33877,14 @@
         "Sara",
         "Khadlaj Sara"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
@@ -34111,8 +34123,14 @@
         "Valor Enigma",
         "Khadlaj Valor Enigma"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-083",
@@ -49203,6 +49221,45 @@
       "gtin": "6291107977768",
       "source_url": "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-064",
+      "size_ml": 100,
+      "aliases": [
+        "Musk Pour Amber 100 ml",
+        "Khadlaj Musk Pour Amber 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-064-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107977850",
+      "source_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-066",
+      "size_ml": 100,
+      "aliases": [
+        "Sara 100 ml",
+        "Khadlaj Sara 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-066-100-000",
+      "concentration": "Extrait de Parfum",
+      "gtin": "6291107978772",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-082",
+      "size_ml": 100,
+      "aliases": [
+        "Valor Enigma 100 ml",
+        "Khadlaj Valor Enigma 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-082-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975979",
+      "source_url": "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray"
     }
   ]
 }
