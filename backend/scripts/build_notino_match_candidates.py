@@ -106,12 +106,19 @@ def _entry_values(entry: ET.Element) -> dict[str, str]:
     }
 
 
+CORE_PRODUCT_TYPES = {
+    "toaletní vody", "parfémované vody", "kolínské vody",
+    "parfémy", "parfémované oleje", "eau fraîche",
+}
+
+
 def iter_perfume_rows(feed_path: str | Path):
+    """Yield core fragrance listings, excluding gift sets and accessories."""
     for _, entry in ET.iterparse(str(feed_path), events=("end",)):
         if entry.tag.rsplit("}", 1)[-1] == "entry":
             row = _entry_values(entry)
-            category_name = row.get("google_product_category_name", "").casefold()
-            if row.get("google_product_category") == "479" or "parfums et eaux de cologne" in category_name:
+            terminal_type = row.get("product_type", "").split(">")[-1].strip().casefold()
+            if row.get("google_product_category") == "479" and terminal_type in CORE_PRODUCT_TYPES:
                 yield row
             entry.clear()
 
@@ -158,21 +165,27 @@ def build_catalog_index(catalog: dict) -> list[dict]:
         names = [product.get("canonical_name", ""), product.get("family_name", "")]
         names.extend(product.get("aliases") or [])
         normalized_names = sorted({strip_product_noise(n) for n in names if n and strip_product_noise(n)})
-        for variant in variants_by_product.get(product_id, []):
-            variant_names = list(variant.get("aliases") or [])
+        product_variants = variants_by_product.get(product_id, [])
+        # Keep products without variants visible as product-only candidates.
+        # They have no size/GTIN evidence and cannot identify a purchasable variant.
+        if not product_variants:
+            product_variants = [None]
+        for variant in product_variants:
+            variant_names = list((variant or {}).get("aliases") or [])
             variant_names = [strip_product_noise(n) for n in variant_names if n]
             indexed.append({
                 "product_id": product_id,
-                "variant_id": variant.get("variant_id", ""),
+                "variant_id": (variant or {}).get("variant_id", ""),
+                "candidate_scope": "variant" if variant else "product_only",
                 "brand": brand,
                 "brand_key": brand_key,
                 "names": sorted(set(normalized_names + [n for n in variant_names if n])),
-                "size_ml": variant.get("size_ml"),
+                "size_ml": (variant or {}).get("size_ml"),
                 "concentration": extract_concentration(
-                    variant.get("concentration") or product.get("concentration", "")
+                    (variant or {}).get("concentration") or product.get("concentration", "")
                 ),
                 "gender": _catalog_gender(product, names),
-                "gtins": variant.get("gtins") or [],
+                "gtins": (variant or {}).get("gtins") or [],
             })
     return indexed
 
@@ -250,6 +263,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             "gender_conflict": gender_conflict,
             "canonical_product_id": item["product_id"],
             "canonical_variant_id": item["variant_id"],
+            "candidate_scope": item["candidate_scope"],
             "canonical_brand": item["brand"],
             "canonical_names": " | ".join(item["names"]),
             "canonical_size_ml": item["size_ml"],
@@ -288,6 +302,7 @@ def generate_candidates(feed_path: str | Path, catalog_path: str | Path) -> list
                 "gender_conflict": False,
                 "canonical_product_id": "",
                 "canonical_variant_id": "",
+                "candidate_scope": "",
                 "canonical_brand": "",
                 "canonical_names": "",
                 "canonical_size_ml": "",
@@ -312,7 +327,7 @@ def main() -> None:
     fields = list(rows[0]) if rows else [
         "candidate_score", "confidence_band", "feed_external_id", "feed_gtin",
         "feed_brand", "feed_title", "feed_size_ml", "feed_concentration",
-        "feed_gender", "canonical_gender", "gender_conflict", "canonical_product_id", "canonical_variant_id", "canonical_brand",
+        "feed_gender", "canonical_gender", "gender_conflict", "canonical_product_id", "canonical_variant_id", "candidate_scope", "canonical_brand",
         "canonical_names", "canonical_size_ml", "canonical_concentration",
         "name_similarity", "gtin_match", "size_match", "concentration_match", "review_status",
     ]

@@ -36,11 +36,19 @@ python -m backend.scripts.build_notino_match_candidates \
   --output /tmp/notino-match-candidates.csv
 ```
 
-The CSV ranks up to five candidate variants per retailer row using:
-- exact normalized brand as a mandatory gate;
+The CSV ranks up to five candidates per core-fragrance retailer row using:
+- exact normalized brand as a mandatory gate (except exact GTIN evidence);
 - perfume name similarity across canonical names and aliases;
 - size agreement when both sides provide a size;
 - concentration agreement when both sides provide a concentration.
+
+The generator indexes all canonical products, not only products with variants.
+Products without a variant appear as `product_only` candidates with an empty
+variant ID and no size/GTIN evidence. They may identify a possible fragrance
+family, but cannot identify a purchasable variant. The candidate run includes
+only terminal product types `Toaletní vody`, `Parfémované vody`,
+`Kolínské vody`, `Parfémy`, `Parfémované oleje` and `Eau Fraîche`;
+gift sets and accessories are excluded.
 
 Rows are labeled `review_high`, `review_medium`, `review_low` or
 `no_candidate`. These are **review priorities, not automatic match approvals**.
@@ -66,21 +74,22 @@ a GTIN or offer can be attached.
 
 ## Feed snapshot analyzed on 2026-11-10
 - 78,897 total feed entries.
-- 9,854 entries in the perfume category.
-- All 9,854 perfume entries contain a GTIN, price, availability and affiliate URL.
-- 9,693 perfume entries have GTIN strings with accepted lengths (8, 12, 13 or 14 digits).
-- 161 entries have 10- or 11-digit identifiers and are rejected by the current
-  strict GTIN validator pending source-data clarification; do not pad or rewrite them.
-- 7,145 perfume entries have a sale price.
+- 9,533 core fragrance listings after excluding gift sets and accessories.
+- 9,349 rows have a GTIN that passes the GTIN-8/12/13/14 GS1 check-digit
+  validator; 184 fail format or checksum validation and must remain pending.
+  Never pad or repair an identifier automatically.
+- The core subset contains 2,049 Toaletní vody, 6,222 Parfémované vody,
+  172 Kolínské vody, 914 Parfémy, 148 Parfémované oleje and 28 Eau Fraîche.
 - One GTIN, 5055654026123, occurs on two distinct Missguided Babe Power feed
   IDs. Keep both source rows visible for review; do not assume they are duplicates
   that can safely be collapsed.
-- All 9,854 perfume rows reported "in stock" in this snapshot.
+- The 9,533 core fragrance rows were analyzed separately from the broader Google category 479 feed population.
 - **Canonical matching result: zero exact GTIN matches are currently possible.**
   The current canonical JSON catalog has 1,389 products and 511 variants, but
-  none of the 511 variants has a GTIN recorded. Therefore the Notino adapter
-  must stage these records as pending until the canonical catalog is enriched
-  with verified GTINs or reviewed name/brand/size matching is implemented.
+  none of the variants has a GTIN recorded. Therefore the exact-GTIN adapter
+  cannot promote any feed row today. The separate read-only candidate report
+  ranks product and variant identities for manual review; it does not authorize
+  offer import or write GTINs back to the catalog.
 
 ## Important limitation
 The adapter and persistence tests do not activate production ingestion, change
@@ -93,3 +102,24 @@ The feed has not been imported into any database.
 - Candidate review parses millilitre values and explicit US fluid-ounce values (`fl oz`, `fl. oz.`, `fluid ounce`) and converts fluid ounces to millilitres before comparing variant sizes.
 - Bare `oz` is not treated as a volume unit because it may represent weight.
 - Size parsing improves candidate prioritization only. It does not approve a product match or trigger an offer import.
+
+## Refined core-catalog comparison (2026-11-10)
+
+The uploaded CJ XML was compared against the exact branch catalog blob
+(Git blob SHA `23ee4a7b026148f666e729bec63cf1af25c2ee29`). The comparison
+indexed all 1,389 canonical products: 511 variant records plus 1,063
+product-only identities for products without a variant.
+
+Results for the 9,533 core fragrance feed rows:
+- 3,379 rows received at least one brand/name candidate; 6,154 received none.
+- 167 top-ranked candidates were strong existing-variant review candidates.
+- 1,019 rows were ambiguous; 292 medium-priority; 1,585 low-priority
+  (including 316 with known size, concentration or gender conflicts).
+- No exact GTIN matches were possible because no canonical variant has a GTIN.
+- Automatic matches: zero. Every candidate requires human verification.
+
+These are candidate-ranking statistics, not confirmed match counts. A row with
+no candidate is not proof that the fragrance is new: missing aliases, retailer
+brand labels, incomplete product records and absent variants can all prevent
+a match. Product-only candidates identify a possible fragrance family but do
+not identify a purchasable variant.

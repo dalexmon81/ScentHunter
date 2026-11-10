@@ -204,6 +204,33 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         index = build_catalog_index(catalog)
         self.assertEqual(index[0]["concentration"], "EDP")
 
+    def test_product_without_variants_is_indexed_as_product_only_review_candidate(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-ONLY",
+                "brand_name": "Dior",
+                "canonical_name": "Homme Intense",
+                "family_name": "Homme Intense",
+                "concentration": "Eau de Parfum",
+                "aliases": ["Dior Homme Intense"],
+            }],
+            "variants": [],
+        }
+        index = build_catalog_index(catalog)
+        self.assertEqual(len(index), 1)
+        self.assertEqual(index[0]["candidate_scope"], "product_only")
+        candidates = score_row({
+            "id": "SKU-PRODUCT-ONLY",
+            "brand": "Dior",
+            "title": "Dior Homme Intense Eau de Parfum",
+            "size": "",
+        }, index)
+        self.assertTrue(candidates)
+        self.assertEqual(candidates[0]["canonical_product_id"], "P-ONLY")
+        self.assertEqual(candidates[0]["canonical_variant_id"], "")
+        self.assertEqual(candidates[0]["candidate_scope"], "product_only")
+        self.assertNotEqual(candidates[0]["confidence_band"], "review_high")
+
     def test_brand_mismatch_never_generates_candidate(self):
         row = {
             "id": "SKU-2",
