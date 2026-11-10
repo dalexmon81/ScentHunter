@@ -7146,8 +7146,14 @@
         {
           "canonical_name": "Odyssey Artisto",
           "aliases": [
-            "Armaf Odyssey Artisto"
-          ]
+            "Odyssey Artisto",
+            "Armaf Odyssey Artisto",
+            "Odyssey Artisto The Red Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Go Mango",

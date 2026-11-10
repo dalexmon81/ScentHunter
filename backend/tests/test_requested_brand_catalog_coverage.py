@@ -1840,7 +1840,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Odyssey Artisto": (
                 "https://armaf.com/products/odyssey-artisto",
-                None, "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Odyssey Mega": (
                 "https://armaf.com/products/odyssey-mega-man",

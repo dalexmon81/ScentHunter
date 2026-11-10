@@ -14406,13 +14406,19 @@
       "family_name": "Odyssey Artisto",
       "aliases": [
         "Odyssey Artisto",
-        "Armaf Odyssey Artisto"
+        "Armaf Odyssey Artisto",
+        "Odyssey Artisto The Red Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-artisto",
       "source_evidence_url": "https://armaf.com/products/odyssey-artisto",
       "source_product_url": "https://armaf.com/products/odyssey-artisto",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-artisto-the-red-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-e1349118",
@@ -52885,6 +52891,21 @@
       "source_product_url": "https://armaf.com/products/odyssey-go-mango",
       "source_evidence_url": "https://armaf.com/products/odyssey-go-mango",
       "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-go-mango-tropical-collection-1"
+    },
+    {
+      "product_id": "SH-ARMAF-fa82f8c8",
+      "variant_id": "SHV-SH-ARMAF-fa82f8c8-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Artisto 100 ml",
+        "Armaf Odyssey Artisto 100 ml",
+        "Odyssey Artisto The Red Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-artisto",
+      "source_product_url": "https://armaf.com/products/odyssey-artisto",
+      "source_evidence_url": "https://armaf.com/products/odyssey-artisto",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-artisto-the-red-edition"
     }
   ]
 }
