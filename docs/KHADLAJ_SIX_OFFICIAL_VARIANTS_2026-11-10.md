@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes twenty-three existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes twenty-six existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -29,6 +29,9 @@ This change completes twenty-three existing Khadlaj canonical identities using o
 | Oud Pure Oud Galazaid | SH-KHADLAJ-SPRAY-HARVEST-057 | 60 ml | Eau de Parfum | 6291107979588 |
 | Oud Pure Oud Jumeirah | SH-KHADLAJ-SPRAY-HARVEST-058 | 60 ml | Eau de Parfum | 6291107979595 |
 | Fursan Brown | SH-KHADLAJ-SPRAY-HARVEST-065 | 100 ml | Eau de Parfum | 6291107977768 |
+| Musk Pour Amber | SH-KHADLAJ-SPRAY-HARVEST-064 | 100 ml | Eau de Parfum | 6291107977850 |
+| Sara | SH-KHADLAJ-SPRAY-HARVEST-066 | 100 ml | Extrait de Parfum | 6291107978772 |
+| Valor Enigma | SH-KHADLAJ-SPRAY-HARVEST-082 | 100 ml | Eau de Parfum | 6291107975979 |
 
 ## Official evidence
 
@@ -55,6 +58,9 @@ This change completes twenty-three existing Khadlaj canonical identities using o
 - Oud Pure Oud Galazaid: https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women
 - Oud Pure Oud Jumeirah: https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy
 - Fursan Brown: https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her
+- Musk Pour Amber: https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae
+- Sara: https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae
+- Valor Enigma: https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray
 
 ## Data integrity
 
