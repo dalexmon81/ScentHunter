@@ -15,8 +15,8 @@ This report measures existing data only. It does not infer a bottle size, concen
 | Canonical products | 2,210 |
 | Explicit variants | 969 |
 | Products with at least one variant | 846 |
-| Products marked `source_verified_name` | 1,057 |
-| Products marked `source_listed_name` | 1,153 |
+| Products marked `source_verified_name` | 1,059 |
+| Products marked `source_listed_name` | 1,151 |
 | Variants without concentration | 381 |
 | Variants without a dedicated `source_evidence_url` | 178 |
 | Variants without any source URL field | 146 |
@@ -27,7 +27,7 @@ This report measures existing data only. It does not infer a bottle size, concen
 | Duplicate product/size/concentration tuples | 0 |
 | Variant records contaminated with commercial offer fields | 0 |
 
-A product can be correctly verified as an identity while its size or concentration remains unknown. Therefore, the 254 `source_verified_name` products without a variant are a research queue, not a claim that 251 variants are missing.
+A product can be correctly verified as an identity while its size or concentration remains unknown. Therefore, the 256 `source_verified_name` products without a variant are a research queue, not a claim that 251 variants are missing.
 
 Likewise, a missing concentration on a variant is not permission to infer one. Keep the value unset until first-party evidence explicitly supports it.
 
