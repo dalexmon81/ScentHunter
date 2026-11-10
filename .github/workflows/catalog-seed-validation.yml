@@ -15,6 +15,7 @@ on:
       - catalog/afnan-official-variants-2026-11-10
       - catalog/catalog-audit-next-2026-11-10
       - catalog/armaf-paris-corner-variant-gap-2026-11-10
+      - catalog/al-wataniah-cumulative-ci-docs-2026-11-10
 
 permissions:
   contents: read
