@@ -3749,8 +3749,14 @@
         "Panache Eleganza",
         "Khadlaj Panache Eleganza"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-6494ea68",
@@ -34783,8 +34789,14 @@
         "Oud Noir",
         "Khadlaj Oud Noir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/ombre-range/products/oud-noir-100ml-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/ombre-range/products/oud-noir-100ml-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/ombre-range/products/oud-noir-100ml-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-105",
@@ -34819,8 +34831,14 @@
         "Ombre Notes",
         "Khadlaj Ombre Notes"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/deals/products/ombre-notes-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/deals/products/ombre-notes-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/deals/products/ombre-notes-edp-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-107",
@@ -34939,8 +34957,14 @@
         "Infini",
         "Khadlaj Infini"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-113",
@@ -50689,6 +50713,56 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/club-de-nuit-intenso-fuego",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-intenso-fuego"
+    },
+    {
+      "product_id": "SH-KHADLAJ-c0a0f7d9",
+      "size_ml": 100,
+      "aliases": [
+        "Panache Eleganza 100 ml",
+        "Khadlaj Panache Eleganza 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-c0a0f7d9-100-000",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women",
+      "gtin": "6298043070812"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-104",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Noir 100 ml",
+        "Khadlaj Oud Noir 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-104-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/ombre-range/products/oud-noir-100ml-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/ombre-range/products/oud-noir-100ml-spray-shop-online-best-price-in-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-106",
+      "size_ml": 100,
+      "aliases": [
+        "Ombre Notes 100 ml",
+        "Khadlaj Ombre Notes 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-106-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/deals/products/ombre-notes-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/deals/products/ombre-notes-edp-spray-shop-online-best-price-in-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-112",
+      "size_ml": 100,
+      "aliases": [
+        "Infini 100 ml",
+        "Khadlaj Infini 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-112-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
+      "gtin": "6297000742625"
     }
   ]
 }
