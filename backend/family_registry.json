@@ -847,6 +847,10 @@
           "aliases": [
             "Comus",
             "Velixir Comus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -876,6 +880,10 @@
           "aliases": [
             "Ether",
             "Velixir Ether"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -981,6 +989,10 @@
           "aliases": [
             "Orpheus",
             "Velixir Orpheus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -995,6 +1007,10 @@
           "aliases": [
             "Panacea",
             "Velixir Panacea"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -1804,6 +1820,9 @@
           "aliases": [
             "Vanilla Aura",
             "Maison Asrar Vanilla Aura"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7430,6 +7449,9 @@
           "aliases": [
             "Club de Nuit Intenso Fuego",
             "Armaf Club de Nuit Intenso Fuego"
+          ],
+          "formats_ml": [
+            105
           ]
         },
         {
@@ -10090,6 +10112,9 @@
           "aliases": [
             "Aariz",
             "Arabiyat Prestige Aariz"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10097,6 +10122,9 @@
           "aliases": [
             "Aariz L’Absolu",
             "Arabiyat Prestige Aariz L’Absolu"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10198,6 +10226,9 @@
           "aliases": [
             "Asháa Oud Noir",
             "Arabiyat Prestige Asháa Oud Noir"
+          ],
+          "formats_ml": [
+            110
           ]
         },
         {
@@ -10794,6 +10825,9 @@
           "aliases": [
             "Al Qasr",
             "Gulf Orchid Al Qasr"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10843,20 +10877,6 @@
           "aliases": [
             "Turath",
             "Gulf Orchid Turath"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Aura",
-          "aliases": [
-            "Vanilla Aura",
-            "Gulf Orchid Vanilla Aura"
-          ]
-        },
-        {
-          "canonical_name": "Vanilla Voyage",
-          "aliases": [
-            "Vanilla Voyage",
-            "Gulf Orchid Vanilla Voyage"
           ]
         },
         {
@@ -10928,6 +10948,9 @@
           "aliases": [
             "Exotic Oud",
             "Gulf Orchid Exotic Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10935,6 +10958,9 @@
           "aliases": [
             "Vanilla Latte",
             "Gulf Orchid Vanilla Latte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10942,6 +10968,9 @@
           "aliases": [
             "Cookie Bite",
             "Gulf Orchid Cookie Bite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -11050,6 +11079,46 @@
           "aliases": [
             "Maestro",
             "Gulf Orchid Maestro"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Maze",
+          "aliases": [
+            "Maze",
+            "Gulf Orchid Maze"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mosaic",
+          "aliases": [
+            "Mosaic",
+            "Gulf Orchid Mosaic"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rice Milk",
+          "aliases": [
+            "Rice Milk",
+            "Gulf Orchid Rice Milk"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Royal Rose",
+          "aliases": [
+            "Royal Rose",
+            "Gulf Orchid Royal Rose"
           ],
           "formats_ml": [
             100
@@ -12301,6 +12370,9 @@
           "aliases": [
             "Abraaj",
             "Lattafa Abraaj"
+          ],
+          "formats_ml": [
+            20
           ]
         },
         {
@@ -12308,6 +12380,9 @@
           "aliases": [
             "Haakim",
             "Lattafa Haakim"
+          ],
+          "formats_ml": [
+            20
           ]
         },
         {
@@ -12315,6 +12390,9 @@
           "aliases": [
             "Amoura",
             "Lattafa Amoura"
+          ],
+          "formats_ml": [
+            20
           ]
         },
         {
@@ -13509,6 +13587,9 @@
           "aliases": [
             "Jean Lowe Immortal",
             "Maison Alhambra Jean Lowe Immortal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14433,6 +14514,9 @@
           "aliases": [
             "Jean Lowe Vibe",
             "Maison Alhambra Jean Lowe Vibe"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14821,6 +14905,9 @@
           "aliases": [
             "Mysterious Amber",
             "Maison Alhambra Mysterious Amber"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -17086,6 +17173,9 @@
           "aliases": [
             "Cream Velvet",
             "Khadlaj Cream Velvet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17214,6 +17304,9 @@
           "aliases": [
             "Muse",
             "Khadlaj Muse"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17233,6 +17326,9 @@
           "aliases": [
             "Nafais Magrib",
             "Khadlaj Nafais Magrib"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17250,6 +17346,9 @@
           "aliases": [
             "Nuha Bon Bon",
             "Khadlaj Nuha Bon Bon"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {
@@ -17257,6 +17356,9 @@
           "aliases": [
             "Nuha Cherry Blush",
             "Khadlaj Nuha Cherry Blush"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {
@@ -17264,6 +17366,9 @@
           "aliases": [
             "Nuha Vanilla Pearl",
             "Khadlaj Nuha Vanilla Pearl"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {
@@ -17271,6 +17376,9 @@
           "aliases": [
             "Onyx Gold",
             "Khadlaj Onyx Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17278,6 +17386,9 @@
           "aliases": [
             "Onyx Silver",
             "Khadlaj Onyx Silver"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17305,6 +17416,9 @@
           "aliases": [
             "Panache Eleganza",
             "Khadlaj Panache Eleganza"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17349,6 +17463,9 @@
           "aliases": [
             "Sawaar Vanille Blanc",
             "Khadlaj Sawaar Vanille Blanc"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17363,6 +17480,9 @@
           "aliases": [
             "Stellar Musk",
             "Khadlaj Stellar Musk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17370,10 +17490,13 @@
           "aliases": [
             "Stellar Oud",
             "Khadlaj Stellar Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
-          "canonical_name": "Sueño",
+          "canonical_name": "Sueno",
           "aliases": [
             "Sueño",
             "Khadlaj Sueño",
@@ -17452,6 +17575,9 @@
           "aliases": [
             "Zayaan Gold",
             "Khadlaj Zayaan Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17476,6 +17602,9 @@
           "aliases": [
             "Saraya",
             "Khadlaj Saraya"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17483,6 +17612,9 @@
           "aliases": [
             "Ihthiraam",
             "Khadlaj Ihthiraam"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17490,6 +17622,9 @@
           "aliases": [
             "Icon",
             "Khadlaj Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17497,6 +17632,9 @@
           "aliases": [
             "Strawberry Shake",
             "Khadlaj Strawberry Shake"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17504,6 +17642,9 @@
           "aliases": [
             "Mansion",
             "Khadlaj Mansion"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17511,6 +17652,9 @@
           "aliases": [
             "Peach Velvet",
             "Khadlaj Peach Velvet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17518,6 +17662,9 @@
           "aliases": [
             "Biscotti Caramel Pop",
             "Khadlaj Biscotti Caramel Pop"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17525,20 +17672,21 @@
           "aliases": [
             "Oud Pour Leather",
             "Khadlaj Oud Pour Leather"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
           "canonical_name": "Private Blend",
           "aliases": [
             "Private Blend",
-            "Khadlaj Private Blend"
-          ]
-        },
-        {
-          "canonical_name": "Sueno",
-          "aliases": [
-            "Sueno",
-            "Khadlaj Sueno"
+            "Khadlaj Private Blend",
+            "Private Blend Tobac Extra",
+            "Khadlaj Private Blend Tobac Extra"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
@@ -17605,6 +17753,9 @@
           "aliases": [
             "Azure Velvet",
             "Khadlaj Azure Velvet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17612,6 +17763,9 @@
           "aliases": [
             "Barwaaz Solid Grey",
             "Khadlaj Barwaaz Solid Grey"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17626,6 +17780,9 @@
           "aliases": [
             "Cashmere Sunshine Musk",
             "Khadlaj Cashmere Sunshine Musk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17633,6 +17790,9 @@
           "aliases": [
             "Cashmere Warm Oud",
             "Khadlaj Cashmere Warm Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17640,6 +17800,9 @@
           "aliases": [
             "Empire Crown",
             "Khadlaj Empire Crown"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17647,6 +17810,9 @@
           "aliases": [
             "Empire Empress",
             "Khadlaj Empire Empress"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17654,6 +17820,9 @@
           "aliases": [
             "Empire Regent",
             "Khadlaj Empire Regent"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17661,6 +17830,9 @@
           "aliases": [
             "Fursan Brown",
             "Khadlaj Fursan Brown"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17668,6 +17840,9 @@
           "aliases": [
             "Ghadeer Silver",
             "Khadlaj Ghadeer Silver"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17675,6 +17850,9 @@
           "aliases": [
             "Hareem Al Sultan",
             "Khadlaj Hareem Al Sultan"
+          ],
+          "formats_ml": [
+            75
           ]
         },
         {
@@ -17682,6 +17860,9 @@
           "aliases": [
             "Icon",
             "Khadlaj Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17689,6 +17870,9 @@
           "aliases": [
             "Ihthiraam",
             "Khadlaj Ihthiraam"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17696,6 +17880,9 @@
           "aliases": [
             "Infini",
             "Khadlaj Infini"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17703,6 +17890,9 @@
           "aliases": [
             "Infini Absolute",
             "Khadlaj Infini Absolute"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17710,6 +17900,9 @@
           "aliases": [
             "Karus Amber Gold",
             "Khadlaj Karus Amber Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17717,6 +17910,9 @@
           "aliases": [
             "Karus Blu Spice",
             "Khadlaj Karus Blu Spice"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17724,6 +17920,9 @@
           "aliases": [
             "Karus Oud Fire",
             "Khadlaj Karus Oud Fire"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17731,6 +17930,9 @@
           "aliases": [
             "Le Prestige Bold",
             "Khadlaj Le Prestige Bold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17738,6 +17940,9 @@
           "aliases": [
             "Le Prestige Empress",
             "Khadlaj Le Prestige Empress"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17745,6 +17950,9 @@
           "aliases": [
             "Le Prestige King",
             "Khadlaj Le Prestige King"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17752,6 +17960,9 @@
           "aliases": [
             "Le Prestige Royal",
             "Khadlaj Le Prestige Royal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17759,6 +17970,9 @@
           "aliases": [
             "Magnate Noble",
             "Khadlaj Magnate Noble"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17766,6 +17980,9 @@
           "aliases": [
             "Magnate Premier",
             "Khadlaj Magnate Premier"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17773,6 +17990,9 @@
           "aliases": [
             "Maison Creation De Reve",
             "Khadlaj Maison Creation De Reve"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17780,6 +18000,9 @@
           "aliases": [
             "Maison Epoque Artistique",
             "Khadlaj Maison Epoque Artistique"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17787,6 +18010,9 @@
           "aliases": [
             "Maison Flor Oud",
             "Khadlaj Maison Flor Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17794,6 +18020,9 @@
           "aliases": [
             "Maison L'Imaginaire",
             "Khadlaj Maison L'Imaginaire"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17801,6 +18030,9 @@
           "aliases": [
             "Maison L'Or Noir",
             "Khadlaj Maison L'Or Noir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17808,6 +18040,9 @@
           "aliases": [
             "Mansion",
             "Khadlaj Mansion"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17815,6 +18050,9 @@
           "aliases": [
             "Musk Al Sabah",
             "Khadlaj Musk Al Sabah"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17822,6 +18060,9 @@
           "aliases": [
             "Musk Couture",
             "Khadlaj Musk Couture"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17829,6 +18070,9 @@
           "aliases": [
             "Musk Pour Amber",
             "Khadlaj Musk Pour Amber"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17836,6 +18080,9 @@
           "aliases": [
             "Musk Pour Narcis",
             "Khadlaj Musk Pour Narcis"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17843,6 +18090,9 @@
           "aliases": [
             "Mystical Indian Oud Pure",
             "Khadlaj Mystical Indian Oud Pure"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17850,6 +18100,9 @@
           "aliases": [
             "Ombre Notes",
             "Khadlaj Ombre Notes"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17857,6 +18110,9 @@
           "aliases": [
             "Opus Reborn",
             "Khadlaj Opus Reborn"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17864,6 +18120,9 @@
           "aliases": [
             "Oud Al Sabah",
             "Khadlaj Oud Al Sabah"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17871,6 +18130,9 @@
           "aliases": [
             "Oud Noir",
             "Khadlaj Oud Noir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17878,6 +18140,9 @@
           "aliases": [
             "Oud Pour Blueberry",
             "Khadlaj Oud Pour Blueberry"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17885,6 +18150,9 @@
           "aliases": [
             "Oud Pour Leather",
             "Khadlaj Oud Pour Leather"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17892,6 +18160,9 @@
           "aliases": [
             "Oud Pour Noble",
             "Khadlaj Oud Pour Noble"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17899,6 +18170,9 @@
           "aliases": [
             "Oud Pour Rouge",
             "Khadlaj Oud Pour Rouge"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17906,6 +18180,9 @@
           "aliases": [
             "Oud Pour Shaikh",
             "Khadlaj Oud Pour Shaikh"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17913,6 +18190,9 @@
           "aliases": [
             "Oud Pure Oud Barakat",
             "Khadlaj Oud Pure Oud Barakat"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17920,6 +18200,9 @@
           "aliases": [
             "Oud Pure Oud Galazaid",
             "Khadlaj Oud Pure Oud Galazaid"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17927,6 +18210,9 @@
           "aliases": [
             "Oud Pure Oud Jumeirah",
             "Khadlaj Oud Pure Oud Jumeirah"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17934,13 +18220,21 @@
           "aliases": [
             "Peach Velvet",
             "Khadlaj Peach Velvet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
           "canonical_name": "Private Blend",
           "aliases": [
             "Private Blend",
-            "Khadlaj Private Blend"
+            "Khadlaj Private Blend",
+            "Private Blend Tobac Extra",
+            "Khadlaj Private Blend Tobac Extra"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17948,6 +18242,9 @@
           "aliases": [
             "Rose Couture",
             "Khadlaj Rose Couture"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17955,6 +18252,9 @@
           "aliases": [
             "Saqr Al Badiya",
             "Khadlaj Saqr Al Badiya"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17962,6 +18262,9 @@
           "aliases": [
             "Sara",
             "Khadlaj Sara"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17976,6 +18279,9 @@
           "aliases": [
             "Shahi Oud",
             "Khadlaj Shahi Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17983,6 +18289,9 @@
           "aliases": [
             "Strawberry Shake",
             "Khadlaj Strawberry Shake"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17990,6 +18299,9 @@
           "aliases": [
             "The Proposal Date Night",
             "Khadlaj The Proposal Date Night"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17997,6 +18309,9 @@
           "aliases": [
             "The Proposal Special Occasion",
             "Khadlaj The Proposal Special Occasion"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -18004,6 +18319,9 @@
           "aliases": [
             "Valor Chivalry",
             "Khadlaj Valor Chivalry"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -18011,6 +18329,9 @@
           "aliases": [
             "Valor Enigma",
             "Khadlaj Valor Enigma"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -18018,6 +18339,9 @@
           "aliases": [
             "Valor Honor",
             "Khadlaj Valor Honor"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -18025,6 +18349,9 @@
           "aliases": [
             "Valor Mystique",
             "Khadlaj Valor Mystique"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -18044,6 +18371,9 @@
           "aliases": [
             "Musk Pure Musk Blend Creation of Iqbal",
             "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -18051,6 +18381,9 @@
           "aliases": [
             "Karus Secret Musk",
             "Khadlaj Karus Secret Musk"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -18058,6 +18391,9 @@
           "aliases": [
             "Sensuous Night",
             "Khadlaj Sensuous Night"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
