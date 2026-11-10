@@ -185,7 +185,10 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
         canonical_concentration = item["concentration"]
         concentration_match = bool(feed_concentration and canonical_concentration and feed_concentration == canonical_concentration)
         concentration_conflict = bool(feed_concentration and canonical_concentration and feed_concentration != canonical_concentration)
-        gender_conflict = bool(\n            feed_gender and item.get("gender")\n            and (item["gender"] == "conflict" or feed_gender != item["gender"])\n        )
+        gender_conflict = bool(
+            feed_gender and item.get("gender")
+            and (item["gender"] == "conflict" or feed_gender != item["gender"])
+        )
 
         score = 1.0 if gtin_match else 0.72 * best_name
         if not gtin_match and size_match:
