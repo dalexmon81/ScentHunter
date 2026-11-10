@@ -703,9 +703,14 @@
         "Vanilla Aura",
         "Maison Asrar Vanilla Aura"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "source_product_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-9dfce2f6",
@@ -735,9 +740,11 @@
         "Vanilla Voyage",
         "Maison Asrar Vanilla Voyage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6d0c1431",
@@ -13863,9 +13870,14 @@
         "Al Qasr",
         "Gulf Orchid Al Qasr"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "source_product_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-93df94e2",
@@ -18609,9 +18621,14 @@
         "Tahara Vanilla Musk",
         "Gulf Orchid Tahara Vanilla Musk"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
+      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
+      "source_product_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-20ML",
@@ -18688,9 +18705,14 @@
         "Exotic Oud",
         "Gulf Orchid Exotic Oud"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-VANILLA-LATTE",
@@ -18704,9 +18726,14 @@
         "Vanilla Latte",
         "Gulf Orchid Vanilla Latte"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-COOKIE-BITE",
@@ -18720,9 +18747,14 @@
         "Cookie Bite",
         "Gulf Orchid Cookie Bite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/cookie-bite",
-      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite"
+      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "source_product_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ACADIA-INTENSO-EMIR",
@@ -50622,6 +50654,72 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/club-de-nuit-intenso-fuego",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-intenso-fuego"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-4133b3ae",
+      "size_ml": 100,
+      "aliases": [
+        "Al Qasr 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-4133b3ae-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-TAHARA-VANILLA-MUSK",
+      "size_ml": 60,
+      "aliases": [
+        "Tahara Vanilla Musk 60 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-TAHARA-VANILLA-MUSK-60-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
+      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-EXOTIC-OUD",
+      "size_ml": 100,
+      "aliases": [
+        "Exotic Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-EXOTIC-OUD-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VANILLA-LATTE",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Latte 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-VANILLA-LATTE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-COOKIE-BITE",
+      "size_ml": 100,
+      "aliases": [
+        "Cookie Bite 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-COOKIE-BITE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-bab16c06",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Aura 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-bab16c06-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla-aura"
     }
   ]
 }
