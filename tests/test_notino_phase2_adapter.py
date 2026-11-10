@@ -179,3 +179,28 @@ def test_duplicate_gtin_stays_pending_for_manual_review():
             assert session.scalars(select(Offer)).all() == []
     finally:
         engine.dispose()
+
+
+
+def test_missing_external_id_stays_pending_and_is_not_published():
+    engine, (store_id, _variant_id) = _database()
+    try:
+        with Session(engine) as session, session.begin():
+            record = _record("SKU-MISSING-ID")
+            record["external_id"] = ""
+            result = persist_notino_record(
+                session, store_id=store_id, raw_record=record,
+            )
+            assert result.status == "pending"
+            assert result.offer_id is None
+            assert result.product_variant_id is None
+            assert result.reason == "missing_external_product_id"
+
+        with Session(engine) as session:
+            raw = session.get(IngestionRaw, result.ingestion_raw_id)
+            assert raw is not None and raw.status == "pending"
+            assert raw.product_variant_id is None
+            assert raw.rejection_reason == "missing_external_product_id"
+            assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
