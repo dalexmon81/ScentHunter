@@ -5328,7 +5328,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://afnan.com/products/historic-doria",
       "source_evidence_url": "https://afnan.com/products/historic-doria",
-      "source_product_url": "https://afnan.com/products/historic-doria"
+      "source_product_url": "https://afnan.com/products/historic-doria",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-4e32c3b3",
@@ -5508,9 +5512,14 @@
         "Supremacy in Heaven",
         "Afnan Supremacy in Heaven"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/supremacy-in-heaven",
+      "source_evidence_url": "https://afnan.com/products/supremacy-in-heaven",
+      "source_product_url": "https://afnan.com/products/supremacy-in-heaven",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-e9bc6ab8",
@@ -5585,7 +5594,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://afnan.com/products/cherry-bouquet",
       "source_evidence_url": "https://afnan.com/products/cherry-bouquet",
-      "source_product_url": "https://afnan.com/products/cherry-bouquet"
+      "source_product_url": "https://afnan.com/products/cherry-bouquet",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-AFNAN-ca13dada",
@@ -5599,9 +5612,14 @@
         "Tribute Blue",
         "Afnan Tribute Blue"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/tribute-blue",
+      "source_evidence_url": "https://afnan.com/products/tribute-blue",
+      "source_product_url": "https://afnan.com/products/tribute-blue",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-5551000b",
@@ -5663,9 +5681,14 @@
         "Portrait Abstract",
         "Afnan Portrait Abstract"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/portrait-abstract",
+      "source_evidence_url": "https://afnan.com/products/portrait-abstract",
+      "source_product_url": "https://afnan.com/products/portrait-abstract",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-65e95976",
@@ -5716,9 +5739,14 @@
         "Ornament Purple",
         "Afnan Ornament Purple"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/ornament-purple",
+      "source_evidence_url": "https://afnan.com/products/ornament-purple",
+      "source_product_url": "https://afnan.com/products/ornament-purple",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-8793590d",
@@ -24900,9 +24928,14 @@
         "LA FLEUR BOUQUET",
         "Afnan LA FLEUR BOUQUET"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/la-fleur-bouquet",
+      "source_evidence_url": "https://afnan.com/products/la-fleur-bouquet",
+      "source_product_url": "https://afnan.com/products/la-fleur-bouquet",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-AFNAN-LILIA",
@@ -24964,9 +24997,14 @@
         "ORNAMENT POUR FEMME",
         "Afnan ORNAMENT POUR FEMME"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/ornament-pour-femme",
+      "source_evidence_url": "https://afnan.com/products/ornament-pour-femme",
+      "source_product_url": "https://afnan.com/products/ornament-pour-femme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-ORNAMENT-POUR-HOMME",
@@ -55479,6 +55517,94 @@
       "gender": "Women",
       "source_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr"
+    },
+    {
+      "product_id": "SH-AFNAN-e9a9f75b",
+      "variant_id": "SHV-SH-AFNAN-e9a9f75b-80-EDP",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cherry Bouquet 80 ml",
+        "Afnan Cherry Bouquet 80ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/cherry-bouquet"
+    },
+    {
+      "product_id": "SH-AFNAN-c1d3f6f1",
+      "variant_id": "SHV-SH-AFNAN-c1d3f6f1-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Historic Doria 100 ml",
+        "Afnan Historic Doria 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/historic-doria"
+    },
+    {
+      "product_id": "SH-AFNAN-LA-FLEUR-BOUQUET",
+      "variant_id": "SHV-SH-AFNAN-LA-FLEUR-BOUQUET-80-EDP",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "LA FLEUR BOUQUET 80 ml",
+        "Afnan LA FLEUR BOUQUET 80ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/la-fleur-bouquet"
+    },
+    {
+      "product_id": "SH-AFNAN-ORNAMENT-POUR-FEMME",
+      "variant_id": "SHV-SH-AFNAN-ORNAMENT-POUR-FEMME-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "ORNAMENT POUR FEMME 100 ml",
+        "Afnan ORNAMENT POUR FEMME 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/ornament-pour-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-0e31617f",
+      "variant_id": "SHV-SH-AFNAN-0e31617f-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ornament Purple 100 ml",
+        "Afnan Ornament Purple 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/ornament-purple"
+    },
+    {
+      "product_id": "SH-AFNAN-0c713396",
+      "variant_id": "SHV-SH-AFNAN-0c713396-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Portrait Abstract 100 ml",
+        "Afnan Portrait Abstract 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/portrait-abstract"
+    },
+    {
+      "product_id": "SH-AFNAN-fbf16414",
+      "variant_id": "SHV-SH-AFNAN-fbf16414-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Supremacy in Heaven 100 ml",
+        "Afnan Supremacy in Heaven 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/supremacy-in-heaven"
+    },
+    {
+      "product_id": "SH-AFNAN-ca13dada",
+      "variant_id": "SHV-SH-AFNAN-ca13dada-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Tribute Blue 100 ml",
+        "Afnan Tribute Blue 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/tribute-blue"
     }
   ]
 }
