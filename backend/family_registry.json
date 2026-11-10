@@ -11054,6 +11054,46 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Maze",
+          "aliases": [
+            "Maze",
+            "Gulf Orchid Maze"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mosaic",
+          "aliases": [
+            "Mosaic",
+            "Gulf Orchid Mosaic"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rice Milk",
+          "aliases": [
+            "Rice Milk",
+            "Gulf Orchid Rice Milk"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Royal Rose",
+          "aliases": [
+            "Royal Rose",
+            "Gulf Orchid Royal Rose"
+          ],
+          "formats_ml": [
+            100
+          ]
         }
       ]
     },
