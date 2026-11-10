@@ -3737,7 +3737,12 @@
           "canonical_name": "Bayn Al Asrar",
           "aliases": [
             "Bayn Al Asrar",
-            "Paris Corner Bayn Al Asrar"
+            "Paris Corner Bayn Al Asrar",
+            "Bayn Al Asrar 80 ml",
+            "Paris Corner Bayn Al Asrar 80ml"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -3814,7 +3819,12 @@
           "canonical_name": "Cherry Cola",
           "aliases": [
             "Cherry Cola",
-            "Paris Corner Cherry Cola"
+            "Paris Corner Cherry Cola",
+            "Cherry Cola 75 ml",
+            "Paris Corner Cherry Cola Emir 75ml"
+          ],
+          "formats_ml": [
+            75
           ]
         },
         {
@@ -3849,7 +3859,12 @@
           "canonical_name": "Coconut Lagoon",
           "aliases": [
             "Coconut Lagoon",
-            "Paris Corner Coconut Lagoon"
+            "Paris Corner Coconut Lagoon",
+            "Coconut Lagoon 100 ml",
+            "Paris Corner Coconut Lagoon 100ml"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -3934,7 +3949,12 @@
           "canonical_name": "December Vanilla",
           "aliases": [
             "December Vanilla",
-            "Paris Corner December Vanilla"
+            "Paris Corner December Vanilla",
+            "December Vanilla 85 ml",
+            "Paris Corner December Vanilla 85ml"
+          ],
+          "formats_ml": [
+            85
           ]
         },
         {

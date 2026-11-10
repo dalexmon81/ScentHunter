@@ -27,7 +27,7 @@ The integration is based on the #658 head and is intended to target the #649 Kha
 The merged JSON snapshot was independently checked before writing:
 
 - 2,208 canonical products.
-- 978 variants.
+- 982 variants.
 - Zero duplicate product IDs.
 - Zero duplicate variant IDs.
 - Zero duplicate normalized brand/name identities.
@@ -43,3 +43,16 @@ These figures describe this integration branch's written snapshot. The exact-hea
 ## Khadlaj follow-up reconciliation
 
 PR #661 was merged into the cumulative Khadlaj base after the earlier integration snapshot. Its four official variants are retained in this corrected snapshot with their original canonical IDs and the source evidence recorded in the catalog. The two unsupported offers described above (Tahara Vanilla Musk and Arabiyat Prestige Marwa) remain excluded; no speculative replacement variants were created.
+
+## Paris Corner official E-shop detail reconciliation — 10 November 2026
+
+Four existing Paris Corner canonical identities now have product-level evidence from the brand's official European e-shop, which identifies itself as the official Paris Corner e-shop and publishes explicit type and size attributes:
+
+| Existing canonical identity | Official E-shop attributes | Evidence |
+|---|---|---|
+| Bayn Al Asrar | 80 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml |
+| December Vanilla | 85 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml |
+| Coconut Lagoon | 100 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/coconut-lagoon |
+| Cherry Cola (listed as Cherry Cola Emir on the European shop) | 75 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/cherry-cola-emir |
+
+All four records reuse existing canonical product IDs; the family registry now declares the same sizes. The official pages do not expose GTIN/barcodes, so none are added. The shop's product page metadata and descriptions are treated as identity/variant evidence only; no price, stock or offer data is imported.

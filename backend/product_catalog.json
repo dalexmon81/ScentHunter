@@ -3052,12 +3052,18 @@
       "family_name": "Bayn Al Asrar",
       "aliases": [
         "Bayn Al Asrar",
-        "Paris Corner Bayn Al Asrar"
+        "Paris Corner Bayn Al Asrar",
+        "Bayn Al Asrar 80 ml",
+        "Paris Corner Bayn Al Asrar 80ml"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar"
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-804ac919",
@@ -3239,12 +3245,18 @@
       "family_name": "December Vanilla",
       "aliases": [
         "December Vanilla",
-        "Paris Corner December Vanilla"
+        "Paris Corner December Vanilla",
+        "December Vanilla 85 ml",
+        "Paris Corner December Vanilla 85ml"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla"
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-f3a6e129",
@@ -17217,10 +17229,18 @@
       "family_name": "Cherry Cola",
       "aliases": [
         "Cherry Cola",
-        "Paris Corner Cherry Cola"
+        "Paris Corner Cherry Cola",
+        "Cherry Cola 75 ml",
+        "Paris Corner Cherry Cola Emir 75ml"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/cherry-cola"
+      "source_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CHERRY-GOSSIP",
@@ -17268,10 +17288,18 @@
       "family_name": "Coconut Lagoon",
       "aliases": [
         "Coconut Lagoon",
-        "Paris Corner Coconut Lagoon"
+        "Paris Corner Coconut Lagoon",
+        "Coconut Lagoon 100 ml",
+        "Paris Corner Coconut Lagoon 100ml"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml"
+      "source_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CORNFLOWER-DELIGHT",
@@ -50731,6 +50759,54 @@
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
       "gtin": "6297000742625"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cd8b1f8e",
+      "size_ml": 80,
+      "aliases": [
+        "Bayn Al Asrar 80 ml",
+        "Paris Corner Bayn Al Asrar 80ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-cd8b1f8e-80-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ef841988",
+      "size_ml": 85,
+      "aliases": [
+        "December Vanilla 85 ml",
+        "Paris Corner December Vanilla 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ef841988-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COCONUT-LAGOON",
+      "size_ml": 100,
+      "aliases": [
+        "Coconut Lagoon 100 ml",
+        "Paris Corner Coconut Lagoon 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-COCONUT-LAGOON-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHERRY-COLA",
+      "size_ml": 75,
+      "aliases": [
+        "Cherry Cola 75 ml",
+        "Paris Corner Cherry Cola Emir 75ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-CHERRY-COLA-75-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir"
     }
   ]
 }

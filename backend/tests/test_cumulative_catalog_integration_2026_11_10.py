@@ -129,5 +129,33 @@ class CumulativeCatalogIntegrationTests(unittest.TestCase):
                 self.assertEqual(family_rows[0].get("formats_ml"), [size])
 
 
+    def test_paris_corner_europe_four_explicit_product_variants(self):
+        expected = {
+            "SH-PARIS-CORNER-cd8b1f8e": ("Bayn Al Asrar", 80, "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"),
+            "SH-PARIS-CORNER-ef841988": ("December Vanilla", 85, "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"),
+            "SH-PARIS-CORNER-COCONUT-LAGOON": ("Coconut Lagoon", 100, "https://de.pariscornereurope.com/en/products/coconut-lagoon"),
+            "SH-PARIS-CORNER-CHERRY-COLA": ("Cherry Cola", 75, "https://de.pariscornereurope.com/en/products/cherry-cola-emir"),
+        }
+        for product_id, (name, size, source_url) in expected.items():
+            with self.subTest(product=name):
+                p = product(product_id)
+                self.assertEqual(p.get("canonical_name"), name)
+                self.assertEqual(p.get("identity_status"), "source_verified_name")
+                self.assertEqual(p.get("source_url"), source_url)
+                self.assertEqual(p.get("source_evidence_url"), source_url)
+                self.assertEqual(p.get("formats_ml"), [size])
+                self.assertEqual(p.get("concentration"), "Eau de Parfum")
+                rows = variants_for(product_id)
+                self.assertEqual(len(rows), 1)
+                self.assertEqual(rows[0].get("variant_id"), f"SHV-{product_id}-{size}-000")
+                self.assertEqual(rows[0].get("size_ml"), size)
+                self.assertEqual(rows[0].get("concentration"), "Eau de Parfum")
+                self.assertEqual(rows[0].get("source_evidence_url"), source_url)
+                self.assertNotIn("gtin", rows[0])
+                family = next(f for f in REGISTRY["families"] if f.get("family_id") == p["family_id"])
+                family_rows = [row for row in family["products"] if row.get("canonical_name") == name]
+                self.assertEqual(len(family_rows), 1)
+                self.assertEqual(family_rows[0].get("formats_ml"), [size])
+
 if __name__ == "__main__":
     unittest.main()
