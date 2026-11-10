@@ -5179,8 +5179,8 @@
         "Supremacy Not Only Intense",
         "Afnan Supremacy Not Only Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://it.afnan.com/products/supremacy-not-only-intense",
       "source_evidence_url": "https://it.afnan.com/products/supremacy-not-only-intense",
       "formats_ml": [
         100,
@@ -5558,9 +5558,14 @@
         "Turathi Electric",
         "Afnan Turathi Electric"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/turathi-electric",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/turathi-electric",
+      "source_product_url": "https://www.at.afnan.com/en/products/turathi-electric",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-d0bee594",
@@ -5674,9 +5679,14 @@
         "Kiaana Crush",
         "Afnan Kiaana Crush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.afnan.com/products/kiaana-crush",
+      "source_evidence_url": "https://us.afnan.com/products/kiaana-crush",
+      "source_product_url": "https://us.afnan.com/products/kiaana-crush",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-0c713396",
@@ -42037,7 +42047,8 @@
         "Afnan Supremacy Not Only Intense 100ml"
       ],
       "variant_id": "SHV-SH-AFNAN-d1fee769-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://it.afnan.com/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -42047,7 +42058,8 @@
         "Afnan Supremacy Not Only Intense 150ml"
       ],
       "variant_id": "SHV-SH-AFNAN-d1fee769-150-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://it.afnan.com/products/supremacy-not-only-intense"
     },
     {
       "product_id": "SH-SWISS-ARABIAN-8a079897",
@@ -55795,6 +55807,28 @@
       "variant_id": "SHV-SH-AFNAN-TURATHI-RED-90-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://saudi.afnan.com/products/turathi-red-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-dc43e01b",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Electric 90 ml",
+        "Afnan Turathi Electric 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-dc43e01b-90-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/turathi-electric"
+    },
+    {
+      "product_id": "SH-AFNAN-36d86a43",
+      "size_ml": 100,
+      "aliases": [
+        "Kiaana Crush 100 ml",
+        "Afnan Kiaana Crush 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-36d86a43-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://us.afnan.com/products/kiaana-crush"
     }
   ]
 }
