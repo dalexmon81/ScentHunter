@@ -34471,8 +34471,15 @@
         "Oud Pour Blueberry",
         "Khadlaj Oud Pour Blueberry"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/oud-pour-series-collection-shop-for-captivating-niche-fragrances/products/oud-pour-blueberry-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/oud-pour-series-collection-shop-for-captivating-niche-fragrances/products/oud-pour-blueberry-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/oud-pour-series-collection-shop-for-captivating-niche-fragrances/products/oud-pour-blueberry-spray-shop-online-best-price-in-dubai-uae",
+      "gtin_source_url": "https://distrinode.lu/khadlaj-oud-pour-blueberry-perfume-edp-100-ml-fr-lu",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-101",
@@ -49531,6 +49538,20 @@
       "gtin": "6291107971025",
       "source_url": "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-100",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Pour Blueberry 100 ml",
+        "Khadlaj Oud Pour Blueberry 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-100-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107970127",
+      "source_url": "https://khadlaj-perfumes.com/collections/oud-pour-series-collection-shop-for-captivating-niche-fragrances/products/oud-pour-blueberry-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/oud-pour-series-collection-shop-for-captivating-niche-fragrances/products/oud-pour-blueberry-spray-shop-online-best-price-in-dubai-uae",
+      "gtin_source_url": "https://distrinode.lu/khadlaj-oud-pour-blueberry-perfume-edp-100-ml-fr-lu"
     }
   ]
 }
