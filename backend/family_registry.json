@@ -17239,6 +17239,9 @@
           "aliases": [
             "Nafais Magrib",
             "Khadlaj Nafais Magrib"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17515,6 +17518,9 @@
           "aliases": [
             "Strawberry Shake",
             "Khadlaj Strawberry Shake"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17522,6 +17528,9 @@
           "aliases": [
             "Mansion",
             "Khadlaj Mansion"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17552,7 +17561,12 @@
           "canonical_name": "Private Blend",
           "aliases": [
             "Private Blend",
-            "Khadlaj Private Blend"
+            "Khadlaj Private Blend",
+            "Private Blend Tobac Extra",
+            "Khadlaj Private Blend Tobac Extra"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
@@ -17828,6 +17842,9 @@
           "aliases": [
             "Mansion",
             "Khadlaj Mansion"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17963,7 +17980,12 @@
           "canonical_name": "Private Blend",
           "aliases": [
             "Private Blend",
-            "Khadlaj Private Blend"
+            "Khadlaj Private Blend",
+            "Private Blend Tobac Extra",
+            "Khadlaj Private Blend Tobac Extra"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -18006,6 +18028,9 @@
           "aliases": [
             "Strawberry Shake",
             "Khadlaj Strawberry Shake"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
