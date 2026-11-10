@@ -13,10 +13,10 @@ This report measures existing data only. It does not infer a bottle size, concen
 | Metric | Count |
 |---|---:|
 | Canonical products | 2,210 |
-| Explicit variants | 969 |
-| Products with at least one variant | 846 |
-| Products marked `source_verified_name` | 1,059 |
-| Products marked `source_listed_name` | 1,151 |
+| Explicit variants | 970 |
+| Products with at least one variant | 847 |
+| Products marked `source_verified_name` | 1,060 |
+| Products marked `source_listed_name` | 1,150 |
 | Variants without concentration | 381 |
 | Variants without a dedicated `source_evidence_url` | 178 |
 | Variants without any source URL field | 146 |
@@ -27,7 +27,7 @@ This report measures existing data only. It does not infer a bottle size, concen
 | Duplicate product/size/concentration tuples | 0 |
 | Variant records contaminated with commercial offer fields | 0 |
 
-A product can be correctly verified as an identity while its size or concentration remains unknown. Therefore, the 256 `source_verified_name` products without a variant are a research queue, not a claim that 251 variants are missing.
+A product can be correctly verified as an identity while its size or concentration remains unknown. Therefore, the 255 `source_verified_name` products without a variant are a research queue, not a claim that 251 variants are missing.
 
 Likewise, a missing concentration on a variant is not permission to infer one. Keep the value unset until first-party evidence explicitly supports it.
 
@@ -39,7 +39,7 @@ Counts below are calculated by joining variant `product_id` values to canonical 
 |---|---:|---:|---:|---:|
 | Paris Corner | 254 | 5 | 61 | 188 |
 | Maison Alhambra | 226 | 151 | 0 | 87 |
-| Armaf | 218 | 127 | 49 | 89 |
+| Armaf | 218 | 127 | 48 | 90 |
 | Al Haramain | 149 | 83 | 3 | 72 |
 | Bujairami | 142 | 85 | 35 | 23 |
 | Assaf | 140 | 103 | 1 | 39 |
