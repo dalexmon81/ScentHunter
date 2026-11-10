@@ -1921,7 +1921,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Club de Nuit Woman Extrait de Parfum": (
                 "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
-                "Extrait de Parfum", "Women", [],
+                "Extrait de Parfum", "Women", [70],
             ),
         }
         products = {
