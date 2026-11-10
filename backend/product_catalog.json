@@ -8089,9 +8089,18 @@
         "Jean Lowe Immortal",
         "Maison Alhambra Jean Lowe Immortal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-immortal-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-immortal-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-immortal-eau-de-parfum-for-men",
+      "gender": "Men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6291108735541"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-8f3b9e79",
@@ -10302,9 +10311,18 @@
         "Jean Lowe Fraiche",
         "Maison Alhambra Jean Lowe Fraiche"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-fraiche-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-fraiche-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-fraiche-eau-de-parfum-for-everyone",
+      "gender": "Unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6291108735565"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7247b143",
@@ -53070,6 +53088,32 @@
       "size_ml": 150,
       "source_url": "https://assaf.ae/products/alex-enable-150ml",
       "source_evidence_url": "https://assaf.ae/products/alex-enable-150ml"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-14a18233-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-14a18233",
+      "size_ml": 100,
+      "aliases": [
+        "Jean Lowe Immortal 100 ml",
+        "Maison Alhambra Jean Lowe Immortal 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108735541",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-immortal-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-immortal-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-7bf23686-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-7bf23686",
+      "size_ml": 100,
+      "aliases": [
+        "Jean Lowe Fraiche 100 ml",
+        "Maison Alhambra Jean Lowe Fraiche 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108735565",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-fraiche-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-fraiche-eau-de-parfum-for-everyone"
     }
   ]
 }
