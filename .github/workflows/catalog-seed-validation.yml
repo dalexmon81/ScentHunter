@@ -137,4 +137,5 @@ jobs:
           backend.tests.test_maison_asrar_rose_detail_pages_2026_11_10
           backend.tests.test_armaf_intenso_fuego_official_detail_2026_11_10
           backend.tests.test_khadlaj_remaining_four_official_variants
+          backend.tests.test_cumulative_catalog_regression_guard_2026_11_10
           -v
