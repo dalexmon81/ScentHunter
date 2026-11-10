@@ -26,3 +26,7 @@ This draft continues the verified catalog line from PR #657 and retains its Gulf
 - Zero orphan variants.
 
 No prices, stock, availability, shipping, or retailer-offer data is imported. This is a draft integration branch; no merge to main or production is performed. GitHub Actions on this exact head is the final validation gate.
+
+## First CI feedback incorporated
+
+The first exact-head workflow run identified two missing Maison Asrar product-page URL fields (Belgravia and Regent) and one legitimate increase in the verified-name/no-variant queue because Vanilla Voyage is verified without a documented bottle size. The catalog provenance fields and the quality-debt ceiling were corrected; the updated head requires a fresh workflow run.
