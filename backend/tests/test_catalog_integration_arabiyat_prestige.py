@@ -42,7 +42,7 @@ class IntegratedArabiyatPrestigeTests(unittest.TestCase):
                 self.assertEqual(len(variants), 1)
                 self.assertEqual(variants[0]["size_ml"], size)
                 self.assertEqual(variants[0]["concentration"], "Eau de Parfum")
-                self.assertEqual(variants[0].get("source_evidence_url", variants[0].get("source_url")), url)
+                self.assertEqual(variants[0].get("source_evidence_url"), url)
                 self.assertEqual(family_products[name]["formats_ml"], [size])
 
 
