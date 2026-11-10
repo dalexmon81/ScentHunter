@@ -3850,7 +3850,11 @@
           "aliases": [
             "Coconut Lagoon",
             "Paris Corner Coconut Lagoon"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Confidential",
@@ -4021,7 +4025,11 @@
           "aliases": [
             "Eshal Vanilla",
             "Paris Corner Eshal Vanilla"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Eternal Coffee",
@@ -4070,14 +4078,22 @@
           "aliases": [
             "Fayora",
             "Paris Corner Fayora"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Fayora Oshino",
           "aliases": [
             "Fayora Oshino",
             "Paris Corner Fayora Oshino"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Fig Fete",
@@ -4176,14 +4192,22 @@
           "aliases": [
             "Hurriya",
             "Paris Corner Hurriya"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ibisco Nirvana",
           "aliases": [
             "Ibisco Nirvana",
             "Paris Corner Ibisco Nirvana"
-          ]
+          ],
+          "formats_ml": [
+            65
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Identity Oud Crescent",
@@ -4525,7 +4549,11 @@
           "aliases": [
             "Miel Vanille",
             "Paris Corner Miel Vanille"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ministry of Oud - Amber Oud",
@@ -4619,7 +4647,6 @@
           "canonical_name": "Ministry of Oud Greatest",
           "aliases": [
             "Ministry of Oud Greatest",
-            "Paris Corner Ministry of Oud Greatest",
             "Paris Corner Ministry of Oud Greatest"
           ]
         },
@@ -4949,28 +4976,44 @@
           "aliases": [
             "Qissa",
             "Paris Corner Qissa"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Qissa Delicious",
           "aliases": [
             "Qissa Delicious",
             "Paris Corner Qissa Delicious"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Qissa Gala",
           "aliases": [
             "Qissa Gala",
             "Paris Corner Qissa Gala"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Qissa Pink",
           "aliases": [
             "Qissa Pink",
             "Paris Corner Qissa Pink"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Quatre IV Expressions, North Stag",
@@ -5182,7 +5225,6 @@
           "canonical_name": "Tiramisu Speculoos",
           "aliases": [
             "Tiramisu Speculoos",
-            "Paris Corner Tiramisu Speculoos",
             "Paris Corner Tiramisu Speculoos"
           ]
         },
@@ -5644,13 +5686,6 @@
           ]
         },
         {
-          "canonical_name": "Ministry of Oud Greatest",
-          "aliases": [
-            "Ministry of Oud Greatest",
-            "Paris Corner Ministry of Oud Greatest"
-          ]
-        },
-        {
           "canonical_name": "Ministry of Oud Gladiators Oath",
           "aliases": [
             "Ministry of Oud Gladiators Oath",
@@ -5683,13 +5718,6 @@
           "aliases": [
             "Ministry of Oud Romance Reverie",
             "Paris Corner Ministry of Oud Romance Reverie"
-          ]
-        },
-        {
-          "canonical_name": "Tiramisu Speculoos",
-          "aliases": [
-            "Tiramisu Speculoos",
-            "Paris Corner Tiramisu Speculoos"
           ]
         }
       ]
@@ -6695,6 +6723,9 @@
           "aliases": [
             "Kayaan Classic",
             "Al Wataniah Kayaan Classic"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6702,6 +6733,9 @@
           "aliases": [
             "Kayaan Terra",
             "Al Wataniah Kayaan Terra"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6709,6 +6743,9 @@
           "aliases": [
             "Kayaan Gold",
             "Al Wataniah Kayaan Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6716,6 +6753,9 @@
           "aliases": [
             "Kayaan Midnight",
             "Al Wataniah Kayaan Midnight"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6743,6 +6783,9 @@
           "aliases": [
             "Rose Eclat",
             "Al Wataniah Rose Eclat"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6750,6 +6793,9 @@
           "aliases": [
             "Milele",
             "Al Wataniah Milele"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6757,6 +6803,9 @@
           "aliases": [
             "Turquois",
             "Al Wataniah Turquois"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6764,6 +6813,9 @@
           "aliases": [
             "Cloud",
             "Al Wataniah Cloud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6771,6 +6823,9 @@
           "aliases": [
             "Al Daiem",
             "Al Wataniah Al Daiem"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6778,6 +6833,9 @@
           "aliases": [
             "Al Daiem Elixir",
             "Al Wataniah Al Daiem Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6785,6 +6843,9 @@
           "aliases": [
             "Al Layl",
             "Al Wataniah Al Layl"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6792,6 +6853,9 @@
           "aliases": [
             "Alya",
             "Al Wataniah Alya"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6799,6 +6863,9 @@
           "aliases": [
             "Ameerati",
             "Al Wataniah Ameerati"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6806,6 +6873,9 @@
           "aliases": [
             "Ameeri",
             "Al Wataniah Ameeri"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6813,6 +6883,9 @@
           "aliases": [
             "Amnia",
             "Al Wataniah Amnia"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6827,6 +6900,9 @@
           "aliases": [
             "Arya",
             "Al Wataniah Arya"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6834,6 +6910,9 @@
           "aliases": [
             "Arya Peony Rose",
             "Al Wataniah Arya Peony Rose"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6841,6 +6920,9 @@
           "aliases": [
             "Attar Al Wesal",
             "Al Wataniah Attar Al Wesal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6848,6 +6930,9 @@
           "aliases": [
             "Attar Al Wesal Elixir",
             "Al Wataniah Attar Al Wesal Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6855,6 +6940,9 @@
           "aliases": [
             "Baraa",
             "Al Wataniah Baraa"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6862,6 +6950,9 @@
           "aliases": [
             "Bareeq Al Dhahab",
             "Al Wataniah Bareeq Al Dhahab"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6869,6 +6960,9 @@
           "aliases": [
             "Brownie Bite",
             "Al Wataniah Brownie Bite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6876,6 +6970,9 @@
           "aliases": [
             "Castilla",
             "Al Wataniah Castilla"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6883,6 +6980,9 @@
           "aliases": [
             "Crème",
             "Al Wataniah Crème"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6890,7 +6990,11 @@
           "aliases": [
             "Da'im",
             "Al Wataniah Da'im",
-            "Da’im"
+            "Da’im",
+            "Al Wataniah Da’im"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6898,6 +7002,9 @@
           "aliases": [
             "Duha",
             "Al Wataniah Duha"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6905,6 +7012,9 @@
           "aliases": [
             "Durrat Al Aroos",
             "Al Wataniah Durrat Al Aroos"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6912,6 +7022,9 @@
           "aliases": [
             "Eqaab",
             "Al Wataniah Eqaab"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6919,6 +7032,9 @@
           "aliases": [
             "Emiran",
             "Al Wataniah Emiran"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6926,6 +7042,9 @@
           "aliases": [
             "Emiran Selar",
             "Al Wataniah Emiran Selar"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6933,6 +7052,9 @@
           "aliases": [
             "Fayroz",
             "Al Wataniah Fayroz"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6940,6 +7062,9 @@
           "aliases": [
             "Fayyad",
             "Al Wataniah Fayyad"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6947,6 +7072,9 @@
           "aliases": [
             "Fikrah",
             "Al Wataniah Fikrah"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6954,6 +7082,9 @@
           "aliases": [
             "Ghala",
             "Al Wataniah Ghala"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6961,6 +7092,9 @@
           "aliases": [
             "Golden Honey",
             "Al Wataniah Golden Honey"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6968,6 +7102,9 @@
           "aliases": [
             "Granada",
             "Al Wataniah Granada"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6975,6 +7112,9 @@
           "aliases": [
             "Hala",
             "Al Wataniah Hala"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6982,6 +7122,9 @@
           "aliases": [
             "Hayat",
             "Al Wataniah Hayat"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -6996,6 +7139,9 @@
           "aliases": [
             "Kenz Al Malik",
             "Al Wataniah Kenz Al Malik"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7003,6 +7149,9 @@
           "aliases": [
             "Layali",
             "Al Wataniah Layali"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7010,6 +7159,9 @@
           "aliases": [
             "Lazuli",
             "Al Wataniah Lazuli"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7017,6 +7169,9 @@
           "aliases": [
             "Lily",
             "Al Wataniah Lily"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7024,6 +7179,9 @@
           "aliases": [
             "Marjaan",
             "Al Wataniah Marjaan"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7031,6 +7189,9 @@
           "aliases": [
             "Massad Royale",
             "Al Wataniah Massad Royale"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7038,6 +7199,9 @@
           "aliases": [
             "Muheeb",
             "Al Wataniah Muheeb"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7045,6 +7209,9 @@
           "aliases": [
             "Nada",
             "Al Wataniah Nada"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7052,6 +7219,9 @@
           "aliases": [
             "Nawal Alexandrite",
             "Al Wataniah Nawal Alexandrite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7059,6 +7229,9 @@
           "aliases": [
             "Nawal Bronzite",
             "Al Wataniah Nawal Bronzite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7066,6 +7239,9 @@
           "aliases": [
             "Nawal Fluorite",
             "Al Wataniah Nawal Fluorite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7073,6 +7249,9 @@
           "aliases": [
             "Nawal Tanzanite",
             "Al Wataniah Nawal Tanzanite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7080,6 +7259,9 @@
           "aliases": [
             "Oud Mystery Intense",
             "Al Wataniah Oud Mystery Intense"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7087,6 +7269,9 @@
           "aliases": [
             "Praline Toffee",
             "Al Wataniah Praline Toffee"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7094,6 +7279,9 @@
           "aliases": [
             "Qasar Al Watan",
             "Al Wataniah Qasar Al Watan"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7101,6 +7289,9 @@
           "aliases": [
             "Rawaee Elite",
             "Al Wataniah Rawaee Elite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7108,6 +7299,9 @@
           "aliases": [
             "Rawaee Monarch",
             "Al Wataniah Rawaee Monarch"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7136,6 +7330,9 @@
           "aliases": [
             "Rose Mystery Intense",
             "Al Wataniah Rose Mystery Intense"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7143,6 +7340,9 @@
           "aliases": [
             "Royal Oak I",
             "Al Wataniah Royal Oak I"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7150,6 +7350,9 @@
           "aliases": [
             "Royal Oak II",
             "Al Wataniah Royal Oak II"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7157,6 +7360,9 @@
           "aliases": [
             "Sabah Al Ward",
             "Al Wataniah Sabah Al Ward"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7164,6 +7370,9 @@
           "aliases": [
             "Sabah Al Ward Garden of Eden",
             "Al Wataniah Sabah Al Ward Garden of Eden"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7171,6 +7380,9 @@
           "aliases": [
             "Sabah Al Ward Sugar",
             "Al Wataniah Sabah Al Ward Sugar"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7178,6 +7390,9 @@
           "aliases": [
             "Sahari",
             "Al Wataniah Sahari"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7185,6 +7400,9 @@
           "aliases": [
             "Sevilla",
             "Al Wataniah Sevilla"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7192,6 +7410,9 @@
           "aliases": [
             "Shagaf Al Ward",
             "Al Wataniah Shagaf Al Ward"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7199,6 +7420,9 @@
           "aliases": [
             "Shagaf Al Ward Gardenia",
             "Al Wataniah Shagaf Al Ward Gardenia"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7206,6 +7430,9 @@
           "aliases": [
             "Special Oud",
             "Al Wataniah Special Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7213,6 +7440,9 @@
           "aliases": [
             "Sugar Rush",
             "Al Wataniah Sugar Rush"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7220,6 +7450,9 @@
           "aliases": [
             "Sultan Al Lail",
             "Al Wataniah Sultan Al Lail"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7227,6 +7460,9 @@
           "aliases": [
             "Thahaani",
             "Al Wataniah Thahaani"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7234,6 +7470,9 @@
           "aliases": [
             "Tiara Pink",
             "Al Wataniah Tiara Pink"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7241,6 +7480,9 @@
           "aliases": [
             "Tibyan",
             "Al Wataniah Tibyan"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7248,6 +7490,9 @@
           "aliases": [
             "Watani Intense Gold",
             "Al Wataniah Watani Intense Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7255,6 +7500,9 @@
           "aliases": [
             "Watani Noir",
             "Al Wataniah Watani Noir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7262,6 +7510,9 @@
           "aliases": [
             "Watani Purple",
             "Al Wataniah Watani Purple"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7269,6 +7520,9 @@
           "aliases": [
             "White Chocolate Ganache",
             "Al Wataniah White Chocolate Ganache"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7276,6 +7530,9 @@
           "aliases": [
             "Ziyana",
             "Al Wataniah Ziyana"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7367,6 +7624,9 @@
           "aliases": [
             "Abyat",
             "Al Wataniah Abyat"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7374,6 +7634,9 @@
           "aliases": [
             "Ain Emarat",
             "Al Wataniah Ain Emarat"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -7381,6 +7644,9 @@
           "aliases": [
             "Ain Emarat Extrait",
             "Al Wataniah Ain Emarat Extrait"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]

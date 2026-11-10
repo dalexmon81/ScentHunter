@@ -4465,7 +4465,11 @@
       "source_url": "https://www.alwataniah.com/products/kayaan-classic",
       "collection_name": "Eternal",
       "source_evidence_url": "https://www.alwataniah.com/products/kayaan-classic",
-      "source_product_url": "https://www.alwataniah.com/products/kayaan-classic"
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-classic",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-72f22b5d",
@@ -4483,7 +4487,11 @@
       "source_url": "https://www.alwataniah.com/products/kayaan-terra",
       "collection_name": "Eternal",
       "source_evidence_url": "https://www.alwataniah.com/products/kayaan-terra",
-      "source_product_url": "https://www.alwataniah.com/products/kayaan-terra"
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-terra",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-aa339eab",
@@ -4501,7 +4509,11 @@
       "source_url": "https://www.alwataniah.com/products/kayaan-gold",
       "collection_name": "Eternal",
       "source_evidence_url": "https://www.alwataniah.com/products/kayaan-gold",
-      "source_product_url": "https://www.alwataniah.com/products/kayaan-gold"
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-gold",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-22a0e569",
@@ -4519,7 +4531,11 @@
       "source_url": "https://www.alwataniah.com/products/kayaan-midnight",
       "collection_name": "Eternal",
       "source_evidence_url": "https://www.alwataniah.com/products/kayaan-midnight",
-      "source_product_url": "https://www.alwataniah.com/products/kayaan-midnight"
+      "source_product_url": "https://www.alwataniah.com/products/kayaan-midnight",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ccc7d2db",
@@ -4581,7 +4597,11 @@
       "source_url": "https://www.alwataniah.com/products/rose-eclat",
       "collection_name": "Munchies",
       "source_evidence_url": "https://www.alwataniah.com/products/rose-eclat",
-      "source_product_url": "https://www.alwataniah.com/products/rose-eclat"
+      "source_product_url": "https://www.alwataniah.com/products/rose-eclat",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-3546ccd8",
@@ -4595,10 +4615,15 @@
         "Milele",
         "Al Wataniah Milele"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
       "collection_name": "Classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/milele",
+      "source_product_url": "https://www.alwataniah.com/products/milele",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-089f9d20",
@@ -4612,10 +4637,15 @@
         "Turquois",
         "Al Wataniah Turquois"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
       "collection_name": "Classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/turquois",
+      "source_product_url": "https://www.alwataniah.com/products/turquois",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-d8263b7b",
@@ -4629,10 +4659,15 @@
         "Cloud",
         "Al Wataniah Cloud"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
       "collection_name": "Classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/cloud",
+      "source_product_url": "https://www.alwataniah.com/products/cloud",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-0030",
@@ -17290,7 +17325,13 @@
         "Paris Corner Coconut Lagoon"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml"
+      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CORNFLOWER-DELIGHT",
@@ -17551,11 +17592,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-eshal-vanilla-edp-u-100-ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
@@ -17815,11 +17857,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/hurriya",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/hurriya",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-hurriya-edp-u-100-ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/hurriya",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-IBISCO-NIRVANA",
@@ -17835,8 +17878,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/ibisco-nirvana",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        65
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT",
@@ -18867,10 +18914,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/fayora",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-edp-w-100-ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-FAYORA-OSHINO",
@@ -18887,10 +18935,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-oshino-edp-w-100-ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-GLORIFY",
@@ -19432,7 +19481,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-BLUE",
@@ -19465,7 +19518,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa-delicious"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-delicious",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-GALA",
@@ -19482,10 +19539,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-qissa-gala-edp-w-100-ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-PINK",
@@ -19502,7 +19560,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa-pink"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-pink",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-RIFAAQAT-ADORN",
@@ -25665,7 +25727,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/miel-vanille"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-miel-vanille-edp-u-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-d38ec45d",
@@ -35126,10 +35192,15 @@
         "Crème",
         "Al Wataniah Crème"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/creme",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/creme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD",
@@ -35147,7 +35218,11 @@
       "source_url": "https://www.alwataniah.com/products/sabah-al-ward",
       "source_evidence_url": "https://www.alwataniah.com/products/sabah-al-ward",
       "collection_name": "Classic",
-      "source_product_url": "https://www.alwataniah.com/products/sabah-al-ward"
+      "source_product_url": "https://www.alwataniah.com/products/sabah-al-ward",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-SUGAR",
@@ -35165,7 +35240,11 @@
       "source_url": "https://www.alwataniah.com/products/saba-al-ward-sugar",
       "source_evidence_url": "https://www.alwataniah.com/products/saba-al-ward-sugar",
       "collection_name": "Classic",
-      "source_product_url": "https://www.alwataniah.com/products/saba-al-ward-sugar"
+      "source_product_url": "https://www.alwataniah.com/products/saba-al-ward-sugar",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL",
@@ -35183,7 +35262,11 @@
       "source_url": "https://www.alwataniah.com/products/attar-al-wesal",
       "source_evidence_url": "https://www.alwataniah.com/products/attar-al-wesal",
       "collection_name": "Classic",
-      "source_product_url": "https://www.alwataniah.com/products/attar-al-wesal"
+      "source_product_url": "https://www.alwataniah.com/products/attar-al-wesal",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SPECIAL-OUD",
@@ -35201,7 +35284,11 @@
       "source_url": "https://www.alwataniah.com/products/special-oud",
       "source_evidence_url": "https://www.alwataniah.com/products/special-oud",
       "collection_name": "Classic",
-      "source_product_url": "https://www.alwataniah.com/products/special-oud"
+      "source_product_url": "https://www.alwataniah.com/products/special-oud",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-DURRAT-AL-AROOS",
@@ -35215,10 +35302,15 @@
         "Durrat Al Aroos",
         "Al Wataniah Durrat Al Aroos"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/durrat-al-aroos",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/durrat-al-aroos",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-BAREEQ-AL-DHAHAB",
@@ -35232,10 +35324,15 @@
         "Bareeq Al Dhahab",
         "Al Wataniah Bareeq Al Dhahab"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/bareeq-al-dhahab",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/bareeq-al-dhahab",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ROSE-MYSTERY-INTENSE",
@@ -35249,10 +35346,15 @@
         "Rose Mystery Intense",
         "Al Wataniah Rose Mystery Intense"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/rose-mystery-intense",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/rose-mystery-intense",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-GRANADA",
@@ -35266,10 +35368,15 @@
         "Granada",
         "Al Wataniah Granada"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/granada",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/granada",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AMEERATI",
@@ -35287,7 +35394,11 @@
       "source_url": "https://www.alwataniah.com/products/ameerati",
       "source_evidence_url": "https://www.alwataniah.com/products/ameerati",
       "collection_name": "Classic",
-      "source_product_url": "https://www.alwataniah.com/products/ameerati"
+      "source_product_url": "https://www.alwataniah.com/products/ameerati",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AMEERI",
@@ -35301,10 +35412,15 @@
         "Ameeri",
         "Al Wataniah Ameeri"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/ameeri",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/ameeri",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-OUD-MYSTERY-INTENSE",
@@ -35318,10 +35434,15 @@
         "Oud Mystery Intense",
         "Al Wataniah Oud Mystery Intense"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/oud-mystery-intense",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/oud-mystery-intense",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-THAHAANI",
@@ -35335,10 +35456,15 @@
         "Thahaani",
         "Al Wataniah Thahaani"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/thahaani",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/thahaani",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-CASTILLA",
@@ -35352,10 +35478,15 @@
         "Castilla",
         "Al Wataniah Castilla"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/castilla",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/castilla",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SULTAN-AL-LAIL",
@@ -35369,10 +35500,15 @@
         "Sultan Al Lail",
         "Al Wataniah Sultan Al Lail"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/sultan-al-lail",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/sultan-al-lail",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-LAYL",
@@ -35386,10 +35522,15 @@
         "Al Layl",
         "Al Wataniah Al Layl"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/al-layl",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/al-layl",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-GHALA",
@@ -35403,10 +35544,15 @@
         "Ghala",
         "Al Wataniah Ghala"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/ghala",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/ghala",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-KENZ-AL-MALIK",
@@ -35420,10 +35566,15 @@
         "Kenz Al Malik",
         "Al Wataniah Kenz Al Malik"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/kenz-al-malik",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/kenz-al-malik",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SEVILLA",
@@ -35437,10 +35588,15 @@
         "Sevilla",
         "Al Wataniah Sevilla"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/sevilla",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/sevilla",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-TIBYAN",
@@ -35454,10 +35610,15 @@
         "Tibyan",
         "Al Wataniah Tibyan"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/tibyan",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/tibyan",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-WATANI-PURPLE",
@@ -35471,10 +35632,15 @@
         "Watani Purple",
         "Al Wataniah Watani Purple"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/watani-purple",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/watani-purple",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-NAWAL-ALEXANDRITE",
@@ -35488,10 +35654,15 @@
         "Nawal Alexandrite",
         "Al Wataniah Nawal Alexandrite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-alexandrite",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/nawal-alexandrite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-WATANI-NOIR",
@@ -35505,10 +35676,15 @@
         "Watani Noir",
         "Al Wataniah Watani Noir"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/watani-noir",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/watani-noir",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ABYAT",
@@ -35522,10 +35698,15 @@
         "Abyat",
         "Al Wataniah Abyat"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/abyat",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/abyat",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ALYA",
@@ -35539,10 +35720,15 @@
         "Alya",
         "Al Wataniah Alya"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/alya",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/alya",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-FIKRAH",
@@ -35556,10 +35742,15 @@
         "Fikrah",
         "Al Wataniah Fikrah"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/fikrah",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/fikrah",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-HAYAT",
@@ -35573,10 +35764,15 @@
         "Hayat",
         "Al Wataniah Hayat"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/hayat",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/hayat",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-MARJAAN",
@@ -35590,10 +35786,15 @@
         "Marjaan",
         "Al Wataniah Marjaan"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/marjaan",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/marjaan",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-MUHEEB",
@@ -35607,10 +35808,15 @@
         "Muheeb",
         "Al Wataniah Muheeb"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/muheeb",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/muheeb",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SHAGAF-AL-WARD",
@@ -35624,10 +35830,15 @@
         "Shagaf Al Ward",
         "Al Wataniah Shagaf Al Ward"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/shagaf-al-ward",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/shagaf-al-ward",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-HALA",
@@ -35641,10 +35852,15 @@
         "Hala",
         "Al Wataniah Hala"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/hala",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/hala",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-NAWAL-BRONZITE",
@@ -35658,10 +35874,15 @@
         "Nawal Bronzite",
         "Al Wataniah Nawal Bronzite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-bronzite",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/nawal-bronzite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-NAWAL-TANZANITE",
@@ -35675,10 +35896,15 @@
         "Nawal Tanzanite",
         "Al Wataniah Nawal Tanzanite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-tanzanite",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/nawal-tanzanite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-NAWAL-FLUORITE",
@@ -35692,10 +35918,15 @@
         "Nawal Fluorite",
         "Al Wataniah Nawal Fluorite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-fluorite",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/nawal-fluorite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-DAIM",
@@ -35711,10 +35942,15 @@
         "Da’im",
         "Al Wataniah Da’im"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/da-im",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/da-im",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-DUHA",
@@ -35728,10 +35964,15 @@
         "Duha",
         "Al Wataniah Duha"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/duha",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/duha",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-EQAAB",
@@ -35745,10 +35986,15 @@
         "Eqaab",
         "Al Wataniah Eqaab"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/eqaab",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/eqaab",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-TIARA-PINK",
@@ -35762,10 +36008,15 @@
         "Tiara Pink",
         "Al Wataniah Tiara Pink"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/tiara-pink",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/tiara-pink",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-WATANI-INTENSE-GOLD",
@@ -35779,10 +36030,15 @@
         "Watani Intense Gold",
         "Al Wataniah Watani Intense Gold"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/watani-intense-gold",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/watani-intense-gold",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SHAGAF-AL-WARD-GARDENIA",
@@ -35796,10 +36052,15 @@
         "Shagaf Al Ward Gardenia",
         "Al Wataniah Shagaf Al Ward Gardenia"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/shagaf-al-ward-gardenia",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/shagaf-al-ward-gardenia",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-GARDEN-OF-EDEN",
@@ -35813,10 +36074,15 @@
         "Sabah Al Ward Garden of Eden",
         "Al Wataniah Sabah Al Ward Garden of Eden"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/sabah-al-ward-garden-of-eden",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/sabah-al-ward-garden-of-eden",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-ELIXIR",
@@ -35830,10 +36096,15 @@
         "Attar Al Wesal Elixir",
         "Al Wataniah Attar Al Wesal Elixir"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/attar-al-wesal-elixir",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/attar-al-wesal-elixir",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-FAYROZ",
@@ -35847,10 +36118,15 @@
         "Fayroz",
         "Al Wataniah Fayroz"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/fayroz",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/fayroz",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ZIYANA",
@@ -35864,10 +36140,15 @@
         "Ziyana",
         "Al Wataniah Ziyana"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/classic",
-      "source_evidence_url": "https://www.alwataniah.com/collections/classic",
-      "collection_name": "Classic"
+      "source_evidence_url": "https://www.alwataniah.com/products/ziyana",
+      "collection_name": "Classic",
+      "source_product_url": "https://www.alwataniah.com/products/ziyana",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-LAZULI",
@@ -35881,10 +36162,15 @@
         "Lazuli",
         "Al Wataniah Lazuli"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/lazuli",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/lazuli",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-HOUSE-OF-OUD",
@@ -35898,10 +36184,11 @@
         "House Of Oud",
         "Al Wataniah House Of Oud"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/house-of-oud",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/house-of-oud"
     },
     {
       "product_id": "SH-AL-WATANIAH-FAYYAD",
@@ -35915,10 +36202,15 @@
         "Fayyad",
         "Al Wataniah Fayyad"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/fayyad",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/fayyad",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SAHARI",
@@ -35932,10 +36224,15 @@
         "Sahari",
         "Al Wataniah Sahari"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/sahari",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/sahari",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AMNIA",
@@ -35949,10 +36246,15 @@
         "Amnia",
         "Al Wataniah Amnia"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/amnia",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/amnia",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-BARAA",
@@ -35966,10 +36268,15 @@
         "Baraa",
         "Al Wataniah Baraa"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/baraa",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/baraa",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-LAYALI",
@@ -35983,10 +36290,15 @@
         "Layali",
         "Al Wataniah Layali"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/layali",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/layali",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ANWAN",
@@ -36000,10 +36312,11 @@
         "Anwan",
         "Al Wataniah Anwan"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/anwan",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/anwan"
     },
     {
       "product_id": "SH-AL-WATANIAH-LILY",
@@ -36017,10 +36330,15 @@
         "Lily",
         "Al Wataniah Lily"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/lily",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/lily",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-NADA",
@@ -36034,10 +36352,15 @@
         "Nada",
         "Al Wataniah Nada"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/nada",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/nada",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-QASAR-AL-WATAN",
@@ -36051,10 +36374,15 @@
         "Qasar Al Watan",
         "Al Wataniah Qasar Al Watan"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/qasar-al-watan",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/qasar-al-watan",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-RAWAEE-ELITE",
@@ -36068,10 +36396,15 @@
         "Rawaee Elite",
         "Al Wataniah Rawaee Elite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-elite",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/rawaee-elite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-RAWAEE-MONARCH",
@@ -36085,10 +36418,15 @@
         "Rawaee Monarch",
         "Al Wataniah Rawaee Monarch"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-monarch",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/rawaee-monarch",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-RAWAEE-NOBLE",
@@ -36153,10 +36491,15 @@
         "Emiran Selar",
         "Al Wataniah Emiran Selar"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/emiran-selar",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/emiran-selar",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-EMIRAN",
@@ -36170,10 +36513,15 @@
         "Emiran",
         "Al Wataniah Emiran"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "source_evidence_url": "https://www.alwataniah.com/products/emiran",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/emiran",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AIN-EMARAT",
@@ -36191,7 +36539,11 @@
       "source_url": "https://www.alwataniah.com/products/ain-emarat",
       "source_evidence_url": "https://www.alwataniah.com/products/ain-emarat",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/ain-emarat"
+      "source_product_url": "https://www.alwataniah.com/products/ain-emarat",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AIN-EMARAT-EXTRAIT",
@@ -36209,7 +36561,11 @@
       "source_url": "https://www.alwataniah.com/products/ain-emarat-extrait",
       "source_evidence_url": "https://www.alwataniah.com/products/ain-emarat-extrait",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/ain-emarat-extrait"
+      "source_product_url": "https://www.alwataniah.com/products/ain-emarat-extrait",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ARYA",
@@ -36227,7 +36583,11 @@
       "source_url": "https://www.alwataniah.com/products/arya",
       "source_evidence_url": "https://www.alwataniah.com/products/arya",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/arya"
+      "source_product_url": "https://www.alwataniah.com/products/arya",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ARYA-PEONY-ROSE",
@@ -36245,7 +36605,11 @@
       "source_url": "https://www.alwataniah.com/products/arya-peony-rose",
       "source_evidence_url": "https://www.alwataniah.com/products/arya-peony-rose",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/arya-peony-rose"
+      "source_product_url": "https://www.alwataniah.com/products/arya-peony-rose",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ROYAL-OAK-I",
@@ -36263,7 +36627,11 @@
       "source_url": "https://www.alwataniah.com/products/royal-oak-i",
       "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-i",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/royal-oak-i"
+      "source_product_url": "https://www.alwataniah.com/products/royal-oak-i",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-ROYAL-OAK-II",
@@ -36281,7 +36649,11 @@
       "source_url": "https://www.alwataniah.com/products/royal-oak-ii",
       "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-ii",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/royal-oak-ii"
+      "source_product_url": "https://www.alwataniah.com/products/royal-oak-ii",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-DAIEM",
@@ -36299,7 +36671,11 @@
       "source_url": "https://www.alwataniah.com/products/al-daiem",
       "source_evidence_url": "https://www.alwataniah.com/products/al-daiem",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/al-daiem"
+      "source_product_url": "https://www.alwataniah.com/products/al-daiem",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-AL-DAIEM-ELIXIR",
@@ -36317,7 +36693,11 @@
       "source_url": "https://www.alwataniah.com/products/al-daiem-elixir",
       "source_evidence_url": "https://www.alwataniah.com/products/al-daiem-elixir",
       "collection_name": "Niche",
-      "source_product_url": "https://www.alwataniah.com/products/al-daiem-elixir"
+      "source_product_url": "https://www.alwataniah.com/products/al-daiem-elixir",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-MASSAD-ROYALE",
@@ -36331,10 +36711,15 @@
         "Massad Royale",
         "Al Wataniah Massad Royale"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/niche",
-      "source_evidence_url": "https://www.alwataniah.com/collections/niche",
-      "collection_name": "Niche"
+      "source_evidence_url": "https://www.alwataniah.com/products/massad-royale",
+      "collection_name": "Niche",
+      "source_product_url": "https://www.alwataniah.com/products/massad-royale",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-PRALINE-TOFFEE",
@@ -36352,7 +36737,11 @@
       "source_url": "https://www.alwataniah.com/products/praline-toffee",
       "source_evidence_url": "https://www.alwataniah.com/products/praline-toffee",
       "collection_name": "Munchies",
-      "source_product_url": "https://www.alwataniah.com/products/praline-toffee"
+      "source_product_url": "https://www.alwataniah.com/products/praline-toffee",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-GOLDEN-HONEY",
@@ -36366,10 +36755,15 @@
         "Golden Honey",
         "Al Wataniah Golden Honey"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/munchies",
-      "source_evidence_url": "https://www.alwataniah.com/collections/munchies",
-      "collection_name": "Munchies"
+      "source_evidence_url": "https://www.alwataniah.com/products/golden-honey",
+      "collection_name": "Munchies",
+      "source_product_url": "https://www.alwataniah.com/products/golden-honey",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-BROWNIE-BITE",
@@ -36383,10 +36777,15 @@
         "Brownie Bite",
         "Al Wataniah Brownie Bite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/munchies",
-      "source_evidence_url": "https://www.alwataniah.com/collections/munchies",
-      "collection_name": "Munchies"
+      "source_evidence_url": "https://www.alwataniah.com/products/brownie-bite",
+      "collection_name": "Munchies",
+      "source_product_url": "https://www.alwataniah.com/products/brownie-bite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-WHITE-CHOCOLATE-GANACHE",
@@ -36400,10 +36799,15 @@
         "White Chocolate Ganache",
         "Al Wataniah White Chocolate Ganache"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/munchies",
-      "source_evidence_url": "https://www.alwataniah.com/collections/munchies",
-      "collection_name": "Munchies"
+      "source_evidence_url": "https://www.alwataniah.com/products/white-chocolate-ganache",
+      "collection_name": "Munchies",
+      "source_product_url": "https://www.alwataniah.com/products/white-chocolate-ganache",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AL-WATANIAH-SUGAR-RUSH",
@@ -36417,10 +36821,15 @@
         "Sugar Rush",
         "Al Wataniah Sugar Rush"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://www.alwataniah.com/collections/munchies",
-      "source_evidence_url": "https://www.alwataniah.com/collections/munchies",
-      "collection_name": "Munchies"
+      "source_evidence_url": "https://www.alwataniah.com/products/sugar-rush",
+      "collection_name": "Munchies",
+      "source_product_url": "https://www.alwataniah.com/products/sugar-rush",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-ECLIPSE",
@@ -41728,7 +42137,8 @@
         "Al Wataniah Lemon Souffle 100ml"
       ],
       "variant_id": "SHV-SH-AL-WATANIAH-ccc7d2db-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/lemon-souffle"
     },
     {
       "product_id": "SH-AL-WATANIAH-5acf0b9a",
@@ -41738,7 +42148,8 @@
         "Al Wataniah Choco Truffle 100ml"
       ],
       "variant_id": "SHV-SH-AL-WATANIAH-5acf0b9a-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/choco-truffle"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-aac6aa05",
@@ -44164,10 +44575,13 @@
       "size_ml": 100,
       "aliases": [
         "Eshal Vanilla 100 ml",
-        "Paris Corner Eshal Vanilla 100ml"
+        "Paris Corner Eshal Vanilla 100ml",
+        "Paris Corner Eshal Vanilla 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-eshal-vanilla-edp-u-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-FARAH",
@@ -44186,10 +44600,13 @@
       "size_ml": 100,
       "aliases": [
         "Fayora 100 ml",
-        "Paris Corner Fayora 100ml"
+        "Paris Corner Fayora 100ml",
+        "Paris Corner Fayora 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/fayora",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-edp-w-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-FAYORA-OSHINO",
@@ -44197,10 +44614,13 @@
       "size_ml": 100,
       "aliases": [
         "Fayora Oshino 100 ml",
-        "Paris Corner Fayora Oshino 100ml"
+        "Paris Corner Fayora Oshino 100ml",
+        "Paris Corner Fayora Oshino 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-oshino-edp-w-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-FIG-FETE",
@@ -44417,10 +44837,13 @@
       "size_ml": 100,
       "aliases": [
         "Hurriya 100 ml",
-        "Paris Corner Hurriya 100ml"
+        "Paris Corner Hurriya 100ml",
+        "Paris Corner Hurriya 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/hurriya",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/hurriya"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/hurriya",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-hurriya-edp-u-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT",
@@ -45286,10 +45709,13 @@
       "size_ml": 100,
       "aliases": [
         "Qissa Gala 100 ml",
-        "Paris Corner Qissa Gala 100ml"
+        "Paris Corner Qissa Gala 100ml",
+        "Paris Corner Qissa Gala 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-gala"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-qissa-gala-edp-w-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-dbb9189e",
@@ -50839,6 +51265,953 @@
       ],
       "source_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-immortal",
       "source_evidence_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-immortal"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-22a0e569",
+      "size_ml": 100,
+      "aliases": [
+        "Kayaan Midnight 100 ml",
+        "Al Wataniah Kayaan Midnight 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-22a0e569-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-midnight"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD",
+      "size_ml": 100,
+      "aliases": [
+        "Sabah Al Ward 100 ml",
+        "Al Wataniah Sabah Al Ward 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SABAH-AL-WARD-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/sabah-al-ward"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-SUGAR",
+      "size_ml": 100,
+      "aliases": [
+        "Sabah Al Ward Sugar 100 ml",
+        "Al Wataniah Sabah Al Ward Sugar 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SABAH-AL-WARD-SUGAR-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/saba-al-ward-sugar"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SPECIAL-OUD",
+      "size_ml": 100,
+      "aliases": [
+        "Special Oud 100 ml",
+        "Al Wataniah Special Oud 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SPECIAL-OUD-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/special-oud"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMIRAN",
+      "size_ml": 100,
+      "aliases": [
+        "Emiran 100 ml",
+        "Al Wataniah Emiran 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-EMIRAN-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/emiran"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-d8263b7b",
+      "size_ml": 100,
+      "aliases": [
+        "Cloud 100 ml",
+        "Al Wataniah Cloud 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-d8263b7b-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/cloud"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-CASTILLA",
+      "size_ml": 100,
+      "aliases": [
+        "Castilla 100 ml",
+        "Al Wataniah Castilla 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-CASTILLA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/castilla"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-FAYROZ",
+      "size_ml": 100,
+      "aliases": [
+        "Fayroz 100 ml",
+        "Al Wataniah Fayroz 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-FAYROZ-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/fayroz"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LAYALI",
+      "size_ml": 100,
+      "aliases": [
+        "Layali 100 ml",
+        "Al Wataniah Layali 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-LAYALI-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/layali"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-PRALINE-TOFFEE",
+      "size_ml": 100,
+      "aliases": [
+        "Praline Toffee 100 ml",
+        "Al Wataniah Praline Toffee 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-PRALINE-TOFFEE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/praline-toffee"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-089f9d20",
+      "size_ml": 100,
+      "aliases": [
+        "Turquois 100 ml",
+        "Al Wataniah Turquois 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-089f9d20-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/turquois"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROYAL-OAK-II",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Oak II 100 ml",
+        "Al Wataniah Royal Oak II 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ROYAL-OAK-II-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-ii"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-89eb9e9b",
+      "size_ml": 100,
+      "aliases": [
+        "Kayaan Classic 100 ml",
+        "Al Wataniah Kayaan Classic 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-89eb9e9b-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-classic"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-72f22b5d",
+      "size_ml": 100,
+      "aliases": [
+        "Kayaan Terra 100 ml",
+        "Al Wataniah Kayaan Terra 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-72f22b5d-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-terra"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-aa339eab",
+      "size_ml": 100,
+      "aliases": [
+        "Kayaan Gold 100 ml",
+        "Al Wataniah Kayaan Gold 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-aa339eab-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/kayaan-gold"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AIN-EMARAT",
+      "size_ml": 100,
+      "aliases": [
+        "Ain Emarat 100 ml",
+        "Al Wataniah Ain Emarat 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AIN-EMARAT-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/ain-emarat"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROYAL-OAK-I",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Oak I 100 ml",
+        "Al Wataniah Royal Oak I 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ROYAL-OAK-I-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/royal-oak-i"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-DAIEM",
+      "size_ml": 100,
+      "aliases": [
+        "Al Daiem 100 ml",
+        "Al Wataniah Al Daiem 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AL-DAIEM-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/al-daiem"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ARYA-PEONY-ROSE",
+      "size_ml": 100,
+      "aliases": [
+        "Arya Peony Rose 100 ml",
+        "Al Wataniah Arya Peony Rose 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ARYA-PEONY-ROSE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/arya-peony-rose"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ARYA",
+      "size_ml": 100,
+      "aliases": [
+        "Arya 100 ml",
+        "Al Wataniah Arya 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ARYA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/arya"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AIN-EMARAT-EXTRAIT",
+      "size_ml": 100,
+      "aliases": [
+        "Ain Emarat Extrait 100 ml",
+        "Al Wataniah Ain Emarat Extrait 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AIN-EMARAT-EXTRAIT-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/ain-emarat-extrait"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NADA",
+      "size_ml": 100,
+      "aliases": [
+        "Nada 100 ml",
+        "Al Wataniah Nada 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-NADA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/nada"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-DAIEM-ELIXIR",
+      "size_ml": 100,
+      "aliases": [
+        "Al Daiem Elixir 100 ml",
+        "Al Wataniah Al Daiem Elixir 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AL-DAIEM-ELIXIR-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/al-daiem-elixir"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AMEERATI",
+      "size_ml": 100,
+      "aliases": [
+        "Ameerati 100 ml",
+        "Al Wataniah Ameerati 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AMEERATI-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/ameerati"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL",
+      "size_ml": 100,
+      "aliases": [
+        "Attar Al Wesal 100 ml",
+        "Al Wataniah Attar Al Wesal 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ATTAR-AL-WESAL-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/attar-al-wesal"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-2df06238",
+      "size_ml": 100,
+      "aliases": [
+        "Rose Eclat 100 ml",
+        "Al Wataniah Rose Eclat 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-2df06238-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/rose-eclat"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-OUD-MYSTERY-INTENSE",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Mystery Intense 100 ml",
+        "Al Wataniah Oud Mystery Intense 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-OUD-MYSTERY-INTENSE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/oud-mystery-intense"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SAHARI",
+      "size_ml": 100,
+      "aliases": [
+        "Sahari 100 ml",
+        "Al Wataniah Sahari 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SAHARI-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/sahari"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ROSE-MYSTERY-INTENSE",
+      "size_ml": 100,
+      "aliases": [
+        "Rose Mystery Intense 100 ml",
+        "Al Wataniah Rose Mystery Intense 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ROSE-MYSTERY-INTENSE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/rose-mystery-intense"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-GOLDEN-HONEY",
+      "size_ml": 100,
+      "aliases": [
+        "Golden Honey 100 ml",
+        "Al Wataniah Golden Honey 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-GOLDEN-HONEY-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/golden-honey"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BAREEQ-AL-DHAHAB",
+      "size_ml": 100,
+      "aliases": [
+        "Bareeq Al Dhahab 100 ml",
+        "Al Wataniah Bareeq Al Dhahab 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-BAREEQ-AL-DHAHAB-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/bareeq-al-dhahab"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BROWNIE-BITE",
+      "size_ml": 100,
+      "aliases": [
+        "Brownie Bite 100 ml",
+        "Al Wataniah Brownie Bite 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-BROWNIE-BITE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/brownie-bite"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AMEERI",
+      "size_ml": 100,
+      "aliases": [
+        "Ameeri 100 ml",
+        "Al Wataniah Ameeri 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AMEERI-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/ameeri"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SULTAN-AL-LAIL",
+      "size_ml": 100,
+      "aliases": [
+        "Sultan Al Lail 100 ml",
+        "Al Wataniah Sultan Al Lail 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SULTAN-AL-LAIL-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/sultan-al-lail"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ABYAT",
+      "size_ml": 100,
+      "aliases": [
+        "Abyat 100 ml",
+        "Al Wataniah Abyat 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ABYAT-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/abyat"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-BARAA",
+      "size_ml": 100,
+      "aliases": [
+        "Baraa 100 ml",
+        "Al Wataniah Baraa 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-BARAA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/baraa"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AL-LAYL",
+      "size_ml": 100,
+      "aliases": [
+        "Al Layl 100 ml",
+        "Al Wataniah Al Layl 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AL-LAYL-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/al-layl"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ALYA",
+      "size_ml": 100,
+      "aliases": [
+        "Alya 100 ml",
+        "Al Wataniah Alya 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ALYA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/alya"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-3546ccd8",
+      "size_ml": 100,
+      "aliases": [
+        "Milele 100 ml",
+        "Al Wataniah Milele 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-3546ccd8-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/milele"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-DURRAT-AL-AROOS",
+      "size_ml": 100,
+      "aliases": [
+        "Durrat Al Aroos 100 ml",
+        "Al Wataniah Durrat Al Aroos 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-DURRAT-AL-AROOS-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/durrat-al-aroos"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-THAHAANI",
+      "size_ml": 100,
+      "aliases": [
+        "Thahaani 100 ml",
+        "Al Wataniah Thahaani 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-THAHAANI-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/thahaani"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-CREME",
+      "size_ml": 100,
+      "aliases": [
+        "Crème 100 ml",
+        "Al Wataniah Crème 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-CREME-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/creme"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WATANI-PURPLE",
+      "size_ml": 100,
+      "aliases": [
+        "Watani Purple 100 ml",
+        "Al Wataniah Watani Purple 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-WATANI-PURPLE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/watani-purple"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-GRANADA",
+      "size_ml": 100,
+      "aliases": [
+        "Granada 100 ml",
+        "Al Wataniah Granada 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-GRANADA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/granada"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-TIBYAN",
+      "size_ml": 100,
+      "aliases": [
+        "Tibyan 100 ml",
+        "Al Wataniah Tibyan 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-TIBYAN-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/tibyan"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-GHALA",
+      "size_ml": 100,
+      "aliases": [
+        "Ghala 100 ml",
+        "Al Wataniah Ghala 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-GHALA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/ghala"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SEVILLA",
+      "size_ml": 100,
+      "aliases": [
+        "Sevilla 100 ml",
+        "Al Wataniah Sevilla 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SEVILLA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/sevilla"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-KENZ-AL-MALIK",
+      "size_ml": 100,
+      "aliases": [
+        "Kenz Al Malik 100 ml",
+        "Al Wataniah Kenz Al Malik 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-KENZ-AL-MALIK-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/kenz-al-malik"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-ALEXANDRITE",
+      "size_ml": 100,
+      "aliases": [
+        "Nawal Alexandrite 100 ml",
+        "Al Wataniah Nawal Alexandrite 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-NAWAL-ALEXANDRITE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-alexandrite"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WATANI-NOIR",
+      "size_ml": 100,
+      "aliases": [
+        "Watani Noir 100 ml",
+        "Al Wataniah Watani Noir 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-WATANI-NOIR-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/watani-noir"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-FIKRAH",
+      "size_ml": 100,
+      "aliases": [
+        "Fikrah 100 ml",
+        "Al Wataniah Fikrah 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-FIKRAH-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/fikrah"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-HAYAT",
+      "size_ml": 100,
+      "aliases": [
+        "Hayat 100 ml",
+        "Al Wataniah Hayat 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-HAYAT-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/hayat"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-MARJAAN",
+      "size_ml": 100,
+      "aliases": [
+        "Marjaan 100 ml",
+        "Al Wataniah Marjaan 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-MARJAAN-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/marjaan"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-MUHEEB",
+      "size_ml": 100,
+      "aliases": [
+        "Muheeb 100 ml",
+        "Al Wataniah Muheeb 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-MUHEEB-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/muheeb"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SHAGAF-AL-WARD",
+      "size_ml": 100,
+      "aliases": [
+        "Shagaf Al Ward 100 ml",
+        "Al Wataniah Shagaf Al Ward 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SHAGAF-AL-WARD-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/shagaf-al-ward"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-HALA",
+      "size_ml": 100,
+      "aliases": [
+        "Hala 100 ml",
+        "Al Wataniah Hala 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-HALA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/hala"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-BRONZITE",
+      "size_ml": 100,
+      "aliases": [
+        "Nawal Bronzite 100 ml",
+        "Al Wataniah Nawal Bronzite 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-NAWAL-BRONZITE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-bronzite"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-TANZANITE",
+      "size_ml": 100,
+      "aliases": [
+        "Nawal Tanzanite 100 ml",
+        "Al Wataniah Nawal Tanzanite 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-NAWAL-TANZANITE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-tanzanite"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-NAWAL-FLUORITE",
+      "size_ml": 100,
+      "aliases": [
+        "Nawal Fluorite 100 ml",
+        "Al Wataniah Nawal Fluorite 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-NAWAL-FLUORITE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/nawal-fluorite"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-DAIM",
+      "size_ml": 100,
+      "aliases": [
+        "Da'im 100 ml",
+        "Al Wataniah Da'im 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-DAIM-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/da-im"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-DUHA",
+      "size_ml": 100,
+      "aliases": [
+        "Duha 100 ml",
+        "Al Wataniah Duha 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-DUHA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/duha"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EQAAB",
+      "size_ml": 100,
+      "aliases": [
+        "Eqaab 100 ml",
+        "Al Wataniah Eqaab 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-EQAAB-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/eqaab"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-TIARA-PINK",
+      "size_ml": 100,
+      "aliases": [
+        "Tiara Pink 100 ml",
+        "Al Wataniah Tiara Pink 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-TIARA-PINK-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/tiara-pink"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WATANI-INTENSE-GOLD",
+      "size_ml": 100,
+      "aliases": [
+        "Watani Intense Gold 100 ml",
+        "Al Wataniah Watani Intense Gold 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-WATANI-INTENSE-GOLD-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/watani-intense-gold"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SHAGAF-AL-WARD-GARDENIA",
+      "size_ml": 100,
+      "aliases": [
+        "Shagaf Al Ward Gardenia 100 ml",
+        "Al Wataniah Shagaf Al Ward Gardenia 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SHAGAF-AL-WARD-GARDENIA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/shagaf-al-ward-gardenia"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SABAH-AL-WARD-GARDEN-OF-EDEN",
+      "size_ml": 100,
+      "aliases": [
+        "Sabah Al Ward Garden of Eden 100 ml",
+        "Al Wataniah Sabah Al Ward Garden of Eden 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SABAH-AL-WARD-GARDEN-OF-EDEN-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/sabah-al-ward-garden-of-eden"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ATTAR-AL-WESAL-ELIXIR",
+      "size_ml": 100,
+      "aliases": [
+        "Attar Al Wesal Elixir 100 ml",
+        "Al Wataniah Attar Al Wesal Elixir 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ATTAR-AL-WESAL-ELIXIR-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/attar-al-wesal-elixir"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-ZIYANA",
+      "size_ml": 100,
+      "aliases": [
+        "Ziyana 100 ml",
+        "Al Wataniah Ziyana 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-ZIYANA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/ziyana"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LAZULI",
+      "size_ml": 100,
+      "aliases": [
+        "Lazuli 100 ml",
+        "Al Wataniah Lazuli 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-LAZULI-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/lazuli"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-FAYYAD",
+      "size_ml": 100,
+      "aliases": [
+        "Fayyad 100 ml",
+        "Al Wataniah Fayyad 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-FAYYAD-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/fayyad"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-AMNIA",
+      "size_ml": 100,
+      "aliases": [
+        "Amnia 100 ml",
+        "Al Wataniah Amnia 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-AMNIA-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/amnia"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-LILY",
+      "size_ml": 100,
+      "aliases": [
+        "Lily 100 ml",
+        "Al Wataniah Lily 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-LILY-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/lily"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-QASAR-AL-WATAN",
+      "size_ml": 100,
+      "aliases": [
+        "Qasar Al Watan 100 ml",
+        "Al Wataniah Qasar Al Watan 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-QASAR-AL-WATAN-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/qasar-al-watan"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-RAWAEE-ELITE",
+      "size_ml": 100,
+      "aliases": [
+        "Rawaee Elite 100 ml",
+        "Al Wataniah Rawaee Elite 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-RAWAEE-ELITE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-elite"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-RAWAEE-MONARCH",
+      "size_ml": 100,
+      "aliases": [
+        "Rawaee Monarch 100 ml",
+        "Al Wataniah Rawaee Monarch 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-RAWAEE-MONARCH-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-monarch"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-EMIRAN-SELAR",
+      "size_ml": 100,
+      "aliases": [
+        "Emiran Selar 100 ml",
+        "Al Wataniah Emiran Selar 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-EMIRAN-SELAR-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/emiran-selar"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-MASSAD-ROYALE",
+      "size_ml": 100,
+      "aliases": [
+        "Massad Royale 100 ml",
+        "Al Wataniah Massad Royale 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-MASSAD-ROYALE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/massad-royale"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-WHITE-CHOCOLATE-GANACHE",
+      "size_ml": 100,
+      "aliases": [
+        "White Chocolate Ganache 100 ml",
+        "Al Wataniah White Chocolate Ganache 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-WHITE-CHOCOLATE-GANACHE-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/white-chocolate-ganache"
+    },
+    {
+      "product_id": "SH-AL-WATANIAH-SUGAR-RUSH",
+      "size_ml": 100,
+      "aliases": [
+        "Sugar Rush 100 ml",
+        "Al Wataniah Sugar Rush 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-WATANIAH-SUGAR-RUSH-100-000",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.alwataniah.com/products/sugar-rush"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COCONUT-LAGOON",
+      "variant_id": "SHV-SH-PARIS-CORNER-COCONUT-LAGOON-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Coconut Lagoon 100 ml",
+        "Paris Corner Coconut Lagoon 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IBISCO-NIRVANA",
+      "variant_id": "SHV-SH-PARIS-CORNER-IBISCO-NIRVANA-65-EDP",
+      "size_ml": 65,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ibisco Nirvana 65 ml",
+        "Paris Corner Ibisco Nirvana 65 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/ibisco-nirvana"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-4036ddf3",
+      "variant_id": "SHV-SH-PARIS-CORNER-4036ddf3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Miel Vanille 100 ml",
+        "Paris Corner Miel Vanille 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-miel-vanille-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-QISSA",
+      "variant_id": "SHV-SH-PARIS-CORNER-QISSA-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Qissa 100 ml",
+        "Paris Corner Qissa 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/qissa",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-QISSA-DELICIOUS",
+      "variant_id": "SHV-SH-PARIS-CORNER-QISSA-DELICIOUS-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Qissa Delicious 100 ml",
+        "Paris Corner Qissa Delicious 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-delicious"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-QISSA-PINK",
+      "variant_id": "SHV-SH-PARIS-CORNER-QISSA-PINK-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Qissa Pink 100 ml",
+        "Paris Corner Qissa Pink 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-pink"
     }
   ]
 }
