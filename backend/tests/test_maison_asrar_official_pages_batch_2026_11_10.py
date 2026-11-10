@@ -11,22 +11,22 @@ EXPECTED = [
         "name": "Milky Way",
         "id": "SH-MAISON-ASRAR-1061bdf1",
         "url": "https://maisonasrar.com/products/milky-way",
-        "concentration": null,
-        "variant_id": null
+        "concentration": None,
+        "variant_id": None
     },
     {
         "name": "Mohra",
         "id": "SH-MAISON-ASRAR-678d2fcd",
         "url": "https://maisonasrar.com/products/mohrab",
-        "concentration": null,
-        "variant_id": null
+        "concentration": None,
+        "variant_id": None
     },
     {
         "name": "Nada",
         "id": "SH-MAISON-ASRAR-e471ac92",
         "url": "https://maisonasrar.com/products/nada",
-        "concentration": null,
-        "variant_id": null
+        "concentration": None,
+        "variant_id": None
     },
     {
         "name": "Never Forget Me",
