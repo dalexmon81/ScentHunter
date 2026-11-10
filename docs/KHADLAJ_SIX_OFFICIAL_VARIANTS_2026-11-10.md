@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes forty existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes forty-one existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -46,6 +46,7 @@ This change completes forty existing Khadlaj canonical identities using official
 | Musk Al Sabah | SH-KHADLAJ-SPRAY-HARVEST-108 | 100 ml | Eau de Parfum | 6291107977027 |
 | Oud Al Sabah | SH-KHADLAJ-SPRAY-HARVEST-109 | 100 ml | Eau de Parfum | 6291107977034 |
 | Shahi Oud | SH-KHADLAJ-SPRAY-HARVEST-113 | 100 ml | Eau de Parfum | 6291107971032 |
+| Oud Pour Noble | SH-KHADLAJ-SPRAY-HARVEST-096 | 100 ml | Eau de Parfum | 6291107971025 |
 
 ## Official evidence
 
@@ -90,6 +91,7 @@ This change completes forty existing Khadlaj canonical identities using official
 - Musk Al Sabah: https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae
 - Oud Al Sabah: https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance
 - Shahi Oud: https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae
+- Oud Pour Noble: https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae
 
 ## Data integrity
 
