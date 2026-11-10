@@ -16,6 +16,7 @@ on:
       - catalog/khadlaj-six-official-variants-2026-11-10
       - catalog/khadlaj-41-variants-consolidated-2026-11-10
       - catalog/gulf-orchid-four-verified-2026-11-10
+      - catalog/gulf-orchid-five-variants-brand-reconcile-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -34,6 +35,7 @@ on:
       - catalog/khadlaj-six-official-variants-2026-11-10
       - catalog/khadlaj-41-variants-consolidated-2026-11-10
       - catalog/gulf-orchid-four-verified-2026-11-10
+      - catalog/gulf-orchid-five-variants-brand-reconcile-2026-11-10
 
 permissions:
   contents: read
@@ -80,6 +82,7 @@ jobs:
           backend.tests.test_khadlaj_cream_velvet_official_variant
           backend.tests.test_khadlaj_six_official_variants
           backend.tests.test_gulf_orchid_new_arrivals_2026_11_10
+          backend.tests.test_gulf_orchid_five_variants_and_brand_attribution
           backend.tests.test_khadlaj_official_spray_fourth_followup
           backend.tests.test_khadlaj_official_spray_third_followup
           backend.tests.test_khadlaj_official_spray_second_followup
