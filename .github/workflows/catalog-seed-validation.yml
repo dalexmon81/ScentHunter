@@ -18,6 +18,7 @@ on:
       - catalog/catalog-audit-next-2026-11-10
       - catalog/armaf-paris-corner-variant-gap-2026-11-10
       - catalog/al-wataniah-cumulative-ci-docs-2026-11-10
+      - catalog/maison-alhambra-mens-detail-batch-2026-11-10
 
 permissions:
   contents: read
