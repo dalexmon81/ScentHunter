@@ -6,11 +6,13 @@ on:
       - catalog/al-haramain-official-variants-2026-11-10
       - catalog/afnan-official-variants-2026-11-10
       - catalog/maison-asrar-official-name-audit-2026-11-10
+      - catalog/catalog-audit-next-2026-11-10
   push:
     branches:
       - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
       - catalog/al-haramain-official-variants-2026-11-10
       - catalog/afnan-official-variants-2026-11-10
+      - catalog/catalog-audit-next-2026-11-10
 
 permissions:
   contents: read
@@ -29,6 +31,7 @@ jobs:
         run: |
           python -m unittest \
             backend.tests.test_catalog_seed_integrity \
+            backend.tests.test_catalog_global_integrity_2026_11_10 \
             backend.tests.test_catalog_seed_recovery \
             backend.tests.test_catalog_family_registry_coverage \
             backend.tests.test_catalog_source_confidence \
