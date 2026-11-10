@@ -13868,10 +13868,12 @@
           ]
         },
         {
-          "canonical_name": "Kismet",
+          "canonical_name": "Kismet for Men",
           "aliases": [
+            "Kismet for Men",
             "Kismet",
-            "Maison Alhambra Kismet"
+            "Maison Alhambra Kismet",
+            "Maison Alhambra Kismet for Men"
           ],
           "formats_ml": [
             100
@@ -15638,6 +15640,18 @@
           "aliases": [
             "Roman VII",
             "Maison Alhambra Roman VII"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Kismet for Women",
+          "aliases": [
+            "Kismet for Women",
+            "Kismet",
+            "Maison Alhambra Kismet Women",
+            "Maison Alhambra Kismet for Women"
           ],
           "formats_ml": [
             100
