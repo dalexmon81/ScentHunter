@@ -98,4 +98,5 @@ jobs:
           backend.tests.test_maison_asrar_new_arrivals_2026_11_10
           backend.tests.test_arabiyat_prestige_new_launch_2026_11_10
           backend.tests.test_khadlaj_cumulative_catalog_integrity
+          backend.tests.test_catalog_quality_debt_budget
           -v
