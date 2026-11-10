@@ -1,4 +1,4 @@
-"""Regression tests for twenty-three Khadlaj official product-page variants."""
+"""Regression tests for twenty-six Khadlaj official product-page variants."""
 import json
 import unittest
 from pathlib import Path
@@ -31,6 +31,9 @@ EXPECTED = {
     "Oud Pure Oud Galazaid": ("SH-KHADLAJ-SPRAY-HARVEST-057", 60, "Eau de Parfum", "6291107979588", "https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women"),
     "Oud Pure Oud Jumeirah": ("SH-KHADLAJ-SPRAY-HARVEST-058", 60, "Eau de Parfum", "6291107979595", "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy"),
     "Fursan Brown": ("SH-KHADLAJ-SPRAY-HARVEST-065", 100, "Eau de Parfum", "6291107977768", "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her"),
+    "Musk Pour Amber": ("SH-KHADLAJ-SPRAY-HARVEST-064", 100, "Eau de Parfum", "6291107977850", "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae"),
+    "Sara": ("SH-KHADLAJ-SPRAY-HARVEST-066", 100, "Extrait de Parfum", "6291107978772", "https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae"),
+    "Valor Enigma": ("SH-KHADLAJ-SPRAY-HARVEST-082", 100, "Eau de Parfum", "6291107975979", "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
