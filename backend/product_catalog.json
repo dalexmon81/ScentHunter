@@ -3345,8 +3345,14 @@
         "Cream Velvet",
         "Khadlaj Cream Velvet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes",
+      "source_product_url": "https://khadlaj-perfumes.com/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-24969f48",
@@ -48749,6 +48755,19 @@
       "variant_id": "SHV-SH-ASSAF-HARVEST-011-150-000",
       "source_url": "https://assaf.ae/products/oud-bakhur-arrogate",
       "source_evidence_url": "https://assaf.ae/products/oud-bakhur-arrogate"
+    },
+    {
+      "product_id": "SH-KHADLAJ-142e4d1e",
+      "size_ml": 100,
+      "aliases": [
+        "Cream Velvet 100 ml",
+        "Khadlaj Cream Velvet 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-142e4d1e-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "gtin": "6291107978819",
+      "source_url": "https://khadlaj-perfumes.com/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes"
     }
   ]
 }
