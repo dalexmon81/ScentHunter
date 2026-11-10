@@ -6261,8 +6261,14 @@
         "Abadi Opulent",
         "Zimaya Abadi Opulent"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/abadi-opulent-edp-100ml",
+      "source_product_url": "https://zimayaperfumes.com/products/abadi-opulent-edp-100ml",
+      "source_evidence_url": "https://zimayaperfumes.com/products/abadi-opulent-edp-100ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-93d2995b",
@@ -6276,8 +6282,14 @@
         "Abadi Saga",
         "Zimaya Abadi Saga"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml",
+      "source_product_url": "https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml",
+      "source_evidence_url": "https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-ae998c26",
@@ -6306,8 +6318,14 @@
         "Al Barari Coral",
         "Zimaya Al Barari Coral"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/al-barari-coral",
+      "source_product_url": "https://zimayaperfumes.com/products/al-barari-coral",
+      "source_evidence_url": "https://zimayaperfumes.com/products/al-barari-coral",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-026b0faf",
@@ -6321,8 +6339,14 @@
         "Al Barari Shore",
         "Zimaya Al Barari Shore"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://zimayaperfumes.com/products/al-barari-shore",
+      "source_product_url": "https://zimayaperfumes.com/products/al-barari-shore",
+      "source_evidence_url": "https://zimayaperfumes.com/products/al-barari-shore",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ZIMAYA-048e52eb",
@@ -52733,6 +52757,54 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://velixirparfums.com/products/paladin",
       "source_evidence_url": "https://velixirparfums.com/products/paladin"
+    },
+    {
+      "product_id": "SH-ZIMAYA-f56224de",
+      "size_ml": 100,
+      "aliases": [
+        "Abadi Opulent 100 ml",
+        "Zimaya Abadi Opulent 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-f56224de-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://zimayaperfumes.com/products/abadi-opulent-edp-100ml",
+      "source_evidence_url": "https://zimayaperfumes.com/products/abadi-opulent-edp-100ml"
+    },
+    {
+      "product_id": "SH-ZIMAYA-93d2995b",
+      "size_ml": 100,
+      "aliases": [
+        "Abadi Saga 100 ml",
+        "Zimaya Abadi Saga 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-93d2995b-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml",
+      "source_evidence_url": "https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml"
+    },
+    {
+      "product_id": "SH-ZIMAYA-2b27b427",
+      "size_ml": 100,
+      "aliases": [
+        "Al Barari Coral 100 ml",
+        "Zimaya Al Barari Coral 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-2b27b427-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://zimayaperfumes.com/products/al-barari-coral",
+      "source_evidence_url": "https://zimayaperfumes.com/products/al-barari-coral"
+    },
+    {
+      "product_id": "SH-ZIMAYA-026b0faf",
+      "size_ml": 100,
+      "aliases": [
+        "Al Barari Shore 100 ml",
+        "Zimaya Al Barari Shore 100 ml"
+      ],
+      "variant_id": "SHV-SH-ZIMAYA-026b0faf-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://zimayaperfumes.com/products/al-barari-shore",
+      "source_evidence_url": "https://zimayaperfumes.com/products/al-barari-shore"
     }
   ]
 }
