@@ -13,6 +13,8 @@ from typing import Iterator, Optional
 import re
 import xml.etree.ElementTree as ET
 
+from gtin import is_valid_gtin
+
 
 @dataclass(frozen=True)
 class NotinoOffer:
@@ -78,8 +80,8 @@ def parse_entry(entry: ET.Element) -> Optional[NotinoOffer]:
         return None
 
     gtin = _value(entry, "gtin")
-    if not re.fullmatch(r"(?:[0-9]{8}|[0-9]{12,14})", gtin):
-        raise ValueError(f"invalid or missing GTIN for {_value(entry, 'id')!r}")
+    if not is_valid_gtin(gtin):
+        raise ValueError(f"invalid or missing GTIN/check digit for {_value(entry, 'id')!r}")
 
     price, currency = _money(_value(entry, "price"), required=True)
     sale_price, sale_currency = _money(_value(entry, "sale_price"))
