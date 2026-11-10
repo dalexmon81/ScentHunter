@@ -15,6 +15,7 @@ on:
       - catalog/afnan-official-variants-2026-11-10
       - catalog/catalog-audit-next-2026-11-10
       - catalog/armaf-paris-corner-variant-gap-2026-11-10
+      - catalog/al-wataniah-cumulative-ci-docs-2026-11-10
 
 permissions:
   contents: read
@@ -48,7 +49,11 @@ jobs:
             backend.tests.test_al_haramain_official_variants_2026_11_10 \
             backend.tests.test_khadlaj_official_new_launch_completeness_2026_11_10 \
             backend.tests.test_khadlaj_shiyaaka_rose_gold_official_2026_11_10 \
+            backend.tests.test_al_wataniah_detail_evidence \
+            backend.tests.test_al_wataniah_official_collection_harvest \
+            backend.tests.test_al_wataniah_official_storefront \
             backend.tests.test_al_wataniah_official_details_2026_11_10 \
+            backend.tests.test_al_wataniah_cumulative_coverage_2026_11_10 \
             backend.tests.test_assaf_wild_colt_alex_enable_official_variants_2026_11_10 \
             backend.tests.test_maison_alhambra_jean_lowe_official_variants_2026_11_10 \
             backend.tests.test_maison_alhambra_five_official_variants_2026_11_10 \

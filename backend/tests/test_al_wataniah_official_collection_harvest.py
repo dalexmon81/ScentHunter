@@ -432,6 +432,9 @@ VERIFIED_DETAIL_URLS = {
     "Qasar Al Watan": "https://www.alwataniah.com/products/qasar-al-watan",
     "Rawaee Elite": "https://www.alwataniah.com/products/rawaee-elite",
     "Rawaee Monarch": "https://www.alwataniah.com/products/rawaee-monarch",
+    "Rawaee Noble": "https://www.alwataniah.com/products/rawaee-noble",
+    "Rawaee Regina": "https://www.alwataniah.com/products/rawaee-regina",
+    "Redaa": "https://www.alwataniah.com/products/redaa",
     "Emiran Selar": "https://www.alwataniah.com/products/emiran-selar",
     "Massad Royale": "https://www.alwataniah.com/products/massad-royale",
     "White Chocolate Ganache": "https://www.alwataniah.com/products/white-chocolate-ganache",
@@ -502,7 +505,15 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                 self.assertEqual(variant.get("concentration"), "Eau de Parfum")
                 product = next(p for p in CATALOG["products"] if p["product_id"] == variant["product_id"])
                 self.assertEqual(variant.get("source_evidence_url"), product.get("source_product_url"))
-                self.assertEqual(variant.get("variant_id"), f"SHV-{variant['product_id']}-100-000")
+                expected_variant_id = {
+                    "Rawaee Noble": "SHV-SH-AL-WATANIAH-RAWAEE-NOBLE-100-EDP",
+                    "Rawaee Regina": "SHV-SH-AL-WATANIAH-RAWAEE-REGINA-100-EDP",
+                    "Redaa": "SHV-SH-AL-WATANIAH-REDAA-100-EDP",
+                }.get(
+                    product["canonical_name"],
+                    f"SHV-{variant['product_id']}-100-000",
+                )
+                self.assertEqual(variant.get("variant_id"), expected_variant_id)
 
 
 if __name__ == "__main__":
