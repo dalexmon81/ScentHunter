@@ -105,6 +105,36 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         self.assertEqual(candidate["confidence_band"], "review_high")
         self.assertEqual(candidate["review_status"], "needs_human_review")
 
+
+    def test_gender_conflict_cannot_be_high_confidence(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-W",
+                "brand_name": "Burberry",
+                "canonical_name": "London for Men",
+                "family_name": "London for Men",
+                "concentration": "Eau de Parfum",
+                "aliases": [],
+            }],
+            "variants": [{
+                "variant_id": "V-W",
+                "product_id": "P-W",
+                "size_ml": 100,
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        index = build_catalog_index(catalog)
+        row = {
+            "id": "LONDON-WOMEN",
+            "brand": "Burberry",
+            "title": "Burberry London for Women Eau de Parfum 100 ml",
+            "size": "100 ml",
+        }
+        candidate = score_row(row, index)[0]
+        self.assertTrue(candidate["gender_conflict"])
+        self.assertEqual(candidate["confidence_band"], "low")
+
     def test_brand_mismatch_never_generates_candidate(self):
         row = {
             "id": "SKU-2",
