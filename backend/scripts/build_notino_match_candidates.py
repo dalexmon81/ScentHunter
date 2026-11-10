@@ -79,7 +79,7 @@ def strip_product_noise(value: str) -> str:
     text = re.sub(r"\b\d+(?:\.\d+)?\s*(?:ml|milliliters?|millilitres?)\b", " ", text)
     for phrase in sorted(CONCENTRATIONS, key=len, reverse=True):
         text = re.sub(rf"\b{re.escape(normalize(phrase))}\b", " ", text)
-    text = re.sub(r"\b(?:spray|vaporisateur|natural spray|tester|refill|recharge|gift set|coffret|for men|for women|pour homme|pour femme)\b", " ", text)
+    text = re.sub(r"\b(?:spray|vaporisateur|natural spray|tester|refill|recharge|gift set|coffret|for men|for women|pour homme|pour femme|homme|femme|men|women)\b", " ", text)
     return " ".join(text.split())
 
 
@@ -152,7 +152,9 @@ def build_catalog_index(catalog: dict) -> list[dict]:
                 "brand_key": brand_key,
                 "names": sorted(set(normalized_names + [n for n in variant_names if n])),
                 "size_ml": variant.get("size_ml"),
-                "concentration": extract_concentration(\n                    variant.get("concentration") or product.get("concentration", "")\n                ),
+                "concentration": extract_concentration(
+                    variant.get("concentration") or product.get("concentration", "")
+                ),
                 "gender": _catalog_gender(product, names),
                 "gtins": variant.get("gtins") or [],
             })
