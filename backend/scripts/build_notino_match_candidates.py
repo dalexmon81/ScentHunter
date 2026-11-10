@@ -16,6 +16,11 @@ import xml.etree.ElementTree as ET
 from difflib import SequenceMatcher
 from pathlib import Path
 
+try:
+    from backend.gtin import is_valid_gtin
+except ModuleNotFoundError:  # CLI invoked from inside backend/
+    from gtin import is_valid_gtin
+
 
 GTIN_LENGTHS = {8, 12, 13, 14}
 CONCENTRATIONS = {
@@ -204,7 +209,13 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
     # candidate generation where canonical GTINs are absent or incomplete.
     results = []
     for item in catalog_index:
-        gtin_match = bool(feed_gtin and feed_gtin in {str(value) for value in item.get("gtins", [])})
+        gtin_match = bool(
+            is_valid_gtin(str(feed_gtin))
+            and str(feed_gtin) in {
+                str(value) for value in item.get("gtins", [])
+                if is_valid_gtin(str(value))
+            }
+        )
         if not gtin_match and (not brand_key or item["brand_key"] != brand_key):
             continue
         best_name = max(

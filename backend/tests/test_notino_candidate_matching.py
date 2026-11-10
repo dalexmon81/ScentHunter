@@ -112,6 +112,34 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         self.assertEqual(candidate["review_status"], "needs_human_review")
 
 
+    def test_invalid_feed_gtin_cannot_create_exact_gtin_match(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-GTIN-INVALID",
+                "brand_name": "Dior",
+                "canonical_name": "Sauvage",
+                "family_name": "Sauvage",
+                "concentration": "Eau de Parfum",
+                "aliases": ["Sauvage"],
+            }],
+            "variants": [{
+                "variant_id": "V-GTIN-INVALID",
+                "product_id": "P-GTIN-INVALID",
+                "size_ml": 100,
+                "gtins": ["1234567890123"],
+                "aliases": [],
+            }],
+        }
+        index = build_catalog_index(catalog)
+        candidate = score_row({
+            "id": "INVALID-GTIN",
+            "gtin": "1234567890123",
+            "brand": "Dior",
+            "title": "Dior Sauvage Eau de Parfum 100 ml",
+            "size": "100 ml",
+        }, index)[0]
+        self.assertFalse(candidate["gtin_match"])
+
     def test_gender_conflict_cannot_be_high_confidence(self):
         catalog = {
             "products": [{

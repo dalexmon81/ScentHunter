@@ -145,3 +145,27 @@ coverage when a candidate CSV is supplied. A brand present in the catalog but
 with no candidate is classified as a name/alias/variant gap, not as a new
 brand. A brand absent from the catalog is a catalog expansion candidate only;
 it is not an instruction to import every retailer listing.
+
+
+## Notino catalog-expansion review queue (read-only)
+
+Generate a proposal queue for feed brands not yet represented in the canonical
+catalog:
+
+```bash
+python -m backend.scripts.build_notino_catalog_expansion_review \
+  /path/to/NOTINO_fr-NotinoFR_google_all-shopping.xml \
+  backend/product_catalog.json \
+  --csv /tmp/notino-catalog-expansion-review.csv \
+  --json /tmp/notino-catalog-expansion-review.json
+```
+
+Each retailer row is preserved. The queue includes the source title, a name
+normalization candidate, parsed size/concentration/gender hints, GTIN validity,
+duplicate-GTIN count, price, availability, affiliate URL and source timestamp.
+Rows with invalid GTINs or a GTIN collision are held. A unique valid GTIN is
+only eligible for manual identity review; it is not a canonical approval.
+The script never writes the catalog or database and does not create variants.
+
+Exact GTIN evidence in the general candidate ranker is now accepted only when
+the feed and catalog identifiers both pass the GS1 check-digit validator.
