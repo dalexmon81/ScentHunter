@@ -146,9 +146,9 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.store/products/comus",
-      "source_product_url": "https://velixirparfums.store/products/comus",
-      "source_evidence_url": "https://velixirparfums.store/products/comus",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
       "formats_ml": [
         35,
         100
@@ -212,9 +212,9 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.store/products/ether",
-      "source_product_url": "https://velixirparfums.store/products/ether",
-      "source_evidence_url": "https://velixirparfums.store/products/ether",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
       "formats_ml": [
         35,
         100
@@ -436,9 +436,9 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.store/products/orpheus",
-      "source_product_url": "https://velixirparfums.store/products/orpheus",
-      "source_evidence_url": "https://velixirparfums.store/products/orpheus",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
       "formats_ml": [
         35,
         100
@@ -474,9 +474,9 @@
       ],
       "concentration": "Extrait de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.store/products/panacea",
-      "source_product_url": "https://velixirparfums.store/products/panacea",
-      "source_evidence_url": "https://velixirparfums.store/products/panacea",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
       "formats_ml": [
         35,
         100
@@ -703,9 +703,14 @@
         "Vanilla Aura",
         "Maison Asrar Vanilla Aura"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "source_product_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-9dfce2f6",
@@ -735,9 +740,10 @@
         "Vanilla Voyage",
         "Maison Asrar Vanilla Voyage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6d0c1431",
@@ -4773,29 +4779,9 @@
         "Marwa",
         "Arabiyat Prestige Marwa"
       ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        100
-      ]
-    },
-    {
-      "product_id": "SH-GULF-ORCHID-2e9b4429",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
-      "canonical_name": "Vanilla Aura",
-      "name": "Vanilla Aura",
-      "family_id": "gulf_orchid_catalog",
-      "family_name": "Vanilla Aura",
-      "aliases": [
-        "Vanilla Aura",
-        "Gulf Orchid Vanilla Aura"
-      ],
       "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/products/vanilla-aura"
+      "source_url": "https://arabiyatprestige.com/collections/all",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/all"
     },
     {
       "product_id": "SH-AFNAN-dd53546f",
@@ -13863,9 +13849,14 @@
         "Al Qasr",
         "Gulf Orchid Al Qasr"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "source_product_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-93df94e2",
@@ -13974,22 +13965,6 @@
       "aliases": [
         "Turath",
         "Gulf Orchid Turath"
-      ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop-gulforchid.com/collections",
-      "source_evidence_url": "https://shop-gulforchid.com/collections"
-    },
-    {
-      "product_id": "SH-GULF-ORCHID-0aca84c2",
-      "brand": "Gulf Orchid",
-      "brand_name": "Gulf Orchid",
-      "canonical_name": "Vanilla Voyage",
-      "name": "Vanilla Voyage",
-      "family_id": "gulf_orchid_catalog",
-      "family_name": "Vanilla Voyage",
-      "aliases": [
-        "Vanilla Voyage",
-        "Gulf Orchid Vanilla Voyage"
       ],
       "identity_status": "source_listed_name",
       "source_url": "https://shop-gulforchid.com/collections",
@@ -18609,9 +18584,10 @@
         "Tahara Vanilla Musk",
         "Gulf Orchid Tahara Vanilla Musk"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
+      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
+      "source_product_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
     },
     {
       "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-20ML",
@@ -18688,9 +18664,14 @@
         "Exotic Oud",
         "Gulf Orchid Exotic Oud"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-VANILLA-LATTE",
@@ -18704,9 +18685,14 @@
         "Vanilla Latte",
         "Gulf Orchid Vanilla Latte"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
-      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "source_product_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-COOKIE-BITE",
@@ -18720,9 +18706,14 @@
         "Cookie Bite",
         "Gulf Orchid Cookie Bite"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/cookie-bite",
-      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite"
+      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "source_product_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ACADIA-INTENSO-EMIR",
@@ -42748,7 +42739,8 @@
       "brand": "Lattafa",
       "canonical_name": "Asad Polar",
       "size_ml": 100,
-      "source_evidence_url": "https://lattafa.com/product/asad-polar/"
+      "source_evidence_url": "https://lattafa.com/product/asad-polar/",
+      "aliases": []
     },
     {
       "variant_id": "SH-ARABIYAT-PRESTIGE-0b061839-V-100-EDP",
@@ -42757,7 +42749,8 @@
       "canonical_name": "Lychee Musk",
       "size_ml": 100,
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex"
+      "source_evidence_url": "https://arabiyatprestige.com/products/arabiyat-prestige-lychee-musk-edp-100ml-unisex",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-SHAGHAF-OUD-MARINE-V-75-EDP",
@@ -42766,7 +42759,8 @@
       "canonical_name": "Shaghaf Oud Marine",
       "size_ml": 75,
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii"
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-ECHOES-OF-ST-MORITZ-V-100-EXTRAIT",
@@ -42775,7 +42769,8 @@
       "canonical_name": "Echoes of St. Moritz",
       "size_ml": 100,
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii"
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/the-collectors-edition-iii",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-SHAGHAF-NECTAR-BLUSH-V-75-EDP",
@@ -42784,7 +42779,8 @@
       "canonical_name": "Shaghaf Nectar Blush",
       "size_ml": 75,
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush"
+      "source_evidence_url": "https://us.swissarabian.com/collections/new-launches/products/shaghaf-nectar-blush",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-PATCHOULI-01-V-50-EXTRAIT",
@@ -42793,7 +42789,8 @@
       "canonical_name": "Patchouli 01",
       "size_ml": 50,
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://us.swissarabian.com/products/patchouli-01"
+      "source_evidence_url": "https://us.swissarabian.com/products/patchouli-01",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-ENIGMA-OF-TAIF-V-100",
@@ -42801,7 +42798,8 @@
       "brand": "Swiss Arabian",
       "canonical_name": "Enigma of Taif",
       "size_ml": 100,
-      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/enigma-of-taif"
+      "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/enigma-of-taif",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-SHAGHAF-AMBER-INFUSION-V-75-EXTRAIT",
@@ -42810,7 +42808,8 @@
       "canonical_name": "Shaghaf Amber Infusion",
       "size_ml": 75,
       "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/shaghaf-amber-infusion",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-SOUL-OF-BALI-V-100-EXTRAIT",
@@ -42819,7 +42818,8 @@
       "canonical_name": "Soul of Bali",
       "size_ml": 100,
       "source_evidence_url": "https://swissarabian.com/collections/new-launches/products/soul-of-bali",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-VANILLA-01-V-50-EXTRAIT",
@@ -42828,7 +42828,8 @@
       "canonical_name": "Vanilla 01",
       "size_ml": 50,
       "source_evidence_url": "https://us.swissarabian.com/products/vanilla-01",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "aliases": []
     },
     {
       "variant_id": "SH-SWISS-ARABIAN-TOBACCO-01-V-50-EXTRAIT",
@@ -42837,7 +42838,8 @@
       "canonical_name": "Tobacco 01",
       "size_ml": 50,
       "source_evidence_url": "https://us.swissarabian.com/products/tobacco-01",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "aliases": []
     },
     {
       "product_id": "SH-BUJAIRAMI-370cb2f2",
@@ -50488,7 +50490,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-50b87cfb-35-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/comus"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-50b87cfb",
@@ -50499,7 +50502,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-50b87cfb-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/comus"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-36e7a5ca",
@@ -50510,7 +50514,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-36e7a5ca-35-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/ether"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-36e7a5ca",
@@ -50521,7 +50526,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-36e7a5ca-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/ether"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-7e147c46",
@@ -50532,7 +50538,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-7e147c46-35-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/orpheus"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-7e147c46",
@@ -50543,7 +50550,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-7e147c46-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/orpheus"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-1738e7af",
@@ -50554,7 +50562,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-1738e7af-35-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/panacea"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-1738e7af",
@@ -50565,7 +50574,8 @@
       ],
       "variant_id": "SHV-SH-VELIXIR-1738e7af-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
-      "source_evidence_url": "https://velixirparfums.store/products/panacea"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-00d6e7bc",
@@ -50576,7 +50586,8 @@
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-00d6e7bc-100-EDP",
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml"
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-5ea21b51",
@@ -50587,7 +50598,8 @@
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-5ea21b51-100-EDP",
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex"
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-641acbf3",
@@ -50598,18 +50610,8 @@
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-641acbf3-110-EDP",
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml"
-    },
-    {
-      "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
-      "size_ml": 100,
-      "aliases": [
-        "Marwa 100 ml",
-        "Arabiyat Prestige Marwa 100 ml"
-      ],
-      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-7bf3b46e-100-EDP",
-      "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex"
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml"
     },
     {
       "product_id": "SH-ARMAF-4c83dfcd",
@@ -50622,6 +50624,61 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://armaf.com/products/club-de-nuit-intenso-fuego",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-intenso-fuego"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-4133b3ae",
+      "size_ml": 100,
+      "aliases": [
+        "Al Qasr 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-4133b3ae-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/al-qasr-silver",
+      "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-EXOTIC-OUD",
+      "size_ml": 100,
+      "aliases": [
+        "Exotic Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-EXOTIC-OUD-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/exotic_oud_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-VANILLA-LATTE",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Latte 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-VANILLA-LATTE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla_latte_eau_de_parfum"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-COOKIE-BITE",
+      "size_ml": 100,
+      "aliases": [
+        "Cookie Bite 100 ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-COOKIE-BITE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/cookie-bite",
+      "source_evidence_url": "https://shop-gulforchid.com/products/cookie-bite"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-bab16c06",
+      "size_ml": 100,
+      "aliases": [
+        "Vanilla Aura 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-bab16c06-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://shop-gulforchid.com/products/vanilla-aura",
+      "source_evidence_url": "https://shop-gulforchid.com/products/vanilla-aura"
     }
   ]
 }
