@@ -32,6 +32,7 @@ on:
       - catalog/khadlaj-twelve-official-variants-2026-11-10
       - catalog/khadlaj-sixteen-official-variants-2026-11-10
       - catalog/khadlaj-fifteen-official-variants-2026-11-10
+      - catalog/khadlaj-eight-final-official-variants-2026-11-10
 
 permissions:
   contents: read
@@ -80,6 +81,7 @@ jobs:
           backend.tests.test_khadlaj_official_spray_followup
           backend.tests.test_khadlaj_official_spray_second_followup
           backend.tests.test_khadlaj_official_spray_third_followup
+          backend.tests.test_khadlaj_official_spray_fourth_followup
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
