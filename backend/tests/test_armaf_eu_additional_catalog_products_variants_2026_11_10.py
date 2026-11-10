@@ -8,34 +8,32 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
 EXPECTED = {
-    "Odyssey French Kiss": (60, "https://cz.armaf.eu/products/odyssey-french-kiss"),
-    "Odyssey Candee Special Edition": (60, "https://cz.armaf.eu/products/odyssey-candee-special-edition"),
-    "Dubai Nights Midnight": (100, "https://cz.armaf.eu/products/dubai-nights-midnight"),
-    "Odyssey Eau de Montagne": (100, "https://cz.armaf.eu/products/odyssey-eau-de-montagne-mountain-edition"),
-    "Odyssey Ba Ha Mas": (100, "https://cz.armaf.eu/products/odyssey-ba-ha-mas"),
-    "Odyssey Spectra Rainbow Edition": (100, "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition"),
-    "Odyssey Dubai Chocolat": (60, "https://cz.armaf.eu/products/odyssey-dubai-chocolat"),
+    "Odyssey French Kiss": ([60], "https://cz.armaf.eu/products/odyssey-french-kiss"),
+    "Odyssey Candee Special Edition": ([60, 100, 200], "https://cz.armaf.eu/products/odyssey-candee-special-edition"),
+    "Dubai Nights Midnight": ([100], "https://cz.armaf.eu/products/dubai-nights-midnight"),
+    "Odyssey Eau de Montagne": ([100], "https://cz.armaf.eu/products/odyssey-eau-de-montagne-mountain-edition"),
+    "Odyssey Ba Ha Mas": ([100], "https://cz.armaf.eu/products/odyssey-ba-ha-mas"),
+    "Odyssey Spectra Rainbow Edition": ([100], "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition"),
+    "Odyssey Dubai Chocolat": ([60, 100], "https://cz.armaf.eu/products/odyssey-dubai-chocolat"),
 }
 
 
 class ArmafEuAdditionalCatalogProductsVariantsTests(unittest.TestCase):
-    def test_all_detail_pages_are_mapped_to_canonical_products(self):
+    def test_all_detail_pages_are_mapped_to_canonical_products_and_variants(self):
         family = next(f for f in REGISTRY["families"] if f.get("family_id") == "armaf_catalog")
-        for name, (size, url) in EXPECTED.items():
+        for name, (sizes, url) in EXPECTED.items():
             with self.subTest(product=name):
                 product = next(p for p in CATALOG["products"] if p.get("brand") == "Armaf" and p.get("canonical_name") == name)
                 self.assertEqual(product.get("identity_status"), "source_verified_name")
                 self.assertEqual(product.get("concentration"), "Eau de Parfum")
-                self.assertIn(size, product.get("formats_ml", []))
-                if name != "Odyssey Candee Special Edition":
-                    self.assertEqual(product.get("source_size_evidence_url"), url)
-                else:
-                    self.assertEqual(product.get("source_product_url"), url)
+                self.assertEqual(product.get("formats_ml"), sizes)
+                self.assertEqual(product.get("source_size_evidence_url"), url)
                 variants = [v for v in CATALOG["variants"] if v.get("product_id") == product["product_id"]]
-                self.assertIn(size, [v.get("size_ml") for v in variants])
-                self.assertTrue(any(v.get("source_size_evidence_url") == url for v in variants))
+                self.assertTrue(set(sizes).issubset({v.get("size_ml") for v in variants}))
+                self.assertTrue(all(any(v.get("size_ml") == size and v.get("source_size_evidence_url") == url for v in variants) for size in sizes))
                 row = next(p for p in family["products"] if p.get("canonical_name") == name)
-                self.assertIn(size, row.get("formats_ml", []))
+                self.assertEqual(row.get("formats_ml"), sizes)
+                self.assertEqual(row.get("concentration"), "Eau de Parfum")
 
     def test_two_new_canonical_products_have_unique_ids_and_family_rows(self):
         new_names = {"Odyssey Spectra Rainbow Edition", "Odyssey Dubai Chocolat"}
