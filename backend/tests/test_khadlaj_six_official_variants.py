@@ -1,4 +1,4 @@
-"""Regression tests for six Khadlaj official product-page variants."""
+"""Regression tests for nine Khadlaj official product-page variants."""
 import json
 import unittest
 from pathlib import Path
@@ -14,6 +14,9 @@ EXPECTED = {
     "Qarar": ("SH-KHADLAJ-QARAR", 60, "Extrait de Parfum", "6298043071628", "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum"),
     "Ihthiraam": ("SH-KHADLAJ-IHTHIRAAM", 60, "Extrait de Parfum", "6298043072229", "https://khadlaj-perfumes.com/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance"),
     "Icon": ("SH-KHADLAJ-ICON", 100, "Eau de Parfum", "6298043071215", "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"),
+    "Zayaan Silver": ("SH-KHADLAJ-ZAYAAN-SILVER", 100, "Eau de Parfum", "6298043070058", "https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men"),
+    "Onyx Gold": ("SH-KHADLAJ-6494ea68", 100, "Eau de Parfum", "6298043070140", "https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae"),
+    "Peach Velvet": ("SH-KHADLAJ-PEACH-VELVET", 100, "Extrait de Parfum", "6298043070034", "https://khadlaj-perfumes.com/collections/all/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
