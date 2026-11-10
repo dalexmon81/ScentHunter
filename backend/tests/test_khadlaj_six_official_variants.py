@@ -41,6 +41,9 @@ EXPECTED = {
     "Empire Empress": ("SH-KHADLAJ-SPRAY-HARVEST-083", 100, "Eau de Parfum", "6291107975894", "https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae"),
     "Empire Crown": ("SH-KHADLAJ-SPRAY-HARVEST-084", 100, "Eau de Parfum", "6291107975887", "https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae"),
     "Empire Regent": ("SH-KHADLAJ-SPRAY-HARVEST-085", 100, "Eau de Parfum", "6291107975900", "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae"),
+    "25 Integrity": ("SH-KHADLAJ-SPRAY-HARVEST-078", 100, "Eau de Parfum", "6291107975375", "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray"),
+    "25 Heritage": ("SH-KHADLAJ-SPRAY-HARVEST-077", 100, "Eau de Parfum", "6291107975368", "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray"),
+    "25 Loyalty": ("SH-KHADLAJ-SPRAY-HARVEST-076", 100, "Eau de Parfum", "6291107975382", "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
