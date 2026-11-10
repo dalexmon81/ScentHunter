@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/maison-alhambra-glacier-fusion-mysterious-amber-official-variants-2026-11-10
+      - catalog/khadlaj-official-2026-11-10-next-batch
   push:
     branches:
-      - catalog/maison-alhambra-glacier-fusion-mysterious-amber-official-variants-2026-11-10
+      - catalog/khadlaj-official-2026-11-10-next-batch
 
 permissions:
   contents: read
