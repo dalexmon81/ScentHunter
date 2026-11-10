@@ -3750,8 +3750,14 @@
         "Onyx Silver",
         "Khadlaj Onyx Silver"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-81775c55",
@@ -49108,6 +49114,19 @@
       "gtin": "6291107979182",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ce66d76f",
+      "size_ml": 100,
+      "aliases": [
+        "Onyx Silver 100 ml",
+        "Khadlaj Onyx Silver 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ce66d76f-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6298043071161",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae"
     }
   ]
 }
