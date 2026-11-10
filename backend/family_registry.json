@@ -3738,7 +3738,11 @@
           "aliases": [
             "Bayn Al Asrar",
             "Paris Corner Bayn Al Asrar"
-          ]
+          ],
+          "formats_ml": [
+            80
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Blackberry Wish",
@@ -3932,14 +3936,22 @@
           "aliases": [
             "December Rose",
             "Paris Corner December Rose"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "December Vanilla",
           "aliases": [
             "December Vanilla",
             "Paris Corner December Vanilla"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Deux II Expressions, North Stag",
@@ -4307,21 +4319,33 @@
           "aliases": [
             "Khair Confection",
             "Paris Corner Khair Confection"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Felicity",
           "aliases": [
             "Khair Felicity",
             "Paris Corner Khair Felicity"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Fusion",
           "aliases": [
             "Khair Fusion",
             "Paris Corner Khair Fusion"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Peach Delulu",
@@ -4335,7 +4359,11 @@
           "aliases": [
             "Khair Pistachio",
             "Paris Corner Khair Pistachio"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khayal",
@@ -4498,21 +4526,33 @@
           "aliases": [
             "Mawj Appletini",
             "Paris Corner Mawj Appletini"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mawj Cognac Blaze",
           "aliases": [
             "Mawj Cognac Blaze",
             "Paris Corner Mawj Cognac Blaze"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mawj Moscow Mule",
           "aliases": [
             "Mawj Moscow Mule",
             "Paris Corner Mawj Moscow Mule"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mehwish",
@@ -4673,7 +4713,11 @@
           "aliases": [
             "Minya Coco Lush",
             "Paris Corner Minya Coco Lush"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Misty Dawn Musk Collection",

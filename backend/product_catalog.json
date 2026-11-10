@@ -3060,8 +3060,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-804ac919",
@@ -3230,8 +3234,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ef841988",
@@ -3247,8 +3255,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-f3a6e129",
@@ -18494,8 +18506,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-appletini"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/mawj-appletini",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE",
@@ -18511,8 +18527,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze"
+      "source_product_url": "https://de.pariscornereurope.com/products/mawj-cognac-blaze",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
@@ -18528,8 +18548,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MEHWISH",
@@ -19009,7 +19033,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-confection",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-confection",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-confection"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-confection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-FELICITY",
@@ -19026,7 +19054,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-felicity",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-FUSION",
@@ -19043,7 +19075,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-fusion"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-fusion",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-PEACH-DELULU",
@@ -19080,7 +19116,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-pistachio"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-pistachio",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MINYA",
@@ -19138,7 +19178,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/minya-coco-lush",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MOLTEN-CARAMEL",
@@ -52212,6 +52256,149 @@
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
       "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-pink"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cd8b1f8e",
+      "variant_id": "SHV-SH-PARIS-CORNER-cd8b1f8e-80-EDP",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Bayn Al Asrar 80 ml",
+        "Paris Corner Bayn Al Asrar 80 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-5239463e",
+      "variant_id": "SHV-SH-PARIS-CORNER-5239463e-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "December Rose 85 ml",
+        "Paris Corner December Rose 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ef841988",
+      "variant_id": "SHV-SH-PARIS-CORNER-ef841988-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "December Vanilla 85 ml",
+        "Paris Corner December Vanilla 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-PISTACHIO",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-PISTACHIO-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Pistachio 100 ml",
+        "Paris Corner Khair Pistachio 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-pistachio"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-CONFECTION",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-CONFECTION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Confection 100 ml",
+        "Paris Corner Khair Confection 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-confection",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-confection",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-confection"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-FUSION",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-FUSION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Fusion 100 ml",
+        "Paris Corner Khair Fusion 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-fusion"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-FELICITY",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-FELICITY-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Felicity 100 ml",
+        "Paris Corner Khair Felicity 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-felicity"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-APPLETINI",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-APPLETINI-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Appletini 100 ml",
+        "Paris Corner Mawj Appletini 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/mawj-appletini"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-MOSCOW-MULE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Moscow Mule 100 ml",
+        "Paris Corner Mawj Moscow Mule 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Cognac Blaze 100 ml",
+        "Paris Corner Mawj Cognac Blaze 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
+      "source_product_url": "https://de.pariscornereurope.com/products/mawj-cognac-blaze"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINYA-COCO-LUSH",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINYA-COCO-LUSH-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Minya Coco Lush 100 ml",
+        "Paris Corner Minya Coco Lush 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/minya-coco-lush"
     }
   ]
 }
