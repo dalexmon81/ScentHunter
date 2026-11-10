@@ -148,3 +148,34 @@ def test_unknown_availability_is_matched_but_not_promoted():
             assert session.scalars(select(Offer)).all() == []
     finally:
         engine.dispose()
+
+
+def test_duplicate_gtin_stays_pending_for_manual_review():
+    engine, (store_id, variant_id) = _database()
+    try:
+        with Session(engine) as session, session.begin():
+            original = session.get(ProductVariant, variant_id)
+            duplicate = ProductVariant(
+                fragrance_id=original.fragrance_id,
+                concentration="EDT", size_ml=100,
+                gtin="1234567890123",
+                canonical_key="test|fragrance|edt|100",
+            )
+            session.add(duplicate)
+
+        with Session(engine) as session, session.begin():
+            result = persist_notino_record(
+                session, store_id=store_id, raw_record=_record("SKU-AMBIGUOUS"),
+            )
+            assert result.status == "pending"
+            assert result.offer_id is None
+            assert result.product_variant_id is None
+            assert result.reason == "gtin_matches_multiple_canonical_variants"
+
+        with Session(engine) as session:
+            raw = session.get(IngestionRaw, result.ingestion_raw_id)
+            assert raw is not None and raw.status == "pending"
+            assert raw.product_variant_id is None
+            assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
