@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
+      - catalog/al-haramain-official-variants-2026-11-10
   push:
     branches:
-      - catalog/integrated-official-audits-2026-11-10
+      - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
 
 permissions:
   contents: read
