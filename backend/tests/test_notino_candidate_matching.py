@@ -28,6 +28,9 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
 
     def test_extracts_size_and_concentration(self):
         self.assertEqual(parse_size("100 ml"), 100.0)
+        self.assertEqual(parse_size("3.4 fl oz"), 100.55)
+        self.assertEqual(parse_size("1,7 fl. oz."), 50.27)
+        self.assertIsNone(parse_size("3.4 oz"))
         self.assertEqual(extract_concentration("Dior Sauvage Eau de Parfum 100 ml"), "EDP")
 
     def test_exact_brand_name_size_and_concentration_is_review_only(self):
