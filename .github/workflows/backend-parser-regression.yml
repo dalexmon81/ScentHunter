@@ -10,6 +10,7 @@ on:
       - fix/catalog-hydration-mainline
       - fix/catalog-hydration-slug-normalization
       - fix/notino-authorized-feed-import
+      - feature/notino-cj-feed-ingestion-2026-11-10
 
 jobs:
   parser-regression:
