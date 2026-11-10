@@ -5113,9 +5113,14 @@
         "9 AM Dive",
         "Afnan 9 AM Dive"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.de.afnan.com/en/products/9-am-dive",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/9-am-dive",
+      "source_product_url": "https://www.de.afnan.com/en/products/9-am-dive",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-816ce12c",
@@ -5172,9 +5177,14 @@
         "Rare Reef",
         "Afnan Rare Reef"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/rare-reef",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-reef",
+      "source_product_url": "https://www.at.afnan.com/en/products/rare-reef",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AFNAN-068d05a5",
@@ -5205,9 +5215,14 @@
         "Turathi Brown Homme",
         "Afnan Turathi Brown Homme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/turathi-brown-homme",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/turathi-brown-homme",
+      "source_product_url": "https://www.at.afnan.com/en/products/turathi-brown-homme",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-13721551",
@@ -5261,9 +5276,14 @@
         "Historic Olmeda",
         "Afnan Historic Olmeda"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/products/historic-olmeda",
+      "source_evidence_url": "https://www.at.afnan.com/products/historic-olmeda",
+      "source_product_url": "https://www.at.afnan.com/products/historic-olmeda",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-c1d3f6f1",
@@ -53540,6 +53560,50 @@
       "gender": "Unisex",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-AFNAN-9e3c80fa",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM Dive 100 ml Eau de Parfum",
+        "Afnan 9 AM Dive 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-9e3c80fa-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/9-am-dive"
+    },
+    {
+      "product_id": "SH-AFNAN-e408d61b",
+      "size_ml": 100,
+      "aliases": [
+        "Rare Reef 100 ml Extrait de Parfum",
+        "Afnan Rare Reef 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-e408d61b-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-reef"
+    },
+    {
+      "product_id": "SH-AFNAN-5cdc0bae",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Brown Homme 90 ml Eau de Parfum",
+        "Afnan Turathi Brown Homme 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5cdc0bae-90-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/turathi-brown-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-62b409e4",
+      "size_ml": 100,
+      "aliases": [
+        "Historic Olmeda 100 ml Eau de Parfum",
+        "Afnan Historic Olmeda 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-62b409e4-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/products/historic-olmeda"
     }
   ]
 }
