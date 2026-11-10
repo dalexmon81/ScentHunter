@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/maison-alhambra-glacier-fusion-mysterious-amber-official-variants-2026-11-10
+      - catalog/maison-asrar-official-name-audit-2026-11-10
   push:
     branches:
-      - catalog/maison-asrar-official-name-audit-2026-11-10
+      - catalog/afnan-official-variants-2026-11-10
 
 permissions:
   contents: read
@@ -34,6 +34,7 @@ jobs:
             backend.tests.test_family_registry_identity_normalization \
             backend.tests.test_requested_brand_catalog_coverage \
             backend.tests.test_official_afnan_armaf_variant_batch_2026_11_10 \
+            backend.tests.test_afnan_four_official_variants_2026_11_10 \
             backend.tests.test_khadlaj_shiyaaka_rose_gold_official_2026_11_10 \
             backend.tests.test_al_wataniah_official_details_2026_11_10 \
             backend.tests.test_assaf_wild_colt_alex_enable_official_variants_2026_11_10 \
