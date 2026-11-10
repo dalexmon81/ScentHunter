@@ -3498,11 +3498,13 @@
         "Khadlaj Empire Victor"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-c7ff964c",
@@ -34162,8 +34164,14 @@
         "Empire Empress",
         "Khadlaj Empire Empress"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-084",
@@ -34177,8 +34185,14 @@
         "Empire Crown",
         "Khadlaj Empire Crown"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-085",
@@ -34192,8 +34206,14 @@
         "Empire Regent",
         "Khadlaj Empire Regent"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-086",
@@ -39381,8 +39401,9 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-935bcf95-100-000",
       "concentration": "Eau de Parfum",
-      "source_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "gtin": "6291107975917"
     },
     {
       "product_id": "SH-KHADLAJ-c7ff964c",
@@ -49317,6 +49338,45 @@
       "gtin": "6291107975931",
       "source_url": "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-083",
+      "size_ml": 100,
+      "aliases": [
+        "Empire Empress 100 ml",
+        "Khadlaj Empire Empress 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-083-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975894",
+      "source_url": "https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-084",
+      "size_ml": 100,
+      "aliases": [
+        "Empire Crown 100 ml",
+        "Khadlaj Empire Crown 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-084-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975887",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-085",
+      "size_ml": 100,
+      "aliases": [
+        "Empire Regent 100 ml",
+        "Khadlaj Empire Regent 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-085-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975900",
+      "source_url": "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae"
     }
   ]
 }
