@@ -76,6 +76,7 @@ jobs:
             backend.tests.test_maison_alhambra_womens_detail_batch_2026_11_10 \
             backend.tests.test_maison_alhambra_unisex_detail_batch_2026_11_10 \
             backend.tests.test_armaf_cdn_intense_extrait_70ml_2026_11_10 \
+            backend.tests.test_armaf_cdn_woman_extrait_variants_2026_11_10 \
             backend.tests.test_maison_asrar_official_name_audit_2026_11_10 \
             backend.tests.test_maison_asrar_official_identity_pages_2026_11_10 \
             backend.tests.test_khadlaj_hareem_al_sultan_gold_oil_2026_11_10 \
