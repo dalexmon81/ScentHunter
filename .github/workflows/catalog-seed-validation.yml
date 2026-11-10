@@ -15,6 +15,7 @@ on:
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/khadlaj-six-official-variants-2026-11-10
       - catalog/khadlaj-41-variants-consolidated-2026-11-10
+      - catalog/cumulative-brand-variants-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -22,6 +23,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/cumulative-brand-variants-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
@@ -91,4 +93,8 @@ jobs:
           backend.tests.test_afnan_official_global_storefront
           backend.tests.test_aromatix_official_catalog
           backend.tests.test_maison_asrar_official_detail_reconciliation
+          backend.tests.test_gulf_orchid_new_arrivals_2026_11_10
+          backend.tests.test_maison_asrar_new_arrivals_2026_11_10
+          backend.tests.test_arabiyat_prestige_new_launch_2026_11_10
+          backend.tests.test_khadlaj_cumulative_catalog_integrity
           -v
