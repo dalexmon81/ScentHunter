@@ -1,0 +1,61 @@
+"""Regression tests for six Khadlaj official product-page variants."""
+import json
+import unittest
+from pathlib import Path
+
+BACKEND = Path(__file__).resolve().parents[1]
+CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
+REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
+
+EXPECTED = {
+    "Muse": ("SH-KHADLAJ-MUSE", 100, "Eau de Parfum", "6298043072748", "https://khadlaj-perfumes.com/collections/deals/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women"),
+    "Sueno": ("SH-KHADLAJ-SUENO", 100, "Extrait de Parfum", "6298043072809", "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/sueno-100ml-extrait-de-parfum-for-women"),
+    "Saraya": ("SH-KHADLAJ-SARAYA", 60, "Extrait de Parfum", "6298043072380", "https://khadlaj-perfumes.com/collections/flash-sale/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women"),
+    "Qarar": ("SH-KHADLAJ-QARAR", 60, "Extrait de Parfum", "6298043071628", "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/khadlaj-qarar-unisex-bold-oriental-extrait-de-parfum"),
+    "Ihthiraam": ("SH-KHADLAJ-IHTHIRAAM", 60, "Extrait de Parfum", "6298043072229", "https://khadlaj-perfumes.com/products/ihthraam-extrait-de-parfum-spray-oriental-unisex-fragrance"),
+    "Icon": ("SH-KHADLAJ-ICON", 100, "Eau de Parfum", "6298043071215", "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-icon-100-ml-eau-de-parfum-spray-for-men"),
+}
+
+class KhadlajOfficialVariantBatchTests(unittest.TestCase):
+    def test_existing_canonical_products_are_source_verified(self):
+        for name, (product_id, size, concentration, gtin, url) in EXPECTED.items():
+            with self.subTest(product=name):
+                matches = [p for p in CATALOG["products"] if p.get("brand") == "Khadlaj" and p.get("canonical_name") == name]
+                self.assertEqual(len(matches), 1)
+                product = matches[0]
+                self.assertEqual(product["product_id"], product_id)
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertEqual(product["source_url"], url)
+                self.assertEqual(product["source_product_url"], url)
+                self.assertEqual(product["source_evidence_url"], url)
+                self.assertEqual(product["formats_ml"], [size])
+                self.assertEqual(product["concentration"], concentration)
+
+    def test_each_product_has_one_gtin_backed_official_variant(self):
+        for name, (product_id, size, concentration, gtin, url) in EXPECTED.items():
+            with self.subTest(product=name):
+                variants = [v for v in CATALOG["variants"] if v.get("product_id") == product_id]
+                self.assertEqual(len(variants), 1)
+                variant = variants[0]
+                self.assertEqual(variant["variant_id"], f"SHV-{product_id}-{size}-000")
+                self.assertEqual(variant["size_ml"], size)
+                self.assertEqual(variant["concentration"], concentration)
+                self.assertEqual(variant["gtin"], gtin)
+                self.assertEqual(variant["source_url"], url)
+                self.assertEqual(variant["source_evidence_url"], url)
+
+    def test_khadlaj_family_registry_has_one_canonical_sueno_row(self):
+        family = next(f for f in REGISTRY["families"] if f.get("family_id") == "khadlaj_catalog")
+        sueno_rows = [p for p in family["products"] if p.get("canonical_name") in ("Sueno", "Sueño")]
+        self.assertEqual(len(sueno_rows), 1)
+        self.assertEqual(sueno_rows[0]["canonical_name"], "Sueno")
+        self.assertIn("Sueño", sueno_rows[0].get("aliases", []))
+        for name, (_, size, _, _, _) in EXPECTED.items():
+            with self.subTest(product=name):
+                matches = [p for p in family["products"] if p.get("canonical_name") == name]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].get("formats_ml"), [size])
+
+
+if __name__ == "__main__":
+    unittest.main()
