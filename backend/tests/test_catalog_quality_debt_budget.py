@@ -1,9 +1,10 @@
 """Monotonic quality-debt budgets for the canonical catalog seed.
 
-These ceilings capture the audited 10 Nov 2026 baseline. They are not claims
-that every legacy record is wrong: missing concentration or variant data must
-remain unset when first-party evidence does not establish it. New work must
-not increase these backlogs; subsequent verified audits should lower them.
+These ceilings capture the audited 10 Nov 2026 baseline including evidence-safe
+corrections. They are not claims that every legacy record is wrong: missing
+concentration or variant data must remain unset when first-party evidence does
+not establish it. New work must not increase these backlogs; subsequent verified
+audits should lower them.
 """
 import json
 import unittest
@@ -31,7 +32,7 @@ class CatalogQualityDebtBudgetTests(unittest.TestCase):
             if p.get("identity_status") == "source_verified_name"
             and p["product_id"] not in self.products_with_variants
         ]
-        self.assertLessEqual(len(pending), 254)  # Vanilla Voyage is source-verified but has no documented size
+        self.assertLessEqual(len(pending), 255)  # Vanilla Voyage and Tahara Vanilla Musk are verified names without documented variant attributes
 
     def test_variants_without_any_source_url_do_not_increase(self):
         missing = [
