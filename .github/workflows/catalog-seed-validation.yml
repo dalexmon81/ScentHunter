@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/khadlaj-official-2026-11-10-next-batch
+      - catalog/maison-asrar-official-identity-pages-2026-11-10
   push:
     branches:
-      - catalog/khadlaj-official-2026-11-10-next-batch
+      - catalog/maison-asrar-official-identity-pages-2026-11-10
 
 permissions:
   contents: read
@@ -44,6 +44,7 @@ jobs:
             backend.tests.test_maison_alhambra_kismet_matiere_official_2026_11_10 \
             backend.tests.test_maison_alhambra_glacier_fusion_mysterious_amber_2026_11_10 \
             backend.tests.test_khadlaj_official_new_launch_completeness_2026_11_10 \
+            backend.tests.test_maison_asrar_official_identity_pages_2026_11_10 \
             backend.tests.test_khadlaj_cumulative_catalog_integrity \
             backend.tests.test_al_haramain_catalog \
             backend.tests.test_bujairami_catalog \
