@@ -45,4 +45,5 @@ jobs:
           tests/test_notino_authorized_feed.py
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
+          tests/test_notino_phase2_adapter.py
           backend/tests/test_seed_catalog_store_safety.py
