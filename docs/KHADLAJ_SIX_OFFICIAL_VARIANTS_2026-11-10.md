@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes thirteen existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes sixteen existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -19,6 +19,9 @@ This change completes thirteen existing Khadlaj canonical identities using offic
 | Nafais Magrib | SH-KHADLAJ-NAFAIS-MAGRIB | 100 ml | Eau de Parfum | 6298043070010 |
 | Mansion | SH-KHADLAJ-MANSION | 100 ml | Eau de Parfum | 6298043070331 |
 | Private Blend | SH-KHADLAJ-PRIVATE-BLEND | 100 ml | Extrait de Parfum | 6291107979403 |
+| Zayaan Gold | SH-KHADLAJ-ZAYAAN-GOLD | 100 ml | Eau de Parfum | 6298043070041 |
+| Nuha Cherry Blush | SH-KHADLAJ-37d5907b | 85 ml | Eau de Parfum | 6291107979175 |
+| Oud Pour Leather | SH-KHADLAJ-OUD-POUR-LEATHER | 100 ml | Eau de Parfum | 6291107977843 |
 
 ## Official evidence
 
@@ -35,14 +38,17 @@ This change completes thirteen existing Khadlaj canonical identities using offic
 - Nafais Magrib: https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-nafais-magrib-100-ml-eau-de-parfum-for-men-women
 - Mansion: https://khadlaj-perfumes.com/collections/unisex-1/products/mansion-eau-de-parfum-spray-for-unisex-scents-by-khadlaj-dubai-uae
 - Private Blend: https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men
+- Zayaan Gold: https://my.khadlaj-perfumes.com/products/zayaan-gold-100-ml-eau-de-parfum-for-men
+- Nuha Cherry Blush: https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae
+- Oud Pour Leather: https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women
 
 ## Data integrity
 
-- Reused all thirteen existing canonical product IDs.
+- Reused all sixteen existing canonical product IDs.
 - Added one explicit variant per product, with size, concentration, GTIN and official evidence URL.
 - Updated the Khadlaj family registry formats.
 - Consolidated the duplicate Sueño / Sueno family-registry row into the catalog's existing canonical spelling Sueno, retaining Sueño as an alias.
-- Added Private Blend Tobac Extra as an alias for the existing Private Blend canonical identity.
+- Added the official Tobac Extra name as an alias of the existing Private Blend identity.
 - No price, stock, availability, shipping or retailer offer fields were added.
 
 ## Regression coverage
