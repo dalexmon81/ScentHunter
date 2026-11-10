@@ -4851,7 +4851,11 @@
           "aliases": [
             "Nouf",
             "Paris Corner Nouf"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ophidian Black Cherry",
@@ -4866,14 +4870,22 @@
           "aliases": [
             "Ophidian Mango Bliss",
             "Paris Corner Ophidian Mango Bliss"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ophidian Sweet Surrender",
           "aliases": [
             "Ophidian Sweet Surrender",
             "Paris Corner Ophidian Sweet Surrender"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Opulentia Empyreal Emir",
@@ -5142,7 +5154,11 @@
           "aliases": [
             "Rifaaqat",
             "Paris Corner Rifaaqat"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Rifaaqat Adorn",
@@ -5207,7 +5223,11 @@
           "aliases": [
             "Taskeen Caramel Cascade",
             "Paris Corner Taskeen Caramel Cascade"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Taskeen Lactea Divina",
@@ -5223,7 +5243,11 @@
           "aliases": [
             "Taskeen Marina",
             "Paris Corner Taskeen Marina"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Taskeen Wowie",
@@ -5411,7 +5435,11 @@
           "aliases": [
             "Virilis",
             "Paris Corner Virilis"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Vivant Sunlit",

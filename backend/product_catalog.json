@@ -19765,7 +19765,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/taskeen-caramel-cascade",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-TASKEEN-LACTEA-DIVINA",
@@ -19802,7 +19806,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/taskeen-marina"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-taskeen-marina-edp-u-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-TASKEEN-WOWIE",
@@ -20075,7 +20083,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/virilis",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/virilis",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/virilis"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/virilis",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VIVANT-SUNLIT",
@@ -25993,7 +26005,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/nouf",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/nouf",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/nouf"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/nouf",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-729b7589",
@@ -26031,7 +26047,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss"
+      "source_product_url": "https://de.pariscornereurope.com/products/ophidian-mango-bliss",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-c3372b4d",
@@ -26048,7 +26068,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/ophidian-sweet-surrender",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-3605429a",
@@ -26436,7 +26460,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/rifaaqat"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-rifaaqat-edp-u-85-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-bf596bfa",
@@ -52501,6 +52529,97 @@
       "source_url": "https://www.pariscornerperfumes.com/products/manaal-1",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1",
       "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-manaal-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TASKEEN-CARAMEL-CASCADE",
+      "variant_id": "SHV-SH-PARIS-CORNER-TASKEEN-CARAMEL-CASCADE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Taskeen Caramel Cascade 100 ml",
+        "Paris Corner Taskeen Caramel Cascade 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/taskeen-caramel-cascade"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIRILIS",
+      "variant_id": "SHV-SH-PARIS-CORNER-VIRILIS-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Virilis 100 ml",
+        "Paris Corner Virilis 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/virilis",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/virilis",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/virilis"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TASKEEN-MARINA",
+      "variant_id": "SHV-SH-PARIS-CORNER-TASKEEN-MARINA-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Taskeen Marina 100 ml",
+        "Paris Corner Taskeen Marina 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-taskeen-marina-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-c3372b4d",
+      "variant_id": "SHV-SH-PARIS-CORNER-c3372b4d-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ophidian Sweet Surrender 100 ml",
+        "Paris Corner Ophidian Sweet Surrender 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/ophidian-sweet-surrender"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-038c48d3",
+      "variant_id": "SHV-SH-PARIS-CORNER-038c48d3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nouf 100 ml",
+        "Paris Corner Nouf 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/nouf",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/nouf",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/nouf"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-91232b6e",
+      "variant_id": "SHV-SH-PARIS-CORNER-91232b6e-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ophidian Mango Bliss 100 ml",
+        "Paris Corner Ophidian Mango Bliss 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
+      "source_product_url": "https://de.pariscornereurope.com/products/ophidian-mango-bliss"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-c3e787e0",
+      "variant_id": "SHV-SH-PARIS-CORNER-c3e787e0-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rifaaqat 85 ml",
+        "Paris Corner Rifaaqat 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-rifaaqat-edp-u-85-ml"
     }
   ]
 }
