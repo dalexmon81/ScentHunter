@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes nine existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes thirteen existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -15,6 +15,10 @@ This change completes nine existing Khadlaj canonical identities using official 
 | Zayaan Silver | SH-KHADLAJ-ZAYAAN-SILVER | 100 ml | Eau de Parfum | 6298043070058 |
 | Onyx Gold | SH-KHADLAJ-6494ea68 | 100 ml | Eau de Parfum | 6298043070140 |
 | Peach Velvet | SH-KHADLAJ-PEACH-VELVET | 100 ml | Extrait de Parfum | 6298043070034 |
+| Strawberry Shake | SH-KHADLAJ-STRAWBERRY-SHAKE | 100 ml | Eau de Parfum | 6298043070652 |
+| Nafais Magrib | SH-KHADLAJ-NAFAIS-MAGRIB | 100 ml | Eau de Parfum | 6298043070010 |
+| Mansion | SH-KHADLAJ-MANSION | 100 ml | Eau de Parfum | 6298043070331 |
+| Private Blend | SH-KHADLAJ-PRIVATE-BLEND | 100 ml | Extrait de Parfum | 6291107979403 |
 
 ## Official evidence
 
@@ -27,13 +31,18 @@ This change completes nine existing Khadlaj canonical identities using official 
 - Zayaan Silver: https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men
 - Onyx Gold: https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae
 - Peach Velvet: https://khadlaj-perfumes.com/collections/all/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae
+- Strawberry Shake: https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/strawberry-shake-eau-de-parfum-spray-for-women-dubai-uae-online
+- Nafais Magrib: https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-nafais-magrib-100-ml-eau-de-parfum-for-men-women
+- Mansion: https://khadlaj-perfumes.com/collections/unisex-1/products/mansion-eau-de-parfum-spray-for-unisex-scents-by-khadlaj-dubai-uae
+- Private Blend: https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men
 
 ## Data integrity
 
-- Reused all nine existing canonical product IDs.
+- Reused all thirteen existing canonical product IDs.
 - Added one explicit variant per product, with size, concentration, GTIN and official evidence URL.
 - Updated the Khadlaj family registry formats.
 - Consolidated the duplicate Sueño / Sueno family-registry row into the catalog's existing canonical spelling Sueno, retaining Sueño as an alias.
+- Added Private Blend Tobac Extra as an alias for the existing Private Blend canonical identity.
 - No price, stock, availability, shipping or retailer offer fields were added.
 
 ## Regression coverage
