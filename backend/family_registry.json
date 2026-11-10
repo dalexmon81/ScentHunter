@@ -7192,14 +7192,25 @@
         {
           "canonical_name": "Yum Yum",
           "aliases": [
-            "Armaf Yum Yum"
-          ]
+            "Yum Yum",
+            "Armaf Yum Yum",
+            "Delights Yum Yum"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Infinity Silver",
           "aliases": [
+            "Infinity Silver",
             "Armaf Infinity Silver"
-          ]
+          ],
+          "formats_ml": [
+            105
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ombre Oud Intense Man",
@@ -7288,8 +7299,13 @@
         {
           "canonical_name": "Ombre D'Or",
           "aliases": [
+            "Ombre D'Or",
             "Armaf Ombre D'Or"
-          ]
+          ],
+          "formats_ml": [
+            75
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Toffee Coffee",
@@ -7341,8 +7357,14 @@
         {
           "canonical_name": "Island Bliss",
           "aliases": [
-            "Armaf Island Bliss"
-          ]
+            "Island Bliss",
+            "Armaf Island Bliss",
+            "Delights Island Bliss"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Island Breeze",

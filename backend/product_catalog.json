@@ -14528,13 +14528,19 @@
       "family_name": "Yum Yum",
       "aliases": [
         "Yum Yum",
-        "Armaf Yum Yum"
+        "Armaf Yum Yum",
+        "Delights Yum Yum"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/yum-yum-spr",
       "source_evidence_url": "https://armaf.com/products/yum-yum-spr",
       "source_product_url": "https://armaf.com/products/yum-yum-spr",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-yum-yum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-3810c777",
@@ -14553,7 +14559,11 @@
       "source_evidence_url": "https://armaf.com/products/infinity-spr-1",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/infinity-spr-1",
-      "gender": "Men"
+      "gender": "Men",
+      "source_size_evidence_url": "https://armaf.eu/products/infinity-silver-1",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-890a715f",
@@ -14801,7 +14811,12 @@
       "source_url": "https://armaf.com/products/ombre-dor",
       "source_evidence_url": "https://armaf.com/products/ombre-dor",
       "source_product_url": "https://armaf.com/products/ombre-dor",
-      "gender": "Men"
+      "gender": "Men",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/ombre-dor",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-ARMAF-7becf4c9",
@@ -14938,14 +14953,19 @@
       "family_name": "Island Bliss",
       "aliases": [
         "Island Bliss",
-        "Armaf Island Bliss"
+        "Armaf Island Bliss",
+        "Delights Island Bliss"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/island-bliss-delights-spr",
       "source_evidence_url": "https://armaf.com/products/island-bliss-delights-spr",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/island-bliss-delights-spr",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-island-bliss",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-58334fea",
@@ -52726,6 +52746,64 @@
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
       "source_product_url": "https://armaf.com/products/club-de-nuit-maleka",
       "source_size_evidence_url": "https://fr.armaf.eu/products/club-de-nuit-maleka"
+    },
+    {
+      "product_id": "SH-ARMAF-3810c777",
+      "variant_id": "SHV-SH-ARMAF-3810c777-105-EDP",
+      "size_ml": 105,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Infinity Silver 105 ml",
+        "Armaf Infinity Silver 105 ml"
+      ],
+      "source_url": "https://armaf.com/products/infinity-spr-1",
+      "source_product_url": "https://armaf.com/products/infinity-spr-1",
+      "source_evidence_url": "https://armaf.com/products/infinity-spr-1",
+      "source_size_evidence_url": "https://armaf.eu/products/infinity-silver-1"
+    },
+    {
+      "product_id": "SH-ARMAF-d1a51dbe",
+      "variant_id": "SHV-SH-ARMAF-d1a51dbe-75-EDP",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ombre D'Or 75 ml",
+        "Armaf Ombre D'Or 75 ml"
+      ],
+      "source_url": "https://armaf.com/products/ombre-dor",
+      "source_product_url": "https://armaf.com/products/ombre-dor",
+      "source_evidence_url": "https://armaf.com/products/ombre-dor",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/ombre-dor"
+    },
+    {
+      "product_id": "SH-ARMAF-8b8e5648",
+      "variant_id": "SHV-SH-ARMAF-8b8e5648-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Island Bliss 100 ml",
+        "Armaf Island Bliss 100 ml",
+        "Delights Island Bliss"
+      ],
+      "source_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "source_product_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "source_evidence_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-island-bliss"
+    },
+    {
+      "product_id": "SH-ARMAF-ff1a16c2",
+      "variant_id": "SHV-SH-ARMAF-ff1a16c2-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Yum Yum 100 ml",
+        "Armaf Yum Yum 100 ml",
+        "Delights Yum Yum"
+      ],
+      "source_url": "https://armaf.com/products/yum-yum-spr",
+      "source_product_url": "https://armaf.com/products/yum-yum-spr",
+      "source_evidence_url": "https://armaf.com/products/yum-yum-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-yum-yum"
     }
   ]
 }
