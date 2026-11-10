@@ -20,6 +20,7 @@ on:
       - catalog/gulf-orchid-five-variants-brand-reconcile-2026-11-10
       - catalog/velixir-arabiyat-twelve-variants-2026-11-10
       - catalog/cumulative-final-integration-2026-11-10
+      - catalog/catalog-complete-final-evidence-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -27,6 +28,9 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/al-wataniah-81-variants-cumulative-2026-11-10
+      - catalog/paris-corner-eleven-details-cumulative-2026-11-10
+      - catalog/catalog-complete-wataniah-paris-reconciled-2026-11-10
       - catalog/catalog-complete-final-evidence-2026-11-10
       - catalog/khadlaj-four-remaining-variants-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
@@ -79,6 +83,7 @@ jobs:
           backend.tests.test_khadlaj_la_fede
           backend.tests.test_lattafa_catalog
           backend.tests.test_paris_corner_catalog_parity
+          backend.tests.test_paris_corner_eleven_official_details
           backend.tests.test_swiss_arabian_detail_evidence
           backend.tests.test_arabiyat_prestige_extrait
           backend.tests.test_arabiyat_prestige_marwa_extrait
@@ -93,7 +98,6 @@ jobs:
           backend.tests.test_cumulative_catalog_integration_2026_11_10
           backend.tests.test_maison_asrar_name_verification_2026_11_10
           backend.tests.test_lattafa_concentrated_oil_variants_2026_11_10
-          backend.tests.test_maison_alhambra_official_variants_2026_11_10
           backend.tests.test_arabiyat_prestige_new_launch_2026_11_10
           backend.tests.test_khadlaj_official_spray_fourth_followup
           backend.tests.test_khadlaj_official_spray_third_followup
