@@ -9957,9 +9957,18 @@
         "Galactic Men Intense",
         "Maison Alhambra Galactic Men Intense"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-men-intense-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-men-intense-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-men-intense-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men",
+      "gtins": [
+        "6290362340515"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-0593d6da",
@@ -10619,9 +10628,18 @@
         "Jorge di Profumo",
         "Maison Alhambra Jorge di Profumo"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-jorge-di-profumo-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-jorge-di-profumo-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-jorge-di-profumo-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men",
+      "gtins": [
+        "6291108730140"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-6d5e1489",
@@ -13559,6 +13577,131 @@
       ],
       "concentration": "Extrait de Parfum",
       "source_product_url": "https://officialmykonos.com/products/mykonos-verve-extrait-de-parfum-when-in-paris-edp-50ml"
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-YEAH",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Yeah",
+      "name": "Yeah",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Yeah",
+      "aliases": [
+        "Yeah",
+        "Maison Alhambra Yeah"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men",
+      "gtins": [
+        "6291108730324"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-YEAH-MAN-PARFUM",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Yeah! Man Parfum",
+      "name": "Yeah! Man Parfum",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Yeah! Man Parfum",
+      "aliases": [
+        "Yeah! Man Parfum",
+        "Maison Alhambra Yeah! Man Parfum"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-man-parfum-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-man-parfum-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-man-parfum-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men",
+      "gtins": [
+        "6290360590745"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-TORO-POUR-HOMME-GLACE",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Toro Pour Homme Glace",
+      "name": "Toro Pour Homme Glace",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Toro Pour Homme Glace",
+      "aliases": [
+        "Toro Pour Homme Glace",
+        "Maison Alhambra Toro Pour Homme Glace"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-toro-pour-homme-glace-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-toro-pour-homme-glace-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-toro-pour-homme-glace-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men",
+      "gtins": [
+        "6290362340942"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-YOUR-TOUCH-AMBER",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Your Touch Amber",
+      "name": "Your Touch Amber",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Your Touch Amber",
+      "aliases": [
+        "Your Touch Amber",
+        "Maison Alhambra Your Touch Amber"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-your-touch-amber-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-your-touch-amber-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-your-touch-amber-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men",
+      "gtins": [
+        "6290362340973"
+      ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-OPULENCE-LEATHER",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Opulence Leather",
+      "name": "Opulence Leather",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Opulence Leather",
+      "aliases": [
+        "Opulence Leather",
+        "Maison Alhambra Opulence Leather"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-opulence-leather-eau-de-parfum-for-men",
+      "source_product_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-opulence-leather-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-opulence-leather-eau-de-parfum-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gender": "Men",
+      "gtins": [
+        "6291108730041"
+      ]
     },
     {
       "product_id": "SH-ARMAF-88c7f40b",
@@ -54713,6 +54856,104 @@
       "source_product_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
       "source_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
       "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-78c98479-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-78c98479",
+      "size_ml": 100,
+      "aliases": [
+        "Galactic Men Intense 100 ml",
+        "Maison Alhambra Galactic Men Intense 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340515",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-men-intense-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-galactic-men-intense-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-cda42a6b-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-cda42a6b",
+      "size_ml": 100,
+      "aliases": [
+        "Jorge di Profumo 100 ml",
+        "Maison Alhambra Jorge di Profumo 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108730140",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-jorge-di-profumo-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-jorge-di-profumo-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-YEAH-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-YEAH",
+      "size_ml": 100,
+      "aliases": [
+        "Yeah 100 ml",
+        "Maison Alhambra Yeah 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108730324",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-YEAH-MAN-PARFUM-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-YEAH-MAN-PARFUM",
+      "size_ml": 100,
+      "aliases": [
+        "Yeah! Man Parfum 100 ml",
+        "Maison Alhambra Yeah! Man Parfum 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290360590745",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-man-parfum-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-yeah-man-parfum-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-TORO-POUR-HOMME-GLACE-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-TORO-POUR-HOMME-GLACE",
+      "size_ml": 100,
+      "aliases": [
+        "Toro Pour Homme Glace 100 ml",
+        "Maison Alhambra Toro Pour Homme Glace 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340942",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-toro-pour-homme-glace-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-toro-pour-homme-glace-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-YOUR-TOUCH-AMBER-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-YOUR-TOUCH-AMBER",
+      "size_ml": 100,
+      "aliases": [
+        "Your Touch Amber 100 ml",
+        "Maison Alhambra Your Touch Amber 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340973",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-your-touch-amber-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-your-touch-amber-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-OPULENCE-LEATHER-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-OPULENCE-LEATHER",
+      "size_ml": 100,
+      "aliases": [
+        "Opulence Leather 100 ml",
+        "Maison Alhambra Opulence Leather 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108730041",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-opulence-leather-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/collections/fragrances-for-him/products/maison-alhambra-opulence-leather-eau-de-parfum-for-men"
     }
   ]
 }
