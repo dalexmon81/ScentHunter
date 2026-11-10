@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/assaf-wild-colt-alex-enable-official-variants-2026-11-10
+      - catalog/maison-alhambra-jean-lowe-official-100ml-variants-2026-11-10
   push:
     branches:
-      - catalog/assaf-wild-colt-alex-enable-official-variants-2026-11-10
+      - catalog/maison-alhambra-jean-lowe-official-100ml-variants-2026-11-10
 
 permissions:
   contents: read
@@ -37,6 +37,7 @@ jobs:
             backend.tests.test_khadlaj_shiyaaka_rose_gold_official_2026_11_10 \
             backend.tests.test_al_wataniah_official_details_2026_11_10 \
             backend.tests.test_assaf_wild_colt_alex_enable_official_variants_2026_11_10 \
+            backend.tests.test_maison_alhambra_jean_lowe_official_variants_2026_11_10 \
             backend.tests.test_khadlaj_cumulative_catalog_integrity \
             backend.tests.test_al_haramain_catalog \
             backend.tests.test_bujairami_catalog \
