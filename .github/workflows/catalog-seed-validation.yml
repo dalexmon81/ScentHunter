@@ -13,6 +13,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
+      - catalog/khadlaj-sixteen-official-variants-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
