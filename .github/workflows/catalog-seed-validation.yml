@@ -3,6 +3,8 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
+      - catalog/khadlaj-four-remaining-variants-2026-11-10
+      - catalog/official-brand-audit-2026-11-10
       - catalog/brand-expansion-2026-11
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
@@ -11,6 +13,14 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/khadlaj-cream-velvet-verified-2026-11-10
+      - catalog/khadlaj-six-official-variants-2026-11-10
+      - catalog/khadlaj-41-variants-consolidated-2026-11-10
+      - catalog/gulf-orchid-four-verified-2026-11-10
+      - catalog/gulf-orchid-five-variants-brand-reconcile-2026-11-10
+      - catalog/velixir-arabiyat-twelve-variants-2026-11-10
+      - catalog/cumulative-final-integration-2026-11-10
+      - catalog/catalog-complete-final-evidence-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -18,6 +28,12 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/al-wataniah-81-variants-cumulative-2026-11-10
+      - catalog/paris-corner-eleven-details-cumulative-2026-11-10
+      - catalog/catalog-complete-wataniah-paris-reconciled-2026-11-10
+      - catalog/catalog-complete-final-evidence-2026-11-10
+      - catalog/khadlaj-four-remaining-variants-2026-11-10
+      - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
@@ -25,6 +41,12 @@ on:
       - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
+      - catalog/khadlaj-six-official-variants-2026-11-10
+      - catalog/khadlaj-41-variants-consolidated-2026-11-10
+      - catalog/gulf-orchid-four-verified-2026-11-10
+      - catalog/gulf-orchid-five-variants-brand-reconcile-2026-11-10
+      - catalog/velixir-arabiyat-twelve-variants-2026-11-10
+      - catalog/cumulative-final-integration-2026-11-10
 
 permissions:
   contents: read
@@ -61,6 +83,7 @@ jobs:
           backend.tests.test_khadlaj_la_fede
           backend.tests.test_lattafa_catalog
           backend.tests.test_paris_corner_catalog_parity
+          backend.tests.test_paris_corner_eleven_official_details
           backend.tests.test_swiss_arabian_detail_evidence
           backend.tests.test_arabiyat_prestige_extrait
           backend.tests.test_arabiyat_prestige_marwa_extrait
@@ -68,6 +91,18 @@ jobs:
           backend.tests.test_al_haramain_gulf_orchid_store_harvest
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
+          backend.tests.test_khadlaj_cream_velvet_official_variant
+          backend.tests.test_khadlaj_six_official_variants
+          backend.tests.test_gulf_orchid_new_arrivals_2026_11_10
+          backend.tests.test_gulf_orchid_five_variants_and_brand_attribution
+          backend.tests.test_cumulative_catalog_integration_2026_11_10
+          backend.tests.test_maison_asrar_name_verification_2026_11_10
+          backend.tests.test_lattafa_concentrated_oil_variants_2026_11_10
+          backend.tests.test_arabiyat_prestige_new_launch_2026_11_10
+          backend.tests.test_khadlaj_official_spray_fourth_followup
+          backend.tests.test_khadlaj_official_spray_third_followup
+          backend.tests.test_khadlaj_official_spray_second_followup
+          backend.tests.test_khadlaj_official_spray_followup
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
@@ -78,4 +113,10 @@ jobs:
           backend.tests.test_afnan_official_global_storefront
           backend.tests.test_aromatix_official_catalog
           backend.tests.test_maison_asrar_official_detail_reconciliation
+          backend.tests.test_maison_asrar_new_arrivals_2026_11_10
+          backend.tests.test_khadlaj_cumulative_catalog_integrity
+          backend.tests.test_catalog_quality_debt_budget
+          backend.tests.test_maison_asrar_rose_detail_pages_2026_11_10
+          backend.tests.test_armaf_intenso_fuego_official_detail_2026_11_10
+          backend.tests.test_khadlaj_remaining_four_official_variants
           -v
