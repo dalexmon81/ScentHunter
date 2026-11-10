@@ -60,8 +60,8 @@ def extract_concentration(value: str) -> str | None:
 
 def extract_gender(value: str) -> str | None:
     text = normalize(value)
-    has_men = bool(re.search(r"\\b(?:for men|pour homme|homme|men)\\b", text))
-    has_women = bool(re.search(r"\\b(?:for women|pour femme|femme|women)\\b", text))
+    has_men = bool(re.search(r"\b(?:for men|pour homme|homme|men)\\b", text))
+    has_women = bool(re.search(r"\b(?:for women|pour femme|femme|women)\\b", text))
     if has_men and has_women:
         return "conflict"
     if has_men:
