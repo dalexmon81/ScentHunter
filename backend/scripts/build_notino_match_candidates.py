@@ -58,6 +58,19 @@ def extract_concentration(value: str) -> str | None:
     return None
 
 
+def extract_gender(value: str) -> str | None:
+    text = normalize(value)
+    has_men = bool(re.search(r"\\b(?:for men|pour homme|homme|men)\\b", text))
+    has_women = bool(re.search(r"\\b(?:for women|pour femme|femme|women)\\b", text))
+    if has_men and has_women:
+        return "conflict"
+    if has_men:
+        return "men"
+    if has_women:
+        return "women"
+    return None
+
+
 def strip_product_noise(value: str) -> str:
     text = normalize(value)
     text = re.sub(r"\b\d+(?:\.\d+)?\s*(?:ml|milliliters?|millilitres?)\b", " ", text)
@@ -119,6 +132,7 @@ def build_catalog_index(catalog: dict) -> list[dict]:
                 "names": sorted(set(normalized_names + [n for n in variant_names if n])),
                 "size_ml": variant.get("size_ml"),
                 "concentration": extract_concentration(product.get("concentration", "")),
+                "gender": extract_gender(" ".join(names)),
                 "gtins": variant.get("gtins") or [],
             })
     return indexed
@@ -131,6 +145,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
     feed_name = strip_product_noise(raw_title)
     feed_size = parse_size(row.get("size", "")) or parse_size(raw_title)
     feed_concentration = extract_concentration(raw_title) or extract_concentration(row.get("product_type", ""))
+    feed_gender = extract_gender(raw_title)
     feed_gtin = row.get("gtin", "")
 
     # Exact GTIN evidence is reported separately; this tool is designed for
@@ -152,6 +167,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
         canonical_concentration = item["concentration"]
         concentration_match = bool(feed_concentration and canonical_concentration and feed_concentration == canonical_concentration)
         concentration_conflict = bool(feed_concentration and canonical_concentration and feed_concentration != canonical_concentration)
+        gender_conflict = bool(feed_gender and item.get("gender") and feed_gender != item["gender"])
 
         score = 1.0 if gtin_match else 0.72 * best_name
         if not gtin_match and size_match:
@@ -162,10 +178,12 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             score += 0.08
         elif not gtin_match and concentration_conflict:
             score -= 0.15
+        if gender_conflict:
+            score -= 0.35
 
         # Hard safety gate: a known size mismatch or concentration mismatch
         # cannot be labeled high confidence.
-        if size_conflict or concentration_conflict:
+        if size_conflict or concentration_conflict or gender_conflict:
             confidence = "low"
         elif gtin_match:
             confidence = "review_high"
@@ -185,6 +203,9 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             "feed_title": raw_title,
             "feed_size_ml": feed_size,
             "feed_concentration": feed_concentration or "",
+            "feed_gender": feed_gender or "",
+            "canonical_gender": item.get("gender") or "",
+            "gender_conflict": gender_conflict,
             "canonical_product_id": item["product_id"],
             "canonical_variant_id": item["variant_id"],
             "canonical_brand": item["brand"],
@@ -220,6 +241,9 @@ def generate_candidates(feed_path: str | Path, catalog_path: str | Path) -> list
                 "feed_title": row.get("title", ""),
                 "feed_size_ml": parse_size(row.get("size", "")) or parse_size(row.get("title", "")),
                 "feed_concentration": extract_concentration(row.get("title", "")) or "",
+                "feed_gender": extract_gender(row.get("title", "")) or "",
+                "canonical_gender": "",
+                "gender_conflict": False,
                 "canonical_product_id": "",
                 "canonical_variant_id": "",
                 "canonical_brand": "",
@@ -246,7 +270,7 @@ def main() -> None:
     fields = list(rows[0]) if rows else [
         "candidate_score", "confidence_band", "feed_external_id", "feed_gtin",
         "feed_brand", "feed_title", "feed_size_ml", "feed_concentration",
-        "canonical_product_id", "canonical_variant_id", "canonical_brand",
+        "feed_gender", "canonical_gender", "gender_conflict", "canonical_product_id", "canonical_variant_id", "canonical_brand",
         "canonical_names", "canonical_size_ml", "canonical_concentration",
         "name_similarity", "gtin_match", "size_match", "concentration_match", "review_status",
     ]
