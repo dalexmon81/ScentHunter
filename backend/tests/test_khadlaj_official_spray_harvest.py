@@ -111,7 +111,7 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
                 continue
             if product["product_id"] in VERIFIED_DETAIL_IDS:
                 self.assertEqual(product["identity_status"], "source_verified_name")
-                self.assertTrue(product["source_url"].startswith(("https://khadlaj-perfumes", "https://my.khadlaj-perfumes")))
+                self.assertTrue(product["source_url"].startswith(("https://khadlaj-perfumes", "https://my.khadlaj-perfumes", "https://kw.khadlaj-perfumes")))
                 self.assertIn("concentration", product)
                 self.assertTrue(product.get("formats_ml"))
                 self.assertEqual(
