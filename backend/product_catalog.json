@@ -33697,8 +33697,14 @@
         "Oud Pure Oud Barakat",
         "Khadlaj Oud Pure Oud Barakat"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-057",
@@ -33712,8 +33718,14 @@
         "Oud Pure Oud Galazaid",
         "Khadlaj Oud Pure Oud Galazaid"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "source_product_url": "https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-058",
@@ -33727,8 +33739,14 @@
         "Oud Pure Oud Jumeirah",
         "Khadlaj Oud Pure Oud Jumeirah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy",
+      "formats_ml": [
+        60
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-059",
@@ -33832,8 +33850,14 @@
         "Fursan Brown",
         "Khadlaj Fursan Brown"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-066",
@@ -49127,6 +49151,58 @@
       "gtin": "6298043071161",
       "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-056",
+      "size_ml": 60,
+      "aliases": [
+        "Oud Pure Oud Barakat 60 ml",
+        "Khadlaj Oud Pure Oud Barakat 60 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-056-60-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107979564",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-057",
+      "size_ml": 60,
+      "aliases": [
+        "Oud Pure Oud Galazaid 60 ml",
+        "Khadlaj Oud Pure Oud Galazaid 60 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-057-60-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107979588",
+      "source_url": "https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-058",
+      "size_ml": 60,
+      "aliases": [
+        "Oud Pure Oud Jumeirah 60 ml",
+        "Khadlaj Oud Pure Oud Jumeirah 60 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-058-60-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107979595",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-065",
+      "size_ml": 100,
+      "aliases": [
+        "Fursan Brown 100 ml",
+        "Khadlaj Fursan Brown 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-065-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107977768",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her"
     }
   ]
 }
