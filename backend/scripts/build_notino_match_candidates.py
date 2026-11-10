@@ -84,8 +84,15 @@ def iter_perfume_rows(feed_path: str | Path):
             entry.clear()
 
 
+BRAND_ALIASES = {
+    "rabanne": "paco rabanne",
+    "ferragamo": "salvatore ferragamo",
+}
+
+
 def _brand_key(value: str) -> str:
-    return normalize(value)
+    key = normalize(value)
+    return BRAND_ALIASES.get(key, key)
 
 
 def build_catalog_index(catalog: dict) -> list[dict]:
