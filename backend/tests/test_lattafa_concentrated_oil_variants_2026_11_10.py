@@ -6,9 +6,9 @@ BACKEND=Path(__file__).resolve().parents[1]
 CATALOG=json.loads((BACKEND/"product_catalog.json").read_text(encoding="utf-8"))
 REGISTRY=json.loads((BACKEND/"family_registry.json").read_text(encoding="utf-8"))
 EXPECTED={
- "Abraaj":("SH-LATTAFA-ABRAAJ","SHV-SH-LATTAFA-ABRAAJ-20-CO","https://lattafa.com/product/abraaj-concentrated-oil/"),
- "Haakim":("SH-LATTAFA-HAAKIM","SHV-SH-LATTAFA-HAAKIM-20-CO","https://lattafa.com/product/haakim-concentrated-oil/"),
- "Amoura":("SH-LATTAFA-AMOURA","SHV-SH-LATTAFA-AMOURA-20-CO","https://lattafa.com/product/amoura-concentrated-oil/"),
+ "Abraaj":("SH-LATTAFA-ABRAAJ","SHV-SH-LATTAFA-ABRAAJ-20-000","https://lattafa.com/product/abraaj-concentrated-oil/"),
+ "Haakim":("SH-LATTAFA-HAAKIM","SHV-SH-LATTAFA-HAAKIM-20-000","https://lattafa.com/product/haakim-concentrated-oil/"),
+ "Amoura":("SH-LATTAFA-AMOURA","SHV-SH-LATTAFA-AMOURA-20-000","https://lattafa.com/product/amoura-concentrated-oil/"),
 }
 class LattafaConcentratedOilTests(unittest.TestCase):
  def test_three_official_twenty_ml_variants(self):
