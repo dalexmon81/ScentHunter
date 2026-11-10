@@ -68,8 +68,8 @@ These brands have the largest source-listed queues and should be audited against
 2. Armaf — 127.
 3. Assaf — 103.
 4. Maison Asrar — 95.
-5. Arabiyat Prestige — 91.
-6. French Avenue — 93.
+5. French Avenue — 93.
+6. Arabiyat Prestige — 91.
 7. Bujairami — 85.
 8. Al Haramain — 83.
 
