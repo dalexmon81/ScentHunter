@@ -19,7 +19,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
         "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-5239463e",
@@ -32,7 +32,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
         "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-ef841988",
@@ -45,7 +45,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
         "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-KHAIR-PISTACHIO",
@@ -58,7 +58,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
         "source_product_url": "https://de.pariscornereurope.com/en/products/khair-pistachio",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-KHAIR-CONFECTION",
@@ -71,7 +71,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/khair-confection",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-confection",
         "source_product_url": "https://de.pariscornereurope.com/en/products/khair-confection",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-KHAIR-FUSION",
@@ -84,7 +84,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
         "source_product_url": "https://de.pariscornereurope.com/en/products/khair-fusion",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-KHAIR-FELICITY",
@@ -97,7 +97,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
         "source_product_url": "https://de.pariscornereurope.com/en/products/khair-felicity",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-MAWJ-APPLETINI",
@@ -110,7 +110,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
         "source_product_url": "https://de.pariscornereurope.com/en/products/mawj-appletini",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
@@ -123,7 +123,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
         "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE",
@@ -136,7 +136,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
         "source_product_url": "https://de.pariscornereurope.com/products/mawj-cognac-blaze",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-MINYA-COCO-LUSH",
@@ -149,7 +149,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
         "source_product_url": "https://de.pariscornereurope.com/en/products/minya-coco-lush",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-NEWYORK",
@@ -162,7 +162,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
         "source_product_url": "https://de.pariscornereurope.com/en/products/cosmopolitan-newyork",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
@@ -175,7 +175,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
         "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-coffee",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
@@ -188,7 +188,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
         "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-meadows",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
@@ -201,7 +201,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
         "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-musk",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-KHAIR",
@@ -214,7 +214,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/khair",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair",
         "source_product_url": "https://de.pariscornereurope.com/en/products/khair",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-MANAAL",
@@ -227,7 +227,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/manaal-1",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1",
         "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-manaal-edp-u-100-ml",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-TASKEEN-CARAMEL-CASCADE",
@@ -240,7 +240,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
         "source_product_url": "https://de.pariscornereurope.com/en/products/taskeen-caramel-cascade",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-VIRILIS",
@@ -253,7 +253,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/virilis",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/virilis",
         "source_product_url": "https://de.pariscornereurope.com/en/products/virilis",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-TASKEEN-MARINA",
@@ -266,7 +266,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
         "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-taskeen-marina-edp-u-100-ml",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-c3372b4d",
@@ -279,7 +279,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
         "source_product_url": "https://de.pariscornereurope.com/en/products/ophidian-sweet-surrender",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-038c48d3",
@@ -292,7 +292,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/nouf",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/nouf",
         "source_product_url": "https://de.pariscornereurope.com/en/products/nouf",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-91232b6e",
@@ -305,7 +305,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
         "source_product_url": "https://de.pariscornereurope.com/products/ophidian-mango-bliss",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-PARIS-CORNER-c3e787e0",
@@ -318,7 +318,7 @@ EXPECTED_VARIANTS = [
         "source_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
         "source_evidence_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
         "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-rifaaqat-edp-u-85-ml",
-        "source_size_evidence_url": null
+        "source_size_evidence_url": None
     },
     {
         "product_id": "SH-ARMAF-b6b77ff6",
