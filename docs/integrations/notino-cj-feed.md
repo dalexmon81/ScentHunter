@@ -11,6 +11,19 @@ The adapter emits store, external ID, title, brand, GTIN, price/currency,
 optional sale price, availability, affiliate URL, image, size, gender,
 product type, description, feed timestamp and item group ID.
 
+## Read-only feed audit
+After extracting the XML file from the CJ ZIP, run:
+
+```bash
+python -m backend.scripts.audit_notino_cj_feed /path/to/NOTINO_fr-NotinoFR_google_all-shopping.xml --output /tmp/notino-feed-audit.json
+```
+
+The utility streams the feed and reports category counts, GTIN length buckets,
+missing fields, duplicate GTIN groups, invalid identifiers and brand counts.
+It does not import data or connect to the database. **Accepted GTIN length is
+only a format check**; the audit does not validate check digits or prove that
+an identifier belongs to the listed product.
+
 ## Import safety
 1. Preserve the original CJ XML export as a source artifact outside the public web root.
 2. Stream entries; do not load the complete XML document into memory.
