@@ -44,11 +44,27 @@ def normalize(value: str) -> str:
 
 
 def parse_size(value: str) -> float | None:
-    match = re.search(r"(?<![0-9])(\d+(?:[.,]\d+)?)\s*(?:ml|millilit(?:er|re)s?)\b", value or "", re.I)
-    if not match:
+    text = value or ""
+    ml_match = re.search(
+        r"(?<![0-9])(\d+(?:[.,]\d+)?)\s*(?:ml|millilit(?:er|re)s?)\b",
+        text, re.I,
+    )
+    if ml_match:
+        try:
+            return float(ml_match.group(1).replace(",", "."))
+        except ValueError:
+            return None
+
+    # Perfume packaging commonly uses US fluid ounces; do not interpret bare
+    # "oz" as volume because it can also denote weight.
+    fl_oz_match = re.search(
+        r"(?<![0-9])(\d+(?:[.,]\d+)?)\s*(?:fl\.?\s*oz\.?|fluid\s+ounces?)\b",
+        text, re.I,
+    )
+    if not fl_oz_match:
         return None
     try:
-        return float(match.group(1).replace(",", "."))
+        return round(float(fl_oz_match.group(1).replace(",", ".")) * 29.5735295625, 2)
     except ValueError:
         return None
 
