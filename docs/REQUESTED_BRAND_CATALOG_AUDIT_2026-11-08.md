@@ -458,3 +458,20 @@ Primary sources:
 - Official 9 PM Rebel page: https://afnan.com/products/9-pm-rebel
 
 Regression tests cover all 15 individual page URLs and keep perfume oils separate from deodorant / gift-set listings.
+
+
+### Maison Asrar: three official individual-page provenance upgrades (10 November 2026)
+
+Three existing Maison Asrar identities were reconciled to their current brand-owned product-detail pages. No new canonical identities were added and product IDs were preserved:
+
+- Dubai London — https://maisonasrar.com/products/dubai-london
+- Dubai Miami — https://maisonasrar.com/products/dubai-miami
+- Hikaya — https://maisonasrar.com/products/hikaya
+
+Each page identifies the individual fragrance and exposes descriptive scent information. The retrieved page content does not state a reliable explicit bottle size or concentration. These fields were therefore not added, and no variants were created. Existing regional evidence URLs were retained as secondary provenance fields.
+
+REY was reviewed separately at https://maisonasrar.com/collections/new-arrival/products/rey-eau-de-parfum-100ml-maison-asrar. The product page confirms the fragrance identity, but the available page content does not expose explicit concentration or size details; those fields remain unchanged and no variant was inferred from the URL slug alone.
+
+The new regression module `backend/tests/test_maison_asrar_official_detail_reconciliation.py` checks the three URL upgrades, family-registry membership, and absence of unsupported size/concentration or variant data.
+
+Primary source collection: https://maisonasrar.com/collections/new-arrival (81 current listings; first page inspected during this pass). The 12 products on that first page were already present as canonical identities in the catalog.

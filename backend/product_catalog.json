@@ -1544,9 +1544,10 @@
         "Dubai London",
         "Maison Asrar Dubai London"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dubai-london",
+      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/",
+      "source_product_url": "https://maisonasrar.com/products/dubai-london"
     },
     {
       "product_id": "SH-MAISON-ASRAR-cec0d89e",
@@ -1560,9 +1561,10 @@
         "Dubai Miami",
         "Maison Asrar Dubai Miami"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dubai-miami",
+      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/",
+      "source_product_url": "https://maisonasrar.com/products/dubai-miami"
     },
     {
       "product_id": "SH-MAISON-ASRAR-67ed859d",
@@ -1851,9 +1853,10 @@
         "Hikaya",
         "Maison Asrar Hikaya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/hikaya",
+      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/",
+      "source_product_url": "https://maisonasrar.com/products/hikaya"
     },
     {
       "product_id": "SH-MAISON-ASRAR-0deb0088",
