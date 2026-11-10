@@ -5649,9 +5649,14 @@
         "Souvenir Blooming Bliss",
         "Afnan Souvenir Blooming Bliss"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/souvenir-blooming-bliss",
+      "source_evidence_url": "https://afnan.com/products/souvenir-blooming-bliss",
+      "source_product_url": "https://afnan.com/products/souvenir-blooming-bliss",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-36d86a43",
@@ -5702,9 +5707,14 @@
         "Souvenir Desert Rose",
         "Afnan Souvenir Desert Rose"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/souvenir-desert-rose",
+      "source_evidence_url": "https://afnan.com/products/souvenir-desert-rose",
+      "source_product_url": "https://afnan.com/products/souvenir-desert-rose",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-985458b7",
@@ -5760,9 +5770,10 @@
         "Modest Une",
         "Afnan Modest Une"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/modest-une",
+      "source_evidence_url": "https://afnan.com/products/modest-une",
+      "source_product_url": "https://afnan.com/products/modest-une"
     },
     {
       "product_id": "SH-AFNAN-5971cbd6",
@@ -5824,9 +5835,14 @@
         "Tribute Pink",
         "Afnan Tribute Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/tribute-pink",
+      "source_evidence_url": "https://afnan.com/products/tribute-pink",
+      "source_product_url": "https://afnan.com/products/tribute-pink",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-6a2a503b",
@@ -5840,9 +5856,10 @@
         "Inara White",
         "Afnan Inara White"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/inara-white",
+      "source_evidence_url": "https://afnan.com/products/inara-white",
+      "source_product_url": "https://afnan.com/products/inara-white"
     },
     {
       "product_id": "SH-AFNAN-601f9979",
@@ -25050,9 +25067,10 @@
         "PARIS OUD",
         "Afnan PARIS OUD"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/paris-oud",
+      "source_evidence_url": "https://afnan.com/products/paris-oud",
+      "source_product_url": "https://afnan.com/products/paris-oud"
     },
     {
       "product_id": "SH-AFNAN-PATCHOULI-ON-FIRE",
@@ -25082,9 +25100,14 @@
         "PORTRAIT REVIVAL",
         "Afnan PORTRAIT REVIVAL"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/portrait-revival",
+      "source_evidence_url": "https://afnan.com/products/portrait-revival",
+      "source_product_url": "https://afnan.com/products/portrait-revival",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-RARE-PASSION",
@@ -25098,9 +25121,14 @@
         "RARE PASSION",
         "Afnan RARE PASSION"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/rare-passion",
+      "source_evidence_url": "https://afnan.com/products/rare-passion",
+      "source_product_url": "https://afnan.com/products/rare-passion",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-STARDUST",
@@ -25683,9 +25711,14 @@
         "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION",
         "Supremacy Tapis Rouge"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=3",
-      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/supremacy-tapis-rouge",
+      "source_evidence_url": "https://afnan.com/products/supremacy-tapis-rouge",
+      "source_product_url": "https://afnan.com/products/supremacy-tapis-rouge",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        90
+      ]
     },
     {
       "product_id": "SH-AFNAN-TASNEEM",
@@ -25747,9 +25780,14 @@
         "VIOLET BOUQUET",
         "Afnan VIOLET BOUQUET"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=3",
-      "source_evidence_url": "https://afnan.com/collections/all?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://afnan.com/products/violet-bouquet",
+      "source_evidence_url": "https://afnan.com/products/violet-bouquet",
+      "source_product_url": "https://afnan.com/products/violet-bouquet",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-AFNAN-WARD-AL-USSHAQ",
@@ -55605,6 +55643,83 @@
         "Afnan Tribute Blue 100ml"
       ],
       "source_evidence_url": "https://afnan.com/products/tribute-blue"
+    },
+    {
+      "product_id": "SH-AFNAN-PORTRAIT-REVIVAL",
+      "variant_id": "SHV-SH-AFNAN-PORTRAIT-REVIVAL-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "PORTRAIT REVIVAL 100 ml",
+        "Afnan PORTRAIT REVIVAL 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/portrait-revival"
+    },
+    {
+      "product_id": "SH-AFNAN-RARE-PASSION",
+      "variant_id": "SHV-SH-AFNAN-RARE-PASSION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "RARE PASSION 100 ml",
+        "Afnan RARE PASSION 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/rare-passion"
+    },
+    {
+      "product_id": "SH-AFNAN-d6bdf95c",
+      "variant_id": "SHV-SH-AFNAN-d6bdf95c-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Souvenir Blooming Bliss 100 ml",
+        "Afnan Souvenir Blooming Bliss 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/souvenir-blooming-bliss"
+    },
+    {
+      "product_id": "SH-AFNAN-65e95976",
+      "variant_id": "SHV-SH-AFNAN-65e95976-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Souvenir Desert Rose 100 ml",
+        "Afnan Souvenir Desert Rose 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/souvenir-desert-rose"
+    },
+    {
+      "product_id": "SH-AFNAN-SUPREMACY-TAPIS-ROUGE-LUXURY-COLLECTION",
+      "variant_id": "SHV-SH-AFNAN-SUPREMACY-TAPIS-ROUGE-LUXURY-COLLECTION-90-EDP",
+      "size_ml": 90,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "SUPREMACY TAPIS ROUGE - LUXURY COLLECTION 90 ml",
+        "Afnan SUPREMACY TAPIS ROUGE - LUXURY COLLECTION 90ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/supremacy-tapis-rouge"
+    },
+    {
+      "product_id": "SH-AFNAN-5f529cde",
+      "variant_id": "SHV-SH-AFNAN-5f529cde-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Tribute Pink 100 ml",
+        "Afnan Tribute Pink 100ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/tribute-pink"
+    },
+    {
+      "product_id": "SH-AFNAN-VIOLET-BOUQUET",
+      "variant_id": "SHV-SH-AFNAN-VIOLET-BOUQUET-80-EDP",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "VIOLET BOUQUET 80 ml",
+        "Afnan VIOLET BOUQUET 80ml"
+      ],
+      "source_evidence_url": "https://afnan.com/products/violet-bouquet"
     }
   ]
 }
