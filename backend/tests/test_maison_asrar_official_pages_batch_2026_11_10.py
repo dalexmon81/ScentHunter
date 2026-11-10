@@ -83,7 +83,7 @@ class MaisonAsrarOfficialPagesBatchTests(unittest.TestCase):
                 self.assertEqual(product["source_product_url"], item["url"])
                 self.assertEqual(product["source_evidence_url"], item["url"])
                 family_product = next(p for p in family["products"] if p["canonical_name"] == item["name"])
-                if item["size"]:
+                if item.get("size"):
                     self.assertIn(item["size"], product["formats_ml"])
                     self.assertIn(item["size"], family_product["formats_ml"])
                     matches = [v for v in CATALOG["variants"] if v["product_id"] == item["id"] and v["size_ml"] == item["size"] and v.get("concentration") == item["concentration"]]
