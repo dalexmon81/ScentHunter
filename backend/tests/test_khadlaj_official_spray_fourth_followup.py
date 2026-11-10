@@ -58,6 +58,7 @@ class KhadlajOfficialSprayFourthFollowupTests(unittest.TestCase):
             with self.subTest(product=name):
                 product = next(p for p in CATALOG["products"] if p.get("product_id") == expected["id"])
                 family = next(f for f in REGISTRY["families"] if f.get("family_id") == product["family_id"])
+                canonical_name = expected.get("canonical_name", name)
                 rows = [p for p in family["products"] if p.get("canonical_name") == canonical_name]
                 self.assertEqual(len(rows), 1)
                 self.assertIn(expected["size"], rows[0].get("formats_ml", []))
