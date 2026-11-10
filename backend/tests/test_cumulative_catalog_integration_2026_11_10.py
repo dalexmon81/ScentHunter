@@ -135,6 +135,9 @@ class CumulativeCatalogIntegrationTests(unittest.TestCase):
             "SH-PARIS-CORNER-ef841988": ("December Vanilla", 85, "https://www.pariscornerperfumes.com/products/december-vanilla", "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"),
             "SH-PARIS-CORNER-COCONUT-LAGOON": ("Coconut Lagoon", 100, "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml", "https://de.pariscornereurope.com/en/products/coconut-lagoon"),
             "SH-PARIS-CORNER-CHERRY-COLA": ("Cherry Cola", 75, "https://www.pariscornerperfumes.com/products/cherry-cola", "https://de.pariscornereurope.com/en/products/cherry-cola-emir"),
+            "SH-PARIS-CORNER-ETERNAL-COFFEE": ("Eternal Coffee", 85, "https://www.pariscornerperfumes.com/products/eternal-coffee", "https://de.pariscornereurope.com/en/products/eternal-coffee"),
+            "SH-PARIS-CORNER-ETERNAL-MEADOWS": ("Eternal Meadows", 85, "https://www.pariscornerperfumes.com/products/eternal-meadows", "https://de.pariscornereurope.com/en/products/eternal-meadows"),
+            "SH-PARIS-CORNER-ETERNAL-MUSK": ("Eternal Musk", 85, "https://www.pariscornerperfumes.com/products/eternal-musk", "https://de.pariscornereurope.com/en/products/eternal-musk"),
         }
         for product_id, (name, size, canonical_url, evidence_url) in expected.items():
             with self.subTest(product=name):

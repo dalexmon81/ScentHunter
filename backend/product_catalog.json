@@ -17576,12 +17576,18 @@
       "family_name": "Eternal Coffee",
       "aliases": [
         "Eternal Coffee",
-        "Paris Corner Eternal Coffee"
+        "Paris Corner Eternal Coffee",
+        "Eternal Coffee 85 ml",
+        "Paris Corner Eternal Coffee 85ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-coffee",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
@@ -17593,12 +17599,18 @@
       "family_name": "Eternal Meadows",
       "aliases": [
         "Eternal Meadows",
-        "Paris Corner Eternal Meadows"
+        "Paris Corner Eternal Meadows",
+        "Eternal Meadows 85 ml",
+        "Paris Corner Eternal Meadows 85ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-meadows",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
@@ -17610,12 +17622,18 @@
       "family_name": "Eternal Musk",
       "aliases": [
         "Eternal Musk",
-        "Paris Corner Eternal Musk"
+        "Paris Corner Eternal Musk",
+        "Eternal Musk 85 ml",
+        "Paris Corner Eternal Musk 85ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-musk",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-FARAH",
@@ -50807,6 +50825,42 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir",
       "source_evidence_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
+      "size_ml": 85,
+      "aliases": [
+        "Eternal Coffee 85 ml",
+        "Paris Corner Eternal Coffee 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-COFFEE-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/eternal-coffee",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-coffee"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
+      "size_ml": 85,
+      "aliases": [
+        "Eternal Meadows 85 ml",
+        "Paris Corner Eternal Meadows 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MEADOWS-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/eternal-meadows",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-meadows"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
+      "size_ml": 85,
+      "aliases": [
+        "Eternal Musk 85 ml",
+        "Paris Corner Eternal Musk 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MUSK-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/eternal-musk",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-musk"
     }
   ]
 }

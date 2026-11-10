@@ -27,7 +27,7 @@ The integration is based on the #658 head and is intended to target the #649 Kha
 The merged JSON snapshot was independently checked before writing:
 
 - 2,208 canonical products.
-- 982 variants.
+- 985 variants.
 - Zero duplicate product IDs.
 - Zero duplicate variant IDs.
 - Zero duplicate normalized brand/name identities.
@@ -56,3 +56,12 @@ Four existing Paris Corner canonical identities now have product-level evidence 
 | Cherry Cola (listed as Cherry Cola Emir on the European shop) | 75 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/cherry-cola-emir |
 
 All four records reuse existing canonical product IDs; the family registry now declares the same sizes. The official pages do not expose GTIN/barcodes, so none are added. The shop's product page metadata and descriptions are treated as identity/variant evidence only; no price, stock or offer data is imported.
+Three further products were completed using official Paris Corner Europe detail pages:
+
+| Existing canonical identity | Official E-shop attributes | Evidence |
+|---|---|---|
+| Eternal Coffee | 85 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/eternal-coffee |
+| Eternal Meadows | 85 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/eternal-meadows |
+| Eternal Musk | 85 ml Eau de Parfum | https://de.pariscornereurope.com/en/products/eternal-musk |
+
+These are existing canonical product IDs; no new product identities or GTINs were created. The registry formats match the catalog variants.
