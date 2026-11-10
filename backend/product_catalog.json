@@ -36662,10 +36662,15 @@
         "Rawaee Noble",
         "Al Wataniah Rawaee Noble"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/rawaee-noble",
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-noble",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/rawaee-noble",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-RAWAEE-REGINA",
@@ -36679,10 +36684,15 @@
         "Rawaee Regina",
         "Al Wataniah Rawaee Regina"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/rawaee-regina",
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-regina",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/rawaee-regina",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-REDAA",
@@ -36696,10 +36706,15 @@
         "Redaa",
         "Al Wataniah Redaa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.alwataniah.com/collections/eternal",
-      "source_evidence_url": "https://www.alwataniah.com/collections/eternal",
-      "collection_name": "Eternal"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.alwataniah.com/products/redaa",
+      "source_evidence_url": "https://www.alwataniah.com/products/redaa",
+      "collection_name": "Eternal",
+      "source_product_url": "https://www.alwataniah.com/products/redaa",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-EMIRAN-SELAR",
@@ -52997,6 +53012,30 @@
       "variant_id": "SHV-SH-ARMAF-d89393b7-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://armaf.com/products/the-pride-of-armaf-pour-homme"
+    },
+    {
+      "variant_id": "SHV-SH-AL-WATANIAH-RAWAEE-NOBLE-100-EDP",
+      "product_id": "SH-AL-WATANIAH-RAWAEE-NOBLE",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_url": "https://www.alwataniah.com/products/rawaee-noble",
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-noble"
+    },
+    {
+      "variant_id": "SHV-SH-AL-WATANIAH-RAWAEE-REGINA-100-EDP",
+      "product_id": "SH-AL-WATANIAH-RAWAEE-REGINA",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_url": "https://www.alwataniah.com/products/rawaee-regina",
+      "source_evidence_url": "https://www.alwataniah.com/products/rawaee-regina"
+    },
+    {
+      "variant_id": "SHV-SH-AL-WATANIAH-REDAA-100-EDP",
+      "product_id": "SH-AL-WATANIAH-REDAA",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "source_url": "https://www.alwataniah.com/products/redaa",
+      "source_evidence_url": "https://www.alwataniah.com/products/redaa"
     }
   ]
 }
