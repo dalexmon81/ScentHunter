@@ -10970,9 +10970,18 @@
         "Luxe Bold",
         "Maison Alhambra Luxe Bold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-luxe-bold-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-luxe-bold-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-luxe-bold-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "gtins": [
+        "6290362341130"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-385ad61e",
@@ -11162,9 +11171,18 @@
         "Mindset",
         "Maison Alhambra Mindset"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mindset-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mindset-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mindset-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "gtins": [
+        "6290362340867"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7cfccb26",
@@ -53321,6 +53339,32 @@
       "gtin": "6291108735671",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-roman-vii-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-roman-vii-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-30bdde3a-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-30bdde3a",
+      "size_ml": 100,
+      "aliases": [
+        "Luxe Bold 100 ml",
+        "Maison Alhambra Luxe Bold 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362341130",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-luxe-bold-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-luxe-bold-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-64589195-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-64589195",
+      "size_ml": 100,
+      "aliases": [
+        "Mindset 100 ml",
+        "Maison Alhambra Mindset 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340867",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mindset-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mindset-eau-de-parfum-for-everyone"
     }
   ]
 }
