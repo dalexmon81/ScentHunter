@@ -12,6 +12,8 @@ EXPECTED = {
     "Aariz": ("SH-ARABIYAT-PRESTIGE-00d6e7bc", "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml", 100),
     "Aariz L’Absolu": ("SH-ARABIYAT-PRESTIGE-5ea21b51", "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex", 100),
     "Asháa Oud Noir": ("SH-ARABIYAT-PRESTIGE-641acbf3", "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml", 110),
+    "Marwa": ("SH-ARABIYAT-PRESTIGE-7bf3b46e", "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex", 100),
+    "Kohl Opulence": ("SH-ARABIYAT-PRESTIGE-113b2420", "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex", 100),
 }
 
 
