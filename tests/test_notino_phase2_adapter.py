@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+BACKEND = ROOT / "backend"
+sys.path.insert(0, str(BACKEND))
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
