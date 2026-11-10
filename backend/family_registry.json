@@ -1820,6 +1820,9 @@
           "aliases": [
             "Vanilla Aura",
             "Maison Asrar Vanilla Aura"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10825,6 +10828,9 @@
           "aliases": [
             "Al Qasr",
             "Gulf Orchid Al Qasr"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10922,6 +10928,9 @@
           "aliases": [
             "Tahara Vanilla Musk",
             "Gulf Orchid Tahara Vanilla Musk"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -10959,6 +10968,9 @@
           "aliases": [
             "Exotic Oud",
             "Gulf Orchid Exotic Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10966,6 +10978,9 @@
           "aliases": [
             "Vanilla Latte",
             "Gulf Orchid Vanilla Latte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10973,6 +10988,9 @@
           "aliases": [
             "Cookie Bite",
             "Gulf Orchid Cookie Bite"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
