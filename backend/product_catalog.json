@@ -3583,12 +3583,14 @@
         "Private Blend Musk Ice",
         "Khadlaj Private Blend Musk Ice"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/all/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/women"
     },
     {
       "product_id": "SH-KHADLAJ-935bcf95",
@@ -3721,12 +3723,14 @@
         "Biscotti Date Toffee",
         "Khadlaj Biscotti Date Toffee"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/all/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/women"
     },
     {
       "product_id": "SH-KHADLAJ-93c5a51d",
@@ -3933,8 +3937,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-blue-100ml-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-blue-100ml-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
     },
     {
       "product_id": "SH-KHADLAJ-0aefd15f",
@@ -3952,8 +3958,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-gold-100ml-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-gold-100ml-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
     },
     {
       "product_id": "SH-KHADLAJ-b9170594",
@@ -3971,8 +3979,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
     },
     {
       "product_id": "SH-KHADLAJ-a56e7c92",
@@ -3990,8 +4000,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
     },
     {
       "product_id": "SH-KHADLAJ-afe1f6d4",
@@ -4028,8 +4040,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-sky-100-ml",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-sky-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
     },
     {
       "product_id": "SH-KHADLAJ-b23ae855",
@@ -4047,8 +4061,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/khadlaj-special-edition-shiyaaka-shadow-edp-men-fresh-fragrance-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/khadlaj-special-edition-shiyaaka-shadow-edp-men-fresh-fragrance-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
     },
     {
       "product_id": "SH-KHADLAJ-bbb43d66",
@@ -4066,8 +4082,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
     },
     {
       "product_id": "SH-BUJAIRAMI-370cb2f2",
@@ -40333,7 +40351,9 @@
         "Khadlaj Private Blend Musk Ice 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-dd1434f1-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance"
     },
     {
       "product_id": "SH-KHADLAJ-935bcf95",
@@ -40418,7 +40438,9 @@
         "Khadlaj Biscotti Date Toffee 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-75815e2a-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances"
     },
     {
       "product_id": "SH-KHADLAJ-93c5a51d",
@@ -40441,7 +40463,9 @@
         "Khadlaj Shiyaaka Blue 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-20646841-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-blue-100ml-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-blue-100ml-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-0aefd15f",
@@ -40451,7 +40475,9 @@
         "Khadlaj Shiyaaka Gold 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-0aefd15f-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-gold-100ml-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-gold-100ml-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-b9170594",
@@ -40461,7 +40487,9 @@
         "Khadlaj Shiyaaka For Men 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-b9170594-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-men-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-a56e7c92",
@@ -40471,7 +40499,9 @@
         "Khadlaj Shiyaaka White 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-a56e7c92-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-afe1f6d4",
@@ -40491,7 +40521,10 @@
         "Khadlaj Shiyaaka Sky 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-04a500ea-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-sky-100-ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-sky-100-ml",
+      "gtin": "6298043072694"
     },
     {
       "product_id": "SH-KHADLAJ-b23ae855",
@@ -40501,7 +40534,10 @@
         "Khadlaj Shiyaaka Shadow 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-b23ae855-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/khadlaj-special-edition-shiyaaka-shadow-edp-men-fresh-fragrance-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/khadlaj-special-edition-shiyaaka-shadow-edp-men-fresh-fragrance-dubai-uae",
+      "gtin": "6291107979359"
     },
     {
       "product_id": "SH-KHADLAJ-bbb43d66",
@@ -40511,7 +40547,9 @@
         "Khadlaj Shiyaaka Snow 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-bbb43d66-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-29189f4e",
