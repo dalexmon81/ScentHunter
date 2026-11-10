@@ -3901,7 +3901,11 @@
           "aliases": [
             "Cosmopolitan Newyork",
             "Paris Corner Cosmopolitan Newyork"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Creamy Biscuit",
@@ -4048,21 +4052,33 @@
           "aliases": [
             "Eternal Coffee",
             "Paris Corner Eternal Coffee"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Eternal Meadows",
           "aliases": [
             "Eternal Meadows",
             "Paris Corner Eternal Meadows"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Eternal Musk",
           "aliases": [
             "Eternal Musk",
             "Paris Corner Eternal Musk"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Farah",
@@ -4312,7 +4328,11 @@
           "aliases": [
             "Khair",
             "Paris Corner Khair"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Confection",
@@ -4491,7 +4511,11 @@
           "aliases": [
             "Manaal",
             "Paris Corner Manaal"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mango Flames",

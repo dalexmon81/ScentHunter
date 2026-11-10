@@ -17407,8 +17407,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/cosmopolitan-newyork",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CREAMY-BISCUIT",
@@ -17625,8 +17629,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-coffee",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
@@ -17642,8 +17650,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-meadows",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
@@ -17659,8 +17671,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-musk",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FARAH",
@@ -18142,8 +18158,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE",
@@ -18414,8 +18434,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/manaal-1",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/manaal-1",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-manaal-edp-u-100-ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MANGO-FLAMES",
@@ -52399,6 +52423,84 @@
       "source_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
       "source_product_url": "https://de.pariscornereurope.com/en/products/minya-coco-lush"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-NEWYORK",
+      "variant_id": "SHV-SH-PARIS-CORNER-COSMOPOLITAN-NEWYORK-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cosmopolitan Newyork 100 ml",
+        "Paris Corner Cosmopolitan Newyork 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/cosmopolitan-newyork"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-COFFEE-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Eternal Coffee 85 ml",
+        "Paris Corner Eternal Coffee 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-coffee"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MEADOWS-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Eternal Meadows 85 ml",
+        "Paris Corner Eternal Meadows 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-meadows"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MUSK-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Eternal Musk 85 ml",
+        "Paris Corner Eternal Musk 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-musk"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair 100 ml",
+        "Paris Corner Khair 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MANAAL",
+      "variant_id": "SHV-SH-PARIS-CORNER-MANAAL-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Manaal 100 ml",
+        "Paris Corner Manaal 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/manaal-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-manaal-edp-u-100-ml"
     }
   ]
 }
