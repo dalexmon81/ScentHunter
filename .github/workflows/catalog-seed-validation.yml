@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/maison-alhambra-five-official-100ml-variants-2026-11-10
+      - catalog/maison-alhambra-jean-lowe-azure-noir-official-2026-11-10
   push:
     branches:
-      - catalog/maison-alhambra-five-official-100ml-variants-2026-11-10
+      - catalog/maison-alhambra-jean-lowe-azure-noir-official-2026-11-10
 
 permissions:
   contents: read
@@ -39,6 +39,7 @@ jobs:
             backend.tests.test_assaf_wild_colt_alex_enable_official_variants_2026_11_10 \
             backend.tests.test_maison_alhambra_jean_lowe_official_variants_2026_11_10 \
             backend.tests.test_maison_alhambra_five_official_variants_2026_11_10 \
+            backend.tests.test_maison_alhambra_jean_lowe_azure_noir_2026_11_10 \
             backend.tests.test_khadlaj_cumulative_catalog_integrity \
             backend.tests.test_al_haramain_catalog \
             backend.tests.test_bujairami_catalog \
