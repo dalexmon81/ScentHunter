@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/al-haramain-official-variants-2026-11-10
+      - catalog/cumulative-official-audits-2026-11-10
   push:
     branches:
-      - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
+      - catalog/cumulative-official-audits-2026-11-10
 
 permissions:
   contents: read
@@ -34,9 +34,6 @@ jobs:
             backend.tests.test_family_registry_identity_normalization \
             backend.tests.test_requested_brand_catalog_coverage \
             backend.tests.test_official_afnan_armaf_variant_batch_2026_11_10 \
-            backend.tests.test_afnan_official_variants_2026_11_10 \
-            backend.tests.test_al_haramain_official_variants_2026_11_10 \
-            backend.tests.test_khadlaj_official_new_launch_completeness_2026_11_10 \
             backend.tests.test_khadlaj_shiyaaka_rose_gold_official_2026_11_10 \
             backend.tests.test_al_wataniah_official_details_2026_11_10 \
             backend.tests.test_assaf_wild_colt_alex_enable_official_variants_2026_11_10 \
@@ -46,7 +43,9 @@ jobs:
             backend.tests.test_maison_alhambra_luxe_bold_mindset_official_2026_11_10 \
             backend.tests.test_maison_alhambra_kismet_matiere_official_2026_11_10 \
             backend.tests.test_maison_alhambra_glacier_fusion_mysterious_amber_2026_11_10 \
-            backend.tests.test_maison_asrar_official_name_audit_2026_11_10 \
+            backend.tests.test_khadlaj_official_new_launch_completeness_2026_11_10 \
+            backend.tests.test_maison_asrar_official_identity_pages_2026_11_10 \
+            backend.tests.test_khadlaj_hareem_al_sultan_gold_oil_2026_11_10 \
             backend.tests.test_khadlaj_cumulative_catalog_integrity \
             backend.tests.test_al_haramain_catalog \
             backend.tests.test_bujairami_catalog \
