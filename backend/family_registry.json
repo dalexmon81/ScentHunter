@@ -13126,6 +13126,9 @@
           "aliases": [
             "9 AM Dive",
             "Afnan 9 AM Dive"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13154,6 +13157,9 @@
           "aliases": [
             "Rare Reef",
             "Afnan Rare Reef"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13168,6 +13174,9 @@
           "aliases": [
             "Turathi Brown Homme",
             "Afnan Turathi Brown Homme"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -13189,6 +13198,9 @@
           "aliases": [
             "Historic Olmeda",
             "Afnan Historic Olmeda"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
