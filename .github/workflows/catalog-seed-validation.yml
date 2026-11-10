@@ -29,6 +29,7 @@ on:
       - catalog/consolidated-brand-catalog-2026-11-08
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/khadlaj-six-official-variants-2026-11-10
+      - catalog/khadlaj-twelve-official-variants-2026-11-10
 
 permissions:
   contents: read
@@ -74,6 +75,7 @@ jobs:
           backend.tests.test_khadlaj_official_spray_harvest
           backend.tests.test_khadlaj_cream_velvet_official_variant
           backend.tests.test_khadlaj_six_official_variants
+          backend.tests.test_khadlaj_official_spray_followup
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
