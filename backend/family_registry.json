@@ -3827,7 +3827,11 @@
           "aliases": [
             "Bayn Al Asrar",
             "Paris Corner Bayn Al Asrar"
-          ]
+          ],
+          "formats_ml": [
+            80
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Blackberry Wish",
@@ -3985,7 +3989,11 @@
           "aliases": [
             "Cosmopolitan Newyork",
             "Paris Corner Cosmopolitan Newyork"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Creamy Biscuit",
@@ -4020,14 +4028,22 @@
           "aliases": [
             "December Rose",
             "Paris Corner December Rose"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "December Vanilla",
           "aliases": [
             "December Vanilla",
             "Paris Corner December Vanilla"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Deux II Expressions North Stag",
@@ -4124,21 +4140,33 @@
           "aliases": [
             "Eternal Coffee",
             "Paris Corner Eternal Coffee"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Eternal Meadows",
           "aliases": [
             "Eternal Meadows",
             "Paris Corner Eternal Meadows"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Eternal Musk",
           "aliases": [
             "Eternal Musk",
             "Paris Corner Eternal Musk"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Farah",
@@ -4394,28 +4422,44 @@
           "aliases": [
             "Khair",
             "Paris Corner Khair"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Confection",
           "aliases": [
             "Khair Confection",
             "Paris Corner Khair Confection"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Felicity",
           "aliases": [
             "Khair Felicity",
             "Paris Corner Khair Felicity"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Fusion",
           "aliases": [
             "Khair Fusion",
             "Paris Corner Khair Fusion"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khair Peach Delulu",
@@ -4429,7 +4473,11 @@
           "aliases": [
             "Khair Pistachio",
             "Paris Corner Khair Pistachio"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Khayal",
@@ -4560,7 +4608,11 @@
           "aliases": [
             "Manaal",
             "Paris Corner Manaal"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mango Flames",
@@ -4595,21 +4647,33 @@
           "aliases": [
             "Mawj Appletini",
             "Paris Corner Mawj Appletini"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mawj Cognac Blaze",
           "aliases": [
             "Mawj Cognac Blaze",
             "Paris Corner Mawj Cognac Blaze"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mawj Moscow Mule",
           "aliases": [
             "Mawj Moscow Mule",
             "Paris Corner Mawj Moscow Mule"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Mehwish",
@@ -4775,7 +4839,11 @@
           "aliases": [
             "Minya Coco Lush",
             "Paris Corner Minya Coco Lush"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Misty Dawn Musk Collection",
@@ -4885,7 +4953,11 @@
           "aliases": [
             "Nouf",
             "Paris Corner Nouf"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ophidian Black Cherry",
@@ -4900,14 +4972,22 @@
           "aliases": [
             "Ophidian Mango Bliss",
             "Paris Corner Ophidian Mango Bliss"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ophidian Sweet Surrender",
           "aliases": [
             "Ophidian Sweet Surrender",
             "Paris Corner Ophidian Sweet Surrender"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Opulentia Empyreal Emir",
@@ -5176,7 +5256,11 @@
           "aliases": [
             "Rifaaqat",
             "Paris Corner Rifaaqat"
-          ]
+          ],
+          "formats_ml": [
+            85
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Rifaaqat Adorn",
@@ -5241,7 +5325,11 @@
           "aliases": [
             "Taskeen Caramel Cascade",
             "Paris Corner Taskeen Caramel Cascade"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Taskeen Lactéa Divina",
@@ -5257,7 +5345,11 @@
           "aliases": [
             "Taskeen Marina",
             "Paris Corner Taskeen Marina"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Taskeen Wowie",
@@ -5448,7 +5540,11 @@
           "aliases": [
             "Virilis",
             "Paris Corner Virilis"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Vivant Sunlit",
@@ -7699,7 +7795,12 @@
           "aliases": [
             "Club de Nuit Intense Man Pure Parfum",
             "Armaf Club de Nuit Intense Man Pure Parfum"
-          ]
+          ],
+          "formats_ml": [
+            150,
+            200
+          ],
+          "concentration": "Parfum"
         },
         {
           "canonical_name": "Club de Nuit Intenso Fuego",
@@ -7797,7 +7898,11 @@
           "aliases": [
             "Club de Nuit Bling",
             "Armaf Club de Nuit Bling"
-          ]
+          ],
+          "formats_ml": [
+            75
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Bling Gold",
@@ -7899,21 +8004,33 @@
           "aliases": [
             "Club de Nuit Lionheart Man",
             "Armaf Club de Nuit Lionheart Man"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Lionheart Woman",
           "aliases": [
             "Club de Nuit Lionheart Woman",
             "Armaf Club de Nuit Lionheart Woman"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Maleka",
           "aliases": [
             "Club de Nuit Maleka",
             "Armaf Club de Nuit Maleka"
-          ]
+          ],
+          "formats_ml": [
+            105
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Man",
@@ -8056,29 +8173,49 @@
           "canonical_name": "Odyssey Artisto",
           "aliases": [
             "Odyssey Artisto",
-            "Armaf Odyssey Artisto"
-          ]
+            "Armaf Odyssey Artisto",
+            "Odyssey Artisto The Red Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Go Mango",
           "aliases": [
             "Odyssey Go Mango",
-            "Armaf Odyssey Go Mango"
-          ]
+            "Armaf Odyssey Go Mango",
+            "Odyssey Go Mango Tropical Collection"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Ba Ha Mas",
           "aliases": [
             "Odyssey Ba Ha Mas",
-            "Armaf Odyssey Ba Ha Mas"
-          ]
+            "Armaf Odyssey Ba Ha Mas",
+            "Odyssey Ba Ha Mas Tropical Collection"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Marshmallow",
           "aliases": [
             "Odyssey Marshmallow",
-            "Armaf Odyssey Marshmallow"
-          ]
+            "Armaf Odyssey Marshmallow",
+            "Odyssey Marshmallow Gourmand Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Intense Woman",
@@ -8108,15 +8245,24 @@
           "canonical_name": "Yum Yum",
           "aliases": [
             "Yum Yum",
-            "Armaf Yum Yum"
-          ]
+            "Armaf Yum Yum",
+            "Delights Yum Yum"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Infinity Silver",
           "aliases": [
             "Infinity Silver",
             "Armaf Infinity Silver"
-          ]
+          ],
+          "formats_ml": [
+            105
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Ombre Oud Intense Man",
@@ -8224,21 +8370,35 @@
           "aliases": [
             "Ombre D'Or",
             "Armaf Ombre D'Or"
-          ]
+          ],
+          "formats_ml": [
+            75
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Toffee Coffee",
           "aliases": [
             "Odyssey Toffee Coffee",
-            "Armaf Odyssey Toffee Coffee"
-          ]
+            "Armaf Odyssey Toffee Coffee",
+            "Odyssey Toffee Coffee Cafe Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Black Forest",
           "aliases": [
             "Odyssey Black Forest",
-            "Armaf Odyssey Black Forest"
-          ]
+            "Armaf Odyssey Black Forest",
+            "Odyssey Black Forest Dessert Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Beach Party",
@@ -8283,8 +8443,13 @@
           "canonical_name": "Island Bliss",
           "aliases": [
             "Island Bliss",
-            "Armaf Island Bliss"
-          ]
+            "Armaf Island Bliss",
+            "Delights Island Bliss"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Island Breeze",
@@ -9266,6 +9431,7 @@
             "Armaf Odyssey French Kiss"
           ],
           "formats_ml": [
+            60,
             100
           ]
         },
@@ -9273,8 +9439,13 @@
           "canonical_name": "Odyssey Eau de Montagne",
           "aliases": [
             "Odyssey Eau de Montagne",
-            "Armaf Odyssey Eau de Montagne"
-          ]
+            "Armaf Odyssey Eau de Montagne",
+            "Odyssey Eau de Montagne Mountain Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Profumi D'Art 13 Tanta Roba",
@@ -9363,6 +9534,29 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Odyssey Spectra Rainbow Edition",
+          "aliases": [
+            "Armaf Odyssey Spectra Rainbow Edition",
+            "Odyssey Spectra Rainbow Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Odyssey Dubai Chocolat",
+          "aliases": [
+            "Armaf Odyssey Dubai Chocolat",
+            "Odyssey Dubai Chocolat"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ],
+          "concentration": "Eau de Parfum"
         }
       ]
     },
