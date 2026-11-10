@@ -5723,6 +5723,10 @@
           "aliases": [
             "Alex Enable",
             "Assaf Alex Enable"
+          ],
+          "formats_ml": [
+            100,
+            150
           ]
         },
         {
@@ -5793,6 +5797,11 @@
           "aliases": [
             "Wild Colt",
             "Assaf Wild Colt"
+          ],
+          "formats_ml": [
+            100,
+            125,
+            200
           ]
         },
         {
