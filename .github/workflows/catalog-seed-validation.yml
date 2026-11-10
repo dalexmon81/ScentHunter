@@ -7,12 +7,14 @@ on:
       - catalog/afnan-official-variants-2026-11-10
       - catalog/maison-asrar-official-name-audit-2026-11-10
       - catalog/catalog-audit-next-2026-11-10
+      - catalog/armaf-paris-corner-variant-gap-2026-11-10
   push:
     branches:
       - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
       - catalog/al-haramain-official-variants-2026-11-10
       - catalog/afnan-official-variants-2026-11-10
       - catalog/catalog-audit-next-2026-11-10
+      - catalog/armaf-paris-corner-variant-gap-2026-11-10
 
 permissions:
   contents: read
@@ -39,6 +41,7 @@ jobs:
             backend.tests.test_cumulative_catalog_regression_guard_2026_11_10 \
             backend.tests.test_cumulative_family_registry_mapping_2026_11_10 \
             backend.tests.test_family_registry_identity_normalization \
+            backend.tests.test_armaf_paris_corner_variant_gap_2026_11_10 \
             backend.tests.test_requested_brand_catalog_coverage \
             backend.tests.test_official_afnan_armaf_variant_batch_2026_11_10 \
             backend.tests.test_afnan_official_variants_2026_11_10 \
