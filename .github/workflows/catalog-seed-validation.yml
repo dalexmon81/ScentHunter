@@ -5,6 +5,7 @@ on:
     branches:
       - catalog/official-brand-audit-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
+      - catalog/catalog-integration-audit-2026-11-10
       - catalog/brand-expansion-2026-11
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
@@ -21,6 +22,7 @@ on:
   push:
     branches:
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
+      - catalog/catalog-integration-audit-2026-11-10
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
@@ -72,7 +74,6 @@ jobs:
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
           backend.tests.test_khadlaj_cream_velvet_official_variant
-          backend.tests.test_khadlaj_six_official_variants
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
@@ -83,4 +84,8 @@ jobs:
           backend.tests.test_afnan_official_global_storefront
           backend.tests.test_aromatix_official_catalog
           backend.tests.test_maison_asrar_official_detail_reconciliation
+          backend.tests.test_catalog_integration_velixir_variants
+          backend.tests.test_catalog_integration_global_integrity
+          backend.tests.test_catalog_integration_arabiyat_prestige
+          backend.tests.test_catalog_integration_maison_asrar
           -v

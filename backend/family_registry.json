@@ -847,6 +847,10 @@
           "aliases": [
             "Comus",
             "Velixir Comus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -876,6 +880,10 @@
           "aliases": [
             "Ether",
             "Velixir Ether"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -995,6 +1003,10 @@
           "aliases": [
             "Panacea",
             "Velixir Panacea"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -9825,6 +9837,9 @@
           "aliases": [
             "Marwa",
             "Arabiyat Prestige Marwa"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10090,6 +10105,9 @@
           "aliases": [
             "Aariz",
             "Arabiyat Prestige Aariz"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10097,6 +10115,9 @@
           "aliases": [
             "Aariz L’Absolu",
             "Arabiyat Prestige Aariz L’Absolu"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10198,6 +10219,9 @@
           "aliases": [
             "Asháa Oud Noir",
             "Arabiyat Prestige Asháa Oud Noir"
+          ],
+          "formats_ml": [
+            110
           ]
         },
         {

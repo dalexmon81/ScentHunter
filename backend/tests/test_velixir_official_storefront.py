@@ -8,8 +8,8 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
 EXPECTED = {
-    "Panacea": ("SH-VELIXIR-1738e7af", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
-    "Comus": ("SH-VELIXIR-50b87cfb", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
+    "Panacea": ("SH-VELIXIR-1738e7af", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex", "Extrait de Parfum", [35,100]),
+    "Comus": ("SH-VELIXIR-50b87cfb", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex", "Extrait de Parfum", [35,100]),
     "Harmonia": ("SH-VELIXIR-e49794d3", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-harmonia", "Eau de Parfum", [35,100]),
     "Nyx": ("SH-VELIXIR-153bbbed", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-nyx-eau-de-parfum-for-unisex", "Eau de Parfum", [35,100]),
     "Morpheus": ("SH-VELIXIR-21cface3", "https://velixirparfums.com/collections/frontpage/products/velixir-morpheus-for-unisex-eau-de-parfum", "Eau de Parfum", [35,100]),
@@ -27,7 +27,7 @@ EXPECTED = {
     "Uranus": ("SH-VELIXIR-029d80ce", "https://velixirparfums.com/collections/frontpage/products/velixir-uranus-for-unisex-eau-de-parfum", "Eau de Parfum", [35,100]),
     "Selene": ("SH-VELIXIR-bc687534", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-selene-eau-de-parfum-for-unisex", "Eau de Parfum", [35,100]),
     "Orpheus": ("SH-VELIXIR-7e147c46", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
-    "Ether": ("SH-VELIXIR-36e7a5ca", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
+    "Ether": ("SH-VELIXIR-36e7a5ca", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex", "Extrait de Parfum", [35,100]),
 }
 
 
