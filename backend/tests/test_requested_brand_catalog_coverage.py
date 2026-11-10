@@ -2867,5 +2867,39 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
                     self.assertEqual(matching[0].get("source_evidence_url"), evidence)
 
 
+
+    def test_maison_alhambra_aquilo_pour_homme_official_100ml_variant(self):
+        source = "https://maisonalhambra-usa.com/products/maison-alhambra-aquilo-pour-homme-eau-de-parfum-for-men"
+        products = [
+            row for row in CATALOG.get("products", [])
+            if row.get("brand_name") == "Maison Alhambra"
+            and row.get("canonical_name") == "Aquilo"
+        ]
+        self.assertEqual(len(products), 1)
+        product = products[0]
+        self.assertEqual(product.get("product_id"), "SH-MAISON-ALHAMBRA-681309fa")
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertIn("Aquilo Pour Homme", product.get("aliases", []))
+        self.assertEqual(product.get("source_url"), source)
+        self.assertEqual(product.get("source_evidence_url"), source)
+        self.assertEqual(product.get("source_product_url"), source)
+        self.assertEqual(product.get("concentration"), "Eau de Parfum")
+        self.assertEqual(product.get("gender"), "Men")
+        self.assertEqual(product.get("formats_ml"), [100])
+        self.assertEqual(product.get("gtins"), ["6291108735886"])
+
+        variants = [
+            row for row in CATALOG.get("variants", [])
+            if row.get("product_id") == product["product_id"]
+        ]
+        self.assertEqual(len(variants), 1)
+        variant = variants[0]
+        self.assertEqual(variant.get("variant_id"), "SHV-MAISON-ALHAMBRA-681309-100-000")
+        self.assertEqual(variant.get("size_ml"), 100)
+        self.assertEqual(variant.get("concentration"), "Eau de Parfum")
+        self.assertEqual(variant.get("gtin"), "6291108735886")
+        self.assertEqual(variant.get("source_evidence_url"), source)
+
+
 if __name__ == "__main__":
     unittest.main()

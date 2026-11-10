@@ -847,6 +847,10 @@
           "aliases": [
             "Comus",
             "Velixir Comus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -876,6 +880,10 @@
           "aliases": [
             "Ether",
             "Velixir Ether"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -981,6 +989,10 @@
           "aliases": [
             "Orpheus",
             "Velixir Orpheus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -995,6 +1007,10 @@
           "aliases": [
             "Panacea",
             "Velixir Panacea"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -1874,6 +1890,9 @@
           "aliases": [
             "Hunter",
             "Maison Asrar Hunter"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -1895,6 +1914,9 @@
           "aliases": [
             "Heritage",
             "Maison Asrar Heritage"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -1902,6 +1924,9 @@
           "aliases": [
             "1963",
             "Maison Asrar 1963"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2077,6 +2102,9 @@
           "aliases": [
             "Adorable",
             "Maison Asrar Adorable"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2084,6 +2112,9 @@
           "aliases": [
             "Alonoud",
             "Maison Asrar Alonoud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2098,6 +2129,9 @@
           "aliases": [
             "Basma",
             "Maison Asrar Basma"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2105,6 +2139,9 @@
           "aliases": [
             "Black",
             "Maison Asrar Black"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2112,6 +2149,9 @@
           "aliases": [
             "Bloom Bloom",
             "Maison Asrar Bloom Bloom"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2119,6 +2159,9 @@
           "aliases": [
             "Bonita",
             "Maison Asrar Bonita"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2126,6 +2169,9 @@
           "aliases": [
             "Casablanca",
             "Maison Asrar Casablanca"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2217,6 +2263,9 @@
           "aliases": [
             "Emessa",
             "Maison Asrar Emessa"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2224,6 +2273,9 @@
           "aliases": [
             "Fairy Tale",
             "Maison Asrar Fairy Tale"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2238,6 +2290,9 @@
           "aliases": [
             "Fakhama",
             "Maison Asrar Fakhama"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2252,6 +2307,9 @@
           "aliases": [
             "Fresh Iris",
             "Maison Asrar Fresh Iris"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2259,6 +2317,9 @@
           "aliases": [
             "Gentle Oud",
             "Maison Asrar Gentle Oud"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -2273,6 +2334,9 @@
           "aliases": [
             "Hamsat Gharam",
             "Maison Asrar Hamsat Gharam"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2280,6 +2344,9 @@
           "aliases": [
             "Hamsat Ghazal",
             "Maison Asrar Hamsat Ghazal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2287,6 +2354,9 @@
           "aliases": [
             "Hamsat Hob",
             "Maison Asrar Hamsat Hob"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2294,6 +2364,9 @@
           "aliases": [
             "Hamsat Ishq",
             "Maison Asrar Hamsat Ishq"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2322,6 +2395,9 @@
           "aliases": [
             "Icon",
             "Maison Asrar Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -9825,6 +9901,9 @@
           "aliases": [
             "Marwa",
             "Arabiyat Prestige Marwa"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10090,6 +10169,9 @@
           "aliases": [
             "Aariz",
             "Arabiyat Prestige Aariz"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10097,6 +10179,9 @@
           "aliases": [
             "Aariz L’Absolu",
             "Arabiyat Prestige Aariz L’Absolu"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -10198,6 +10283,9 @@
           "aliases": [
             "Asháa Oud Noir",
             "Arabiyat Prestige Asháa Oud Noir"
+          ],
+          "formats_ml": [
+            110
           ]
         },
         {
@@ -11050,6 +11138,46 @@
           "aliases": [
             "Maestro",
             "Gulf Orchid Maestro"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Maze",
+          "aliases": [
+            "Maze",
+            "Gulf Orchid Maze"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Mosaic",
+          "aliases": [
+            "Mosaic",
+            "Gulf Orchid Mosaic"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Rice Milk",
+          "aliases": [
+            "Rice Milk",
+            "Gulf Orchid Rice Milk"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Royal Rose",
+          "aliases": [
+            "Royal Rose",
+            "Gulf Orchid Royal Rose"
           ],
           "formats_ml": [
             100
@@ -13648,6 +13776,9 @@
             "Maison Alhambra Aquilo",
             "Aquilo Pour Homme",
             "Maison Alhambra Aquilo Pour Homme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
