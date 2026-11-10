@@ -49,6 +49,7 @@ EXPECTED = {
     "Oud Al Sabah": ("SH-KHADLAJ-SPRAY-HARVEST-109", 100, "Eau de Parfum", "6291107977034", "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance"),
     "Shahi Oud": ("SH-KHADLAJ-SPRAY-HARVEST-113", 100, "Eau de Parfum", "6291107971032", "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae"),
     "Oud Pour Noble": ("SH-KHADLAJ-SPRAY-HARVEST-096", 100, "Eau de Parfum", "6291107971025", "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae"),
+    "Oud Pour Blueberry": ("SH-KHADLAJ-SPRAY-HARVEST-100", 100, "Eau de Parfum", "6291107970127", "https://khadlaj-perfumes.com/collections/oud-pour-series-collection-shop-for-captivating-niche-fragrances/products/oud-pour-blueberry-spray-shop-online-best-price-in-dubai-uae"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
@@ -80,6 +81,8 @@ class KhadlajOfficialVariantBatchTests(unittest.TestCase):
                 self.assertEqual(variant["source_evidence_url"], url)
                 if name == "Empire Victor":
                     self.assertEqual(variant["gtin_source_url"], "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women")
+                if name == "Oud Pour Blueberry":
+                    self.assertEqual(variant["gtin_source_url"], "https://distrinode.lu/khadlaj-oud-pour-blueberry-perfume-edp-100-ml-fr-lu")
 
     def test_family_registry_matches_each_products_family_and_size(self):
         for name, (product_id, size, _, _, _) in EXPECTED.items():
