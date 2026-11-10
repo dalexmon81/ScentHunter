@@ -1881,7 +1881,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         expected = {
             "Odyssey Go Mango": (
                 "https://armaf.com/products/odyssey-go-mango",
-                None, "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Club de Nuit Oud": (
                 "https://armaf.com/products/club-de-nuit-oud",
@@ -1893,7 +1893,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Odyssey Marshmallow": (
                 "https://armaf.com/products/odyssey-marshmallow",
-                "Eau de Parfum", "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Club de Nuit Intense Woman": (
                 "https://armaf.com/products/club-de-nuit-intense-woman",
@@ -2052,8 +2052,8 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         expected = {
             "Delights Dubai Delicacy Cotton Candy": ("https://armaf.com/products/cotton-candy", "Eau de Parfum", "Unisex", []),
             "Ombre D'Or": ("https://armaf.com/products/ombre-dor", "Eau de Parfum", "Men", [75]),
-            "Odyssey Toffee Coffee": ("https://armaf.com/products/odyssey-toffee-coffee", "Eau de Parfum", "Unisex", []),
-            "Odyssey Black Forest": ("https://armaf.com/products/odyssey-toffee-coffee-copy-1", "Eau de Parfum", "Unisex", []),
+            "Odyssey Toffee Coffee": ("https://armaf.com/products/odyssey-toffee-coffee", "Eau de Parfum", "Unisex", [100]),
+            "Odyssey Black Forest": ("https://armaf.com/products/odyssey-toffee-coffee-copy-1", "Eau de Parfum", "Unisex", [100]),
             "Beach Party": ("https://armaf.com/products/beach-party-spr", "Eau de Parfum", "Unisex", []),
             "Miss Armaf Chic": ("https://armaf.com/products/miss-armaf-chic", "Eau de Parfum", "Women", [100]),
             "Club de Nuit Precieux IV": ("https://armaf.com/products/club-de-nuit-precieux-iv", "Eau de Toilette", "Women", []),

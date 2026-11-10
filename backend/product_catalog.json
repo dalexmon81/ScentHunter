@@ -14424,13 +14424,19 @@
       "family_name": "Odyssey Go Mango",
       "aliases": [
         "Odyssey Go Mango",
-        "Armaf Odyssey Go Mango"
+        "Armaf Odyssey Go Mango",
+        "Odyssey Go Mango Tropical Collection"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-go-mango",
       "source_evidence_url": "https://armaf.com/products/odyssey-go-mango",
       "source_product_url": "https://armaf.com/products/odyssey-go-mango",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-go-mango-tropical-collection-1",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-386ff57b",
@@ -14461,14 +14467,19 @@
       "family_name": "Odyssey Marshmallow",
       "aliases": [
         "Odyssey Marshmallow",
-        "Armaf Odyssey Marshmallow"
+        "Armaf Odyssey Marshmallow",
+        "Odyssey Marshmallow Gourmand Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-marshmallow",
       "source_evidence_url": "https://armaf.com/products/odyssey-marshmallow",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-marshmallow",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-marshmallow-gourmand-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-e9227d2b",
@@ -14828,14 +14839,19 @@
       "family_name": "Odyssey Toffee Coffee",
       "aliases": [
         "Odyssey Toffee Coffee",
-        "Armaf Odyssey Toffee Coffee"
+        "Armaf Odyssey Toffee Coffee",
+        "Odyssey Toffee Coffee Cafe Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-toffee-coffee",
       "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-toffee-coffee-cafe-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-38558c30",
@@ -14847,14 +14863,19 @@
       "family_name": "Odyssey Black Forest",
       "aliases": [
         "Odyssey Black Forest",
-        "Armaf Odyssey Black Forest"
+        "Armaf Odyssey Black Forest",
+        "Odyssey Black Forest Dessert Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
       "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-black-forest-dessert-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-a60b16e9",
@@ -52804,6 +52825,66 @@
       "source_product_url": "https://armaf.com/products/yum-yum-spr",
       "source_evidence_url": "https://armaf.com/products/yum-yum-spr",
       "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-yum-yum"
+    },
+    {
+      "product_id": "SH-ARMAF-78579c03",
+      "variant_id": "SHV-SH-ARMAF-78579c03-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Marshmallow 100 ml",
+        "Armaf Odyssey Marshmallow 100 ml",
+        "Odyssey Marshmallow Gourmand Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-marshmallow",
+      "source_product_url": "https://armaf.com/products/odyssey-marshmallow",
+      "source_evidence_url": "https://armaf.com/products/odyssey-marshmallow",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-marshmallow-gourmand-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-7becf4c9",
+      "variant_id": "SHV-SH-ARMAF-7becf4c9-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Toffee Coffee 100 ml",
+        "Armaf Odyssey Toffee Coffee 100 ml",
+        "Odyssey Toffee Coffee Cafe Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-toffee-coffee-cafe-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-38558c30",
+      "variant_id": "SHV-SH-ARMAF-38558c30-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Black Forest 100 ml",
+        "Armaf Odyssey Black Forest 100 ml",
+        "Odyssey Black Forest Dessert Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-black-forest-dessert-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-e1349118",
+      "variant_id": "SHV-SH-ARMAF-e1349118-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Go Mango 100 ml",
+        "Armaf Odyssey Go Mango 100 ml",
+        "Odyssey Go Mango Tropical Collection"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_product_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_evidence_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-go-mango-tropical-collection-1"
     }
   ]
 }
