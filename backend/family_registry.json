@@ -7804,7 +7804,12 @@
           "aliases": [
             "Club de Nuit Intense Man Pure Parfum",
             "Armaf Club de Nuit Intense Man Pure Parfum"
-          ]
+          ],
+          "formats_ml": [
+            150,
+            200
+          ],
+          "concentration": "Parfum"
         },
         {
           "canonical_name": "Club de Nuit Intenso Fuego",
@@ -7902,7 +7907,11 @@
           "aliases": [
             "Club de Nuit Bling",
             "Armaf Club de Nuit Bling"
-          ]
+          ],
+          "formats_ml": [
+            75
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Bling Gold",
@@ -8004,21 +8013,33 @@
           "aliases": [
             "Club de Nuit Lionheart Man",
             "Armaf Club de Nuit Lionheart Man"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Lionheart Woman",
           "aliases": [
             "Club de Nuit Lionheart Woman",
             "Armaf Club de Nuit Lionheart Woman"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Maleka",
           "aliases": [
             "Club de Nuit Maleka",
             "Armaf Club de Nuit Maleka"
-          ]
+          ],
+          "formats_ml": [
+            105
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Club de Nuit Man",

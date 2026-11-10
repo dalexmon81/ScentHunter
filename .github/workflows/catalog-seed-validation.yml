@@ -34,6 +34,7 @@ on:
       - catalog/paris-corner-eleven-more-official-variants-2026-11-10
       - catalog/paris-corner-six-more-official-variants-2026-11-10
       - catalog/paris-corner-seven-more-official-variants-2026-11-10
+      - catalog/armaf-five-products-six-official-variants-2026-11-10
       - catalog/catalog-complete-final-evidence-2026-11-10
       - catalog/khadlaj-four-remaining-variants-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
@@ -90,6 +91,7 @@ jobs:
           backend.tests.test_paris_corner_additional_official_variants_2026_11_10
           backend.tests.test_paris_corner_six_more_official_variants_2026_11_10
           backend.tests.test_paris_corner_seven_more_official_variants_2026_11_10
+          backend.tests.test_armaf_five_products_six_official_variants_2026_11_10
           backend.tests.test_swiss_arabian_detail_evidence
           backend.tests.test_arabiyat_prestige_extrait
           backend.tests.test_arabiyat_prestige_marwa_extrait

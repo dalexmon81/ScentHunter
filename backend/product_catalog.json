@@ -13226,7 +13226,12 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
       "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
-      "concentration": "Parfum"
+      "concentration": "Parfum",
+      "source_product_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "formats_ml": [
+        150,
+        200
+      ]
     },
     {
       "product_id": "SH-ARMAF-4c83dfcd",
@@ -13426,9 +13431,12 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/club-de-nuit-bling",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling",
-      "source_product_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_product_url": "https://armaf.eu/products/club-de-nuit-bling",
       "gender": "Men",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-ARMAF-91877071",
@@ -13659,9 +13667,12 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
-      "source_product_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man",
       "gender": "Men",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-8a8dfbb3",
@@ -13678,9 +13689,12 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/cdn-lion-heart-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-spr",
-      "source_product_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman",
       "gender": "Women",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-4e9fde0c",
@@ -13697,9 +13711,12 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/club-de-nuit-maleka",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
-      "source_product_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_product_url": "https://fr.armaf.eu/products/club-de-nuit-maleka",
       "gender": "Women",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-dd435afb",
@@ -52620,6 +52637,84 @@
       "source_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
       "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-rifaaqat-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-ARMAF-b6b77ff6",
+      "variant_id": "SHV-SH-ARMAF-b6b77ff6-150-PARFUM",
+      "size_ml": 150,
+      "concentration": "Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Pure Parfum 150 ml",
+        "Armaf Club de Nuit Intense Man Pure Parfum 150 ml"
+      ],
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_product_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
+    },
+    {
+      "product_id": "SH-ARMAF-b6b77ff6",
+      "variant_id": "SHV-SH-ARMAF-b6b77ff6-200-PARFUM",
+      "size_ml": 200,
+      "concentration": "Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Pure Parfum 200 ml",
+        "Armaf Club de Nuit Intense Man Pure Parfum 200 ml"
+      ],
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_product_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
+    },
+    {
+      "product_id": "SH-ARMAF-b3967c31",
+      "variant_id": "SHV-SH-ARMAF-b3967c31-75-EDP",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Bling 75 ml",
+        "Armaf Club de Nuit Bling 75 ml"
+      ],
+      "source_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_product_url": "https://armaf.eu/products/club-de-nuit-bling"
+    },
+    {
+      "product_id": "SH-ARMAF-3730ce35",
+      "variant_id": "SHV-SH-ARMAF-3730ce35-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Lionheart Man 100 ml",
+        "Armaf Club de Nuit Lionheart Man 100 ml"
+      ],
+      "source_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man"
+    },
+    {
+      "product_id": "SH-ARMAF-8a8dfbb3",
+      "variant_id": "SHV-SH-ARMAF-8a8dfbb3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Lionheart Woman 100 ml",
+        "Armaf Club de Nuit Lionheart Woman 100 ml"
+      ],
+      "source_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman"
+    },
+    {
+      "product_id": "SH-ARMAF-4e9fde0c",
+      "variant_id": "SHV-SH-ARMAF-4e9fde0c-105-EDP",
+      "size_ml": 105,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Maleka 105 ml",
+        "Armaf Club de Nuit Maleka 105 ml"
+      ],
+      "source_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_product_url": "https://fr.armaf.eu/products/club-de-nuit-maleka"
     }
   ]
 }
