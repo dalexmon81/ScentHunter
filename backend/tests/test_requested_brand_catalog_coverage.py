@@ -1828,11 +1828,11 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Club de Nuit Bling": (
                 "https://armaf.com/products/club-de-nuit-bling",
-                "Eau de Parfum", "Men", [],
+                "Eau de Parfum", "Men", [75],
             ),
             "Club de Nuit Maleka": (
                 "https://armaf.com/products/club-de-nuit-maleka",
-                "Eau de Parfum", "Women", [],
+                "Eau de Parfum", "Women", [105],
             ),
             "Dunescape": (
                 "https://armaf.com/products/dunescape-1",
@@ -1909,7 +1909,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Club de Nuit Lionheart Man": (
                 "https://armaf.com/products/cdn-lion-heart-man-spr",
-                "Eau de Parfum", "Men", [],
+                "Eau de Parfum", "Men", [100],
             ),
             "Infinity Silver": (
                 "https://armaf.com/products/infinity-spr-1",
@@ -2057,7 +2057,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Beach Party": ("https://armaf.com/products/beach-party-spr", "Eau de Parfum", "Unisex", []),
             "Miss Armaf Chic": ("https://armaf.com/products/miss-armaf-chic", "Eau de Parfum", "Women", [100]),
             "Club de Nuit Precieux IV": ("https://armaf.com/products/club-de-nuit-precieux-iv", "Eau de Toilette", "Women", []),
-            "Club de Nuit Lionheart Woman": ("https://armaf.com/products/cdn-lion-heart-spr", "Eau de Parfum", "Women", []),
+            "Club de Nuit Lionheart Woman": ("https://armaf.com/products/cdn-lion-heart-spr", "Eau de Parfum", "Women", [100]),
             "Odyssey Eau de Montagne": ("https://armaf.com/products/odyssey-eau-de-montagne", None, "Unisex", []),
             "Profumi D'Art 13 Tanta Roba": ("https://armaf.com/products/profumi-dart-13-e-tanta-roba", "Eau de Parfum", "Unisex", [100]),
         }
