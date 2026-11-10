@@ -91,6 +91,7 @@ jobs:
           backend.tests.test_gulf_orchid_new_arrivals_2026_11_10
           backend.tests.test_gulf_orchid_five_variants_and_brand_attribution
           backend.tests.test_cumulative_catalog_integration_2026_11_10
+          backend.tests.test_maison_asrar_name_verification_2026_11_10
           backend.tests.test_arabiyat_prestige_new_launch_2026_11_10
           backend.tests.test_khadlaj_official_spray_fourth_followup
           backend.tests.test_khadlaj_official_spray_third_followup
