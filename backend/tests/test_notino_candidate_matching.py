@@ -1,7 +1,10 @@
 import unittest
+import tempfile
+from pathlib import Path
 
 from backend.scripts.build_notino_match_candidates import (
     build_catalog_index, score_row, extract_concentration, parse_size,
+    iter_perfume_rows,
 )
 
 
@@ -203,6 +206,28 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         }
         index = build_catalog_index(catalog)
         self.assertEqual(index[0]["concentration"], "EDP")
+
+    def test_candidate_feed_scope_excludes_gift_sets_and_non_perfume_categories(self):
+        xml = """<?xml version="1.0"?>
+        <feed>
+          <entry>
+            <id>CORE</id><google_product_category>479</google_product_category>
+            <product_type>Parfémy &gt; Pánské parfémy &gt; Toaletní vody</product_type>
+          </entry>
+          <entry>
+            <id>GIFT</id><google_product_category>479</google_product_category>
+            <product_type>Parfémy &gt; Dárkové sady</product_type>
+          </entry>
+          <entry>
+            <id>OTHER</id><google_product_category>123</google_product_category>
+            <product_type>Toaletní vody</product_type>
+          </entry>
+        </feed>"""
+        with tempfile.TemporaryDirectory() as directory:
+            feed = Path(directory) / "feed.xml"
+            feed.write_text(xml, encoding="utf-8")
+            rows = list(iter_perfume_rows(feed))
+        self.assertEqual([row["id"] for row in rows], ["CORE"])
 
     def test_product_without_variants_is_indexed_as_product_only_review_candidate(self):
         catalog = {

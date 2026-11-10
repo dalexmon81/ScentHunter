@@ -113,8 +113,8 @@ product-only identities for products without a variant.
 Results for the 9,533 core fragrance feed rows:
 - 3,379 rows received at least one brand/name candidate; 6,154 received none.
 - 167 top-ranked candidates were strong existing-variant review candidates.
-- 1,019 rows were ambiguous; 292 medium-priority; 1,585 low-priority
-  (including 316 with known size, concentration or gender conflicts).
+- 1,017 rows were ambiguous; 292 medium-priority; 1,585 low-priority;
+  318 were downgraded for known size, concentration or gender conflicts.
 - No exact GTIN matches were possible because no canonical variant has a GTIN.
 - Automatic matches: zero. Every candidate requires human verification.
 
