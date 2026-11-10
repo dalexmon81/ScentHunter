@@ -3526,12 +3526,14 @@
         "Musk Pure Musk Blend",
         "Khadlaj Musk Pure Musk Blend"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
       "formats_ml": [
         60
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-263fcf43",
@@ -3564,12 +3566,14 @@
         "Private Blend Musk Ice",
         "Khadlaj Private Blend Musk Ice"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance"
     },
     {
       "product_id": "SH-KHADLAJ-935bcf95",
@@ -3697,12 +3701,14 @@
         "Biscotti Date Toffee",
         "Khadlaj Biscotti Date Toffee"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances"
     },
     {
       "product_id": "SH-KHADLAJ-93c5a51d",
@@ -39379,7 +39385,10 @@
         "Khadlaj Musk Pure Musk Blend 60ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-04832397-60-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107978154",
+      "source_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-263fcf43",
@@ -39401,7 +39410,10 @@
         "Khadlaj Private Blend Musk Ice 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-dd1434f1-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "gtin": "6291107979410",
+      "source_url": "https://khadlaj-perfumes.com/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/private-blend-musk-ice-extrait-de-parfum-100-ml-designer-fragrance"
     },
     {
       "product_id": "SH-KHADLAJ-935bcf95",
@@ -39481,7 +39493,10 @@
         "Khadlaj Biscotti Date Toffee 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-75815e2a-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "gtin": "6291107979977",
+      "source_url": "https://khadlaj-perfumes.com/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances"
     },
     {
       "product_id": "SH-KHADLAJ-93c5a51d",
