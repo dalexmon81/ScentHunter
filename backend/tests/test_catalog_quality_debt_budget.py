@@ -32,7 +32,7 @@ class CatalogQualityDebtBudgetTests(unittest.TestCase):
             if p.get("identity_status") == "source_verified_name"
             and p["product_id"] not in self.products_with_variants
         ]
-        self.assertLessEqual(len(pending), 259)  # Adds four Maison Asrar names verified on individual pages without published variant attributes
+        self.assertLessEqual(len(pending), 260)  # Adds four Maison Asrar names and Maitha without a published size
 
     def test_variants_without_any_source_url_do_not_increase(self):
         missing = [
