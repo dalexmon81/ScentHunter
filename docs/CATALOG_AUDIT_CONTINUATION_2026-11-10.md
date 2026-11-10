@@ -61,6 +61,25 @@ Current verified product counts on #705:
 7. Never import price, stock, availability, shipping or retailer offer information into the canonical identity catalog.
 8. Add regression tests for each verified batch and retain global collision, orphan and family-mapping checks.
 
+## Existing brand coverage control (do not weaken)
+
+The repository's pre-existing `backend/tests/test_requested_brand_catalog_coverage.py` already protects these 20 reconciled minimums. Keep the original baseline and investigate any failures against the exact source branch rather than editing thresholds to make CI pass:
+
+- Velixir 28; Maison Asrar 120; Swiss Arabian 41; Paris Corner 254; Khadlaj 115.
+- Bujairami 142; Assaf 140; Al Wataniah 86; French Avenue 119; Arabiyat Prestige 118.
+- Gulf Orchid 32; Afnan 87; Lattafa 135; Aromatix 12; Zimaya 76.
+- Al Haramain 149; Games of Spades 32; Maison Alhambra 226; Mykonos 72; Armaf 218.
+
+At the verified PR #705 head, the observed counts meet or exceed those minimums. The exact current counts for the less recently targeted brands should be preserved in follow-up snapshots.
+
 ## First follow-up targets
 
-Prioritize brands with large listing-to-catalog gaps, especially Maison Alhambra, Paris Corner, Khadlaj, Armaf and Maison Asrar. A listing count alone is not proof of a missing canonical perfume: filter out bundles, samples, body care, home fragrances and duplicated size presentations; resolve sub-brand attribution before adding anything.
+Prioritize brands with unresolved official-listing reconciliation rather than simply choosing the largest numeric gap. Maison Alhambra, Paris Corner, Khadlaj, Armaf and Maison Asrar remain useful candidates, but the latest work already includes large portions of those families. For every new batch:
+
+1. Identify the exact official brand storefront and the relevant perfume-only paginated collection.
+2. Capture each page's product title and individual product URL; filter bundles, samples, body care, home fragrance, air fresheners and unrelated sub-brands.
+3. Compare normalized brand/name identity to the current catalog before adding any canonical record.
+4. Fetch individual product pages for size/concentration/GTIN evidence. A collection listing proves a listed name only, not a bottle variant.
+5. Reuse canonical IDs for existing products. If product ownership, identity, GTIN or format is ambiguous, document and quarantine the candidate rather than inventing a record.
+6. Add focused tests for each batch and update `family_registry.json` only with source-backed formats and product identities.
+7. Run the whole catalog seed validation and global integrity suite on the exact PR head.
