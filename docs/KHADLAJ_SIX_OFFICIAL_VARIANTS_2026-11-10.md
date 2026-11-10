@@ -60,3 +60,9 @@ This change completes nineteen existing Khadlaj canonical identities using offic
 ## Regression coverage
 
 The new test verifies canonical identity uniqueness, source provenance, variant count and IDs, size, concentration, GTIN, and family-registry consistency.
+
+## Deferred reconciliation
+
+Sawaar Vanille Blanc was deliberately not promoted to a verified variant in this batch. The official product page shows a concentration conflict: the product heading and SKU metadata identify Eau de Parfum, while product imagery labels the bottle Extrait de Parfum. The 100 ml size and GTIN are visible, but concentration needs a definitive reconciliation before creating a variant.
+
+Official page: https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women
