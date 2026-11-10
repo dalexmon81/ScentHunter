@@ -1,5 +1,7 @@
 name: Catalog seed validation
 
+# Downstream draft PR validation chain: catalog/khadlaj-eight-final-official-variants-2026-11-10
+
 on:
   pull_request:
     branches:
