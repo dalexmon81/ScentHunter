@@ -123,3 +123,25 @@ no candidate is not proof that the fragrance is new: missing aliases, retailer
 brand labels, incomplete product records and absent variants can all prevent
 a match. Product-only candidates identify a possible fragrance family but do
 not identify a purchasable variant.
+
+
+## Canonical brand coverage audit
+
+To separate brands genuinely absent from the canonical catalog from brands
+already represented but missing product names, aliases or variants, run:
+
+```bash
+python -m backend.scripts.audit_notino_catalog_coverage \
+  /path/to/NOTINO_fr-NotinoFR_google_all-shopping.xml \
+  backend/product_catalog.json \
+  --candidates /tmp/notino-match-candidates.csv \
+  --csv /tmp/notino-brand-coverage.csv \
+  --json /tmp/notino-brand-coverage.json
+```
+
+The report is read-only. It groups core feed rows by normalized brand, reports
+whether a canonical brand exists, valid/invalid GTIN counts and candidate
+coverage when a candidate CSV is supplied. A brand present in the catalog but
+with no candidate is classified as a name/alias/variant gap, not as a new
+brand. A brand absent from the catalog is a catalog expansion candidate only;
+it is not an instruction to import every retailer listing.
