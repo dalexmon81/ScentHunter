@@ -3619,14 +3619,20 @@
       "family_name": "Musk Pure Musk Blend",
       "aliases": [
         "Musk Pure Musk Blend",
-        "Khadlaj Musk Pure Musk Blend"
+        "Khadlaj Musk Pure Musk Blend",
+        "Musk Pure Musk Blend Creation of Iqbal",
+        "Khadlaj Musk Pure Musk Blend Creation of Iqbal",
+        "Musk Pure Musk Blend Creation of Iqbal 60 ml",
+        "Khadlaj Musk Pure Musk Blend Creation of Iqbal 60 ml"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
       "formats_ml": [
         60
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-263fcf43",
@@ -34240,27 +34246,6 @@
       "concentration": "Extrait de Parfum"
     },
     {
-      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
-      "brand": "Khadlaj",
-      "brand_name": "Khadlaj",
-      "canonical_name": "Musk Pure Musk Blend Creation of Iqbal",
-      "name": "Musk Pure Musk Blend Creation of Iqbal",
-      "family_id": "khadlaj_official_perfume_sprays_2026_11",
-      "family_name": "Musk Pure Musk Blend Creation of Iqbal",
-      "aliases": [
-        "Musk Pure Musk Blend Creation of Iqbal",
-        "Khadlaj Musk Pure Musk Blend Creation of Iqbal"
-      ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
-      "source_product_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        60
-      ]
-    },
-    {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-068",
       "brand": "Khadlaj",
       "brand_name": "Khadlaj",
@@ -40402,10 +40387,15 @@
       "size_ml": 60,
       "aliases": [
         "Musk Pure Musk Blend 60 ml",
-        "Khadlaj Musk Pure Musk Blend 60ml"
+        "Khadlaj Musk Pure Musk Blend 60ml",
+        "Musk Pure Musk Blend Creation of Iqbal 60 ml",
+        "Khadlaj Musk Pure Musk Blend Creation of Iqbal 60 ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-04832397-60-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107978154",
+      "source_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-263fcf43",
@@ -50889,19 +50879,6 @@
       "gtin": "6291107978765",
       "source_url": "https://khadlaj-perfumes.com/products/saqr-al-badiya-extrait-de-parfum-spray-for-men-with-aquatic-notes-shop-online-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/saqr-al-badiya-extrait-de-parfum-spray-for-men-with-aquatic-notes-shop-online-dubai-uae"
-    },
-    {
-      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-067",
-      "size_ml": 60,
-      "aliases": [
-        "Musk Pure Musk Blend Creation of Iqbal 60 ml",
-        "Khadlaj Musk Pure Musk Blend Creation of Iqbal 60 ml"
-      ],
-      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-067-60-EDP",
-      "gtin": "6291107978154",
-      "source_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
-      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-094",

@@ -16,9 +16,9 @@ Base: PR #678 cumulative catalog head.
 
 The Shiyaaka range collection explicitly lists the seven Shiyaaka products with 100 ml Eau de Parfum formats. The individual detail pages are retained as product provenance. The official pages expose GTIN/SKU values for Shiyaaka Sky (6298043072694) and Shiyaaka Shadow (6291107979359).
 
-## Deliberately left unresolved
+## Follow-up resolution
 
-- **Musk Pure Musk Blend:** the official collection listing says 60 ml EDP, while the linked detail page title/URL says 65 ml EDP. No size change or new evidence status is applied until the discrepancy is resolved.
-- **Shiyaaka Rose Gold:** not present in the current official Shiyaaka range listing or verified by an individual official product page in this audit. No size or concentration is promoted from the old collection reference alone.
+- **Musk Pure Musk Blend:** the current official product page renders the selectable size as **60 ML**, identifies SKU/GTIN **6291107978154**, and labels the product as Eau de Parfum. The legacy URL slug contains `65-ml`, but the live product-page content and selected size identify the purchasable format as 60 ml. The existing canonical product ID `SH-KHADLAJ-04832397` and variant ID `SHV-SH-KHADLAJ-04832397-60-000` are therefore retained and explicitly regression-tested as 60 ml EDP. No duplicate or 65 ml variant is created.
+- **Shiyaaka Rose Gold:** remains unresolved. It is not present in the current official Shiyaaka range listing or verified by an individual official product page in this audit. No size or concentration is promoted from the old collection reference alone.
 
-No new products or variants are created. Existing canonical product and variant IDs are preserved. No price, stock, availability or retailer-offer data is imported.
+No new products or variants are created by this follow-up. Existing canonical product and variant IDs are preserved. No price, stock, availability or retailer-offer data is imported.
