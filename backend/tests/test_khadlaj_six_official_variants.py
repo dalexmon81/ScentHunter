@@ -44,6 +44,7 @@ EXPECTED = {
     "25 Integrity": ("SH-KHADLAJ-SPRAY-HARVEST-078", 100, "Eau de Parfum", "6291107975375", "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray"),
     "25 Heritage": ("SH-KHADLAJ-SPRAY-HARVEST-077", 100, "Eau de Parfum", "6291107975368", "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray"),
     "25 Loyalty": ("SH-KHADLAJ-SPRAY-HARVEST-076", 100, "Eau de Parfum", "6291107975382", "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae"),
+    "25 Trust": ("SH-KHADLAJ-SPRAY-HARVEST-075", 100, "Eau de Parfum", "6291107975399", "https://khadlaj-perfumes.com/collections/unisex-1/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
