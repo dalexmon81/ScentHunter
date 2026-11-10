@@ -19,7 +19,7 @@ All other records from the latest #649 head are preserved, including the newest 
 ## Final snapshot validation
 
 - 2,208 canonical products.
-- 978 variants.
+- 981 variants.
 - 34 family-registry records.
 - Zero duplicate product IDs.
 - Zero duplicate variant IDs.
@@ -29,5 +29,11 @@ All other records from the latest #649 head are preserved, including the newest 
 - Zero orphan variants.
 - Zero variants whose size is absent from the parent product's declared formats.
 - No price, currency, availability, stock, retailer or offer fields imported into the canonical catalog.
+
+## Lattafa follow-up
+
+- Abraaj, Haakim and Amoura now have official 20 ml Concentrated Oil variants, each linked to its individual Lattafa product page.
+- Maitha is now a source-verified Concentrated Oil name, but its official page does not state a size; no variant is created.
+- No GTIN was visible for these items.
 
 These figures describe this branch's snapshot and must be confirmed by CI on the exact PR head.
