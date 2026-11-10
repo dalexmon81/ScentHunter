@@ -15,6 +15,10 @@ EXPECTED = {
     "Bahjah": "https://zimayaperfumes.com/products/bahja",
     "Wujood": "https://zimayaperfumes.com/products/wujood-100ml",
     "Luxor": "https://zimayaperfumes.com/products/luxor-100ml",
+    "Abadi Opulent": "https://zimayaperfumes.com/products/abadi-opulent-edp-100ml",
+    "Abadi Saga": "https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml",
+    "Al Barari Coral": "https://zimayaperfumes.com/products/al-barari-coral",
+    "Al Barari Shore": "https://zimayaperfumes.com/products/al-barari-shore",
 }
 
 

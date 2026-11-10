@@ -38,3 +38,20 @@ The canonical seed already contained 70 Zimaya collection-listed identities. Thi
 - 0 orphan variant references.
 
 The catalogue remains a discovery/canonical identity seed. This verification does not claim that all 104 products in the official Zimaya collection have been imported or that every other requested brand is exhaustive. The change is on the draft catalog-expansion PR branch only; `main` and production remain unchanged.
+
+
+## Additional official product-detail batch — 2026-11-10
+
+Four existing Zimaya identities were verified against their individual first-party product pages:
+
+| Canonical name | Official product page | Explicit detail |
+|---|---|---|
+| Abadi Opulent | https://zimayaperfumes.com/products/abadi-opulent-edp-100ml | 100 ml, EDP, Pour Homme |
+| Abadi Saga | https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml | 100 ml, EDP, Pour Homme |
+| Al Barari Coral | https://zimayaperfumes.com/products/al-barari-coral | 100 ml, EDP, Unisex |
+| Al Barari Shore | https://zimayaperfumes.com/products/al-barari-shore | 100 ml, EDP, Pour Homme |
+
+- Reused all four existing canonical product IDs.
+- Added four 100 ml Eau de Parfum variants and synchronized parent formats in the family registry.
+- No GTIN was visible on the inspected official product detail pages; none was inferred.
+- No prices, stock, availability, retailer offers or shipping data were added.
