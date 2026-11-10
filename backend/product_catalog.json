@@ -4690,8 +4690,14 @@
         "Marwa",
         "Arabiyat Prestige Marwa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://arabiyatprestige.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-GULF-ORCHID-2e9b4429",
@@ -28480,11 +28486,13 @@
         "Arabiyat Prestige Kohl Opulence"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-opulence",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-e688d8ec",
@@ -41283,7 +41291,8 @@
         "Arabiyat Prestige Kohl Opulence 100 ml"
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-113b2420-100-EDP",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-adfcef73",
@@ -48794,6 +48803,17 @@
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-641acbf3-110-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
+      "size_ml": 100,
+      "aliases": [
+        "Marwa 100 ml",
+        "Arabiyat Prestige Marwa 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-7bf3b46e-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex"
     }
   ]
 }
