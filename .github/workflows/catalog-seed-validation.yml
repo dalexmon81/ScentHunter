@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/maison-alhambra-kismet-matiere-official-100ml-variants-2026-11-10
+      - catalog/maison-alhambra-glacier-fusion-mysterious-amber-official-variants-2026-11-10
   push:
     branches:
-      - catalog/maison-alhambra-kismet-matiere-official-100ml-variants-2026-11-10
+      - catalog/maison-alhambra-glacier-fusion-mysterious-amber-official-variants-2026-11-10
 
 permissions:
   contents: read
@@ -42,6 +42,7 @@ jobs:
             backend.tests.test_maison_alhambra_jean_lowe_azure_noir_2026_11_10 \
             backend.tests.test_maison_alhambra_luxe_bold_mindset_official_2026_11_10 \
             backend.tests.test_maison_alhambra_kismet_matiere_official_2026_11_10 \
+            backend.tests.test_maison_alhambra_glacier_fusion_mysterious_amber_2026_11_10 \
             backend.tests.test_khadlaj_cumulative_catalog_integrity \
             backend.tests.test_al_haramain_catalog \
             backend.tests.test_bujairami_catalog \
