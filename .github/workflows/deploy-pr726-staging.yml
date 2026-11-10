@@ -1,6 +1,15 @@
 name: Deploy PR 726 isolated web staging
 
 on:
+  push:
+    branches:
+      - feature/notino-cj-feed-ingestion-2026-11-10
+    paths:
+      - "fly.pr726.staging.toml"
+      - ".github/workflows/deploy-pr726-staging.yml"
+      - "Dockerfile"
+      - "backend/**"
+      - "requirements.txt"
   workflow_dispatch:
     inputs:
       confirm:
@@ -17,7 +26,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ inputs.confirm == 'deploy-pr726' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'deploy-pr726' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
