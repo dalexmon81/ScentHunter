@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes twenty-six existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes twenty-nine existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -32,6 +32,9 @@ This change completes twenty-six existing Khadlaj canonical identities using off
 | Musk Pour Amber | SH-KHADLAJ-SPRAY-HARVEST-064 | 100 ml | Eau de Parfum | 6291107977850 |
 | Sara | SH-KHADLAJ-SPRAY-HARVEST-066 | 100 ml | Extrait de Parfum | 6291107978772 |
 | Valor Enigma | SH-KHADLAJ-SPRAY-HARVEST-082 | 100 ml | Eau de Parfum | 6291107975979 |
+| Le Prestige Empress | SH-KHADLAJ-SPRAY-HARVEST-071 | 100 ml | Eau de Parfum | 6291107975948 |
+| Le Prestige Bold | SH-KHADLAJ-SPRAY-HARVEST-072 | 100 ml | Eau de Parfum | 6291107975924 |
+| Le Prestige Royal | SH-KHADLAJ-SPRAY-HARVEST-070 | 100 ml | Eau de Parfum | 6291107975931 |
 
 ## Official evidence
 
@@ -61,6 +64,9 @@ This change completes twenty-six existing Khadlaj canonical identities using off
 - Musk Pour Amber: https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae
 - Sara: https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae
 - Valor Enigma: https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray
+- Le Prestige Empress: https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae
+- Le Prestige Bold: https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women
+- Le Prestige Royal: https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray
 
 ## Data integrity
 
