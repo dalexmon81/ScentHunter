@@ -14,8 +14,17 @@ EXPECTED_PRODUCTS = {
         "gtin": "6291108735558",
         "variant_id": "SHV-SH-MAISON-ALHAMBRA-7247b143-100-000",
     },
-    "Kismet": {
+    "Kismet for Men": {
         "product_id": "SH-MAISON-ALHAMBRA-dd2c5772",
+        "source": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men",
+        "gtin": "6291107459257",
+        "variant_id": "SHV-SH-MAISON-ALHAMBRA-dd2c5772-100-MEN",
+    },
+    "Kismet for Women": {
+        "product_id": "SH-MAISON-ALHAMBRA-KISMET-WOMEN",
+        "source": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
+        "gtin": "6291107459264",
+        "variant_id": "SHV-SH-MAISON-ALHAMBRA-KISMET-WOMEN-100-EDP",
     },
     "Kismet Lunar Magic": {
         "product_id": "SH-MAISON-ALHAMBRA-8686c885",
@@ -27,7 +36,7 @@ EXPECTED_PRODUCTS = {
 
 
 class MaisonAlhambraKismetMatiereOfficialTests(unittest.TestCase):
-    def test_existing_products_are_verified_in_place(self):
+    def test_existing_and_new_canonical_products_have_official_evidence(self):
         for name, expected in EXPECTED_PRODUCTS.items():
             with self.subTest(product=name):
                 products = [
@@ -36,43 +45,29 @@ class MaisonAlhambraKismetMatiereOfficialTests(unittest.TestCase):
                     and p.get("canonical_name") == name
                 ]
                 self.assertEqual(len(products), 1)
-                self.assertEqual(products[0].get("product_id"), expected["product_id"])
-                self.assertEqual(products[0].get("identity_status"), "source_verified_name")
-                self.assertEqual(products[0].get("formats_ml"), [100])
-                self.assertEqual(products[0].get("concentration"), "Eau de Parfum")
-                if name != "Kismet":
-                    self.assertEqual(products[0].get("source_url"), expected["source"])
+                product = products[0]
+                self.assertEqual(product.get("product_id"), expected["product_id"])
+                self.assertEqual(product.get("identity_status"), "source_verified_name")
+                self.assertEqual(product.get("formats_ml"), [100])
+                self.assertEqual(product.get("concentration"), "Eau de Parfum")
+                self.assertEqual(product.get("gender"), "Men" if "Men" in name else "Women" if "Women" in name else "Unisex")
+                self.assertEqual(product.get("source_url"), expected["source"])
 
-    def test_kismet_has_two_distinct_gender_specific_gtin_variants(self):
+    def test_each_gender_specific_kismet_is_a_distinct_canonical_variant(self):
         expected = {
-            "6291107459257": (
-                "Men",
-                "SHV-SH-MAISON-ALHAMBRA-dd2c5772-100-MEN",
-                "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men",
-            ),
-            "6291107459264": (
-                "Women",
-                "SHV-SH-MAISON-ALHAMBRA-dd2c5772-100-000",
-                "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
-            ),
+            "Kismet for Men": ("SH-MAISON-ALHAMBRA-dd2c5772", "6291107459257", "Men", "SHV-SH-MAISON-ALHAMBRA-dd2c5772-100-MEN"),
+            "Kismet for Women": ("SH-MAISON-ALHAMBRA-KISMET-WOMEN", "6291107459264", "Women", "SHV-SH-MAISON-ALHAMBRA-KISMET-WOMEN-100-EDP"),
         }
-        product_id = EXPECTED_PRODUCTS["Kismet"]["product_id"]
-        variants = [
-            v for v in CATALOG["variants"]
-            if v.get("product_id") == product_id and v.get("gtin") in expected
-        ]
-        self.assertEqual(len(variants), 2)
-        by_gtin = {v["gtin"]: v for v in variants}
-        self.assertEqual(set(by_gtin), set(expected))
-        for gtin, (gender, variant_id, source) in expected.items():
-            with self.subTest(gtin=gtin):
-                variant = by_gtin[gtin]
-                self.assertEqual(variant.get("gender"), gender)
-                self.assertEqual(variant.get("variant_id"), variant_id)
+        for name, (product_id, gtin, gender, variant_id) in expected.items():
+            with self.subTest(product=name):
+                product = next(p for p in CATALOG["products"] if p.get("product_id") == product_id)
+                variant = next(v for v in CATALOG["variants"] if v.get("variant_id") == variant_id)
+                self.assertEqual(product.get("canonical_name"), name)
+                self.assertEqual(variant.get("product_id"), product_id)
                 self.assertEqual(variant.get("size_ml"), 100)
                 self.assertEqual(variant.get("concentration"), "Eau de Parfum")
-                self.assertEqual(variant.get("source_url"), source)
-                self.assertEqual(variant.get("source_evidence_url"), source)
+                self.assertEqual(variant.get("gtin"), gtin)
+                self.assertEqual(variant.get("gender"), gender)
 
     def test_registry_mapping_and_global_catalog_integrity(self):
         products = CATALOG["products"]
