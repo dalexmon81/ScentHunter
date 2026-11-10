@@ -3219,7 +3219,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
       "source_product_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-804ac919",
@@ -3389,7 +3393,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
       "source_product_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ef841988",
@@ -3406,7 +3414,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
       "source_product_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-f3a6e129",
@@ -13651,7 +13663,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
       "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
-      "concentration": "Parfum"
+      "concentration": "Parfum",
+      "source_product_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_size_evidence_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "formats_ml": [
+        150,
+        200
+      ]
     },
     {
       "product_id": "SH-ARMAF-4c83dfcd",
@@ -13853,7 +13871,11 @@
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling",
       "source_product_url": "https://armaf.com/products/club-de-nuit-bling",
       "gender": "Men",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_size_evidence_url": "https://armaf.eu/products/club-de-nuit-bling",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-ARMAF-91877071",
@@ -14086,7 +14108,11 @@
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
       "source_product_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
       "gender": "Men",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-8a8dfbb3",
@@ -14105,7 +14131,11 @@
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-spr",
       "source_product_url": "https://armaf.com/products/cdn-lion-heart-spr",
       "gender": "Women",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-4e9fde0c",
@@ -14124,7 +14154,11 @@
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
       "source_product_url": "https://armaf.com/products/club-de-nuit-maleka",
       "gender": "Women",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_size_evidence_url": "https://fr.armaf.eu/products/club-de-nuit-maleka",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-dd435afb",
@@ -14809,13 +14843,19 @@
       "family_name": "Odyssey Artisto",
       "aliases": [
         "Odyssey Artisto",
-        "Armaf Odyssey Artisto"
+        "Armaf Odyssey Artisto",
+        "Odyssey Artisto The Red Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-artisto",
       "source_evidence_url": "https://armaf.com/products/odyssey-artisto",
       "source_product_url": "https://armaf.com/products/odyssey-artisto",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-artisto-the-red-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-e1349118",
@@ -14827,13 +14867,19 @@
       "family_name": "Odyssey Go Mango",
       "aliases": [
         "Odyssey Go Mango",
-        "Armaf Odyssey Go Mango"
+        "Armaf Odyssey Go Mango",
+        "Odyssey Go Mango Tropical Collection"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-go-mango",
       "source_evidence_url": "https://armaf.com/products/odyssey-go-mango",
       "source_product_url": "https://armaf.com/products/odyssey-go-mango",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-go-mango-tropical-collection-1",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-386ff57b",
@@ -14845,14 +14891,19 @@
       "family_name": "Odyssey Ba Ha Mas",
       "aliases": [
         "Odyssey Ba Ha Mas",
-        "Armaf Odyssey Ba Ha Mas"
+        "Armaf Odyssey Ba Ha Mas",
+        "Odyssey Ba Ha Mas Tropical Collection"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-ba-ha-mas",
       "source_evidence_url": "https://armaf.com/products/odyssey-ba-ha-mas",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-ba-ha-mas",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-ba-ha-mas",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-78579c03",
@@ -14864,14 +14915,19 @@
       "family_name": "Odyssey Marshmallow",
       "aliases": [
         "Odyssey Marshmallow",
-        "Armaf Odyssey Marshmallow"
+        "Armaf Odyssey Marshmallow",
+        "Odyssey Marshmallow Gourmand Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-marshmallow",
       "source_evidence_url": "https://armaf.com/products/odyssey-marshmallow",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-marshmallow",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-marshmallow-gourmand-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-e9227d2b",
@@ -14931,13 +14987,19 @@
       "family_name": "Yum Yum",
       "aliases": [
         "Yum Yum",
-        "Armaf Yum Yum"
+        "Armaf Yum Yum",
+        "Delights Yum Yum"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/yum-yum-spr",
       "source_evidence_url": "https://armaf.com/products/yum-yum-spr",
       "source_product_url": "https://armaf.com/products/yum-yum-spr",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-yum-yum",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-3810c777",
@@ -14956,7 +15018,11 @@
       "source_evidence_url": "https://armaf.com/products/infinity-spr-1",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/infinity-spr-1",
-      "gender": "Men"
+      "gender": "Men",
+      "source_size_evidence_url": "https://armaf.eu/products/infinity-silver-1",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-890a715f",
@@ -15210,7 +15276,12 @@
       "source_url": "https://armaf.com/products/ombre-dor",
       "source_evidence_url": "https://armaf.com/products/ombre-dor",
       "source_product_url": "https://armaf.com/products/ombre-dor",
-      "gender": "Men"
+      "gender": "Men",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/ombre-dor",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-ARMAF-7becf4c9",
@@ -15222,14 +15293,19 @@
       "family_name": "Odyssey Toffee Coffee",
       "aliases": [
         "Odyssey Toffee Coffee",
-        "Armaf Odyssey Toffee Coffee"
+        "Armaf Odyssey Toffee Coffee",
+        "Odyssey Toffee Coffee Cafe Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-toffee-coffee",
       "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-toffee-coffee-cafe-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-38558c30",
@@ -15241,14 +15317,19 @@
       "family_name": "Odyssey Black Forest",
       "aliases": [
         "Odyssey Black Forest",
-        "Armaf Odyssey Black Forest"
+        "Armaf Odyssey Black Forest",
+        "Odyssey Black Forest Dessert Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
       "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-black-forest-dessert-edition",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-a60b16e9",
@@ -15347,14 +15428,19 @@
       "family_name": "Island Bliss",
       "aliases": [
         "Island Bliss",
-        "Armaf Island Bliss"
+        "Armaf Island Bliss",
+        "Delights Island Bliss"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/island-bliss-delights-spr",
       "source_evidence_url": "https://armaf.com/products/island-bliss-delights-spr",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/island-bliss-delights-spr",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-island-bliss",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-58334fea",
@@ -17855,7 +17941,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
       "source_product_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CREAMY-BISCUIT",
@@ -18073,7 +18163,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
@@ -18090,7 +18184,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
@@ -18107,7 +18205,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-FARAH",
@@ -18590,7 +18692,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair",
       "source_product_url": "https://www.pariscornerperfumes.com/products/khair",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-LUEUR-D-ESPOIR-AMBRE",
@@ -18862,7 +18968,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/manaal-1",
       "source_product_url": "https://www.pariscornerperfumes.com/products/manaal-1",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MANGO-FLAMES",
@@ -18954,7 +19064,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
       "source_product_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-appletini"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE",
@@ -18971,7 +19085,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
       "source_product_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
@@ -18988,7 +19106,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
       "source_product_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MEHWISH",
@@ -19468,7 +19590,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-confection",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-confection",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-confection"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-confection",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-FELICITY",
@@ -19485,7 +19611,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-FUSION",
@@ -19502,7 +19632,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-fusion"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-KHAIR-PEACH-DELULU",
@@ -19539,7 +19673,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-pistachio"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MINYA",
@@ -19597,7 +19735,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-MOLTEN-CARAMEL",
@@ -20156,7 +20298,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-TASKEEN-LACTEA-DIVINA",
@@ -20193,7 +20339,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/taskeen-marina"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-TASKEEN-WOWIE",
@@ -20466,7 +20616,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/virilis",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/virilis",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/virilis"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/virilis",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-VIVANT-SUNLIT",
@@ -26390,7 +26544,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/nouf",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/nouf",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/nouf"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/nouf",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-729b7589",
@@ -26428,7 +26586,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-c3372b4d",
@@ -26445,7 +26607,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-3605429a",
@@ -26833,7 +26999,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/rifaaqat"
+      "source_product_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-bf596bfa",
@@ -39669,8 +39839,10 @@
       "concentration": "Eau de Parfum",
       "gender": "Women",
       "formats_ml": [
+        60,
         100
-      ]
+      ],
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-french-kiss"
     },
     {
       "product_id": "SH-AL-HARAMAIN-AHP2065",
@@ -39723,13 +39895,19 @@
       "family_name": "Odyssey Eau de Montagne",
       "aliases": [
         "Odyssey Eau de Montagne",
-        "Armaf Odyssey Eau de Montagne"
+        "Armaf Odyssey Eau de Montagne",
+        "Odyssey Eau de Montagne Mountain Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-eau-de-montagne",
       "source_product_url": "https://armaf.com/products/odyssey-eau-de-montagne",
       "source_evidence_url": "https://armaf.com/products/odyssey-eau-de-montagne",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-eau-de-montagne-mountain-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARMAF-PROFUMI-DART-13-TANTA-ROBA",
@@ -40808,6 +40986,53 @@
       ],
       "gtins": [
         "6291107459264"
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SPECTRA-RAINBOW-EDITION",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Spectra Rainbow Edition",
+      "name": "Odyssey Spectra Rainbow Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Spectra Rainbow Edition",
+      "aliases": [
+        "Odyssey Spectra Rainbow Edition",
+        "Armaf Odyssey Spectra Rainbow Edition"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Dubai Chocolat",
+      "name": "Odyssey Dubai Chocolat",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Dubai Chocolat",
+      "aliases": [
+        "Odyssey Dubai Chocolat",
+        "Armaf Odyssey Dubai Chocolat"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "formats_ml": [
+        60,
+        100
       ]
     }
   ],
@@ -53873,6 +54098,621 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-838494c5-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-black-oud-spray-100ml.html"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cd8b1f8e",
+      "variant_id": "SHV-SH-PARIS-CORNER-cd8b1f8e-80-EDP",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Bayn Al Asrar 80 ml",
+        "Paris Corner Bayn Al Asrar 80 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-5239463e",
+      "variant_id": "SHV-SH-PARIS-CORNER-5239463e-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "December Rose 85 ml",
+        "Paris Corner December Rose 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/dcember-rose",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-rose-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ef841988",
+      "variant_id": "SHV-SH-PARIS-CORNER-ef841988-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "December Vanilla 85 ml",
+        "Paris Corner December Vanilla 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-PISTACHIO",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-PISTACHIO-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Pistachio 100 ml",
+        "Paris Corner Khair Pistachio 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-pistachio",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-pistachio"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-CONFECTION",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-CONFECTION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Confection 100 ml",
+        "Paris Corner Khair Confection 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-confection",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-confection",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-confection"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-FUSION",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-FUSION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Fusion 100 ml",
+        "Paris Corner Khair Fusion 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-fusion",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-fusion"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR-FELICITY",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-FELICITY-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair Felicity 100 ml",
+        "Paris Corner Khair Felicity 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair-felicity-100ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair-felicity"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-APPLETINI",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-APPLETINI-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Appletini 100 ml",
+        "Paris Corner Mawj Appletini 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-appletini",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/mawj-appletini"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-MOSCOW-MULE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-MOSCOW-MULE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Moscow Mule 100 ml",
+        "Paris Corner Mawj Moscow Mule 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-moscow-mule",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-mawj-moscow-mule-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE",
+      "variant_id": "SHV-SH-PARIS-CORNER-MAWJ-COGNAC-BLAZE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mawj Cognac Blaze 100 ml",
+        "Paris Corner Mawj Cognac Blaze 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/mawj-cognac-blaze",
+      "source_product_url": "https://de.pariscornereurope.com/products/mawj-cognac-blaze"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINYA-COCO-LUSH",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINYA-COCO-LUSH-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Minya Coco Lush 100 ml",
+        "Paris Corner Minya Coco Lush 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/minya-coco-lush",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/minya-coco-lush"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COSMOPOLITAN-NEWYORK",
+      "variant_id": "SHV-SH-PARIS-CORNER-COSMOPOLITAN-NEWYORK-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Cosmopolitan Newyork 100 ml",
+        "Paris Corner Cosmopolitan Newyork 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/cosmopolitan-newyork",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/cosmopolitan-newyork"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-COFFEE-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Eternal Coffee 85 ml",
+        "Paris Corner Eternal Coffee 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-coffee"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MEADOWS-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Eternal Meadows 85 ml",
+        "Paris Corner Eternal Meadows 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-meadows"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MUSK-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Eternal Musk 85 ml",
+        "Paris Corner Eternal Musk 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/eternal-musk"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-KHAIR",
+      "variant_id": "SHV-SH-PARIS-CORNER-KHAIR-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Khair 100 ml",
+        "Paris Corner Khair 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/khair",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/khair",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/khair"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MANAAL",
+      "variant_id": "SHV-SH-PARIS-CORNER-MANAAL-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Manaal 100 ml",
+        "Paris Corner Manaal 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/manaal-1",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/manaal-1",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-manaal-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TASKEEN-CARAMEL-CASCADE",
+      "variant_id": "SHV-SH-PARIS-CORNER-TASKEEN-CARAMEL-CASCADE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Taskeen Caramel Cascade 100 ml",
+        "Paris Corner Taskeen Caramel Cascade 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-caramel-cascade",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/taskeen-caramel-cascade"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-VIRILIS",
+      "variant_id": "SHV-SH-PARIS-CORNER-VIRILIS-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Virilis 100 ml",
+        "Paris Corner Virilis 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/virilis",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/virilis",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/virilis"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-TASKEEN-MARINA",
+      "variant_id": "SHV-SH-PARIS-CORNER-TASKEEN-MARINA-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Taskeen Marina 100 ml",
+        "Paris Corner Taskeen Marina 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/taskeen-marina",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-taskeen-marina-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-c3372b4d",
+      "variant_id": "SHV-SH-PARIS-CORNER-c3372b4d-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ophidian Sweet Surrender 100 ml",
+        "Paris Corner Ophidian Sweet Surrender 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-sweet-surrender",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/ophidian-sweet-surrender"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-038c48d3",
+      "variant_id": "SHV-SH-PARIS-CORNER-038c48d3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Nouf 100 ml",
+        "Paris Corner Nouf 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/nouf",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/nouf",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/nouf"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-91232b6e",
+      "variant_id": "SHV-SH-PARIS-CORNER-91232b6e-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ophidian Mango Bliss 100 ml",
+        "Paris Corner Ophidian Mango Bliss 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ophidian-mango-bliss",
+      "source_product_url": "https://de.pariscornereurope.com/products/ophidian-mango-bliss"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-c3e787e0",
+      "variant_id": "SHV-SH-PARIS-CORNER-c3e787e0-85-EDP",
+      "size_ml": 85,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Rifaaqat 85 ml",
+        "Paris Corner Rifaaqat 85 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/rifaaqat",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-rifaaqat-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-ARMAF-b6b77ff6",
+      "variant_id": "SHV-SH-ARMAF-b6b77ff6-150-PARFUM",
+      "size_ml": 150,
+      "concentration": "Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Pure Parfum 150 ml",
+        "Armaf Club de Nuit Intense Man Pure Parfum 150 ml"
+      ],
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_product_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_size_evidence_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
+    },
+    {
+      "product_id": "SH-ARMAF-b6b77ff6",
+      "variant_id": "SHV-SH-ARMAF-b6b77ff6-200-PARFUM",
+      "size_ml": 200,
+      "concentration": "Parfum",
+      "aliases": [
+        "Club de Nuit Intense Man Pure Parfum 200 ml",
+        "Armaf Club de Nuit Intense Man Pure Parfum 200 ml"
+      ],
+      "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_product_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_size_evidence_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
+    },
+    {
+      "product_id": "SH-ARMAF-b3967c31",
+      "variant_id": "SHV-SH-ARMAF-b3967c31-75-EDP",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Bling 75 ml",
+        "Armaf Club de Nuit Bling 75 ml"
+      ],
+      "source_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_size_evidence_url": "https://armaf.eu/products/club-de-nuit-bling"
+    },
+    {
+      "product_id": "SH-ARMAF-3730ce35",
+      "variant_id": "SHV-SH-ARMAF-3730ce35-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Lionheart Man 100 ml",
+        "Armaf Club de Nuit Lionheart Man 100 ml"
+      ],
+      "source_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man"
+    },
+    {
+      "product_id": "SH-ARMAF-8a8dfbb3",
+      "variant_id": "SHV-SH-ARMAF-8a8dfbb3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Lionheart Woman 100 ml",
+        "Armaf Club de Nuit Lionheart Woman 100 ml"
+      ],
+      "source_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman"
+    },
+    {
+      "product_id": "SH-ARMAF-4e9fde0c",
+      "variant_id": "SHV-SH-ARMAF-4e9fde0c-105-EDP",
+      "size_ml": 105,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Club de Nuit Maleka 105 ml",
+        "Armaf Club de Nuit Maleka 105 ml"
+      ],
+      "source_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_size_evidence_url": "https://fr.armaf.eu/products/club-de-nuit-maleka"
+    },
+    {
+      "product_id": "SH-ARMAF-3810c777",
+      "variant_id": "SHV-SH-ARMAF-3810c777-105-EDP",
+      "size_ml": 105,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Infinity Silver 105 ml",
+        "Armaf Infinity Silver 105 ml"
+      ],
+      "source_url": "https://armaf.com/products/infinity-spr-1",
+      "source_product_url": "https://armaf.com/products/infinity-spr-1",
+      "source_evidence_url": "https://armaf.com/products/infinity-spr-1",
+      "source_size_evidence_url": "https://armaf.eu/products/infinity-silver-1"
+    },
+    {
+      "product_id": "SH-ARMAF-d1a51dbe",
+      "variant_id": "SHV-SH-ARMAF-d1a51dbe-75-EDP",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ombre D'Or 75 ml",
+        "Armaf Ombre D'Or 75 ml"
+      ],
+      "source_url": "https://armaf.com/products/ombre-dor",
+      "source_product_url": "https://armaf.com/products/ombre-dor",
+      "source_evidence_url": "https://armaf.com/products/ombre-dor",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/ombre-dor"
+    },
+    {
+      "product_id": "SH-ARMAF-8b8e5648",
+      "variant_id": "SHV-SH-ARMAF-8b8e5648-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Island Bliss 100 ml",
+        "Armaf Island Bliss 100 ml",
+        "Delights Island Bliss"
+      ],
+      "source_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "source_product_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "source_evidence_url": "https://armaf.com/products/island-bliss-delights-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-island-bliss"
+    },
+    {
+      "product_id": "SH-ARMAF-ff1a16c2",
+      "variant_id": "SHV-SH-ARMAF-ff1a16c2-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Yum Yum 100 ml",
+        "Armaf Yum Yum 100 ml",
+        "Delights Yum Yum"
+      ],
+      "source_url": "https://armaf.com/products/yum-yum-spr",
+      "source_product_url": "https://armaf.com/products/yum-yum-spr",
+      "source_evidence_url": "https://armaf.com/products/yum-yum-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/delights-yum-yum"
+    },
+    {
+      "product_id": "SH-ARMAF-78579c03",
+      "variant_id": "SHV-SH-ARMAF-78579c03-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Marshmallow 100 ml",
+        "Armaf Odyssey Marshmallow 100 ml",
+        "Odyssey Marshmallow Gourmand Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-marshmallow",
+      "source_product_url": "https://armaf.com/products/odyssey-marshmallow",
+      "source_evidence_url": "https://armaf.com/products/odyssey-marshmallow",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-marshmallow-gourmand-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-7becf4c9",
+      "variant_id": "SHV-SH-ARMAF-7becf4c9-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Toffee Coffee 100 ml",
+        "Armaf Odyssey Toffee Coffee 100 ml",
+        "Odyssey Toffee Coffee Cafe Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-toffee-coffee-cafe-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-38558c30",
+      "variant_id": "SHV-SH-ARMAF-38558c30-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Black Forest 100 ml",
+        "Armaf Odyssey Black Forest 100 ml",
+        "Odyssey Black Forest Dessert Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "source_product_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "source_evidence_url": "https://armaf.com/products/odyssey-toffee-coffee-copy-1",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-black-forest-dessert-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-e1349118",
+      "variant_id": "SHV-SH-ARMAF-e1349118-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Go Mango 100 ml",
+        "Armaf Odyssey Go Mango 100 ml",
+        "Odyssey Go Mango Tropical Collection"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_product_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_evidence_url": "https://armaf.com/products/odyssey-go-mango",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-go-mango-tropical-collection-1"
+    },
+    {
+      "product_id": "SH-ARMAF-fa82f8c8",
+      "variant_id": "SHV-SH-ARMAF-fa82f8c8-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Artisto 100 ml",
+        "Armaf Odyssey Artisto 100 ml",
+        "Odyssey Artisto The Red Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-artisto",
+      "source_product_url": "https://armaf.com/products/odyssey-artisto",
+      "source_evidence_url": "https://armaf.com/products/odyssey-artisto",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-artisto-the-red-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-FRENCH-KISS",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-FRENCH-KISS-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey French Kiss 60 ml",
+        "Armaf Odyssey French Kiss 60 ml"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-french-kiss",
+      "source_product_url": "https://armaf.com/products/odyssey-french-kiss",
+      "source_evidence_url": "https://armaf.com/products/odyssey-french-kiss",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-french-kiss"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-EAU-DE-MONTAGNE",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-EAU-DE-MONTAGNE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Eau de Montagne 100 ml",
+        "Armaf Odyssey Eau de Montagne 100 ml",
+        "Odyssey Eau de Montagne Mountain Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_product_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_evidence_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-eau-de-montagne-mountain-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-386ff57b",
+      "variant_id": "SHV-SH-ARMAF-386ff57b-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Ba Ha Mas 100 ml",
+        "Armaf Odyssey Ba Ha Mas 100 ml",
+        "Odyssey Ba Ha Mas Tropical Collection"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "source_product_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "source_evidence_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-ba-ha-mas"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SPECTRA-RAINBOW-EDITION",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-SPECTRA-RAINBOW-EDITION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Spectra Rainbow Edition 100 ml",
+        "Armaf Odyssey Spectra Rainbow Edition 100 ml"
+      ],
+      "source_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Dubai Chocolat 60 ml",
+        "Armaf Odyssey Dubai Chocolat 60 ml"
+      ],
+      "source_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Dubai Chocolat 100 ml",
+        "Armaf Odyssey Dubai Chocolat 100 ml"
+      ],
+      "source_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat"
     }
   ]
 }
