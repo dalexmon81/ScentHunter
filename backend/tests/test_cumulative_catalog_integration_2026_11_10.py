@@ -131,18 +131,18 @@ class CumulativeCatalogIntegrationTests(unittest.TestCase):
 
     def test_paris_corner_europe_four_explicit_product_variants(self):
         expected = {
-            "SH-PARIS-CORNER-cd8b1f8e": ("Bayn Al Asrar", 80, "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"),
-            "SH-PARIS-CORNER-ef841988": ("December Vanilla", 85, "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"),
-            "SH-PARIS-CORNER-COCONUT-LAGOON": ("Coconut Lagoon", 100, "https://de.pariscornereurope.com/en/products/coconut-lagoon"),
-            "SH-PARIS-CORNER-CHERRY-COLA": ("Cherry Cola", 75, "https://de.pariscornereurope.com/en/products/cherry-cola-emir"),
+            "SH-PARIS-CORNER-cd8b1f8e": ("Bayn Al Asrar", 80, "https://www.pariscornerperfumes.com/products/bayn-al-asrar", "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"),
+            "SH-PARIS-CORNER-ef841988": ("December Vanilla", 85, "https://www.pariscornerperfumes.com/products/december-vanilla", "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"),
+            "SH-PARIS-CORNER-COCONUT-LAGOON": ("Coconut Lagoon", 100, "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml", "https://de.pariscornereurope.com/en/products/coconut-lagoon"),
+            "SH-PARIS-CORNER-CHERRY-COLA": ("Cherry Cola", 75, "https://www.pariscornerperfumes.com/products/cherry-cola", "https://de.pariscornereurope.com/en/products/cherry-cola-emir"),
         }
-        for product_id, (name, size, source_url) in expected.items():
+        for product_id, (name, size, canonical_url, evidence_url) in expected.items():
             with self.subTest(product=name):
                 p = product(product_id)
                 self.assertEqual(p.get("canonical_name"), name)
                 self.assertEqual(p.get("identity_status"), "source_verified_name")
-                self.assertEqual(p.get("source_url"), source_url)
-                self.assertEqual(p.get("source_evidence_url"), source_url)
+                self.assertEqual(p.get("source_url"), canonical_url)
+                self.assertEqual(p.get("source_evidence_url"), evidence_url)
                 self.assertEqual(p.get("formats_ml"), [size])
                 self.assertEqual(p.get("concentration"), "Eau de Parfum")
                 rows = variants_for(product_id)
