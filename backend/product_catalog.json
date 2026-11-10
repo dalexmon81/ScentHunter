@@ -11516,11 +11516,12 @@
         "French Avenue Forbidden Fruit"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/products/",
-      "source_evidence_url": "https://frenchavenue.com/products/",
+      "source_url": "https://frenchavenue.com/products/aromatix-forbidden-fruit",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-forbidden-fruit",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-91a1aba9",
@@ -11558,11 +11559,12 @@
         "French Avenue Magnetiq"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/products/",
-      "source_evidence_url": "https://frenchavenue.com/products/",
+      "source_url": "https://frenchavenue.com/products/aromatix-magnetiq",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-magnetiq",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-4a5104e0",
@@ -11579,11 +11581,12 @@
         "French Avenue Naughty Dates"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/products/",
-      "source_evidence_url": "https://frenchavenue.com/products/",
+      "source_url": "https://frenchavenue.com/products/aromatix-naughty-dates",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-naughty-dates",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-c2b4dd95",
@@ -11642,11 +11645,12 @@
         "French Avenue Royal Taboo"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/products/",
-      "source_evidence_url": "https://frenchavenue.com/products/",
+      "source_url": "https://frenchavenue.com/products/royal-taboo",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-taboo",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-e3d58c05",
@@ -11684,11 +11688,12 @@
         "French Avenue Sun Kissed"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/products/",
-      "source_evidence_url": "https://frenchavenue.com/products/",
+      "source_url": "https://frenchavenue.com/products/aromatix-sunkissed",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-sunkissed",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-9c9562ca",
@@ -11705,11 +11710,12 @@
         "French Avenue Teas Me"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/products/",
-      "source_evidence_url": "https://frenchavenue.com/products/",
+      "source_url": "https://frenchavenue.com/products/aromatix-teas-me",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-teas-me",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-8ac1bb9b",
@@ -11726,11 +11732,12 @@
         "French Avenue X Xandal"
       ],
       "identity_status": "source_listed_name",
-      "source_url": "https://frenchavenue.com/products/",
-      "source_evidence_url": "https://frenchavenue.com/products/",
+      "source_url": "https://frenchavenue.com/products/aromatix-x-xandal",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-x-xandal",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-MYKONOS-d6ce21fb",
@@ -39695,7 +39702,10 @@
       "aliases": [
         "Forbidden Fruit 100 ml",
         "French Avenue Forbidden Fruit 100 ml"
-      ]
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/aromatix-forbidden-fruit",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-forbidden-fruit"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-91a1aba9",
@@ -39713,7 +39723,10 @@
       "aliases": [
         "Magnetiq 100 ml",
         "French Avenue Magnetiq 100 ml"
-      ]
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/aromatix-magnetiq",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-magnetiq"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-4a5104e0",
@@ -39722,7 +39735,10 @@
       "aliases": [
         "Naughty Dates 100 ml",
         "French Avenue Naughty Dates 100 ml"
-      ]
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/aromatix-naughty-dates",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-naughty-dates"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-c2b4dd95",
@@ -39749,7 +39765,10 @@
       "aliases": [
         "Royal Taboo 100 ml",
         "French Avenue Royal Taboo 100 ml"
-      ]
+      ],
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/royal-taboo",
+      "source_evidence_url": "https://frenchavenue.com/products/royal-taboo"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-e3d58c05",
@@ -39767,7 +39786,10 @@
       "aliases": [
         "Sun Kissed 100 ml",
         "French Avenue Sun Kissed 100 ml"
-      ]
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/aromatix-sunkissed",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-sunkissed"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-9c9562ca",
@@ -39776,7 +39798,10 @@
       "aliases": [
         "Teas Me 100 ml",
         "French Avenue Teas Me 100 ml"
-      ]
+      ],
+      "concentration": "Eau de Parfum",
+      "source_url": "https://frenchavenue.com/products/aromatix-teas-me",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-teas-me"
     },
     {
       "product_id": "SH-FRENCH-AVENUE-8ac1bb9b",
@@ -39785,7 +39810,10 @@
       "aliases": [
         "X Xandal 100 ml",
         "French Avenue X Xandal 100 ml"
-      ]
+      ],
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://frenchavenue.com/products/aromatix-x-xandal",
+      "source_evidence_url": "https://frenchavenue.com/products/aromatix-x-xandal"
     },
     {
       "product_id": "SH-LATTAFA-9c91c81c",
