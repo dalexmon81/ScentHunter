@@ -3,6 +3,7 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
+      - catalog/official-brand-audit-2026-11-10
       - catalog/brand-expansion-2026-11
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
@@ -18,6 +19,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
       - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
@@ -68,6 +70,7 @@ jobs:
           backend.tests.test_al_haramain_gulf_orchid_store_harvest
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
+          backend.tests.test_khadlaj_cream_velvet_official_variant
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
