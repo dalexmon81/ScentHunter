@@ -37,7 +37,7 @@ EXPECTED = {
     "Le Prestige Empress": ("SH-KHADLAJ-SPRAY-HARVEST-071", 100, "Eau de Parfum", "6291107975948", "https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae"),
     "Le Prestige Bold": ("SH-KHADLAJ-SPRAY-HARVEST-072", 100, "Eau de Parfum", "6291107975924", "https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women"),
     "Le Prestige Royal": ("SH-KHADLAJ-SPRAY-HARVEST-070", 100, "Eau de Parfum", "6291107975931", "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray"),
-    "Empire Victor": ("SH-KHADLAJ-935bcf95", 100, "Eau de Parfum", "6291107975917", "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"),
+    "Empire Victor": ("SH-KHADLAJ-935bcf95", 100, "Eau de Parfum", "6291107975917", "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"),
     "Empire Empress": ("SH-KHADLAJ-SPRAY-HARVEST-083", 100, "Eau de Parfum", "6291107975894", "https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae"),
     "Empire Crown": ("SH-KHADLAJ-SPRAY-HARVEST-084", 100, "Eau de Parfum", "6291107975887", "https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae"),
     "Empire Regent": ("SH-KHADLAJ-SPRAY-HARVEST-085", 100, "Eau de Parfum", "6291107975900", "https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae"),
@@ -74,6 +74,8 @@ class KhadlajOfficialVariantBatchTests(unittest.TestCase):
                 self.assertEqual(variant["gtin"], gtin)
                 self.assertEqual(variant["source_url"], url)
                 self.assertEqual(variant["source_evidence_url"], url)
+                if name == "Empire Victor":
+                    self.assertEqual(variant["gtin_source_url"], "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women")
 
     def test_family_registry_matches_each_products_family_and_size(self):
         for name, (product_id, size, _, _, _) in EXPECTED.items():
