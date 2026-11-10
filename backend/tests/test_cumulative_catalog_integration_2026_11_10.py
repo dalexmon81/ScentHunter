@@ -150,7 +150,7 @@ class CumulativeCatalogIntegrationTests(unittest.TestCase):
                 self.assertEqual(rows[0].get("variant_id"), f"SHV-{product_id}-{size}-000")
                 self.assertEqual(rows[0].get("size_ml"), size)
                 self.assertEqual(rows[0].get("concentration"), "Eau de Parfum")
-                self.assertEqual(rows[0].get("source_evidence_url"), source_url)
+                self.assertEqual(rows[0].get("source_evidence_url"), evidence_url)
                 self.assertNotIn("gtin", rows[0])
                 family = next(f for f in REGISTRY["families"] if f.get("family_id") == p["family_id"])
                 family_rows = [row for row in family["products"] if row.get("canonical_name") == name]
