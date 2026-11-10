@@ -34585,8 +34585,14 @@
         "Musk Al Sabah",
         "Khadlaj Musk Al Sabah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-109",
@@ -34600,8 +34606,14 @@
         "Oud Al Sabah",
         "Khadlaj Oud Al Sabah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-110",
@@ -34660,8 +34672,14 @@
         "Shahi Oud",
         "Khadlaj Shahi Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-114",
@@ -49455,6 +49473,45 @@
       "gtin": "6291107975399",
       "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-108",
+      "size_ml": 100,
+      "aliases": [
+        "Musk Al Sabah 100 ml",
+        "Khadlaj Musk Al Sabah 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-108-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107977027",
+      "source_url": "https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-109",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Al Sabah 100 ml",
+        "Khadlaj Oud Al Sabah 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-109-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107977034",
+      "source_url": "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-113",
+      "size_ml": 100,
+      "aliases": [
+        "Shahi Oud 100 ml",
+        "Khadlaj Shahi Oud 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-113-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107971032",
+      "source_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae"
     }
   ]
 }
