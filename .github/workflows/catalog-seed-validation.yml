@@ -15,6 +15,10 @@ on:
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/khadlaj-six-official-variants-2026-11-10
       - catalog/khadlaj-41-variants-consolidated-2026-11-10
+      - catalog/gulf-orchid-four-verified-2026-11-10
+      - catalog/gulf-orchid-five-variants-brand-reconcile-2026-11-10
+      - catalog/velixir-arabiyat-twelve-variants-2026-11-10
+      - catalog/cumulative-final-integration-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -32,6 +36,10 @@ on:
       - catalog/requested-brand-harvest-2026-11-08
       - catalog/khadlaj-six-official-variants-2026-11-10
       - catalog/khadlaj-41-variants-consolidated-2026-11-10
+      - catalog/gulf-orchid-four-verified-2026-11-10
+      - catalog/gulf-orchid-five-variants-brand-reconcile-2026-11-10
+      - catalog/velixir-arabiyat-twelve-variants-2026-11-10
+      - catalog/cumulative-final-integration-2026-11-10
 
 permissions:
   contents: read
@@ -77,6 +85,9 @@ jobs:
           backend.tests.test_khadlaj_official_spray_harvest
           backend.tests.test_khadlaj_cream_velvet_official_variant
           backend.tests.test_khadlaj_six_official_variants
+          backend.tests.test_gulf_orchid_new_arrivals_2026_11_10
+          backend.tests.test_gulf_orchid_five_variants_and_brand_attribution
+          backend.tests.test_arabiyat_prestige_new_launch_2026_11_10
           backend.tests.test_khadlaj_official_spray_fourth_followup
           backend.tests.test_khadlaj_official_spray_third_followup
           backend.tests.test_khadlaj_official_spray_second_followup
@@ -91,4 +102,9 @@ jobs:
           backend.tests.test_afnan_official_global_storefront
           backend.tests.test_aromatix_official_catalog
           backend.tests.test_maison_asrar_official_detail_reconciliation
+          backend.tests.test_maison_asrar_new_arrivals_2026_11_10
+          backend.tests.test_khadlaj_cumulative_catalog_integrity
+          backend.tests.test_catalog_quality_debt_budget
+          backend.tests.test_maison_asrar_rose_detail_pages_2026_11_10
+          backend.tests.test_armaf_intenso_fuego_official_detail_2026_11_10
           -v
