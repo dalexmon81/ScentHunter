@@ -8122,21 +8122,28 @@
       "product_id": "SH-MAISON-ALHAMBRA-dd2c5772",
       "brand": "Maison Alhambra",
       "brand_name": "Maison Alhambra",
-      "canonical_name": "Kismet",
-      "name": "Kismet",
+      "canonical_name": "Kismet for Men",
+      "name": "Kismet for Men",
       "family_id": "maison_alhambra_catalog",
-      "family_name": "Kismet",
+      "family_name": "Kismet for Men",
       "aliases": [
+        "Kismet for Men",
         "Kismet",
-        "Maison Alhambra Kismet"
+        "Maison Alhambra Kismet",
+        "Maison Alhambra Kismet for Men"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men",
+      "gender": "Men",
+      "gtins": [
+        "6291107459257"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-9b536535",
@@ -10341,9 +10348,18 @@
         "Jean Lowe Matiere",
         "Maison Alhambra Jean Lowe Matiere"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-matiere-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-matiere-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-matiere-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "gtins": [
+        "6291108735558"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-68802b72",
@@ -10599,9 +10615,18 @@
         "Kismet Lunar Magic",
         "Maison Alhambra Kismet Lunar Magic"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-magic-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-magic-eau-de-parfum-for-everyone",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-magic-eau-de-parfum-for-everyone",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "gtins": [
+        "6291108736579"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-c498d536",
@@ -40618,6 +40643,33 @@
       "gtins": [
         "6291108735671"
       ]
+    },
+    {
+      "product_id": "SH-MAISON-ALHAMBRA-KISMET-WOMEN",
+      "brand": "Maison Alhambra",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Kismet for Women",
+      "name": "Kismet for Women",
+      "family_id": "maison_alhambra_catalog",
+      "family_name": "Kismet for Women",
+      "aliases": [
+        "Kismet for Women",
+        "Kismet",
+        "Maison Alhambra Kismet Women",
+        "Maison Alhambra Kismet for Women"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
+      "gender": "Women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "gtins": [
+        "6291107459264"
+      ]
     }
   ],
   "variants": [
@@ -41017,16 +41069,6 @@
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-1ba08eef-100-000",
       "concentration": "Extrait de Parfum"
-    },
-    {
-      "product_id": "SH-MAISON-ALHAMBRA-dd2c5772",
-      "size_ml": 100,
-      "aliases": [
-        "Kismet 100 ml",
-        "Maison Alhambra Kismet 100 ml"
-      ],
-      "variant_id": "SHV-SH-MAISON-ALHAMBRA-dd2c5772-100-000",
-      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-3a24e40b",
@@ -53365,6 +53407,62 @@
       "gtin": "6290362340867",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mindset-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mindset-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-7247b143-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-7247b143",
+      "size_ml": 100,
+      "aliases": [
+        "Jean Lowe Matiere 100 ml",
+        "Maison Alhambra Jean Lowe Matiere 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108735558",
+      "gender": "Unisex",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-matiere-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-matiere-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-8686c885-100-EDP",
+      "product_id": "SH-MAISON-ALHAMBRA-8686c885",
+      "size_ml": 100,
+      "aliases": [
+        "Kismet Magic 100 ml",
+        "Maison Alhambra Kismet Magic 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108736579",
+      "gender": "Unisex",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-magic-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-magic-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-dd2c5772-100-MEN",
+      "product_id": "SH-MAISON-ALHAMBRA-dd2c5772",
+      "size_ml": 100,
+      "aliases": [
+        "Kismet for Men 100 ml",
+        "Maison Alhambra Kismet Men 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107459257",
+      "gender": "Men",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-KISMET-WOMEN-100-EDP",
+      "product_id": "SH-MAISON-ALHAMBRA-KISMET-WOMEN",
+      "size_ml": 100,
+      "aliases": [
+        "Kismet for Women 100 ml",
+        "Maison Alhambra Kismet Women 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107459264",
+      "gender": "Women",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women"
     }
   ]
 }
