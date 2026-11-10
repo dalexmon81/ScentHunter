@@ -53421,6 +53421,22 @@
       "gender": "Men",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-men"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-dd2c5772-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-dd2c5772",
+      "size_ml": 100,
+      "aliases": [
+        "Kismet 100 ml",
+        "Maison Alhambra Kismet 100 ml",
+        "Kismet for Women 100 ml",
+        "Maison Alhambra Kismet Women 100 ml"
+      ],
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107459264",
+      "gender": "Women",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-kismet-eau-de-parfum-for-women"
     }
   ]
 }
