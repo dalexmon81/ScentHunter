@@ -7659,8 +7659,8 @@
             "Armaf Club de Nuit Intense Man"
           ],
           "formats_ml": [
-            30,
             200,
+            30,
             250
           ]
         },
@@ -7708,10 +7708,10 @@
             "Armaf Odyssey Mandarin Sky"
           ],
           "formats_ml": [
-            10,
-            60,
+            200,
             100,
-            200
+            60,
+            10
           ]
         },
         {
@@ -7776,10 +7776,10 @@
             "Armaf Club de Nuit Blue Iconic"
           ],
           "formats_ml": [
-            10,
-            30,
+            200,
             105,
-            200
+            30,
+            10
           ]
         },
         {
@@ -7837,9 +7837,9 @@
             "Armaf Club de Nuit Milestone"
           ],
           "formats_ml": [
-            30,
+            200,
             105,
-            200
+            30
           ]
         },
         {
@@ -7954,9 +7954,9 @@
             "Armaf Odyssey Aqua"
           ],
           "formats_ml": [
-            60,
+            200,
             100,
-            200
+            60
           ]
         },
         {
@@ -7966,10 +7966,10 @@
             "Armaf Odyssey Mega"
           ],
           "formats_ml": [
-            10,
-            60,
+            200,
             100,
-            200
+            60,
+            10
           ]
         },
         {
@@ -8019,8 +8019,8 @@
             "Armaf Odyssey Mandarin Sky Elixir"
           ],
           "formats_ml": [
-            60,
-            100
+            100,
+            60
           ]
         },
         {
@@ -8030,9 +8030,9 @@
             "Armaf Club de Nuit Imperiale"
           ],
           "formats_ml": [
-            10,
+            200,
             105,
-            200
+            10
           ]
         },
         {
@@ -8077,9 +8077,9 @@
             "Armaf Club de Nuit Intense Woman"
           ],
           "formats_ml": [
+            105,
             10,
-            30,
-            105
+            30
           ]
         },
         {
@@ -11958,8 +11958,8 @@
             "Game of Spades Blue Sapphire"
           ],
           "formats_ml": [
-            30,
-            90
+            90,
+            30
           ]
         },
         {
@@ -11970,9 +11970,9 @@
             "Game of Spades Emerald Extrait"
           ],
           "formats_ml": [
-            10,
+            90,
             50,
-            90
+            10
           ]
         },
         {
@@ -11983,9 +11983,9 @@
             "Game of Spades Rouge Extrait"
           ],
           "formats_ml": [
-            10,
+            100,
             30,
-            100
+            10
           ]
         }
       ]
