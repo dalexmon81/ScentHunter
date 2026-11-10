@@ -14763,6 +14763,9 @@
           "aliases": [
             "Galactic Men Intense",
             "Maison Alhambra Galactic Men Intense"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15043,6 +15046,9 @@
           "aliases": [
             "Jorge di Profumo",
             "Maison Alhambra Jorge di Profumo"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15894,6 +15900,56 @@
             "Kismet",
             "Maison Alhambra Kismet Women",
             "Maison Alhambra Kismet for Women"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Yeah",
+          "aliases": [
+            "Yeah",
+            "Maison Alhambra Yeah"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Yeah! Man Parfum",
+          "aliases": [
+            "Yeah! Man Parfum",
+            "Maison Alhambra Yeah! Man Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Toro Pour Homme Glace",
+          "aliases": [
+            "Toro Pour Homme Glace",
+            "Maison Alhambra Toro Pour Homme Glace"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Your Touch Amber",
+          "aliases": [
+            "Your Touch Amber",
+            "Maison Alhambra Your Touch Amber"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Opulence Leather",
+          "aliases": [
+            "Opulence Leather",
+            "Maison Alhambra Opulence Leather"
           ],
           "formats_ml": [
             100
