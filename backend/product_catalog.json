@@ -3484,11 +3484,14 @@
         "Khadlaj Panache Angel Dust"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "gender": "Women"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -3545,12 +3548,14 @@
         "Khadlaj Sawaar Vanille Blanc"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
-      "source_product_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Women"
     },
     {
       "product_id": "SH-KHADLAJ-cdaa81f2",
@@ -4167,9 +4172,10 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
-      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "gender": "Men"
     },
     {
       "product_id": "SH-BUJAIRAMI-370cb2f2",
@@ -20666,13 +20672,14 @@
         "Khadlaj Onyx Galaxy"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/onyx-galaxy-100-ml-eau-de-parfum-for-men",
       "formats_ml": [
         100
       ],
       "concentration": "Eau de Parfum",
-      "gender": "Men"
+      "gender": "Men",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/products/onyx-galaxy-100-ml-eau-de-parfum-for-men"
     },
     {
       "product_id": "SH-KHADLAJ-MUSE",
@@ -40982,8 +40989,9 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-bbb43d66-100-000",
       "concentration": "Eau de Parfum",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men"
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "gender": "Men"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-29189f4e",
@@ -41173,8 +41181,9 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-f26d9535-100-000",
       "concentration": "Extrait de Parfum",
-      "source_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae"
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "gender": "Women"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -44379,7 +44388,10 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-EDP",
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "gender": "Men",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "gtin": "6298043072700"
     },
     {
       "product_id": "SH-AL-HARAMAIN-HARAMAIN-CAMELLIA",
@@ -51223,8 +51235,10 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-24969f48-100-UNSPECIFIED",
       "gtin": "6298043070768",
-      "source_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women"
+      "source_url": "https://khadlaj-perfumes.myshopify.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "concentration": "Eau de Parfum",
+      "gender": "Women"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-061",
