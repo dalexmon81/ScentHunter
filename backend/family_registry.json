@@ -7170,8 +7170,13 @@
         {
           "canonical_name": "Odyssey Ba Ha Mas",
           "aliases": [
-            "Armaf Odyssey Ba Ha Mas"
-          ]
+            "Armaf Odyssey Ba Ha Mas",
+            "Odyssey Ba Ha Mas Tropical Collection"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Odyssey Marshmallow",
@@ -7267,7 +7272,13 @@
           "canonical_name": "Odyssey Candee Special Edition",
           "aliases": [
             "Armaf Odyssey Candee Special Edition"
-          ]
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Checkmate King",
@@ -8144,7 +8155,11 @@
           "canonical_name": "Dubai Nights Midnight",
           "aliases": [
             "Armaf Dubai Nights Midnight"
-          ]
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Dubai Nights Umbra",
@@ -8229,14 +8244,20 @@
             "Armaf Odyssey French Kiss"
           ],
           "formats_ml": [
+            60,
             100
           ]
         },
         {
           "canonical_name": "Odyssey Eau de Montagne",
           "aliases": [
-            "Armaf Odyssey Eau de Montagne"
-          ]
+            "Armaf Odyssey Eau de Montagne",
+            "Odyssey Eau de Montagne Mountain Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
         },
         {
           "canonical_name": "Profumi D'Art 13 Tanta Roba",
@@ -8315,6 +8336,27 @@
           "formats_ml": [
             100
           ]
+        },
+        {
+          "canonical_name": "Odyssey Spectra Rainbow Edition",
+          "aliases": [
+            "Armaf Odyssey Spectra Rainbow Edition"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "concentration": "Eau de Parfum"
+        },
+        {
+          "canonical_name": "Odyssey Dubai Chocolat",
+          "aliases": [
+            "Armaf Odyssey Dubai Chocolat"
+          ],
+          "formats_ml": [
+            60,
+            100
+          ],
+          "concentration": "Eau de Parfum"
         }
       ]
     },

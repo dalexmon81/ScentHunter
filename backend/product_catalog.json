@@ -14454,14 +14454,19 @@
       "family_name": "Odyssey Ba Ha Mas",
       "aliases": [
         "Odyssey Ba Ha Mas",
-        "Armaf Odyssey Ba Ha Mas"
+        "Armaf Odyssey Ba Ha Mas",
+        "Odyssey Ba Ha Mas Tropical Collection"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-ba-ha-mas",
       "source_evidence_url": "https://armaf.com/products/odyssey-ba-ha-mas",
       "concentration": "Eau de Parfum",
       "source_product_url": "https://armaf.com/products/odyssey-ba-ha-mas",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ],
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-ba-ha-mas"
     },
     {
       "product_id": "SH-ARMAF-78579c03",
@@ -14684,10 +14689,17 @@
         "Odyssey Candee Special Edition",
         "Armaf Odyssey Candee Special Edition"
       ],
-      "identity_status": "source_listed_name",
+      "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/collections/all-perfumes?page=4",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=4",
-      "concentration": "Eau de Parfum"
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "formats_ml": [
+        60,
+        100,
+        200
+      ]
     },
     {
       "product_id": "SH-ARMAF-43900532",
@@ -38321,7 +38333,12 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/dubai-nights-midnight-spr",
       "source_evidence_url": "https://armaf.com/products/dubai-nights-midnight-spr",
-      "gender": "Men"
+      "gender": "Men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_size_evidence_url": "https://cz.armaf.eu/products/dubai-nights-midnight"
     },
     {
       "product_id": "SH-ARMAF-DUBAI-NIGHTS-UMBRA-20261109",
@@ -39374,8 +39391,10 @@
       "concentration": "Eau de Parfum",
       "gender": "Women",
       "formats_ml": [
+        60,
         100
-      ]
+      ],
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-french-kiss"
     },
     {
       "product_id": "SH-AL-HARAMAIN-AHP2065",
@@ -39428,13 +39447,19 @@
       "family_name": "Odyssey Eau de Montagne",
       "aliases": [
         "Odyssey Eau de Montagne",
-        "Armaf Odyssey Eau de Montagne"
+        "Armaf Odyssey Eau de Montagne",
+        "Odyssey Eau de Montagne Mountain Edition"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/odyssey-eau-de-montagne",
       "source_product_url": "https://armaf.com/products/odyssey-eau-de-montagne",
       "source_evidence_url": "https://armaf.com/products/odyssey-eau-de-montagne",
-      "gender": "Unisex"
+      "gender": "Unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-eau-de-montagne-mountain-edition"
     },
     {
       "product_id": "SH-ARMAF-PROFUMI-DART-13-TANTA-ROBA",
@@ -40359,6 +40384,53 @@
       "source_evidence_url": "https://shop-gulforchid.com/products/royal-rose",
       "concentration": "Eau de Parfum",
       "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SPECTRA-RAINBOW-EDITION",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Spectra Rainbow Edition",
+      "name": "Odyssey Spectra Rainbow Edition",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Spectra Rainbow Edition",
+      "aliases": [
+        "Odyssey Spectra Rainbow Edition",
+        "Armaf Odyssey Spectra Rainbow Edition"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT",
+      "brand": "Armaf",
+      "brand_name": "Armaf",
+      "canonical_name": "Odyssey Dubai Chocolat",
+      "name": "Odyssey Dubai Chocolat",
+      "family_id": "armaf_catalog",
+      "family_name": "Odyssey Dubai Chocolat",
+      "aliases": [
+        "Odyssey Dubai Chocolat",
+        "Armaf Odyssey Dubai Chocolat"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "formats_ml": [
+        60,
         100
       ]
     }
@@ -52906,6 +52978,148 @@
       "source_product_url": "https://armaf.com/products/odyssey-artisto",
       "source_evidence_url": "https://armaf.com/products/odyssey-artisto",
       "source_size_evidence_url": "https://cz.armaf.eu/en/products/odyssey-artisto-the-red-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-FRENCH-KISS",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-FRENCH-KISS-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey French Kiss 60 ml",
+        "Armaf Odyssey French Kiss 60 ml"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-french-kiss",
+      "source_product_url": "https://armaf.com/products/odyssey-french-kiss",
+      "source_evidence_url": "https://armaf.com/products/odyssey-french-kiss",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-french-kiss"
+    },
+    {
+      "product_id": "SH-ARMAF-54070d49",
+      "variant_id": "SHV-SH-ARMAF-54070d49-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Candee Special Edition 60 ml",
+        "Armaf Odyssey Candee Special Edition 60 ml"
+      ],
+      "source_url": "https://armaf.com/collections/all-perfumes?page=4",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-54070d49",
+      "variant_id": "SHV-SH-ARMAF-54070d49-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Candee Special Edition 100 ml",
+        "Armaf Odyssey Candee Special Edition 100 ml"
+      ],
+      "source_url": "https://armaf.com/collections/all-perfumes?page=4",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-54070d49",
+      "variant_id": "SHV-SH-ARMAF-54070d49-200-EDP",
+      "size_ml": 200,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Candee Special Edition 200 ml",
+        "Armaf Odyssey Candee Special Edition 200 ml"
+      ],
+      "source_url": "https://armaf.com/collections/all-perfumes?page=4",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-candee-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-DUBAI-NIGHTS-MIDNIGHT-20261109",
+      "variant_id": "SHV-SH-ARMAF-DUBAI-NIGHTS-MIDNIGHT-20261109-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Dubai Nights Midnight 100 ml",
+        "Armaf Dubai Nights Midnight 100 ml"
+      ],
+      "source_url": "https://armaf.com/products/dubai-nights-midnight-spr",
+      "source_product_url": "https://armaf.com/products/dubai-nights-midnight-spr",
+      "source_evidence_url": "https://armaf.com/products/dubai-nights-midnight-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/dubai-nights-midnight"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-EAU-DE-MONTAGNE",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-EAU-DE-MONTAGNE-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Eau de Montagne 100 ml",
+        "Armaf Odyssey Eau de Montagne 100 ml",
+        "Odyssey Eau de Montagne Mountain Edition"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_product_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_evidence_url": "https://armaf.com/products/odyssey-eau-de-montagne",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-eau-de-montagne-mountain-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-386ff57b",
+      "variant_id": "SHV-SH-ARMAF-386ff57b-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Ba Ha Mas 100 ml",
+        "Armaf Odyssey Ba Ha Mas 100 ml",
+        "Odyssey Ba Ha Mas Tropical Collection"
+      ],
+      "source_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "source_product_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "source_evidence_url": "https://armaf.com/products/odyssey-ba-ha-mas",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-ba-ha-mas"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-SPECTRA-RAINBOW-EDITION",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-SPECTRA-RAINBOW-EDITION-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Spectra Rainbow Edition 100 ml",
+        "Armaf Odyssey Spectra Rainbow Edition 100 ml"
+      ],
+      "source_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-spectra-rainbow-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT-60-EDP",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Dubai Chocolat 60 ml",
+        "Armaf Odyssey Dubai Chocolat 60 ml"
+      ],
+      "source_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat"
+    },
+    {
+      "product_id": "SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT",
+      "variant_id": "SHV-SH-ARMAF-ODYSSEY-DUBAI-CHOCOLAT-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Odyssey Dubai Chocolat 100 ml",
+        "Armaf Odyssey Dubai Chocolat 100 ml"
+      ],
+      "source_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_product_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat",
+      "source_size_evidence_url": "https://cz.armaf.eu/products/odyssey-dubai-chocolat"
     }
   ]
 }

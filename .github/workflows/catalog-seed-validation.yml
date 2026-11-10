@@ -95,6 +95,7 @@ jobs:
           backend.tests.test_armaf_four_more_official_variants_2026_11_10
           backend.tests.test_armaf_four_edition_alias_variants_2026_11_10
           backend.tests.test_armaf_odyssey_artisto_eu_alias_variant_2026_11_10
+          backend.tests.test_armaf_eu_additional_catalog_products_variants_2026_11_10
           backend.tests.test_family_registry_identity_normalization
           backend.tests.test_swiss_arabian_detail_evidence
           backend.tests.test_arabiyat_prestige_extrait

@@ -1889,7 +1889,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Odyssey Ba Ha Mas": (
                 "https://armaf.com/products/odyssey-ba-ha-mas",
-                "Eau de Parfum", "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Odyssey Marshmallow": (
                 "https://armaf.com/products/odyssey-marshmallow",
@@ -2014,7 +2014,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Ventana Marine": ("https://armaf.com/products/ventana-marine", "Eau de Parfum", "Unisex", [10, 105]),
             "Club de Nuit Intense Man Extreme Edition": ("https://armaf.com/products/club-de-nuit-intense-man-parfum-extreme-edition", "Parfum", "Men", [105]),
             "Club de Nuit Man": ("https://armaf.com/products/club-de-nuit-man1", "Eau de Toilette", "Men", [10, 105]),
-            "Odyssey French Kiss": ("https://armaf.com/products/odyssey-french-kiss", "Eau de Parfum", "Women", [100]),
+            "Odyssey French Kiss": ("https://armaf.com/products/odyssey-french-kiss", "Eau de Parfum", "Women", [60, 100]),
         }
         products = {
             row.get("canonical_name"): row
@@ -2058,7 +2058,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Miss Armaf Chic": ("https://armaf.com/products/miss-armaf-chic", "Eau de Parfum", "Women", [100]),
             "Club de Nuit Precieux IV": ("https://armaf.com/products/club-de-nuit-precieux-iv", "Eau de Toilette", "Women", []),
             "Club de Nuit Lionheart Woman": ("https://armaf.com/products/cdn-lion-heart-spr", "Eau de Parfum", "Women", [100]),
-            "Odyssey Eau de Montagne": ("https://armaf.com/products/odyssey-eau-de-montagne", None, "Unisex", []),
+            "Odyssey Eau de Montagne": ("https://armaf.com/products/odyssey-eau-de-montagne", "Eau de Parfum", "Unisex", [100]),
             "Profumi D'Art 13 Tanta Roba": ("https://armaf.com/products/profumi-dart-13-e-tanta-roba", "Eau de Parfum", "Unisex", [100]),
         }
         products = {
