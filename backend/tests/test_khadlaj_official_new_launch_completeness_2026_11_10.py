@@ -13,19 +13,21 @@ EXPECTED = {
         "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-EDP",
         "url": "https://khadlaj-perfumes.myshopify.com/products/onyx-galaxy-100-ml-eau-de-parfum-for-men",
         "size": 100, "concentration": "Eau de Parfum", "gender": "Men",
-        "gtin": "6298043072700",
+        "gtin": "6298043072762",
     },
     "Shiyaaka Snow": {
         "product_id": "SH-KHADLAJ-bbb43d66",
         "variant_id": "SHV-SH-KHADLAJ-bbb43d66-100-000",
         "url": "https://khadlaj-perfumes.myshopify.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
         "size": 100, "concentration": "Eau de Parfum", "gender": "Men",
+        "gtin": "6291107979335",
     },
     "Panache Angel Dust": {
         "product_id": "SH-KHADLAJ-f26d9535",
         "variant_id": "SHV-SH-KHADLAJ-f26d9535-100-000",
         "url": "https://khadlaj-perfumes.myshopify.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
         "size": 100, "concentration": "Extrait de Parfum", "gender": "Women",
+        "gtin": "6298043070829",
     },
     "Sawaar Vanille Blanc": {
         "product_id": "SH-KHADLAJ-24969f48",
