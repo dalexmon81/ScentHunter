@@ -3614,12 +3614,14 @@
         "Titan",
         "Khadlaj Titan"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-titan-100-ml-eau-de-parfum-spray-for-men-refreshing-scents-to-buy-online-dubai-uae",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-titan-100-ml-eau-de-parfum-spray-for-men-refreshing-scents-to-buy-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-titan-100-ml-eau-de-parfum-spray-for-men-refreshing-scents-to-buy-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-75815e2a",
@@ -3690,8 +3692,14 @@
         "Nuha Cherry Blush",
         "Khadlaj Nuha Cherry Blush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-76dd12b7",
@@ -3735,8 +3743,14 @@
         "Onyx Gold",
         "Khadlaj Onyx Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-ce66d76f",
@@ -39415,7 +39429,10 @@
         "Khadlaj Titan 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-ce6dbd60-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "gtin": "6298043070065",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-titan-100-ml-eau-de-parfum-spray-for-men-refreshing-scents-to-buy-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-titan-100-ml-eau-de-parfum-spray-for-men-refreshing-scents-to-buy-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-75815e2a",
@@ -49095,6 +49112,32 @@
       "variant_id": "SHV-SH-GULF-ORCHID-ROYAL-ROSE-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/royal-rose"
+    },
+    {
+      "product_id": "SH-KHADLAJ-37d5907b",
+      "size_ml": 85,
+      "aliases": [
+        "Nuha Cherry Blush 85 ml",
+        "Khadlaj Nuha Cherry Blush 85ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-37d5907b-85-EDP",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107979175",
+      "source_url": "https://khadlaj-perfumes.com/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-6494ea68",
+      "size_ml": 100,
+      "aliases": [
+        "Onyx Gold 100 ml",
+        "Khadlaj Onyx Gold 100ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-6494ea68-100-EDP",
+      "concentration": "Eau de Parfum",
+      "gtin": "6298043070140",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae"
     }
   ]
 }
