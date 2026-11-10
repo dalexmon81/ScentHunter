@@ -1,0 +1,35 @@
+name: Cumulative catalog integrity audit
+
+on:
+  pull_request:
+    branches:
+      - catalog/velixir-eight-products-16-variants-2026-11-10
+    paths:
+      - "backend/product_catalog.json"
+      - "backend/family_registry.json"
+      - "backend/tests/test_catalog_cumulative_identity_integrity_2026_11_10.py"
+      - ".github/workflows/catalog-cumulative-integrity.yml"
+  push:
+    branches:
+      - catalog/catalog-audit-continue-2026-11-10
+    paths:
+      - "backend/product_catalog.json"
+      - "backend/family_registry.json"
+      - "backend/tests/test_catalog_cumulative_identity_integrity_2026_11_10.py"
+      - ".github/workflows/catalog-cumulative-integrity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  cumulative-catalog-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate complete catalog and family registry
+        run: python -m unittest backend.tests.test_catalog_cumulative_identity_integrity_2026_11_10 -v
