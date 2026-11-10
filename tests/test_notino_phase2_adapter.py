@@ -32,7 +32,7 @@ def _database():
         session.flush()
         variant = ProductVariant(
             fragrance_id=fragrance.id, concentration="EDP", size_ml=100,
-            gtin="1234567890123", canonical_key="test|fragrance|edp|100",
+            gtin="4006381333931", canonical_key="test|fragrance|edp|100",
         )
         store = Store(
             name="NOTINO.fr", slug="notino-fr", domain="notino.fr",
@@ -47,12 +47,13 @@ def _database():
 def _record(external_id: str, *, price: str = "49.90", **changes):
     record = {
         "external_id": external_id,
-        "gtin": "1234567890123",
+        "gtin": "4006381333931",
         "price": price,
         "sale_price": None,
         "currency": "EUR",
         "availability": "in stock",
         "affiliate_url": f"https://notino.fr/p/{external_id}",
+        "captured_at": "2026-11-10T12:00:00Z",
     }
     record.update(changes)
     return record
@@ -91,7 +92,7 @@ def test_repeat_notino_external_id_updates_same_offer_and_appends_history():
         with Session(engine) as session, session.begin():
             second = persist_notino_record(
                 session, store_id=store_id,
-                raw_record=_record("SKU-ONE", price="39.90"),
+                raw_record=_record("SKU-ONE", price="39.90", captured_at="2026-11-10T12:01:00Z"),
             )
             assert second.status == "promoted"
             assert second.offer_id == first.offer_id
@@ -115,7 +116,7 @@ def test_unmatched_gtin_stays_pending_and_is_not_published():
         with Session(engine) as session, session.begin():
             result = persist_notino_record(
                 session, store_id=store_id,
-                raw_record=_record("SKU-UNKNOWN", gtin="9999999999999"),
+                raw_record=_record("SKU-UNKNOWN", gtin="4006381333948"),
             )
             assert result.status == "pending"
             assert result.offer_id is None
@@ -202,5 +203,71 @@ def test_missing_external_id_stays_pending_and_is_not_published():
             assert raw.product_variant_id is None
             assert raw.rejection_reason == "missing_external_product_id"
             assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
+
+
+def test_invalid_gtin_check_digit_stays_pending():
+    engine, (store_id, _variant_id) = _database()
+    try:
+        with Session(engine) as session, session.begin():
+            result = persist_notino_record(
+                session, store_id=store_id,
+                raw_record=_record("SKU-BAD-GTIN", gtin="4006381333932"),
+            )
+            assert result.status == "pending"
+            assert result.reason == "invalid_gtin_check_digit"
+            assert result.offer_id is None
+        with Session(engine) as session:
+            assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
+
+
+def test_missing_or_timezone_naive_source_timestamp_is_not_promoted():
+    engine, (store_id, _variant_id) = _database()
+    try:
+        with Session(engine) as session, session.begin():
+            missing = persist_notino_record(
+                session, store_id=store_id,
+                raw_record=_record("SKU-NO-TIME", captured_at=""),
+            )
+            naive = persist_notino_record(
+                session, store_id=store_id,
+                raw_record=_record("SKU-NAIVE-TIME", captured_at="2026-11-10T12:00:00"),
+            )
+            assert missing.reason == "missing_source_observation_timestamp"
+            assert naive.reason == "invalid_source_observation_timestamp"
+            assert missing.status == naive.status == "matched"
+        with Session(engine) as session:
+            assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
+
+
+def test_older_feed_observation_cannot_overwrite_newer_offer():
+    engine, (store_id, _variant_id) = _database()
+    try:
+        with Session(engine) as session, session.begin():
+            newest = persist_notino_record(
+                session, store_id=store_id,
+                raw_record=_record("SKU-ORDERED", price="29.90", captured_at="2026-11-10T12:10:00Z"),
+            )
+            stale = persist_notino_record(
+                session, store_id=store_id,
+                raw_record=_record("SKU-ORDERED", price="59.90", captured_at="2026-11-10T12:05:00Z"),
+            )
+            assert newest.status == "promoted"
+            assert stale.status == "stale"
+            assert stale.reason == "source_observation_not_newer_than_stored_offer"
+            assert stale.offer_id is None
+        with Session(engine) as session:
+            offers = session.scalars(select(Offer)).all()
+            assert len(offers) == 1
+            assert offers[0].price == Decimal("29.90")
+            assert offers[0].captured_at.isoformat().startswith("2026-11-10T12:10:00")
+            history = session.scalars(select(PriceHistory).where(PriceHistory.offer_id == newest.offer_id)).all()
+            assert len(history) == 1
+            assert history[0].price == Decimal("29.90")
     finally:
         engine.dispose()
