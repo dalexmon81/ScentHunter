@@ -1826,9 +1826,14 @@
         "Gentle Oud",
         "Maison Asrar Gentle Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-gentle-oud-eau-de-parfum-80-ml-for-men",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-gentle-oud-eau-de-parfum-80-ml-for-men",
+      "source_product_url": "https://maisonasrar.com/products/maison-asrar-gentle-oud-eau-de-parfum-80-ml-for-men",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-4c9f7d46",
@@ -1858,9 +1863,14 @@
         "Hamsat Gharam",
         "Maison Asrar Hamsat Gharam"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women",
+      "source_product_url": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-e3a657b7",
@@ -49280,6 +49290,28 @@
       "variant_id": "SHV-SH-MAISON-ASRAR-f778e873-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-a5a7cc49",
+      "size_ml": 80,
+      "aliases": [
+        "Gentle Oud 80 ml",
+        "Maison Asrar Gentle Oud 80ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-a5a7cc49-80-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-gentle-oud-eau-de-parfum-80-ml-for-men"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-9b703ddc",
+      "size_ml": 100,
+      "aliases": [
+        "Hamsat Gharam 100 ml",
+        "Maison Asrar Hamsat Gharam 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-9b703ddc-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women"
     }
   ]
 }
