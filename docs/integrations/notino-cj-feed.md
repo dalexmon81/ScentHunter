@@ -87,3 +87,9 @@ The adapter and persistence tests do not activate production ingestion, change
 search behavior, seed/activate the Notino store, or schedule downloads. Phase 2
 uses an isolated SQLite database; PostgreSQL migration remains deferred.
 The feed has not been imported into any database.
+
+
+## Packaging size normalization
+- Candidate review parses millilitre values and explicit US fluid-ounce values (`fl oz`, `fl. oz.`, `fluid ounce`) and converts fluid ounces to millilitres before comparing variant sizes.
+- Bare `oz` is not treated as a volume unit because it may represent weight.
+- Size parsing improves candidate prioritization only. It does not approve a product match or trigger an offer import.
