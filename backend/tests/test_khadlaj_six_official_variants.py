@@ -1,4 +1,4 @@
-"""Regression tests for eighteen Khadlaj official product-page variants."""
+"""Regression tests for nineteen Khadlaj official product-page variants."""
 import json
 import unittest
 from pathlib import Path
@@ -26,6 +26,7 @@ EXPECTED = {
     "Oud Pour Leather": ("SH-KHADLAJ-OUD-POUR-LEATHER", 100, "Eau de Parfum", "6291107977843", "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women"),
     "Nuha Bon Bon": ("SH-KHADLAJ-7ecbb58c", 85, "Eau de Parfum", "6298043070317", "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online"),
     "Nuha Vanilla Pearl": ("SH-KHADLAJ-76dd12b7", 85, "Eau de Parfum", "6291107979182", "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae"),
+    "Onyx Silver": ("SH-KHADLAJ-ce66d76f", 100, "Eau de Parfum", "6298043071161", "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
