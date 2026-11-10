@@ -5,6 +5,71 @@ import unicodedata
 from pathlib import Path
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "product_catalog.json"
+VERIFIED_DETAIL_IDS = {
+    "SH-KHADLAJ-SPRAY-HARVEST-056",
+    "SH-KHADLAJ-SPRAY-HARVEST-057",
+    "SH-KHADLAJ-SPRAY-HARVEST-058",
+    "SH-KHADLAJ-SPRAY-HARVEST-064",
+    "SH-KHADLAJ-SPRAY-HARVEST-065",
+    "SH-KHADLAJ-SPRAY-HARVEST-066",
+    "SH-KHADLAJ-SPRAY-HARVEST-082",
+    "SH-KHADLAJ-SPRAY-HARVEST-070",
+    "SH-KHADLAJ-SPRAY-HARVEST-071",
+    "SH-KHADLAJ-SPRAY-HARVEST-072",
+    "SH-KHADLAJ-SPRAY-HARVEST-083",
+    "SH-KHADLAJ-SPRAY-HARVEST-084",
+    "SH-KHADLAJ-SPRAY-HARVEST-085",
+    "SH-KHADLAJ-SPRAY-HARVEST-076",
+    "SH-KHADLAJ-SPRAY-HARVEST-077",
+    "SH-KHADLAJ-SPRAY-HARVEST-078",
+    "SH-KHADLAJ-SPRAY-HARVEST-075",
+    "SH-KHADLAJ-SPRAY-HARVEST-108",
+    "SH-KHADLAJ-SPRAY-HARVEST-109",
+    "SH-KHADLAJ-SPRAY-HARVEST-113",
+    "SH-KHADLAJ-SPRAY-HARVEST-096",
+    "SH-KHADLAJ-SPRAY-HARVEST-059",
+    "SH-KHADLAJ-SPRAY-HARVEST-060",
+    "SH-KHADLAJ-SPRAY-HARVEST-061",
+    "SH-KHADLAJ-SPRAY-HARVEST-063",
+    "SH-KHADLAJ-SPRAY-HARVEST-067",
+    "SH-KHADLAJ-SPRAY-HARVEST-068",
+    "SH-KHADLAJ-SPRAY-HARVEST-069",
+    "SH-KHADLAJ-SPRAY-HARVEST-073",
+    "SH-KHADLAJ-SPRAY-HARVEST-074",
+    "SH-KHADLAJ-SPRAY-HARVEST-079",
+    "SH-KHADLAJ-SPRAY-HARVEST-080",
+    "SH-KHADLAJ-SPRAY-HARVEST-081",
+    "SH-KHADLAJ-SPRAY-HARVEST-086",
+    "SH-KHADLAJ-SPRAY-HARVEST-087",
+    "SH-KHADLAJ-SPRAY-HARVEST-088",
+    "SH-KHADLAJ-SPRAY-HARVEST-089",
+    "SH-KHADLAJ-SPRAY-HARVEST-090",
+    "SH-KHADLAJ-SPRAY-HARVEST-091",
+    "SH-KHADLAJ-SPRAY-HARVEST-092",
+    "SH-KHADLAJ-SPRAY-HARVEST-093",
+    "SH-KHADLAJ-SPRAY-HARVEST-094",
+    "SH-KHADLAJ-SPRAY-HARVEST-095",
+    "SH-KHADLAJ-SPRAY-HARVEST-097",
+    "SH-KHADLAJ-SPRAY-HARVEST-098",
+    "SH-KHADLAJ-SPRAY-HARVEST-099",
+    "SH-KHADLAJ-SPRAY-HARVEST-100",
+    "SH-KHADLAJ-SPRAY-HARVEST-101",
+    "SH-KHADLAJ-SPRAY-HARVEST-102",
+    "SH-KHADLAJ-SPRAY-HARVEST-103",
+    "SH-KHADLAJ-SPRAY-HARVEST-105",
+    "SH-KHADLAJ-SPRAY-HARVEST-107",
+    "SH-KHADLAJ-SPRAY-HARVEST-110",
+    "SH-KHADLAJ-SPRAY-HARVEST-111",
+    "SH-KHADLAJ-SPRAY-HARVEST-114",
+    "SH-KHADLAJ-SPRAY-HARVEST-115",
+    "SH-KHADLAJ-SPRAY-HARVEST-116",
+    "SH-KHADLAJ-SPRAY-HARVEST-104",
+    "SH-KHADLAJ-SPRAY-HARVEST-106",
+    "SH-KHADLAJ-SPRAY-HARVEST-112",
+}
+
+PARTIALLY_VERIFIED_DETAIL_IDS = {"SH-KHADLAJ-SPRAY-HARVEST-062"}
+
 EXPECTED = ["Oud Pure Oud Barakat","Oud Pure Oud Galazaid","Oud Pure Oud Jumeirah","Hareem Al Sultan","Azure Velvet","Maison L'Imaginaire","Saqr Al Badiya","Opus Reborn","Musk Pour Amber","Fursan Brown","Sara","Musk Pure Musk Blend Creation of Iqbal","Le Prestige King","The Proposal Date Night","Le Prestige Royal","Le Prestige Empress","Le Prestige Bold","The Proposal Special Occasion","25 Experience","25 Trust","25 Loyalty","25 Heritage","25 Integrity","Valor Mystique","Valor Honor","Valor Chivalry","Valor Enigma","Empire Empress","Empire Crown","Empire Regent","Karus Blu Spice","Karus Secret Musk","Karus Oud Fire","Karus Amber Gold","Maison Creation De Reve","Maison Epoque Artistique","Maison L'Or Noir","Maison Flor Oud","Wild Indonesian Oud","Mystical Indian Oud Pure","Oud Pour Noble","Musk Pour Narcis","Oud Pour Shaikh","Oud Pour Rouge","Oud Pour Blueberry","Infini Absolute","Cashmere Warm Oud","Cashmere Sunshine Musk","Oud Noir","Sensuous Night","Ombre Notes","Ghadeer Silver","Musk Al Sabah","Oud Al Sabah","Magnate Noble","Magnate Premier","Infini","Shahi Oud","Barwaaz Solid Grey","Rose Couture","Musk Couture"]
 
 class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
@@ -32,13 +97,35 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(pairs), len(set(pairs)))
 
-    def test_new_rows_remain_name_only(self):
+    def test_unreconciled_rows_remain_name_only_and_verified_rows_are_upgraded(self):
         for product in self.catalog["products"]:
-            if product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
-                self.assertEqual(product["identity_status"], "source_listed_name")
-                self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
+            if not product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
+                continue
+            if product["product_id"] in PARTIALLY_VERIFIED_DETAIL_IDS:
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertTrue(product["source_url"].startswith(("https://khadlaj-perfumes", "https://my.khadlaj-perfumes", "https://kw.khadlaj-perfumes")))
                 self.assertNotIn("concentration", product)
-                self.assertNotIn("formats_ml", product)
+                self.assertEqual(product.get("formats_ml"), [100])
+                variants = [v for v in self.catalog["variants"] if v.get("product_id") == product["product_id"]]
+                self.assertEqual(len(variants), 1)
+                self.assertEqual(variants[0]["size_ml"], 100)
+                self.assertIn("gtin", variants[0])
+                self.assertNotIn("concentration", variants[0])
+                continue
+            if product["product_id"] in VERIFIED_DETAIL_IDS:
+                self.assertEqual(product["identity_status"], "source_verified_name")
+                self.assertTrue(product["source_url"].startswith(("https://khadlaj-perfumes", "https://my.khadlaj-perfumes", "https://kw.khadlaj-perfumes")))
+                self.assertIn("concentration", product)
+                self.assertTrue(product.get("formats_ml"))
+                self.assertEqual(
+                    len([v for v in self.catalog["variants"] if v.get("product_id") == product["product_id"]]),
+                    1,
+                )
+                continue
+            self.assertEqual(product["identity_status"], "source_listed_name")
+            self.assertEqual(product["source_url"], "https://khadlaj-perfumes.com/collections/perfumes-spray")
+            self.assertNotIn("concentration", product)
+            self.assertNotIn("formats_ml", product)
 
 if __name__ == "__main__":
     unittest.main()
