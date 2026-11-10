@@ -78,4 +78,5 @@ jobs:
           backend.tests.test_afnan_official_global_storefront
           backend.tests.test_aromatix_official_catalog
           backend.tests.test_gulf_orchid_new_arrivals_2026_11_10
+          backend.tests.test_maison_asrar_new_arrivals_2026_11_10
           -v
