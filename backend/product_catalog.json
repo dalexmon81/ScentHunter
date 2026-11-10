@@ -3666,8 +3666,14 @@
         "Nuha Cherry Blush",
         "Khadlaj Nuha Cherry Blush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-76dd12b7",
@@ -22587,9 +22593,14 @@
         "Zayaan Gold",
         "Khadlaj Zayaan Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://my.khadlaj-perfumes.com/products/zayaan-gold-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://my.khadlaj-perfumes.com/products/zayaan-gold-100-ml-eau-de-parfum-for-men",
+      "source_product_url": "https://my.khadlaj-perfumes.com/products/zayaan-gold-100-ml-eau-de-parfum-for-men",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-BISCOTTI-CARAMEL-POP",
@@ -22619,9 +22630,14 @@
         "Oud Pour Leather",
         "Khadlaj Oud Pour Leather"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=3"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women",
+      "source_product_url": "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-PRIVATE-BLEND",
@@ -49015,6 +49031,45 @@
       "gtin": "6291107979403",
       "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men"
+    },
+    {
+      "product_id": "SH-KHADLAJ-ZAYAAN-GOLD",
+      "size_ml": 100,
+      "aliases": [
+        "Zayaan Gold 100 ml",
+        "Khadlaj Zayaan Gold 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-ZAYAAN-GOLD-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6298043070041",
+      "source_url": "https://my.khadlaj-perfumes.com/products/zayaan-gold-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://my.khadlaj-perfumes.com/products/zayaan-gold-100-ml-eau-de-parfum-for-men"
+    },
+    {
+      "product_id": "SH-KHADLAJ-37d5907b",
+      "size_ml": 85,
+      "aliases": [
+        "Nuha Cherry Blush 85 ml",
+        "Khadlaj Nuha Cherry Blush 85 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-37d5907b-85-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107979175",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-OUD-POUR-LEATHER",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Pour Leather 100 ml",
+        "Khadlaj Oud Pour Leather 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-OUD-POUR-LEATHER-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107977843",
+      "source_url": "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women"
     }
   ]
 }
