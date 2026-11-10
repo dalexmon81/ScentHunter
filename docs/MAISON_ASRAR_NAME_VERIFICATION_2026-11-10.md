@@ -12,3 +12,5 @@ Four existing canonical Maison Asrar records were checked against individual pro
 The visible individual pages confirm the brand and product name. They do not visibly state bottle size or concentration in the product specifications. Although the Hunter URL slug includes “Eau de Parfum” and “100ml”, no variant attributes are inferred from the slug.
 
 The existing canonical product IDs are reused. Each record is upgraded to source-verified name status and linked to its official product page. No variants, GTINs, prices, stock or offer data are added.
+
+Follow-up rule: if an individual official page later publishes size or concentration, add a distinct variant under the existing canonical product ID and update its family-registry formats; do not create a new product identity.
