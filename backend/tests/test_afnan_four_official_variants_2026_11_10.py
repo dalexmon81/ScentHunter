@@ -1,4 +1,4 @@
-"""Four Afnan bottle variants verified on official regional product pages."""
+"""Eight Afnan bottle variants verified on official regional product pages."""
 import json
 import unittest
 from pathlib import Path
@@ -35,6 +35,34 @@ EXPECTED = {
         "concentration": "Eau de Parfum",
         "variant_id": "SHV-SH-AFNAN-62b409e4-100-EDP",
         "url": "https://www.at.afnan.com/products/historic-olmeda",
+    },
+    "Mystique Bouquet": {
+        "product_id": "SH-AFNAN-4e32c3b3",
+        "size_ml": 80,
+        "concentration": "Eau de Parfum",
+        "variant_id": "SHV-SH-AFNAN-4e32c3b3-80-EDP",
+        "url": "https://www.de.afnan.com/en/products/mystique-bouquet",
+    },
+    "Supremacy Pink": {
+        "product_id": "SH-AFNAN-d587de8a",
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "variant_id": "SHV-SH-AFNAN-d587de8a-100-EDP",
+        "url": "https://www.fr.afnan.com/products/supremacy-pink",
+    },
+    "Rare Carbon": {
+        "product_id": "SH-AFNAN-d0bee594",
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "variant_id": "SHV-SH-AFNAN-d0bee594-100-EDP",
+        "url": "https://www.at.afnan.com/en/products/rare-carbon",
+    },
+    "Turathi Blue": {
+        "product_id": "SH-AFNAN-e9bc6ab8",
+        "size_ml": 90,
+        "concentration": "Eau de Parfum",
+        "variant_id": "SHV-SH-AFNAN-e9bc6ab8-90-EDP",
+        "url": "https://www.fr.afnan.com/products/turathi-blue-homme",
     },
 }
 
