@@ -8,7 +8,7 @@ CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
 EXPECTED = {
-    "Panacea": ("SH-VELIXIR-1738e7af", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
+    "Panacea": ("SH-VELIXIR-1738e7af", "https://velixirparfums.store/products/panacea", "Extrait de Parfum", [35,100]),
     "Comus": ("SH-VELIXIR-50b87cfb", "https://velixirparfums.store/products/comus", "Extrait de Parfum", [35,100]),
     "Harmonia": ("SH-VELIXIR-e49794d3", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-harmonia", "Eau de Parfum", [35,100]),
     "Nyx": ("SH-VELIXIR-153bbbed", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-nyx-eau-de-parfum-for-unisex", "Eau de Parfum", [35,100]),
