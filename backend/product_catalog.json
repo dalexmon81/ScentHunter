@@ -13227,11 +13227,12 @@
       "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
       "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
       "concentration": "Parfum",
-      "source_product_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_product_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
       "formats_ml": [
         150,
         200
-      ]
+      ],
+      "source_size_evidence_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
     },
     {
       "product_id": "SH-ARMAF-4c83dfcd",
@@ -13431,12 +13432,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/club-de-nuit-bling",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling",
-      "source_product_url": "https://armaf.eu/products/club-de-nuit-bling",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-bling",
       "gender": "Men",
       "concentration": "Eau de Parfum",
       "formats_ml": [
         75
-      ]
+      ],
+      "source_size_evidence_url": "https://armaf.eu/products/club-de-nuit-bling"
     },
     {
       "product_id": "SH-ARMAF-91877071",
@@ -13667,12 +13669,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
-      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man",
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
       "gender": "Men",
       "concentration": "Eau de Parfum",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man"
     },
     {
       "product_id": "SH-ARMAF-8a8dfbb3",
@@ -13689,12 +13692,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/cdn-lion-heart-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-spr",
-      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman",
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-spr",
       "gender": "Women",
       "concentration": "Eau de Parfum",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman"
     },
     {
       "product_id": "SH-ARMAF-4e9fde0c",
@@ -13711,12 +13715,13 @@
       "identity_status": "source_verified_name",
       "source_url": "https://armaf.com/products/club-de-nuit-maleka",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
-      "source_product_url": "https://fr.armaf.eu/products/club-de-nuit-maleka",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-maleka",
       "gender": "Women",
       "concentration": "Eau de Parfum",
       "formats_ml": [
         105
-      ]
+      ],
+      "source_size_evidence_url": "https://fr.armaf.eu/products/club-de-nuit-maleka"
     },
     {
       "product_id": "SH-ARMAF-dd435afb",
@@ -52649,7 +52654,8 @@
       ],
       "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
       "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
-      "source_product_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
+      "source_product_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_size_evidence_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
     },
     {
       "product_id": "SH-ARMAF-b6b77ff6",
@@ -52662,7 +52668,8 @@
       ],
       "source_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
       "source_evidence_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
-      "source_product_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
+      "source_product_url": "https://armaf.com/products/armaf-club-de-nuit-intense-man-pure-perfume",
+      "source_size_evidence_url": "https://armaf.eu/products/armaf-club-de-nuit-intense-man-pure-perfume"
     },
     {
       "product_id": "SH-ARMAF-b3967c31",
@@ -52675,7 +52682,8 @@
       ],
       "source_url": "https://armaf.com/products/club-de-nuit-bling",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-bling",
-      "source_product_url": "https://armaf.eu/products/club-de-nuit-bling"
+      "source_product_url": "https://armaf.com/products/club-de-nuit-bling",
+      "source_size_evidence_url": "https://armaf.eu/products/club-de-nuit-bling"
     },
     {
       "product_id": "SH-ARMAF-3730ce35",
@@ -52688,7 +52696,8 @@
       ],
       "source_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
-      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man"
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-man-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-man"
     },
     {
       "product_id": "SH-ARMAF-8a8dfbb3",
@@ -52701,7 +52710,8 @@
       ],
       "source_url": "https://armaf.com/products/cdn-lion-heart-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-lion-heart-spr",
-      "source_product_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman"
+      "source_product_url": "https://armaf.com/products/cdn-lion-heart-spr",
+      "source_size_evidence_url": "https://cz.armaf.eu/en/products/club-de-nuit-lion-heart-woman"
     },
     {
       "product_id": "SH-ARMAF-4e9fde0c",
@@ -52714,7 +52724,8 @@
       ],
       "source_url": "https://armaf.com/products/club-de-nuit-maleka",
       "source_evidence_url": "https://armaf.com/products/club-de-nuit-maleka",
-      "source_product_url": "https://fr.armaf.eu/products/club-de-nuit-maleka"
+      "source_product_url": "https://armaf.com/products/club-de-nuit-maleka",
+      "source_size_evidence_url": "https://fr.armaf.eu/products/club-de-nuit-maleka"
     }
   ]
 }
