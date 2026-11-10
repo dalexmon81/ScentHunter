@@ -1,4 +1,4 @@
-"""Regression tests for sixteen Khadlaj official product-page variants."""
+"""Regression tests for eighteen Khadlaj official product-page variants."""
 import json
 import unittest
 from pathlib import Path
@@ -24,6 +24,8 @@ EXPECTED = {
     "Zayaan Gold": ("SH-KHADLAJ-ZAYAAN-GOLD", 100, "Eau de Parfum", "6298043070041", "https://my.khadlaj-perfumes.com/products/zayaan-gold-100-ml-eau-de-parfum-for-men"),
     "Nuha Cherry Blush": ("SH-KHADLAJ-37d5907b", 85, "Eau de Parfum", "6291107979175", "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/nuha-cherry-blush-85-ml-edp-spray-for-women-online-shopping-uae"),
     "Oud Pour Leather": ("SH-KHADLAJ-OUD-POUR-LEATHER", 100, "Eau de Parfum", "6291107977843", "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women"),
+    "Nuha Bon Bon": ("SH-KHADLAJ-7ecbb58c", 85, "Eau de Parfum", "6298043070317", "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online"),
+    "Nuha Vanilla Pearl": ("SH-KHADLAJ-76dd12b7", 85, "Eau de Parfum", "6291107979182", "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
