@@ -17686,6 +17686,9 @@
           "aliases": [
             "Empire Crown",
             "Khadlaj Empire Crown"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17693,6 +17696,9 @@
           "aliases": [
             "Empire Empress",
             "Khadlaj Empire Empress"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17700,6 +17706,9 @@
           "aliases": [
             "Empire Regent",
             "Khadlaj Empire Regent"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
