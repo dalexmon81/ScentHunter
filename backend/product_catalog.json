@@ -148,7 +148,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-6f7b377c",
@@ -210,7 +214,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-76046795",
@@ -430,7 +438,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-8c915ae1",
@@ -464,7 +476,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-12baca03",
