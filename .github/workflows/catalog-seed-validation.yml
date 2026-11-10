@@ -27,6 +27,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/al-wataniah-81-variants-cumulative-2026-11-10
       - catalog/catalog-complete-final-evidence-2026-11-10
       - catalog/khadlaj-four-remaining-variants-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
