@@ -148,7 +148,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-6f7b377c",
@@ -210,7 +214,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-76046795",
@@ -430,7 +438,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-8c915ae1",
@@ -464,7 +476,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "formats_ml": [
+        35,
+        100
+      ]
     },
     {
       "product_id": "SH-VELIXIR-12baca03",
@@ -4760,8 +4776,14 @@
         "Marwa",
         "Arabiyat Prestige Marwa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://arabiyatprestige.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-AFNAN-dd53546f",
@@ -27881,9 +27903,14 @@
         "Aariz",
         "Arabiyat Prestige Aariz"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml",
+      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-a37e4dd2",
@@ -27913,9 +27940,14 @@
         "Aariz L’Absolu",
         "Arabiyat Prestige Aariz L’Absolu"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex",
+      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-a0a6105a",
@@ -28028,9 +28060,14 @@
         "Asháa Oud Noir",
         "Arabiyat Prestige Asháa Oud Noir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml",
+      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        110
+      ]
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-24bbef0e",
@@ -50495,6 +50532,138 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://shop-gulforchid.com/products/vanilla-aura",
       "source_evidence_url": "https://shop-gulforchid.com/products/vanilla-aura"
+    },
+    {
+      "product_id": "SH-VELIXIR-50b87cfb",
+      "size_ml": 35,
+      "aliases": [
+        "Comus 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-50b87cfb-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-50b87cfb",
+      "size_ml": 100,
+      "aliases": [
+        "Comus 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-50b87cfb-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-36e7a5ca",
+      "size_ml": 35,
+      "aliases": [
+        "Ether 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-36e7a5ca-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-36e7a5ca",
+      "size_ml": 100,
+      "aliases": [
+        "Ether 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-36e7a5ca-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-7e147c46",
+      "size_ml": 35,
+      "aliases": [
+        "Orpheus 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-7e147c46-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-7e147c46",
+      "size_ml": 100,
+      "aliases": [
+        "Orpheus 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-7e147c46-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-1738e7af",
+      "size_ml": 35,
+      "aliases": [
+        "Panacea 35 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-1738e7af-35-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-VELIXIR-1738e7af",
+      "size_ml": 100,
+      "aliases": [
+        "Panacea 100 ml"
+      ],
+      "variant_id": "SHV-SH-VELIXIR-1738e7af-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-00d6e7bc",
+      "size_ml": 100,
+      "aliases": [
+        "Aariz 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-00d6e7bc-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/aariz-100ml"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-5ea21b51",
+      "size_ml": 100,
+      "aliases": [
+        "Aariz L’Absolu 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-5ea21b51-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-aariz-l-absolu-edp-100-ml-unisex"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-641acbf3",
+      "size_ml": 110,
+      "aliases": [
+        "Asháa Oud Noir 110 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-641acbf3-110-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
+      "size_ml": 100,
+      "aliases": [
+        "Marwa 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-7bf3b46e-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex"
     }
   ]
 }
