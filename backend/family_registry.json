@@ -14676,6 +14676,9 @@
           "aliases": [
             "Flaming Elixir",
             "Maison Alhambra Flaming Elixir"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -15259,6 +15262,9 @@
           "aliases": [
             "Luxe Blanc",
             "Maison Alhambra Luxe Blanc"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15286,6 +15292,9 @@
           "aliases": [
             "Luxe Emerald",
             "Maison Alhambra Luxe Emerald"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15293,6 +15302,9 @@
           "aliases": [
             "Luxe Gold",
             "Maison Alhambra Luxe Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15300,6 +15312,9 @@
           "aliases": [
             "Luxe Journey",
             "Maison Alhambra Luxe Journey"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15314,6 +15329,9 @@
           "aliases": [
             "Luxe Street",
             "Maison Alhambra Luxe Street"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15977,6 +15995,46 @@
           "aliases": [
             "Pink Velvet",
             "Maison Alhambra Pink Velvet"
+          ],
+          "formats_ml": [
+            80
+          ]
+        },
+        {
+          "canonical_name": "Spectrum",
+          "aliases": [
+            "Spectrum",
+            "Maison Alhambra Spectrum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Renee Carmine",
+          "aliases": [
+            "Renee Carmine",
+            "Maison Alhambra Renee Carmine"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Smoky Touch",
+          "aliases": [
+            "Smoky Touch",
+            "Maison Alhambra Smoky Touch"
+          ],
+          "formats_ml": [
+            80
+          ]
+        },
+        {
+          "canonical_name": "Pacific Blue",
+          "aliases": [
+            "Pacific Blue",
+            "Maison Alhambra Pacific Blue"
           ],
           "formats_ml": [
             80
