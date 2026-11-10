@@ -2311,6 +2311,9 @@
           "aliases": [
             "Gentle Oud",
             "Maison Asrar Gentle Oud"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -2325,6 +2328,9 @@
           "aliases": [
             "Hamsat Gharam",
             "Maison Asrar Hamsat Gharam"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
