@@ -16323,6 +16323,10 @@
           "aliases": [
             "Amber Oud Bleu Edition",
             "Al Haramain Amber Oud Bleu Edition"
+          ],
+          "formats_ml": [
+            60,
+            200
           ]
         },
         {
@@ -16386,6 +16390,10 @@
           "aliases": [
             "Amber Oud Tobacco Edition",
             "Al Haramain Amber Oud Tobacco Edition"
+          ],
+          "formats_ml": [
+            100,
+            200
           ]
         },
         {
@@ -16435,6 +16443,9 @@
           "aliases": [
             "Black Oud",
             "Al Haramain Black Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -16449,6 +16460,9 @@
           "aliases": [
             "Junoon",
             "Al Haramain Junoon"
+          ],
+          "formats_ml": [
+            75
           ]
         },
         {
@@ -16484,6 +16498,10 @@
           "aliases": [
             "L'Aventure Femme",
             "Al Haramain L'Aventure Femme"
+          ],
+          "formats_ml": [
+            30,
+            100
           ]
         },
         {
