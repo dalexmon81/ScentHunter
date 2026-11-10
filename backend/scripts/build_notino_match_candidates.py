@@ -60,8 +60,8 @@ def extract_concentration(value: str) -> str | None:
 
 def extract_gender(value: str) -> str | None:
     text = normalize(value)
-    has_men = bool(re.search(r"\b(?:for men|pour homme|homme|men)\\b", text))
-    has_women = bool(re.search(r"\b(?:for women|pour femme|femme|women)\\b", text))
+    has_men = bool(re.search(r"\b(?:for men|pour homme|homme|men)\b", text))
+    has_women = bool(re.search(r"\b(?:for women|pour femme|femme|women)\b", text))
     if has_men and has_women:
         return "conflict"
     if has_men:
@@ -108,6 +108,24 @@ def _brand_key(value: str) -> str:
     return BRAND_ALIASES.get(key, key)
 
 
+def _catalog_gender(product: dict, names: list[str]) -> str | None:
+    # Prefer primary catalog identity fields. Aliases are secondary evidence:
+    # they must not turn a clear primary gender into a false conflict.
+    primary = extract_gender(" ".join([
+        product.get("canonical_name", ""),
+        product.get("family_name", ""),
+    ]))
+    if primary:
+        return primary
+    alias_genders = {
+        gender for gender in (extract_gender(name) for name in names)
+        if gender in {"men", "women", "conflict"}
+    }
+    if "conflict" in alias_genders or len(alias_genders) > 1:
+        return "conflict"
+    return next(iter(alias_genders), None)
+
+
 def build_catalog_index(catalog: dict) -> list[dict]:
     products = {p.get("product_id"): p for p in catalog.get("products", [])}
     variants_by_product: dict[str, list[dict]] = {}
@@ -132,7 +150,7 @@ def build_catalog_index(catalog: dict) -> list[dict]:
                 "names": sorted(set(normalized_names + [n for n in variant_names if n])),
                 "size_ml": variant.get("size_ml"),
                 "concentration": extract_concentration(product.get("concentration", "")),
-                "gender": extract_gender(" ".join(names)),
+                "gender": _catalog_gender(product, names),
                 "gtins": variant.get("gtins") or [],
             })
     return indexed
@@ -143,7 +161,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
     brand_key = _brand_key(feed_brand)
     raw_title = row.get("title", "")
     feed_name = strip_product_noise(raw_title)
-    feed_size = parse_size(row.get("size", "")) or parse_size(raw_title)
+    feed_size = parse_size(row.get("size", "")) or parse_size(raw_title) or parse_size(row.get("description", ""))
     feed_concentration = extract_concentration(raw_title) or extract_concentration(row.get("product_type", ""))
     feed_gender = extract_gender(raw_title)
     feed_gtin = row.get("gtin", "")
@@ -167,7 +185,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
         canonical_concentration = item["concentration"]
         concentration_match = bool(feed_concentration and canonical_concentration and feed_concentration == canonical_concentration)
         concentration_conflict = bool(feed_concentration and canonical_concentration and feed_concentration != canonical_concentration)
-        gender_conflict = bool(feed_gender and item.get("gender") and feed_gender != item["gender"])
+        gender_conflict = bool(\n            feed_gender and item.get("gender")\n            and (item["gender"] == "conflict" or feed_gender != item["gender"])\n        )
 
         score = 1.0 if gtin_match else 0.72 * best_name
         if not gtin_match and size_match:
