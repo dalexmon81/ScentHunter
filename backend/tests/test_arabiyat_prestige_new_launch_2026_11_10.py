@@ -30,7 +30,8 @@ class ArabiyatPrestigeNewLaunchTests(unittest.TestCase):
                 product = rows[0]
                 self.assertEqual(product["product_id"], product_id)
                 self.assertEqual(product["identity_status"], "source_verified_name")
-                self.assertEqual(product["source_url"], url)
+                self.assertEqual(product["source_product_url"], url)
+                self.assertEqual(product["source_evidence_url"], url)
                 self.assertEqual(product["source_product_url"], url)
                 self.assertEqual(product["source_evidence_url"], url)
                 self.assertEqual(product["concentration"], "Eau de Parfum")
