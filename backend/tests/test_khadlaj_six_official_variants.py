@@ -34,6 +34,9 @@ EXPECTED = {
     "Musk Pour Amber": ("SH-KHADLAJ-SPRAY-HARVEST-064", 100, "Eau de Parfum", "6291107977850", "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/musk-pour-amber-edp-spray-best-designer-perfume-for-women-online-dubai-uae"),
     "Sara": ("SH-KHADLAJ-SPRAY-HARVEST-066", 100, "Extrait de Parfum", "6291107978772", "https://khadlaj-perfumes.com/products/khadlaj-sara-100-ml-extrait-de-parfum-spray-for-women-best-price-dubai-uae"),
     "Valor Enigma": ("SH-KHADLAJ-SPRAY-HARVEST-082", 100, "Eau de Parfum", "6291107975979", "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray"),
+    "Le Prestige Empress": ("SH-KHADLAJ-SPRAY-HARVEST-071", 100, "Eau de Parfum", "6291107975948", "https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae"),
+    "Le Prestige Bold": ("SH-KHADLAJ-SPRAY-HARVEST-072", 100, "Eau de Parfum", "6291107975924", "https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women"),
+    "Le Prestige Royal": ("SH-KHADLAJ-SPRAY-HARVEST-070", 100, "Eau de Parfum", "6291107975931", "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
