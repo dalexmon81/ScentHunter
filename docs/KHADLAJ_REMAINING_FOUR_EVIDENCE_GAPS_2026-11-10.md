@@ -1,14 +1,14 @@
 # Khadlaj remaining product-page evidence gaps — 10 November 2026
 
-The current catalog contains 116 Khadlaj canonical identities. On the consolidated branch, 112 have at least one explicit variant with product-page provenance. Four identities remain deferred because the official product evidence is incomplete or inaccessible.
+The latest cumulative catalog contains 116 Khadlaj canonical identities. The four identities previously listed as evidence gaps were subsequently verified through official product detail pages and integrated by PR #661.
 
-| Existing identity | Current evidence | Decision |
+| Existing identity | Verified variant | Official evidence |
 |---|---|---|
-| Panache Eleganza | An official Khadlaj product-page search result identifies a 100 ml Extrait de Parfum and SKU 6298043070812, but the product URL returned 404 when opened during this audit. | Do not create a variant until the official product page is accessible or another current official source confirms the details. |
-| Oud Noir | The catalog has only a generic Khadlaj collection URL; no individual official product page with size and concentration was found. | Keep as source-listed identity; no variant inferred. |
-| Ombre Notes | The catalog has only a generic Khadlaj collection URL; no individual official product page with size and concentration was found. | Keep as source-listed identity; no variant inferred. |
-| Infini | The catalog has only a generic Khadlaj collection URL; no individual official product page with size and concentration was found. | Keep as source-listed identity; no variant inferred. |
+| Panache Eleganza | 100 ml Extrait de Parfum; GTIN 6298043070812 | https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/panache-eleganza-100-ml-extrait-de-parfum-spray-for-women |
+| Oud Noir | 100 ml Eau de Parfum | https://khadlaj-perfumes.com/collections/ombre-range/products/oud-noir-100ml-spray-shop-online-best-price-in-dubai-uae |
+| Ombre Notes | 100 ml Eau de Parfum | https://khadlaj-perfumes.com/collections/deals/products/ombre-notes-edp-spray-shop-online-best-price-in-dubai-uae |
+| Infini | 100 ml Eau de Parfum; GTIN 6297000742625 | https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae |
 
-## Quality rule
+All four entries reuse existing canonical identities and the variant IDs introduced in PR #661. The registry retains the corresponding 100 ml formats. GTINs are populated only for Panache Eleganza and Infini, where the official source records them.
 
-A product name appearing in a collection is not enough to create a variant. A variant is added only when an individual official product page provides enough evidence for its size and concentration. When a page is inaccessible or ambiguous, the catalog keeps the unresolved identity without guessing.
+The evidence-deferred cases are separate: Tahara Vanilla Musk remains name-only because the available page does not establish its size/concentration; Sawaar Vanille Blanc still has a concentration conflict that must not be guessed.

@@ -67,5 +67,12 @@ class VelixirOfficialStorefrontTests(unittest.TestCase):
                     self.assertNotIn("formats_ml", entry)
 
 
+    def test_sacred_four_bundle_is_not_a_fifth_canonical_fragrance(self):
+        self.assertFalse(any(
+            p.get("brand") == "Velixir" and p.get("canonical_name") == "Sacred Four Bundle"
+            for p in CATALOG["products"]
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()
