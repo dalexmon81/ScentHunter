@@ -13167,6 +13167,9 @@
           "aliases": [
             "9 PM Rebel",
             "Afnan 9 PM Rebel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13225,6 +13228,9 @@
           "aliases": [
             "Souvenir Floral Bouquet",
             "Afnan Souvenir Floral Bouquet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13242,6 +13248,9 @@
           "aliases": [
             "Supremacy Purple",
             "Afnan Supremacy Purple"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13249,6 +13258,9 @@
           "aliases": [
             "Supremacy Gala",
             "Afnan Supremacy Gala"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -13436,6 +13448,9 @@
           "aliases": [
             "9 PM Elixir",
             "Afnan 9 PM Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
