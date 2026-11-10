@@ -100,7 +100,7 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
                 continue
             if product["product_id"] in PARTIALLY_VERIFIED_DETAIL_IDS:
                 self.assertEqual(product["identity_status"], "source_verified_name")
-                self.assertTrue(product["source_url"].startswith(("https://khadlaj-perfumes", "https://my.khadlaj-perfumes")))
+                self.assertTrue(product["source_url"].startswith(("https://khadlaj-perfumes", "https://my.khadlaj-perfumes", "https://kw.khadlaj-perfumes")))
                 self.assertNotIn("concentration", product)
                 self.assertEqual(product.get("formats_ml"), [100])
                 variants = [v for v in self.catalog["variants"] if v.get("product_id") == product["product_id"]]
