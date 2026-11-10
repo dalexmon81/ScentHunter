@@ -29,6 +29,7 @@ on:
       - catalog/zimaya-four-official-100ml-variants-2026-11-10
       - catalog/zimaya-afrah-alembratur-ghali-official-details-2026-11-10
       - catalog/catalog-final-continuation-2026-11-10
+      - catalog/catalog-final-continuation-2026-11-10-afnan-armaf
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
