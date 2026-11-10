@@ -7,6 +7,7 @@ on:
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/cumulative-audit-next-2026-11-10
       - catalog/khadlaj-official-product-details-followup-2026-11-10
+      - catalog/family-registry-final-dedup-2026-11-10
       - catalog/brand-expansion-2026-11
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
@@ -74,6 +75,7 @@ jobs:
           backend.tests.test_afnan_lattafa_official_harvest
           backend.tests.test_khadlaj_official_spray_harvest
           backend.tests.test_khadlaj_official_detail_followup
+          backend.tests.test_catalog_family_registry_unique_mapping
           backend.tests.test_khadlaj_cream_velvet_official_variant
           backend.tests.test_paris_corner_official_collection_reconciliation
           backend.tests.test_arabiyat_prestige_official_store
