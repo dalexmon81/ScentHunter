@@ -44,6 +44,67 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         self.assertEqual(candidates[0]["confidence_band"], "review_high")
         self.assertEqual(candidates[0]["review_status"], "needs_human_review")
 
+
+    def test_known_retailer_brand_aliases_map_to_canonical_brands(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-R",
+                "brand_name": "Paco Rabanne",
+                "canonical_name": "1 Million",
+                "family_name": "1 Million",
+                "concentration": "Eau de Toilette",
+                "aliases": ["1 Million"],
+            }],
+            "variants": [{
+                "variant_id": "V-R",
+                "product_id": "P-R",
+                "size_ml": 100,
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        index = build_catalog_index(catalog)
+        row = {
+            "id": "RABANNE-1",
+            "brand": "Rabanne",
+            "title": "Rabanne 1 Million Eau de Toilette 100 ml",
+            "size": "100 ml",
+        }
+        candidates = score_row(row, index)
+        self.assertTrue(candidates)
+        self.assertEqual(candidates[0]["canonical_product_id"], "P-R")
+
+    def test_exact_gtin_is_explicitly_marked_but_still_requires_review(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-G",
+                "brand_name": "Dior",
+                "canonical_name": "Sauvage",
+                "family_name": "Sauvage",
+                "concentration": "Eau de Parfum",
+                "aliases": ["Sauvage"],
+            }],
+            "variants": [{
+                "variant_id": "V-G",
+                "product_id": "P-G",
+                "size_ml": 100,
+                "gtins": ["1234567890123"],
+                "aliases": [],
+            }],
+        }
+        index = build_catalog_index(catalog)
+        row = {
+            "id": "SKU-GTIN",
+            "gtin": "1234567890123",
+            "brand": "Dior",
+            "title": "Dior Sauvage Eau de Parfum 100 ml",
+            "size": "100 ml",
+        }
+        candidate = score_row(row, index)[0]
+        self.assertTrue(candidate["gtin_match"])
+        self.assertEqual(candidate["confidence_band"], "review_high")
+        self.assertEqual(candidate["review_status"], "needs_human_review")
+
     def test_brand_mismatch_never_generates_candidate(self):
         row = {
             "id": "SKU-2",
