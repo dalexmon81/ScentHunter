@@ -17217,6 +17217,9 @@
           "aliases": [
             "Muse",
             "Khadlaj Muse"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17376,7 +17379,7 @@
           ]
         },
         {
-          "canonical_name": "Sueño",
+          "canonical_name": "Sueno",
           "aliases": [
             "Sueño",
             "Khadlaj Sueño",
@@ -17479,6 +17482,9 @@
           "aliases": [
             "Saraya",
             "Khadlaj Saraya"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17486,6 +17492,9 @@
           "aliases": [
             "Ihthiraam",
             "Khadlaj Ihthiraam"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17493,6 +17502,9 @@
           "aliases": [
             "Icon",
             "Khadlaj Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17535,13 +17547,6 @@
           "aliases": [
             "Private Blend",
             "Khadlaj Private Blend"
-          ]
-        },
-        {
-          "canonical_name": "Sueno",
-          "aliases": [
-            "Sueno",
-            "Khadlaj Sueno"
           ]
         }
       ]
@@ -17685,6 +17690,9 @@
           "aliases": [
             "Icon",
             "Khadlaj Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17692,6 +17700,9 @@
           "aliases": [
             "Ihthiraam",
             "Khadlaj Ihthiraam"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
