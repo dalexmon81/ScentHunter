@@ -1890,6 +1890,9 @@
           "aliases": [
             "Hunter",
             "Maison Asrar Hunter"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -1911,6 +1914,9 @@
           "aliases": [
             "Heritage",
             "Maison Asrar Heritage"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2338,6 +2344,9 @@
           "aliases": [
             "Hamsat Ghazal",
             "Maison Asrar Hamsat Ghazal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2345,6 +2354,9 @@
           "aliases": [
             "Hamsat Hob",
             "Maison Asrar Hamsat Hob"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2352,6 +2364,9 @@
           "aliases": [
             "Hamsat Ishq",
             "Maison Asrar Hamsat Ishq"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -2380,6 +2395,9 @@
           "aliases": [
             "Icon",
             "Maison Asrar Icon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
