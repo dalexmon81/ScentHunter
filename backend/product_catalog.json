@@ -20178,9 +20178,14 @@
         "Muse",
         "Khadlaj Muse"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SUENO",
@@ -20194,9 +20199,14 @@
         "Sueno",
         "Khadlaj Sueno"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/sueno-100ml-extrait-de-parfum-for-women"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/sueno-100ml-extrait-de-parfum-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/sueno-100ml-extrait-de-parfum-for-women",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/all/products/sueno-100ml-extrait-de-parfum-for-women",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-SARAYA",
@@ -20210,9 +20220,14 @@
         "Saraya",
         "Khadlaj Saraya"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        60
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-ZAYAAN-SILVER",
@@ -22266,9 +22281,14 @@
         "Strawberry Shake",
         "Khadlaj Strawberry Shake"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/strawberry-shake-eau-de-parfum-spray-for-women-dubai-uae-online",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/strawberry-shake-eau-de-parfum-spray-for-women-dubai-uae-online",
+      "source_product_url": "https://khadlaj-perfumes.com/products/strawberry-shake-eau-de-parfum-spray-for-women-dubai-uae-online",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-KHADLAJ-NAFAIS-MAGRIB",
@@ -22314,9 +22334,14 @@
         "Peach Velvet",
         "Khadlaj Peach Velvet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae",
+      "concentration": "Extrait de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-SPECTRE-WRAITH",
@@ -48778,6 +48803,71 @@
       "gtin": "6291107978819",
       "source_url": "https://khadlaj-perfumes.com/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/cream-velvet-100-ml-extrait-de-parfum-for-women-best-perfumes"
+    },
+    {
+      "product_id": "SH-KHADLAJ-MUSE",
+      "size_ml": 100,
+      "aliases": [
+        "Muse 100 ml",
+        "Khadlaj Muse 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-MUSE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "gtin": "6298043072748",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-muse-100-ml-eau-de-parfum-spray-for-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SUENO",
+      "size_ml": 100,
+      "aliases": [
+        "Sueno 100 ml",
+        "Khadlaj Sueno 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SUENO-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "gtin": "6298043072809",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/sueno-100ml-extrait-de-parfum-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/sueno-100ml-extrait-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SARAYA",
+      "size_ml": 60,
+      "aliases": [
+        "Saraya 60 ml",
+        "Khadlaj Saraya 60 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SARAYA-60-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "gtin": "6298043072380",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-saraya-60-ml-extrait-de-parfum-spray-for-men-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-STRAWBERRY-SHAKE",
+      "size_ml": 100,
+      "aliases": [
+        "Strawberry Shake 100 ml",
+        "Khadlaj Strawberry Shake 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-STRAWBERRY-SHAKE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "gtin": "6298043070652",
+      "source_url": "https://khadlaj-perfumes.com/products/strawberry-shake-eau-de-parfum-spray-for-women-dubai-uae-online",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/strawberry-shake-eau-de-parfum-spray-for-women-dubai-uae-online"
+    },
+    {
+      "product_id": "SH-KHADLAJ-PEACH-VELVET",
+      "size_ml": 100,
+      "aliases": [
+        "Peach Velvet 100 ml",
+        "Khadlaj Peach Velvet 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-PEACH-VELVET-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "gtin": "6298043070034",
+      "source_url": "https://khadlaj-perfumes.com/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae"
     }
   ]
 }
