@@ -10271,13 +10271,18 @@
         "Jean Lowe Azure",
         "Maison Alhambra Jean Lowe Azure"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-azure-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-azure-eau-de-parfum-for-everyone",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-azure-eau-de-parfum-for-everyone",
+      "gender": "Unisex",
+      "gtins": [
+        "6290362340546"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-0a1f0ae3",
@@ -10352,13 +10357,18 @@
         "Jean Lowe Noir",
         "Maison Alhambra Jean Lowe Noir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html",
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-noir-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-noir-eau-de-parfum-for-everyone",
       "formats_ml": [
         100
       ],
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-noir-eau-de-parfum-for-everyone",
+      "gender": "Unisex",
+      "gtins": [
+        "6291108735534"
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-ca4cde9b",
@@ -40955,7 +40965,10 @@
         "Maison Alhambra Jean Lowe Azure 100 ml"
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-81a36e31-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "gtin": "6290362340546",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-azure-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-azure-eau-de-parfum-for-everyone"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-826cdbce",
@@ -41059,7 +41072,10 @@
         "Maison Alhambra Jean Lowe Noir 100 ml"
       ],
       "variant_id": "SHV-SH-MAISON-ALHAMBRA-68802b72-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "gtin": "6291108735534",
+      "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-noir-eau-de-parfum-for-everyone",
+      "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-jean-lowe-noir-eau-de-parfum-for-everyone"
     },
     {
       "product_id": "SH-KHADLAJ-f26d9535",
