@@ -3326,12 +3326,14 @@
         "Island",
         "Khadlaj Island"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/all/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women"
     },
     {
       "product_id": "SH-KHADLAJ-142e4d1e",
@@ -3628,12 +3630,14 @@
         "Island Sun",
         "Khadlaj Island Sun"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all",
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum",
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum"
     },
     {
       "product_id": "SH-KHADLAJ-7ecbb58c",
@@ -39157,7 +39161,10 @@
         "Khadlaj Island 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-d348f0b3-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/collections/all/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/all/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women",
+      "gtin": "6291107978789"
     },
     {
       "product_id": "SH-KHADLAJ-cdaa81f2",
@@ -39291,7 +39298,10 @@
         "Khadlaj Island Sun 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-93c5a51d-100-000",
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-island-sun-100-ml-extrait-de-parfum",
+      "gtin": "6298043073080"
     },
     {
       "product_id": "SH-KHADLAJ-20646841",
