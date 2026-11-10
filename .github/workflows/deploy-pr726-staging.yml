@@ -1,0 +1,95 @@
+name: Deploy PR 726 isolated web staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type deploy-pr726 to deploy the isolated staging app
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-pr726-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm == 'deploy-pr726' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pr726-staging
+      FLY_ORG: personal
+    steps:
+      - name: Checkout the PR 726 branch only
+        uses: actions/checkout@v4
+        with:
+          ref: feature/notino-cj-feed-ingestion-2026-11-10
+
+      - name: Validate isolated deployment target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "feature/notino-cj-feed-ingestion-2026-11-10"
+          test -n "$FLY_API_TOKEN"
+          grep -Fq 'app = "scenthunter-pr726-staging"' fly.pr726.staging.toml
+          grep -Fq 'source = "scenthunter_pr726_data"' fly.pr726.staging.toml
+          echo "Confirmed: isolated app and dedicated volume; production config is not used."
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create or verify isolated app and volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! flyctl apps create "$FLY_APP" --org "$FLY_ORG" --yes; then
+            echo "App may already exist; verifying exact app ownership."
+          fi
+          flyctl apps list --org "$FLY_ORG" --json | jq -e --arg app "$FLY_APP" 'any(.[]; .Name == $app or .name == $app)' >/dev/null
+          volumes="$(flyctl volumes list --app "$FLY_APP" --json)"
+          if ! printf '%s' "$volumes" | jq -e 'any(.[]; .name == "scenthunter_pr726_data")' >/dev/null; then
+            flyctl volumes create scenthunter_pr726_data --app "$FLY_APP" --region ams --size 1 --count 1 --yes
+          fi
+
+      - name: Deploy isolated web app
+        run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
+
+      - name: Verify staging health and search endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, time, urllib.error, urllib.parse, urllib.request
+          base = "https://scenthunter-pr726-staging.fly.dev"
+          last = None
+          for attempt in range(1, 25):
+              try:
+                  def get(path):
+                      req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
+                      with urllib.request.urlopen(req, timeout=15) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"{path}: HTTP {response.status}")
+                          body = response.read().decode("utf-8")
+                          try:
+                              return json.loads(body)
+                          except json.JSONDecodeError:
+                              return body
+                  health = get("/health")
+                  search = get("/search?q=Hawas")
+                  print("STAGING_HEALTH=PASS")
+                  print("STAGING_SEARCH_ENDPOINT=PASS")
+                  print("STAGING_URL=" + base)
+                  break
+              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
+                  last = f"{type(exc).__name__}: {exc}"
+                  print(f"Attempt {attempt}/24: {last}", flush=True)
+                  if attempt < 24:
+                      time.sleep(5)
+          else:
+              raise SystemExit("Staging smoke test failed: " + str(last))
+          PY
