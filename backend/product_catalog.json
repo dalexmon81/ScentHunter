@@ -743,8 +743,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
       "source_evidence_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
-      "source_product_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum",
-      "concentration": "Eau de Parfum"
+      "source_product_url": "https://shop-gulforchid.com/products/maison-asrar-vanilla-voyage-eau-de-parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6d0c1431",
@@ -3053,12 +3052,18 @@
       "family_name": "Bayn Al Asrar",
       "aliases": [
         "Bayn Al Asrar",
-        "Paris Corner Bayn Al Asrar"
+        "Paris Corner Bayn Al Asrar",
+        "Bayn Al Asrar 80 ml",
+        "Paris Corner Bayn Al Asrar 80ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
       "source_product_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/bayn-al-asrar"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-804ac919",
@@ -3240,12 +3245,18 @@
       "family_name": "December Vanilla",
       "aliases": [
         "December Vanilla",
-        "Paris Corner December Vanilla"
+        "Paris Corner December Vanilla",
+        "December Vanilla 85 ml",
+        "Paris Corner December Vanilla 85ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
       "source_product_url": "https://www.pariscornerperfumes.com/products/december-vanilla",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/december-vanilla"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        85
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-f3a6e129",
@@ -4786,14 +4797,9 @@
         "Marwa",
         "Arabiyat Prestige Marwa"
       ],
-      "identity_status": "source_verified_name",
-      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        100
-      ]
+      "identity_status": "source_listed_name",
+      "source_url": "https://arabiyatprestige.com/collections/all",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/all"
     },
     {
       "product_id": "SH-AFNAN-dd53546f",
@@ -17223,10 +17229,18 @@
       "family_name": "Cherry Cola",
       "aliases": [
         "Cherry Cola",
-        "Paris Corner Cherry Cola"
+        "Paris Corner Cherry Cola",
+        "Cherry Cola 75 ml",
+        "Paris Corner Cherry Cola Emir 75ml"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/cherry-cola"
+      "source_url": "https://www.pariscornerperfumes.com/products/cherry-cola",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/cherry-cola",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        75
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CHERRY-GOSSIP",
@@ -17274,10 +17288,18 @@
       "family_name": "Coconut Lagoon",
       "aliases": [
         "Coconut Lagoon",
-        "Paris Corner Coconut Lagoon"
+        "Paris Corner Coconut Lagoon",
+        "Coconut Lagoon 100 ml",
+        "Paris Corner Coconut Lagoon 100ml"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml"
+      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CORNFLOWER-DELIGHT",
@@ -17554,12 +17576,18 @@
       "family_name": "Eternal Coffee",
       "aliases": [
         "Eternal Coffee",
-        "Paris Corner Eternal Coffee"
+        "Paris Corner Eternal Coffee",
+        "Eternal Coffee 85 ml",
+        "Paris Corner Eternal Coffee 85ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-coffee",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-coffee"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-coffee",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
@@ -17571,12 +17599,18 @@
       "family_name": "Eternal Meadows",
       "aliases": [
         "Eternal Meadows",
-        "Paris Corner Eternal Meadows"
+        "Paris Corner Eternal Meadows",
+        "Eternal Meadows 85 ml",
+        "Paris Corner Eternal Meadows 85ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-meadows",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-meadows"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-meadows",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
@@ -17588,12 +17622,18 @@
       "family_name": "Eternal Musk",
       "aliases": [
         "Eternal Musk",
-        "Paris Corner Eternal Musk"
+        "Paris Corner Eternal Musk",
+        "Eternal Musk 85 ml",
+        "Paris Corner Eternal Musk 85ml"
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
       "source_product_url": "https://www.pariscornerperfumes.com/products/eternal-musk",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eternal-musk"
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-musk",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-FARAH",
@@ -18599,11 +18639,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
       "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "source_product_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "concentration": "Eau de Parfum",
-      "formats_ml": [
-        60
-      ]
+      "source_product_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
     },
     {
       "product_id": "SH-GULF-ORCHID-SWEET-HEAVEN-20ML",
@@ -50516,17 +50552,6 @@
       "source_evidence_url": "https://shop-gulforchid.com/products/al-qasr-silver"
     },
     {
-      "product_id": "SH-GULF-ORCHID-TAHARA-VANILLA-MUSK",
-      "size_ml": 60,
-      "aliases": [
-        "Tahara Vanilla Musk 60 ml"
-      ],
-      "variant_id": "SHV-SH-GULF-ORCHID-TAHARA-VANILLA-MUSK-60-EDP",
-      "concentration": "Eau de Parfum",
-      "source_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml",
-      "source_evidence_url": "https://shop-gulforchid.com/products/musk-eau-de-parfum-60-ml"
-    },
-    {
       "product_id": "SH-GULF-ORCHID-EXOTIC-OUD",
       "size_ml": 100,
       "aliases": [
@@ -50692,17 +50717,6 @@
       "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/ashaa-oud-noir-edp-110ml"
     },
     {
-      "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
-      "size_ml": 100,
-      "aliases": [
-        "Marwa 100 ml"
-      ],
-      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-7bf3b46e-100-EDP",
-      "concentration": "Eau de Parfum",
-      "source_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex"
-    },
-    {
       "product_id": "SH-ARMAF-4c83dfcd",
       "size_ml": 105,
       "aliases": [
@@ -50763,6 +50777,90 @@
       "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/perfumes-spray/products/infini-edp-spray-spray-shop-online-best-price-in-dubai-uae",
       "gtin": "6297000742625"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-cd8b1f8e",
+      "size_ml": 80,
+      "aliases": [
+        "Bayn Al Asrar 80 ml",
+        "Paris Corner Bayn Al Asrar 80ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-cd8b1f8e-80-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-bayn-al-asrar-edp-w-80-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ef841988",
+      "size_ml": 85,
+      "aliases": [
+        "December Vanilla 85 ml",
+        "Paris Corner December Vanilla 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ef841988-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/paris-corner-december-vanilla-edp-u-85-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COCONUT-LAGOON",
+      "size_ml": 100,
+      "aliases": [
+        "Coconut Lagoon 100 ml",
+        "Paris Corner Coconut Lagoon 100ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-COCONUT-LAGOON-100-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-CHERRY-COLA",
+      "size_ml": 75,
+      "aliases": [
+        "Cherry Cola 75 ml",
+        "Paris Corner Cherry Cola Emir 75ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-CHERRY-COLA-75-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/cherry-cola-emir"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
+      "size_ml": 85,
+      "aliases": [
+        "Eternal Coffee 85 ml",
+        "Paris Corner Eternal Coffee 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-COFFEE-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/eternal-coffee",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-coffee"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MEADOWS",
+      "size_ml": 85,
+      "aliases": [
+        "Eternal Meadows 85 ml",
+        "Paris Corner Eternal Meadows 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MEADOWS-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/eternal-meadows",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-meadows"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-ETERNAL-MUSK",
+      "size_ml": 85,
+      "aliases": [
+        "Eternal Musk 85 ml",
+        "Paris Corner Eternal Musk 85ml"
+      ],
+      "variant_id": "SHV-SH-PARIS-CORNER-ETERNAL-MUSK-85-000",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://de.pariscornereurope.com/en/products/eternal-musk",
+      "source_evidence_url": "https://de.pariscornereurope.com/en/products/eternal-musk"
     }
   ]
 }

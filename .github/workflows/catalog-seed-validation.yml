@@ -3,7 +3,6 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/khadlaj-four-remaining-variants-2026-11-10
       - catalog/official-brand-audit-2026-11-10
       - catalog/brand-expansion-2026-11
       - catalog/complete-brand-expansion-2026-11
@@ -27,7 +26,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
-      - catalog/khadlaj-four-remaining-variants-2026-11-10
+      - catalog/cumulative-catalog-finalized-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/complete-brand-expansion-2026-11
       - catalog/assaf-range-harvest-2026-11-08
@@ -89,8 +88,10 @@ jobs:
           backend.tests.test_khadlaj_six_official_variants
           backend.tests.test_gulf_orchid_new_arrivals_2026_11_10
           backend.tests.test_gulf_orchid_five_variants_and_brand_attribution
+          backend.tests.test_cumulative_catalog_integration_2026_11_10
           backend.tests.test_arabiyat_prestige_new_launch_2026_11_10
           backend.tests.test_khadlaj_official_spray_fourth_followup
+          backend.tests.test_khadlaj_remaining_four_official_variants
           backend.tests.test_khadlaj_official_spray_third_followup
           backend.tests.test_khadlaj_official_spray_second_followup
           backend.tests.test_khadlaj_official_spray_followup
@@ -109,5 +110,4 @@ jobs:
           backend.tests.test_catalog_quality_debt_budget
           backend.tests.test_maison_asrar_rose_detail_pages_2026_11_10
           backend.tests.test_armaf_intenso_fuego_official_detail_2026_11_10
-          backend.tests.test_khadlaj_remaining_four_official_variants
           -v
