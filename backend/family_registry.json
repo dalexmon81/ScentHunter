@@ -4244,6 +4244,9 @@
           "aliases": [
             "Green Bet",
             "Paris Corner Green Bet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4259,6 +4262,9 @@
           "aliases": [
             "Heer",
             "Paris Corner Heer"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4484,6 +4490,9 @@
             "Lueur D'Espoir Memories of Summer",
             "Paris Corner Lueur D'Espoir Memories of Summer",
             "Paris Corner Lueur d'Espoir Memories of Summer"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5298,6 +5307,9 @@
             "The Show Magnifique",
             "Paris Corner The Show Magnifique",
             "Paris Corner The Show Magnifique"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5584,6 +5596,9 @@
             "Zariya",
             "Paris Corner Zariya",
             "Paris Corner Zariya"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {

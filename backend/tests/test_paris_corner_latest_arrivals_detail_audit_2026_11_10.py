@@ -25,7 +25,7 @@ EXPECTED = {
         None,
     ),
     "The Show Magnifique": (
-        "SH-PARIS-CORNER-THESHOWMAGNIQUE",
+        "SH-PARIS-CORNER-THESHOWMAGNIFIQUE",
         "https://www.pariscornerperfumes.com/products/the-show-magnifique",
         None,
     ),

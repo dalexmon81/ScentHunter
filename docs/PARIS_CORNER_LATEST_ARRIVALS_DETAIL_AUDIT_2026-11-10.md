@@ -20,11 +20,15 @@ All five canonical identities already existed in the cumulative catalog and alre
 - Green Bet, Heer and The Show Magnifique pages show the 100 ml size but do not explicitly state concentration in the retrieved product-page content. Their concentration remains unset.
 - Lueur d'Espoir Memories of Summer page shows 100 ml but does not explicitly state concentration. Its concentration remains unset.
 
-Existing canonical product IDs and variant IDs are preserved. The Paris Corner family-registry entries already contain the matching 100 ml formats.
+Existing canonical product IDs and variant IDs are preserved. The Paris Corner family-registry entries are now aligned with the 100 ml formats. Missing variant-level source URLs for Green Bet, Heer and The Show Magnifique have also been populated from their individual official product pages.
 
 ## Regression coverage
 
 Added `backend.tests.test_paris_corner_latest_arrivals_detail_audit_2026_11_10` to the catalog seed validation workflow. It checks the five official page URLs, existing canonical IDs, 100 ml variants, registry mappings, and the rule that concentration is only set for Zariya where the product page states it.
+
+## CI feedback and correction
+
+The first exact-head run exposed missing family-registry formats for these five existing products, missing variant-level source URLs for Green Bet, Heer and The Show Magnifique, and one incorrect expected product-ID literal in the new test. The registry, variant provenance and test expectation were corrected in the follow-up commit.
 
 ## Safety
 
