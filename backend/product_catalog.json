@@ -985,9 +985,14 @@
         "Lily",
         "Maison Asrar Lily"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/lily-eau-de-parfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/lily-eau-de-parfum-100ml",
+      "source_product_url": "https://maisonasrar.com/products/lily-eau-de-parfum-100ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-7b2833f9",
@@ -1001,9 +1006,14 @@
         "Lolita",
         "Maison Asrar Lolita"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+      "source_product_url": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-eae73cad",
@@ -1033,9 +1043,14 @@
         "Luna",
         "Maison Asrar Luna"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/luna-eau-de-parfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/luna-eau-de-parfum-100ml",
+      "source_product_url": "https://maisonasrar.com/products/luna-eau-de-parfum-100ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-a810f08d",
@@ -1049,9 +1064,14 @@
         "Magic Night",
         "Maison Asrar Magic Night"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+      "source_product_url": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-f1c0eae0",
@@ -1081,9 +1101,10 @@
         "Milky Way",
         "Maison Asrar Milky Way"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/milky-way",
+      "source_evidence_url": "https://maisonasrar.com/products/milky-way",
+      "source_product_url": "https://maisonasrar.com/products/milky-way"
     },
     {
       "product_id": "SH-MAISON-ASRAR-678d2fcd",
@@ -1097,9 +1118,10 @@
         "Mohra",
         "Maison Asrar Mohra"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/mohrab",
+      "source_evidence_url": "https://maisonasrar.com/products/mohrab",
+      "source_product_url": "https://maisonasrar.com/products/mohrab"
     },
     {
       "product_id": "SH-MAISON-ASRAR-e471ac92",
@@ -1113,9 +1135,10 @@
         "Nada",
         "Maison Asrar Nada"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/nada",
+      "source_evidence_url": "https://maisonasrar.com/products/nada",
+      "source_product_url": "https://maisonasrar.com/products/nada"
     },
     {
       "product_id": "SH-MAISON-ASRAR-bfb4583f",
@@ -1129,9 +1152,14 @@
         "Never Forget Me",
         "Maison Asrar Never Forget Me"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
+      "source_evidence_url": "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
+      "source_product_url": "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-e6806f96",
@@ -52428,6 +52456,66 @@
       "variant_id": "SHV-SH-MAISON-ASRAR-9b703ddc-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-bfb4583f",
+      "size_ml": 90,
+      "aliases": [
+        "Never Forget Me 90 ml",
+        "Maison Asrar Never Forget Me 90 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-bfb4583f-90-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml",
+      "source_evidence_url": "https://maisonasrar.com/products/never-forget-me-maison-asrar-eau-de-perfum-90ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-a0c32340",
+      "size_ml": 100,
+      "aliases": [
+        "Lily 100 ml",
+        "Maison Asrar Lily 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-a0c32340-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonasrar.com/products/lily-eau-de-parfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/lily-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-7b2833f9",
+      "size_ml": 100,
+      "aliases": [
+        "Lolita 100 ml",
+        "Maison Asrar Lolita 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-7b2833f9-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/lolita-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-abdcc53a",
+      "size_ml": 100,
+      "aliases": [
+        "Luna 100 ml",
+        "Maison Asrar Luna 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-abdcc53a-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonasrar.com/products/luna-eau-de-parfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/luna-eau-de-parfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-a810f08d",
+      "size_ml": 100,
+      "aliases": [
+        "Magic Night 100 ml",
+        "Maison Asrar Magic Night 100 ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-a810f08d-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml"
     }
   ]
 }

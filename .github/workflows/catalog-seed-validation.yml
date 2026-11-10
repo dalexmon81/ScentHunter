@@ -23,6 +23,7 @@ on:
       - catalog/family-registry-normalized-dedup-2026-11-10
       - catalog/cumulative-verified-variants-followup-2026-11-10
       - catalog/khadlaj-shiyaaka-and-gourmand-detail-audit-2026-11-10
+      - catalog/maison-asrar-official-pages-batch-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -51,6 +52,7 @@ on:
       - catalog/family-registry-normalized-dedup-2026-11-10
       - catalog/cumulative-verified-variants-followup-2026-11-10
       - catalog/khadlaj-shiyaaka-and-gourmand-detail-audit-2026-11-10
+      - catalog/maison-asrar-official-pages-batch-2026-11-10
 
 permissions:
   contents: read
@@ -122,6 +124,7 @@ jobs:
           backend.tests.test_family_registry_identity_normalization
           backend.tests.test_cumulative_official_variant_followup_2026_11_10
           backend.tests.test_khadlaj_shiyaaka_gourmand_official_detail_2026_11_10
+          backend.tests.test_maison_asrar_official_pages_batch_2026_11_10
           backend.tests.test_catalog_quality_debt_budget
           backend.tests.test_maison_asrar_rose_detail_pages_2026_11_10
           backend.tests.test_armaf_intenso_fuego_official_detail_2026_11_10
