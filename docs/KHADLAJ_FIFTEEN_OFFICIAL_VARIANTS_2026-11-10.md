@@ -2,7 +2,7 @@
 
 ## Result
 
-Fifteen existing Khadlaj canonical identities were reconciled against individual official product pages. Fifteen explicit 100 ml or 100 ml/60 ml Eau de Parfum variants were added. No new canonical product identities were created.
+Fifteen existing Khadlaj canonical identities were checked against individual official product pages. Twelve new explicit variants were added; the three existing variants for Oud Pour Noble, Musk Al Sabah, and Oud Al Sabah were preserved unchanged.
 
 | Product | Size | Concentration | GTIN |
 |---|---:|---|---|
@@ -46,7 +46,7 @@ Some official product pages expose a Shopify default-title option while naming t
 
 - Reused the fifteen existing canonical product IDs.
 - Upgraded product identity status and stored individual official product-page provenance.
-- Added one explicit size/concentration variant per existing product.
+- Added one explicit size/concentration variant for the twelve products without one; three existing variants were preserved unchanged.
 - Added numeric GTINs only when provided by the official product page; no identifiers were inferred.
 - Updated the existing `khadlaj_official_perfume_sprays_2026_11` family-registry rows.
 - No product identities were duplicated and no existing variants were overwritten.
