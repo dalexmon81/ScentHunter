@@ -27,7 +27,7 @@ This report measures existing data only. It does not infer a bottle size, concen
 | Duplicate product/size/concentration tuples | 0 |
 | Variant records contaminated with commercial offer fields | 0 |
 
-A product can be correctly verified as an identity while its size or concentration remains unknown. Therefore, the 251 `source_verified_name` products without a variant are a research queue, not a claim that 251 variants are missing.
+A product can be correctly verified as an identity while its size or concentration remains unknown. Therefore, the 254 `source_verified_name` products without a variant are a research queue, not a claim that 251 variants are missing.
 
 Likewise, a missing concentration on a variant is not permission to infer one. Keep the value unset until first-party evidence explicitly supports it.
 
