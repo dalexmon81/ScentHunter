@@ -45,6 +45,9 @@ EXPECTED = {
     "25 Heritage": ("SH-KHADLAJ-SPRAY-HARVEST-077", 100, "Eau de Parfum", "6291107975368", "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray"),
     "25 Loyalty": ("SH-KHADLAJ-SPRAY-HARVEST-076", 100, "Eau de Parfum", "6291107975382", "https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae"),
     "25 Trust": ("SH-KHADLAJ-SPRAY-HARVEST-075", 100, "Eau de Parfum", "6291107975399", "https://khadlaj-perfumes.com/collections/unisex-1/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women"),
+    "Musk Al Sabah": ("SH-KHADLAJ-SPRAY-HARVEST-108", 100, "Eau de Parfum", "6291107977027", "https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae"),
+    "Oud Al Sabah": ("SH-KHADLAJ-SPRAY-HARVEST-109", 100, "Eau de Parfum", "6291107977034", "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance"),
+    "Shahi Oud": ("SH-KHADLAJ-SPRAY-HARVEST-113", 100, "Eau de Parfum", "6291107971032", "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
