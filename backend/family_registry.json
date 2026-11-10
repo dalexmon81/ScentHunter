@@ -13521,6 +13521,9 @@
           "aliases": [
             "Turathi Electric",
             "Afnan Turathi Electric"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -13575,6 +13578,9 @@
           "aliases": [
             "Kiaana Crush",
             "Afnan Kiaana Crush"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
