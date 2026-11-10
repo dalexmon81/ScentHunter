@@ -1,5 +1,7 @@
 # Al Wataniah official detail reconciliation — 10 November 2026
 
+> **Historical checkpoint:** the 81-variant figures below describe the earlier reconciliation pass. They are not the latest cumulative totals. See `AL_WATANIAH_CUMULATIVE_INTEGRATION_2026-11-10.md` for the current 86-identity / 84-variant snapshot.
+
 ## Verified individual product pages
 
 The cumulative catalog retains 86 canonical Al Wataniah identities. This reconciliation keeps the official collection provenance from the 10 November storefront audit and restores individual product-page evidence separately.
@@ -42,3 +44,16 @@ The following official product pages were reopened on 10 November 2026. Each vis
 - Ain Emarat Extrait — https://www.alwataniah.com/products/ain-emarat-extrait
 
 The regression suite checks the complete 81-product detail-page set against the canonical catalog and family registry.
+
+
+## Subsequent official detail-page follow-up
+
+After the 81-variant checkpoint above, three products previously recorded as collection/listing-only were reconciled against their individual official detail pages:
+
+- Rawaee Noble — https://www.alwataniah.com/products/rawaee-noble — Type: Eau de Parfum; Volume: 100 ML.
+- Rawaee Regina — https://www.alwataniah.com/products/rawaee-regina — Type: Eau de Parfum; Volume: 100 ML.
+- Redaa — https://www.alwataniah.com/products/redaa — Type: Eau de Parfum; Volume: 100 ML.
+
+One 100 ml Eau de Parfum variant was added for each, reusing the existing canonical product IDs. These pages are now recorded as `source_verified_name`, not listing-only identities.
+
+**Latest cumulative result:** 86 official detail-page identities, 84 explicit 100 ml Eau de Parfum variants, two identity-only products (House Of Oud and Anwan), and no remaining listing-only Al Wataniah identities. No GTIN or commercial offer data was inferred.
