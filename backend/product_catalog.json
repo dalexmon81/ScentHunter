@@ -33943,8 +33943,14 @@
         "Le Prestige Royal",
         "Khadlaj Le Prestige Royal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray",
+      "source_product_url": "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-071",
@@ -33958,8 +33964,14 @@
         "Le Prestige Empress",
         "Khadlaj Le Prestige Empress"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-072",
@@ -33973,8 +33985,14 @@
         "Le Prestige Bold",
         "Khadlaj Le Prestige Bold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-073",
@@ -49260,6 +49278,45 @@
       "gtin": "6291107975979",
       "source_url": "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray",
       "source_evidence_url": "https://khadlaj-perfumes.com/collections/mens-perfumes/products/valor-enigma-100-ml-edp-spray"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-071",
+      "size_ml": 100,
+      "aliases": [
+        "Le Prestige Empress 100 ml",
+        "Khadlaj Le Prestige Empress 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-071-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975948",
+      "source_url": "https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-072",
+      "size_ml": 100,
+      "aliases": [
+        "Le Prestige Bold 100 ml",
+        "Khadlaj Le Prestige Bold 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-072-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975924",
+      "source_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-070",
+      "size_ml": 100,
+      "aliases": [
+        "Le Prestige Royal 100 ml",
+        "Khadlaj Le Prestige Royal 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-070-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107975931",
+      "source_url": "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray"
     }
   ]
 }
