@@ -13182,9 +13182,15 @@
         "Club de Nuit Intenso Fuego",
         "Armaf Club de Nuit Intenso Fuego"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/club-de-nuit-intenso-fuego",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intenso-fuego",
+      "source_product_url": "https://armaf.com/products/club-de-nuit-intenso-fuego",
+      "concentration": "Eau de Parfum",
+      "gender": "Men",
+      "formats_ml": [
+        105
+      ]
     },
     {
       "product_id": "SH-ARMAF-2b05e041",
@@ -50604,6 +50610,18 @@
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-7bf3b46e-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-marwa-edp-100ml-unisex"
+    },
+    {
+      "product_id": "SH-ARMAF-4c83dfcd",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Intenso Fuego 105 ml",
+        "Armaf Club de Nuit Intenso Fuego 105 ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-4c83dfcd-105-EDP",
+      "concentration": "Eau de Parfum",
+      "source_url": "https://armaf.com/products/club-de-nuit-intenso-fuego",
+      "source_evidence_url": "https://armaf.com/products/club-de-nuit-intenso-fuego"
     }
   ]
 }
