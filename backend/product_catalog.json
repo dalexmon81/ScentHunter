@@ -5024,9 +5024,15 @@
         "Marwa",
         "Arabiyat Prestige Marwa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://arabiyatprestige.com/collections/all",
-      "source_evidence_url": "https://arabiyatprestige.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://arabiyatprestige.com/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_product_url": "https://arabiyatprestige.com/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-AFNAN-dd53546f",
@@ -53865,6 +53871,19 @@
       "variant_id": "SHV-SH-AL-HARAMAIN-838494c5-100-EXTRAIT",
       "concentration": "Extrait de Parfum",
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-black-oud-spray-100ml.html"
+    },
+    {
+      "product_id": "SH-ARABIYAT-PRESTIGE-7bf3b46e",
+      "size_ml": 100,
+      "aliases": [
+        "Marwa 100 ml",
+        "Arabiyat Prestige Marwa 100 ml"
+      ],
+      "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-7bf3b46e-100-EDP",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "source_url": "https://arabiyatprestige.com/products/arabiyat-prestige-marwa-edp-100ml-unisex",
+      "source_evidence_url": "https://arabiyatprestige.com/products/arabiyat-prestige-marwa-edp-100ml-unisex"
     }
   ]
 }
