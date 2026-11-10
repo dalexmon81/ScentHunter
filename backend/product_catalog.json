@@ -3473,7 +3473,10 @@
       "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
       "formats_ml": [
         35
-      ]
+      ],
+      "concentration": "Concentrated Oil",
+      "source_product_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml"
     },
     {
       "product_id": "SH-KHADLAJ-f26d9535",
@@ -40731,7 +40734,8 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000",
       "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+      "concentration": "Concentrated Oil"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
