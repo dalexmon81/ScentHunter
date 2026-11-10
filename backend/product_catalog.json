@@ -5199,9 +5199,13 @@
         "Afnan 9 PM Rebel"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://afnan.com/products/9-pm-rebel",
-      "source_evidence_url": "https://afnan.com/products/9-pm-rebel",
-      "source_product_url": "https://afnan.com/products/9-pm-rebel"
+      "source_url": "https://www.at.afnan.com/en/products/9-pm-rebel",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/9-pm-rebel",
+      "source_product_url": "https://www.at.afnan.com/en/products/9-pm-rebel",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-5cdc0bae",
@@ -5335,9 +5339,14 @@
         "Souvenir Floral Bouquet",
         "Afnan Souvenir Floral Bouquet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet",
+      "source_evidence_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet",
+      "source_product_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-d587de8a",
@@ -5372,9 +5381,14 @@
         "Supremacy Purple",
         "Afnan Supremacy Purple"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://saudi.afnan.com/products/supremacy-purple",
+      "source_evidence_url": "https://saudi.afnan.com/products/supremacy-purple",
+      "source_product_url": "https://saudi.afnan.com/products/supremacy-purple",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-387345b5",
@@ -5388,9 +5402,14 @@
         "Supremacy Gala",
         "Afnan Supremacy Gala"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/supremacy-gala",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/supremacy-gala",
+      "source_product_url": "https://www.at.afnan.com/en/products/supremacy-gala",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AFNAN-823a97f5",
@@ -5818,9 +5837,13 @@
         "Afnan 9 PM Elixir"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://afnan.com/products/9-pm-elixir",
-      "source_evidence_url": "https://afnan.com/products/9-pm-elixir",
-      "source_product_url": "https://afnan.com/products/9-pm-elixir"
+      "source_url": "https://www.fr.afnan.com/products/9-pm-elixir",
+      "source_evidence_url": "https://www.fr.afnan.com/products/9-pm-elixir",
+      "source_product_url": "https://www.fr.afnan.com/products/9-pm-elixir",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AFNAN-583391fb",
@@ -53668,6 +53691,61 @@
       "variant_id": "SHV-SH-AFNAN-e9bc6ab8-90-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.fr.afnan.com/products/turathi-blue-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-bdb31951",
+      "size_ml": 100,
+      "aliases": [
+        "Souvenir Floral Bouquet 100 ml Eau de Parfum",
+        "Afnan Souvenir Floral Bouquet 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-bdb31951-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet"
+    },
+    {
+      "product_id": "SH-AFNAN-387345b5",
+      "size_ml": 90,
+      "aliases": [
+        "Supremacy Gala 90 ml Extrait de Parfum",
+        "Afnan Supremacy Gala 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-387345b5-90-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/supremacy-gala"
+    },
+    {
+      "product_id": "SH-AFNAN-068d05a5",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Rebel 100 ml Eau de Parfum",
+        "Afnan 9 PM Rebel 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-068d05a5-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/9-pm-rebel"
+    },
+    {
+      "product_id": "SH-AFNAN-69527fa0",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Elixir 100 ml Extrait de Parfum",
+        "Afnan 9 PM Elixir 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-69527fa0-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/9-pm-elixir"
+    },
+    {
+      "product_id": "SH-AFNAN-aa93308c",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Purple 100 ml Eau de Parfum",
+        "Afnan Supremacy Purple 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-aa93308c-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://saudi.afnan.com/products/supremacy-purple"
     }
   ]
 }
