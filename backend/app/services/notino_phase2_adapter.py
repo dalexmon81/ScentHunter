@@ -7,6 +7,7 @@ no network access, schema migration, or production activation.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from decimal import Decimal
 from urllib.parse import urlparse
 from uuid import UUID
@@ -15,8 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ProductVariant
+from gtin import is_valid_gtin
 from app.services.ingestion_persistence import (
-    promote_offer, record_match, stage_raw_offer,
+    promote_offer, record_match, stage_raw_offer, StaleObservation,
 )
 
 
@@ -56,6 +58,14 @@ def persist_notino_record(
         )
 
     gtin = str(raw_record.get("gtin") or "").strip()
+    if not is_valid_gtin(gtin):
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method="notino_gtin_check_digit", reason="invalid_gtin_check_digit",
+            unresolved_status="pending",
+        )
+        return NotinoPhase2Result(raw_id, "pending", reason="invalid_gtin_check_digit")
+
     variants = session.scalars(
         select(ProductVariant).where(ProductVariant.gtin == gtin)
     ).all() if gtin else []
@@ -113,12 +123,35 @@ def persist_notino_record(
             reason="invalid_affiliate_url",
         )
 
-    offer_id = promote_offer(
-        session, ingestion_raw_id=raw_id, price=price,
+    source_timestamp = str(raw_record.get("captured_at") or "").strip()
+    if not source_timestamp:
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="missing_source_observation_timestamp",
+        )
+    try:
+        observed_at = datetime.fromisoformat(source_timestamp.replace("Z", "+00:00"))
+        if observed_at.tzinfo is None or observed_at.utcoffset() is None:
+            raise ValueError("timestamp has no timezone")
+        observed_at = observed_at.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="invalid_source_observation_timestamp",
+        )
+
+    try:
+        offer_id = promote_offer(
+            session, ingestion_raw_id=raw_id, price=price,
         currency=currency, url=url, availability=availability,
         source="cj_notino_fr_feed", confidence=Decimal("1.000"),
-        match_existing_by_variant=False,
-    )
+            match_existing_by_variant=False, observed_at=observed_at,
+        )
+    except StaleObservation:
+        return NotinoPhase2Result(
+            raw_id, "stale", product_variant_id=variant.id,
+            reason="source_observation_not_newer_than_stored_offer",
+        )
     return NotinoPhase2Result(
         raw_id, "promoted", offer_id=offer_id,
         product_variant_id=variant.id,
