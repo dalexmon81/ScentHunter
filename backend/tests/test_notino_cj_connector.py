@@ -28,6 +28,15 @@ class NotinoCJConnectorTests(unittest.TestCase):
         self.assertEqual(offer.sale_price, Decimal("39.90"))
         self.assertEqual(offer.currency, "EUR")
 
+    def test_rejects_gtin_with_invalid_gs1_check_digit(self):
+        entry = ET.fromstring("""
+        <entry><id>BAD_GTIN</id><google_product_category>479</google_product_category>
+        <gtin>123456789013</gtin><price>10 EUR</price>
+        <availability>in stock</availability><link>https://example.com</link></entry>
+        """)
+        with self.assertRaisesRegex(ValueError, "check digit"):
+            parse_entry(entry)
+
     def test_skips_non_perfume(self):
         entry = ET.fromstring("<entry><google_product_category>123</google_product_category></entry>")
         self.assertIsNone(parse_entry(entry))
