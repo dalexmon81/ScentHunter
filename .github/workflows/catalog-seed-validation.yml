@@ -17,6 +17,7 @@ on:
       - catalog/afnan-official-evidence-batch-2026-11-10
       - catalog/afnan-official-evidence-followup-2026-11-10
       - catalog/afnan-official-evidence-third-batch-2026-11-10
+      - catalog/afnan-official-evidence-fourth-batch-2026-11-10
   push:
     branches:
       - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
@@ -33,6 +34,7 @@ on:
       - catalog/afnan-official-evidence-batch-2026-11-10
       - catalog/afnan-official-evidence-followup-2026-11-10
       - catalog/afnan-official-evidence-third-batch-2026-11-10
+      - catalog/afnan-official-evidence-fourth-batch-2026-11-10
 
 permissions:
   contents: read
@@ -65,6 +67,8 @@ jobs:
             backend.tests.test_afnan_official_variants_2026_11_10 \
             backend.tests.test_afnan_official_evidence_batch_2026_11_10 \
             backend.tests.test_afnan_official_evidence_followup_2026_11_10 \
+            backend.tests.test_afnan_official_evidence_third_batch_2026_11_10 \
+            backend.tests.test_afnan_official_evidence_fourth_batch_2026_11_10 \
             backend.tests.test_al_haramain_official_variants_2026_11_10 \
             backend.tests.test_khadlaj_official_new_launch_completeness_2026_11_10 \
             backend.tests.test_khadlaj_shiyaaka_rose_gold_official_2026_11_10 \
