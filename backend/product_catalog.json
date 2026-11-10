@@ -1616,9 +1616,10 @@
         "Coffee Blend",
         "Maison Asrar Coffee Blend"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+      "source_product_url": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-0c9a3533",
@@ -2343,9 +2344,10 @@
         "Soirée",
         "Maison Asrar Soirée"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/soiree",
+      "source_evidence_url": "https://maisonasrar.com/products/soiree",
+      "source_product_url": "https://maisonasrar.com/products/soiree"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6210ceb2",
@@ -2439,9 +2441,10 @@
         "Tornado",
         "Maison Asrar Tornado"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/tornado",
+      "source_evidence_url": "https://maisonasrar.com/products/tornado",
+      "source_product_url": "https://maisonasrar.com/products/tornado"
     },
     {
       "product_id": "SH-MAISON-ASRAR-055193ca",
@@ -2535,9 +2538,10 @@
         "Vision",
         "Maison Asrar Vision"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/vision",
+      "source_evidence_url": "https://maisonasrar.com/products/vision",
+      "source_product_url": "https://maisonasrar.com/products/vision"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6390bbbb",
@@ -3477,7 +3481,10 @@
       "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
       "formats_ml": [
         35
-      ]
+      ],
+      "concentration": "Concentrated Oil",
+      "source_product_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml"
     },
     {
       "product_id": "SH-KHADLAJ-f26d9535",
@@ -3496,7 +3503,10 @@
       "formats_ml": [
         100
       ],
-      "concentration": "Extrait de Parfum"
+      "concentration": "Extrait de Parfum",
+      "gender": "Women",
+      "source_product_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -3558,7 +3568,8 @@
       "source_evidence_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
       "formats_ml": [
         100
-      ]
+      ],
+      "gender": "Women"
     },
     {
       "product_id": "SH-KHADLAJ-cdaa81f2",
@@ -4175,9 +4186,10 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
-      "source_product_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range"
+      "source_url": "https://khadlaj-perfumes.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_product_url": "https://khadlaj-perfumes.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "gender": "Men"
     },
     {
       "product_id": "SH-BUJAIRAMI-370cb2f2",
@@ -5113,9 +5125,14 @@
         "9 AM Dive",
         "Afnan 9 AM Dive"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.de.afnan.com/en/products/9-am-dive",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/9-am-dive",
+      "source_product_url": "https://www.de.afnan.com/en/products/9-am-dive",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-816ce12c",
@@ -5172,9 +5189,14 @@
         "Rare Reef",
         "Afnan Rare Reef"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/rare-reef",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-reef",
+      "source_product_url": "https://www.at.afnan.com/en/products/rare-reef",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AFNAN-068d05a5",
@@ -5189,9 +5211,13 @@
         "Afnan 9 PM Rebel"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://afnan.com/products/9-pm-rebel",
-      "source_evidence_url": "https://afnan.com/products/9-pm-rebel",
-      "source_product_url": "https://afnan.com/products/9-pm-rebel"
+      "source_url": "https://www.at.afnan.com/en/products/9-pm-rebel",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/9-pm-rebel",
+      "source_product_url": "https://www.at.afnan.com/en/products/9-pm-rebel",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-5cdc0bae",
@@ -5205,9 +5231,14 @@
         "Turathi Brown Homme",
         "Afnan Turathi Brown Homme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/turathi-brown-homme",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/turathi-brown-homme",
+      "source_product_url": "https://www.at.afnan.com/en/products/turathi-brown-homme",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-13721551",
@@ -5261,9 +5292,14 @@
         "Historic Olmeda",
         "Afnan Historic Olmeda"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/products/historic-olmeda",
+      "source_evidence_url": "https://www.at.afnan.com/products/historic-olmeda",
+      "source_product_url": "https://www.at.afnan.com/products/historic-olmeda",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-c1d3f6f1",
@@ -5294,9 +5330,14 @@
         "Mystique Bouquet",
         "Afnan Mystique Bouquet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.de.afnan.com/en/products/mystique-bouquet",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/mystique-bouquet",
+      "source_product_url": "https://www.de.afnan.com/en/products/mystique-bouquet",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-bdb31951",
@@ -5310,9 +5351,14 @@
         "Souvenir Floral Bouquet",
         "Afnan Souvenir Floral Bouquet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet",
+      "source_evidence_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet",
+      "source_product_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-d587de8a",
@@ -5326,9 +5372,14 @@
         "Supremacy Pink",
         "Afnan Supremacy Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/products/supremacy-pink",
+      "source_evidence_url": "https://www.fr.afnan.com/products/supremacy-pink",
+      "source_product_url": "https://www.fr.afnan.com/products/supremacy-pink",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-aa93308c",
@@ -5342,9 +5393,14 @@
         "Supremacy Purple",
         "Afnan Supremacy Purple"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://saudi.afnan.com/products/supremacy-purple",
+      "source_evidence_url": "https://saudi.afnan.com/products/supremacy-purple",
+      "source_product_url": "https://saudi.afnan.com/products/supremacy-purple",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-387345b5",
@@ -5358,9 +5414,14 @@
         "Supremacy Gala",
         "Afnan Supremacy Gala"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/supremacy-gala",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/supremacy-gala",
+      "source_product_url": "https://www.at.afnan.com/en/products/supremacy-gala",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AFNAN-823a97f5",
@@ -5451,9 +5512,14 @@
         "Turathi Blue",
         "Afnan Turathi Blue"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/products/turathi-blue-homme",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-blue-homme",
+      "source_product_url": "https://www.fr.afnan.com/products/turathi-blue-homme",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-dc43e01b",
@@ -5483,9 +5549,14 @@
         "Rare Carbon",
         "Afnan Rare Carbon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/rare-carbon",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-carbon",
+      "source_product_url": "https://www.at.afnan.com/en/products/rare-carbon",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-e9a9f75b",
@@ -5778,9 +5849,13 @@
         "Afnan 9 PM Elixir"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://afnan.com/products/9-pm-elixir",
-      "source_evidence_url": "https://afnan.com/products/9-pm-elixir",
-      "source_product_url": "https://afnan.com/products/9-pm-elixir"
+      "source_url": "https://www.fr.afnan.com/products/9-pm-elixir",
+      "source_evidence_url": "https://www.fr.afnan.com/products/9-pm-elixir",
+      "source_product_url": "https://www.fr.afnan.com/products/9-pm-elixir",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AFNAN-583391fb",
@@ -7407,8 +7482,14 @@
         "Junoon",
         "Al Haramain Junoon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-junoon.html",
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/haramain-junoon.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-junoon.html",
+      "formats_ml": [
+        75
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-9ed401a1",
@@ -7543,8 +7624,10 @@
       "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-tobacco-edition.html",
       "concentration": "Eau de Parfum",
       "formats_ml": [
+        100,
         200
-      ]
+      ],
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/haramain-amber-oud-200ml-spray-tobacco-edition.html"
     },
     {
       "product_id": "SH-AL-HARAMAIN-2270da08",
@@ -7735,8 +7818,15 @@
         "Amber Oud Bleu Edition",
         "Al Haramain Amber Oud Bleu Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/amber-oud-bleu-edition-200ml.html",
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/amber-oud-bleu-edition-200ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/amber-oud-bleu-edition-200ml.html",
+      "formats_ml": [
+        60,
+        200
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-4812dbe2",
@@ -7910,8 +8000,15 @@
         "L'Aventure Femme",
         "Al Haramain L'Aventure Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/al-haramain-l-aventure-femme-30ml.html",
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/al-haramain-l-aventure-femme-30ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/al-haramain-l-aventure-femme-30ml.html",
+      "formats_ml": [
+        30,
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-fb738f11",
@@ -8000,8 +8097,14 @@
         "Black Oud",
         "Al Haramain Black Oud"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://shop.alharamainperfumes.com/eu/collection.html?gender=5785%2C5787"
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop.alharamainperfumes.com/eu/haramain-black-oud-spray-100ml.html",
+      "source_product_url": "https://shop.alharamainperfumes.com/eu/haramain-black-oud-spray-100ml.html",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-black-oud-spray-100ml.html",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum"
     },
     {
       "product_id": "SH-AL-HARAMAIN-506ef01f",
@@ -20675,12 +20778,13 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-new-launches/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
       "formats_ml": [
         100
       ],
       "concentration": "Eau de Parfum",
-      "gender": "Men"
+      "gender": "Men",
+      "source_product_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
     },
     {
       "product_id": "SH-KHADLAJ-MUSE",
@@ -40728,7 +40832,8 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000",
       "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+      "concentration": "Concentrated Oil"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -40990,8 +41095,10 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-bbb43d66-100-000",
       "concentration": "Eau de Parfum",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
-      "source_evidence_url": "https://khadlaj-perfumes.com/collections/shiyaaka-range/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men"
+      "source_url": "https://khadlaj-perfumes.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/special-edition-shiyaaka-snow-100-ml-eau-de-parfum-for-men",
+      "gender": "Men",
+      "gtin": "6291107979335"
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-29189f4e",
@@ -41182,7 +41289,9 @@
       "variant_id": "SHV-SH-KHADLAJ-f26d9535-100-000",
       "concentration": "Extrait de Parfum",
       "source_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/panache-angel-dust-100-ml-extrait-de-parfum-spray-for-women-shop-online-dubai-uae",
+      "gender": "Women",
+      "gtin": "6298043070829"
     },
     {
       "product_id": "SH-KHADLAJ-47b079b3",
@@ -44387,7 +44496,10 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-EDP",
       "concentration": "Eau de Parfum",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
+      "gender": "Men",
+      "gtin": "6298043072762",
+      "source_url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men"
     },
     {
       "product_id": "SH-AL-HARAMAIN-HARAMAIN-CAMELLIA",
@@ -51232,7 +51344,8 @@
       "variant_id": "SHV-SH-KHADLAJ-24969f48-100-UNSPECIFIED",
       "gtin": "6298043070768",
       "source_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
+      "gender": "Women"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-061",
@@ -53540,6 +53653,226 @@
       "gender": "Unisex",
       "source_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/products/maison-alhambra-mysterious-amber-eau-de-parfum-for-everyone"
+    },
+    {
+      "product_id": "SH-AFNAN-9e3c80fa",
+      "size_ml": 100,
+      "aliases": [
+        "9 AM Dive 100 ml Eau de Parfum",
+        "Afnan 9 AM Dive 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-9e3c80fa-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/9-am-dive"
+    },
+    {
+      "product_id": "SH-AFNAN-e408d61b",
+      "size_ml": 100,
+      "aliases": [
+        "Rare Reef 100 ml Extrait de Parfum",
+        "Afnan Rare Reef 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-e408d61b-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-reef"
+    },
+    {
+      "product_id": "SH-AFNAN-5cdc0bae",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Brown Homme 90 ml Eau de Parfum",
+        "Afnan Turathi Brown Homme 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-5cdc0bae-90-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/turathi-brown-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-62b409e4",
+      "size_ml": 100,
+      "aliases": [
+        "Historic Olmeda 100 ml Eau de Parfum",
+        "Afnan Historic Olmeda 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-62b409e4-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/products/historic-olmeda"
+    },
+    {
+      "product_id": "SH-AFNAN-4e32c3b3",
+      "size_ml": 80,
+      "aliases": [
+        "Mystique Bouquet 80 ml Eau de Parfum",
+        "Afnan Mystique Bouquet 80ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-4e32c3b3-80-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/mystique-bouquet"
+    },
+    {
+      "product_id": "SH-AFNAN-d587de8a",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Pink 100 ml Eau de Parfum",
+        "Afnan Supremacy Pink 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-d587de8a-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/supremacy-pink"
+    },
+    {
+      "product_id": "SH-AFNAN-d0bee594",
+      "size_ml": 100,
+      "aliases": [
+        "Rare Carbon 100 ml Eau de Parfum",
+        "Afnan Rare Carbon 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-d0bee594-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-carbon"
+    },
+    {
+      "product_id": "SH-AFNAN-e9bc6ab8",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Blue 90 ml Eau de Parfum",
+        "Afnan Turathi Blue 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-e9bc6ab8-90-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-blue-homme"
+    },
+    {
+      "product_id": "SH-AFNAN-bdb31951",
+      "size_ml": 100,
+      "aliases": [
+        "Souvenir Floral Bouquet 100 ml Eau de Parfum",
+        "Afnan Souvenir Floral Bouquet 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-bdb31951-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://at.afnan.com/en/products/souvenir-floral-bouquet"
+    },
+    {
+      "product_id": "SH-AFNAN-387345b5",
+      "size_ml": 90,
+      "aliases": [
+        "Supremacy Gala 90 ml Extrait de Parfum",
+        "Afnan Supremacy Gala 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-387345b5-90-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/supremacy-gala"
+    },
+    {
+      "product_id": "SH-AFNAN-068d05a5",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Rebel 100 ml Eau de Parfum",
+        "Afnan 9 PM Rebel 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-068d05a5-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/9-pm-rebel"
+    },
+    {
+      "product_id": "SH-AFNAN-69527fa0",
+      "size_ml": 100,
+      "aliases": [
+        "9 PM Elixir 100 ml Extrait de Parfum",
+        "Afnan 9 PM Elixir 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-69527fa0-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/9-pm-elixir"
+    },
+    {
+      "product_id": "SH-AFNAN-aa93308c",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Purple 100 ml Eau de Parfum",
+        "Afnan Supremacy Purple 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-aa93308c-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://saudi.afnan.com/products/supremacy-purple"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-0cf10f35",
+      "size_ml": 60,
+      "aliases": [
+        "Amber Oud Bleu Edition 60 ml Eau de Parfum",
+        "Al Haramain Amber Oud Bleu Edition 60ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-0cf10f35-60-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/amber-oud-bleu-edition.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-0cf10f35",
+      "size_ml": 200,
+      "aliases": [
+        "Amber Oud Bleu Edition 200 ml Eau de Parfum",
+        "Al Haramain Amber Oud Bleu Edition 200ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-0cf10f35-200-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/amber-oud-bleu-edition-200ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-27b89224",
+      "size_ml": 100,
+      "aliases": [
+        "Amber Oud Tobacco Edition 100 ml Eau de Parfum",
+        "Al Haramain Amber Oud Tobacco Edition 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-27b89224-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/amber-oud-tobacco-100ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4455529b",
+      "size_ml": 100,
+      "aliases": [
+        "L'Aventure Femme 100 ml Eau de Parfum",
+        "Al Haramain L'Aventure Femme 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4455529b-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-l-aventure-femme-100ml-eau-de-parfum.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-4455529b",
+      "size_ml": 30,
+      "aliases": [
+        "L'Aventure Femme 30 ml Eau de Parfum",
+        "Al Haramain L'Aventure Femme 30ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-4455529b-30-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/al-haramain-l-aventure-femme-30ml.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-ff023f21",
+      "size_ml": 75,
+      "aliases": [
+        "Junoon 75 ml Eau de Parfum",
+        "Al Haramain Junoon 75ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-ff023f21-75-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-junoon.html"
+    },
+    {
+      "product_id": "SH-AL-HARAMAIN-838494c5",
+      "size_ml": 100,
+      "aliases": [
+        "Black Oud 100 ml Extrait de Parfum",
+        "Al Haramain Black Oud 100ml"
+      ],
+      "variant_id": "SHV-SH-AL-HARAMAIN-838494c5-100-EXTRAIT",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://shop.alharamainperfumes.com/eu/haramain-black-oud-spray-100ml.html"
     }
   ]
 }

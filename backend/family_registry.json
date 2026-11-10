@@ -13126,6 +13126,9 @@
           "aliases": [
             "9 AM Dive",
             "Afnan 9 AM Dive"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13154,6 +13157,9 @@
           "aliases": [
             "Rare Reef",
             "Afnan Rare Reef"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13161,6 +13167,9 @@
           "aliases": [
             "9 PM Rebel",
             "Afnan 9 PM Rebel"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13168,6 +13177,9 @@
           "aliases": [
             "Turathi Brown Homme",
             "Afnan Turathi Brown Homme"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -13189,6 +13201,9 @@
           "aliases": [
             "Historic Olmeda",
             "Afnan Historic Olmeda"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13203,6 +13218,9 @@
           "aliases": [
             "Mystique Bouquet",
             "Afnan Mystique Bouquet"
+          ],
+          "formats_ml": [
+            80
           ]
         },
         {
@@ -13210,6 +13228,9 @@
           "aliases": [
             "Souvenir Floral Bouquet",
             "Afnan Souvenir Floral Bouquet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13217,6 +13238,9 @@
           "aliases": [
             "Supremacy Pink",
             "Afnan Supremacy Pink"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13224,6 +13248,9 @@
           "aliases": [
             "Supremacy Purple",
             "Afnan Supremacy Purple"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13231,6 +13258,9 @@
           "aliases": [
             "Supremacy Gala",
             "Afnan Supremacy Gala"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -13269,6 +13299,9 @@
           "aliases": [
             "Turathi Blue",
             "Afnan Turathi Blue"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -13283,6 +13316,9 @@
           "aliases": [
             "Rare Carbon",
             "Afnan Rare Carbon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13412,6 +13448,9 @@
           "aliases": [
             "9 PM Elixir",
             "Afnan 9 PM Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -16284,6 +16323,10 @@
           "aliases": [
             "Amber Oud Bleu Edition",
             "Al Haramain Amber Oud Bleu Edition"
+          ],
+          "formats_ml": [
+            60,
+            200
           ]
         },
         {
@@ -16347,6 +16390,10 @@
           "aliases": [
             "Amber Oud Tobacco Edition",
             "Al Haramain Amber Oud Tobacco Edition"
+          ],
+          "formats_ml": [
+            100,
+            200
           ]
         },
         {
@@ -16396,6 +16443,9 @@
           "aliases": [
             "Black Oud",
             "Al Haramain Black Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -16410,6 +16460,9 @@
           "aliases": [
             "Junoon",
             "Al Haramain Junoon"
+          ],
+          "formats_ml": [
+            75
           ]
         },
         {
@@ -16445,6 +16498,10 @@
           "aliases": [
             "L'Aventure Femme",
             "Al Haramain L'Aventure Femme"
+          ],
+          "formats_ml": [
+            30,
+            100
           ]
         },
         {
@@ -17969,6 +18026,9 @@
           "aliases": [
             "Onyx Galaxy",
             "Khadlaj Onyx Galaxy"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
