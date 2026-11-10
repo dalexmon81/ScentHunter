@@ -17217,6 +17217,9 @@
           "aliases": [
             "Muse",
             "Khadlaj Muse"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17479,6 +17482,9 @@
           "aliases": [
             "Saraya",
             "Khadlaj Saraya"
+          ],
+          "formats_ml": [
+            60
           ]
         },
         {
@@ -17500,6 +17506,9 @@
           "aliases": [
             "Strawberry Shake",
             "Khadlaj Strawberry Shake"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17514,6 +17523,9 @@
           "aliases": [
             "Peach Velvet",
             "Khadlaj Peach Velvet"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -17542,6 +17554,9 @@
           "aliases": [
             "Sueno",
             "Khadlaj Sueno"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
