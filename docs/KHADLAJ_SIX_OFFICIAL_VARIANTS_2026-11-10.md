@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes forty-one existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes forty-two existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -47,6 +47,7 @@ This change completes forty-one existing Khadlaj canonical identities using offi
 | Oud Al Sabah | SH-KHADLAJ-SPRAY-HARVEST-109 | 100 ml | Eau de Parfum | 6291107977034 |
 | Shahi Oud | SH-KHADLAJ-SPRAY-HARVEST-113 | 100 ml | Eau de Parfum | 6291107971032 |
 | Oud Pour Noble | SH-KHADLAJ-SPRAY-HARVEST-096 | 100 ml | Eau de Parfum | 6291107971025 |
+| Oud Pour Blueberry | SH-KHADLAJ-SPRAY-HARVEST-100 | 100 ml | Eau de Parfum | 6291107970127 |
 
 ## Official evidence
 
@@ -92,6 +93,8 @@ This change completes forty-one existing Khadlaj canonical identities using offi
 - Oud Al Sabah: https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance
 - Shahi Oud: https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae
 - Oud Pour Noble: https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae
+- Oud Pour Blueberry product page: https://khadlaj-perfumes.com/collections/oud-pour-series-collection-shop-for-captivating-niche-fragrances/products/oud-pour-blueberry-spray-shop-online-best-price-in-dubai-uae
+- Oud Pour Blueberry EAN evidence: https://distrinode.lu/khadlaj-oud-pour-blueberry-perfume-edp-100-ml-fr-lu
 
 ## Data integrity
 
