@@ -1075,9 +1075,10 @@
         "Lumiere",
         "Maison Asrar Lumiere"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/lumiere",
+      "source_evidence_url": "https://maisonasrar.com/products/lumiere",
+      "source_product_url": "https://maisonasrar.com/products/lumiere"
     },
     {
       "product_id": "SH-MAISON-ASRAR-abdcc53a",
@@ -1221,9 +1222,10 @@
         "Night in Paris",
         "Maison Asrar Night in Paris"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml",
+      "source_evidence_url": "https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml",
+      "source_product_url": "https://maisonasrar.com/products/night-in-paris-maison-asrar-eau-de-perfum-90ml"
     },
     {
       "product_id": "SH-MAISON-ASRAR-5394eedf",
@@ -1285,9 +1287,11 @@
         "Patchouli with Love",
         "Maison Asrar Patchouli with Love"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml",
+      "source_evidence_url": "https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml",
+      "source_product_url": "https://maisonasrar.com/products/patchouli-with-love-maison-asrar-eau-de-perfum-100-ml",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-54c12160",
@@ -1317,9 +1321,10 @@
         "Pink Crush",
         "Maison Asrar Pink Crush"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women",
+      "source_product_url": "https://maisonasrar.com/products/maison-asrar-pink-crush-eau-de-parfum-100-ml-for-women"
     },
     {
       "product_id": "SH-MAISON-ASRAR-db5923be",
@@ -1333,9 +1338,10 @@
         "Qamar",
         "Maison Asrar Qamar"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/qamar",
+      "source_evidence_url": "https://maisonasrar.com/products/qamar",
+      "source_product_url": "https://maisonasrar.com/products/qamar"
     },
     {
       "product_id": "SH-MAISON-ASRAR-b7bfb3e3",
@@ -1349,9 +1355,10 @@
         "Red Velvet",
         "Maison Asrar Red Velvet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women",
+      "source_product_url": "https://maisonasrar.com/products/maison-asrar-red-velvet-eau-de-parfum-100-ml-for-women"
     },
     {
       "product_id": "SH-MAISON-ASRAR-adc87588",
@@ -1365,9 +1372,10 @@
         "Rey",
         "Maison Asrar Rey"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/collections/new-arrival/products/rey-eau-de-parfum-100ml-maison-asrar",
+      "source_evidence_url": "https://maisonasrar.com/collections/new-arrival/products/rey-eau-de-parfum-100ml-maison-asrar",
+      "source_product_url": "https://maisonasrar.com/collections/new-arrival/products/rey-eau-de-parfum-100ml-maison-asrar"
     },
     {
       "product_id": "SH-MAISON-ASRAR-4d3841cf",
