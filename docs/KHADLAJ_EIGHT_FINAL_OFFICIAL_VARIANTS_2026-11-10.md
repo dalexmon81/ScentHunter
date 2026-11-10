@@ -2,7 +2,7 @@
 
 ## Result
 
-Eight remaining existing Khadlaj identities were reconciled to individual official product pages. Eight size variants were added. No canonical product identity was created or duplicated.
+Eight remaining existing Khadlaj identities were checked against individual official product pages. Seven new size variants were added; Shahi Oud already had a verified variant and was preserved unchanged.
 
 | Product | Size | Concentration | GTIN |
 |---|---:|---|---|
@@ -37,7 +37,7 @@ Eight remaining existing Khadlaj identities were reconciled to individual offici
 
 - Reused the eight existing canonical product IDs.
 - Upgraded identity status and stored official product-page provenance.
-- Added one explicit size variant per existing identity.
+- Added one explicit size variant for the seven products without one; the existing Shahi Oud variant was preserved unchanged.
 - Preserved unknown concentrations where official page fields conflict; no guess was made.
 - Added GTINs only as displayed on the official pages.
 - Updated the existing family-registry rows.
