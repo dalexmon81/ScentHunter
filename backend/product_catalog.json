@@ -50754,42 +50754,6 @@
       "gtin": "6297000742625"
     },
     {
-      "variant_id": "SHV-SH-LATTAFA-ABRAAJ-20-CO",
-      "product_id": "SH-LATTAFA-ABRAAJ",
-      "size_ml": 20,
-      "concentration": "Concentrated Oil",
-      "aliases": [
-        "Abraaj 20 ml Concentrated Oil",
-        "Lattafa Abraaj 20ml"
-      ],
-      "source_url": "https://lattafa.com/product/abraaj-concentrated-oil/",
-      "source_evidence_url": "https://lattafa.com/product/abraaj-concentrated-oil/"
-    },
-    {
-      "variant_id": "SHV-SH-LATTAFA-HAAKIM-20-CO",
-      "product_id": "SH-LATTAFA-HAAKIM",
-      "size_ml": 20,
-      "concentration": "Concentrated Oil",
-      "aliases": [
-        "Haakim 20 ml Concentrated Oil",
-        "Lattafa Haakim 20ml"
-      ],
-      "source_url": "https://lattafa.com/product/haakim-concentrated-oil/",
-      "source_evidence_url": "https://lattafa.com/product/haakim-concentrated-oil/"
-    },
-    {
-      "variant_id": "SHV-SH-LATTAFA-AMOURA-20-CO",
-      "product_id": "SH-LATTAFA-AMOURA",
-      "size_ml": 20,
-      "concentration": "Concentrated Oil",
-      "aliases": [
-        "Amoura 20 ml Concentrated Oil",
-        "Lattafa Amoura 20ml"
-      ],
-      "source_url": "https://lattafa.com/product/amoura-concentrated-oil/",
-      "source_evidence_url": "https://lattafa.com/product/amoura-concentrated-oil/"
-    },
-    {
       "variant_id": "SHV-SH-LATTAFA-ABRAAJ-20-000",
       "product_id": "SH-LATTAFA-ABRAAJ",
       "size_ml": 20,
