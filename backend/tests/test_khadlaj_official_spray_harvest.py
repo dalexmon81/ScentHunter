@@ -85,7 +85,12 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
         return "".join(ch for ch in value.casefold() if ch.isalnum())
 
     def test_all_harvested_khadlaj_names_present(self):
-        names = {self.normalize(p["canonical_name"]) for p in self.catalog["products"] if p.get("brand") == "Khadlaj"}
+        names = {
+            self.normalize(value)
+            for product in self.catalog["products"]
+            if product.get("brand") == "Khadlaj"
+            for value in [product.get("canonical_name", ""), *(product.get("aliases") or [])]
+        }
         for name in EXPECTED:
             with self.subTest(name=name):
                 self.assertIn(self.normalize(name), names)

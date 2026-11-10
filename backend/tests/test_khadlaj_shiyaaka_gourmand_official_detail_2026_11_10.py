@@ -62,6 +62,16 @@ EXPECTED = [
         "product_id": "SH-KHADLAJ-75815e2a",
         "url": "https://khadlaj-perfumes.com/collections/all/products/biscotti-date-toffee-100-ml-extrait-de-parfum-spray-for-unisex-gourmand-lover-fragrances",
         "evidence": "https://khadlaj-perfumes.com/collections/all/women"
+    },
+    {
+        "name": "Musk Pure Musk Blend",
+        "product_id": "SH-KHADLAJ-04832397",
+        "url": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
+        "evidence": "https://khadlaj-perfumes.com/products/musk-pure-musk-blend-creation-of-iqbal-65-ml-edp-spray-perfume-for-men-and-women-online-dubai-uae",
+        "gtin": "6291107978154",
+        "size_ml": 60,
+        "concentration": "Eau de Parfum",
+        "variant_id": "SHV-SH-KHADLAJ-04832397-60-000"
     }
 ]
 
@@ -81,7 +91,13 @@ class KhadlajShiyaakaGourmandOfficialDetailTests(unittest.TestCase):
                 self.assertEqual(variant["source_url"], item["url"])
                 self.assertEqual(variant["source_evidence_url"], item["url"])
                 self.assertEqual(variant.get("gtin"), item.get("gtin"))
-                family_id = "khadlaj_catalog" if item["name"] in {"Private Blend Musk Ice", "Biscotti Date Toffee"} else "khadlaj_shiyaaka"
+                if "size_ml" in item:
+                    self.assertEqual(product["formats_ml"], [item["size_ml"]])
+                    self.assertEqual(product["concentration"], item["concentration"])
+                    self.assertEqual(variant["variant_id"], item["variant_id"])
+                    self.assertEqual(variant["size_ml"], item["size_ml"])
+                    self.assertEqual(variant["concentration"], item["concentration"])
+                family_id = "khadlaj_catalog" if item["name"] in {"Private Blend Musk Ice", "Biscotti Date Toffee", "Musk Pure Musk Blend"} else "khadlaj_shiyaaka"
                 family = next(f for f in REGISTRY["families"] if f["family_id"] == family_id)
                 self.assertIn(item["name"], [p["canonical_name"] for p in family["products"]])
 
