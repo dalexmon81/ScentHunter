@@ -3,7 +3,7 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/khadlaj-hareem-al-sultan-gold-oil-verified-2026-11-10
+      - catalog/maison-asrar-official-identity-pages-2026-11-10
   push:
     branches:
       - catalog/khadlaj-hareem-al-sultan-gold-oil-verified-2026-11-10
