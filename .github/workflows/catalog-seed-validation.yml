@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - catalog/maison-asrar-official-identity-pages-2026-11-10
+      - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
   push:
     branches:
       - catalog/khadlaj-hareem-al-sultan-gold-oil-verified-2026-11-10
