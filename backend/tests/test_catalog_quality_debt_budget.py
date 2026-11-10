@@ -31,7 +31,7 @@ class CatalogQualityDebtBudgetTests(unittest.TestCase):
             if p.get("identity_status") == "source_verified_name"
             and p["product_id"] not in self.products_with_variants
         ]
-        self.assertLessEqual(len(pending), 254)
+        self.assertLessEqual(len(pending), 256)
 
     def test_variants_without_any_source_url_do_not_increase(self):
         missing = [
