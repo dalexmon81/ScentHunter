@@ -77,5 +77,19 @@ class CatalogSeedIntegrityTests(unittest.TestCase):
                     self.assertNotIn(offer_field, variant)
 
 
+    def test_variant_ids_are_unique_and_present(self):
+        ids = [variant.get("variant_id") for variant in self.variants]
+        self.assertTrue(all(isinstance(value, str) and value.strip() for value in ids))
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_non_empty_gtins_are_unique(self):
+        gtins = [
+            str(variant["gtin"]).strip()
+            for variant in self.variants
+            if variant.get("gtin") not in (None, "")
+        ]
+        self.assertEqual(len(gtins), len(set(gtins)))
+
+
 if __name__ == "__main__":
     unittest.main()

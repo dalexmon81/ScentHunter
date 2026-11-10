@@ -6303,8 +6303,12 @@
         "Afrah",
         "Zimaya Afrah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.zimayaperfumes.com/products/afrah",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Concentrated Oil"
     },
     {
       "product_id": "SH-ZIMAYA-2b27b427",
@@ -6375,8 +6379,12 @@
         "Al Embratur Elixir",
         "Zimaya Al Embratur Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.zimayaperfumes.com/products/al-embratur-elixir",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-ea2d6ea1",
@@ -6849,8 +6857,12 @@
         "Ghali Imperial",
         "Zimaya Ghali Imperial"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.zimayaperfumes.com/products/ghali-imperial",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-5be47ef4",
@@ -35338,7 +35350,8 @@
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/zariya",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AL-WATANIAH-CREME",
@@ -40356,6 +40369,115 @@
       "formats_ml": [
         100
       ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-AMBER-OUD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Amber Oud",
+      "name": "Ministry of Oud - Amber Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Amber Oud",
+      "aliases": [
+        "Ministry of Oud - Amber Oud",
+        "Paris Corner Ministry of Oud - Amber Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-INDONESIAN",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Indonesian",
+      "name": "Ministry of Oud - Oud Indonesian",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Indonesian",
+      "aliases": [
+        "Ministry of Oud - Oud Indonesian",
+        "Paris Corner Ministry of Oud - Oud Indonesian"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-ROYAL",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Royal",
+      "name": "Ministry of Oud - Oud Royal",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Royal",
+      "aliases": [
+        "Ministry of Oud - Oud Royal",
+        "Paris Corner Ministry of Oud - Oud Royal"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-SATIN",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Oud Satin",
+      "name": "Ministry of Oud - Oud Satin",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Oud Satin",
+      "aliases": [
+        "Ministry of Oud - Oud Satin",
+        "Paris Corner Ministry of Oud - Oud Satin"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-STRICTLY-OUD",
+      "brand": "Paris Corner",
+      "brand_name": "Paris Corner",
+      "canonical_name": "Ministry of Oud - Strictly Oud",
+      "name": "Ministry of Oud - Strictly Oud",
+      "family_id": "paris_corner_catalog",
+      "family_name": "Ministry of Oud - Strictly Oud",
+      "aliases": [
+        "Ministry of Oud - Strictly Oud",
+        "Paris Corner Ministry of Oud - Strictly Oud"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "source_product_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "collection_name": "Ministry of Oud",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -42993,7 +43115,9 @@
         "Green Bet 100 ml",
         "Paris Corner Green Bet 100ml"
       ],
-      "variant_id": "SHV-SH-PARIS-CORNER-GREEN-BET-100-000"
+      "variant_id": "SHV-SH-PARIS-CORNER-GREEN-BET-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/green-bet",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/green-bet"
     },
     {
       "product_id": "SH-PARIS-CORNER-HEER",
@@ -43002,7 +43126,9 @@
         "Heer 100 ml",
         "Paris Corner Heer 100ml"
       ],
-      "variant_id": "SHV-SH-PARIS-CORNER-HEER-100-000"
+      "variant_id": "SHV-SH-PARIS-CORNER-HEER-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/heer",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/heer"
     },
     {
       "product_id": "SH-PARIS-CORNER-MARSHMALLOW-BLUSH",
@@ -43039,7 +43165,9 @@
         "The Show Magnifique 100 ml",
         "Paris Corner The Show Magnifique 100ml"
       ],
-      "variant_id": "SHV-SH-PARIS-CORNER-THESHOWMAGNIFIQUE-100-000"
+      "variant_id": "SHV-SH-PARIS-CORNER-THESHOWMAGNIFIQUE-100-000",
+      "source_url": "https://www.pariscornerperfumes.com/products/the-show-magnifique",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/the-show-magnifique"
     },
     {
       "product_id": "SH-PARIS-CORNER-TAWAAQ",
@@ -46446,7 +46574,8 @@
         "Paris Corner Zariya 100ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/zariya",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zariya"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/zariya",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-7f65b76f",
@@ -52805,6 +52934,101 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://zimayaperfumes.com/products/al-barari-shore",
       "source_evidence_url": "https://zimayaperfumes.com/products/al-barari-shore"
+    },
+    {
+      "product_id": "SH-ZIMAYA-ae998c26",
+      "variant_id": "SHV-SH-ZIMAYA-ae998c26-20-CO",
+      "size_ml": 20,
+      "concentration": "Concentrated Oil",
+      "aliases": [
+        "Afrah 20 ml Concentrated Oil",
+        "Zimaya Afrah 20 ml"
+      ],
+      "source_url": "https://fr.zimayaperfumes.com/products/afrah",
+      "source_evidence_url": "https://fr.zimayaperfumes.com/products/afrah"
+    },
+    {
+      "product_id": "SH-ZIMAYA-dcc2773e",
+      "variant_id": "SHV-SH-ZIMAYA-dcc2773e-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Al Embratur Elixir 100 ml",
+        "Zimaya Al Embratur Elixir 100 ml"
+      ],
+      "source_url": "https://fr.zimayaperfumes.com/products/al-embratur-elixir",
+      "source_evidence_url": "https://fr.zimayaperfumes.com/products/al-embratur-elixir"
+    },
+    {
+      "product_id": "SH-ZIMAYA-00b7385e",
+      "variant_id": "SHV-SH-ZIMAYA-00b7385e-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ghali Imperial 100 ml",
+        "Zimaya Ghali Imperial 100 ml"
+      ],
+      "source_url": "https://fr.zimayaperfumes.com/products/ghali-imperial",
+      "source_evidence_url": "https://fr.zimayaperfumes.com/products/ghali-imperial"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-AMBER-OUD",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-AMBER-OUD-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Amber Oud 100 ml",
+        "Paris Corner Ministry of Oud - Amber Oud 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-amber-oud",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-INDONESIAN",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-INDONESIAN-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Indonesian 100 ml",
+        "Paris Corner Ministry of Oud - Oud Indonesian 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-indonesian",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-ROYAL",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-ROYAL-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Royal 100 ml",
+        "Paris Corner Ministry of Oud - Oud Royal 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-royal",
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-SATIN",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-OUD-SATIN-100-000",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Oud Satin 100 ml",
+        "Paris Corner Ministry of Oud - Oud Satin 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-oud-satin"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-MINISTRY-OF-OUD-STRICTLY-OUD",
+      "variant_id": "SHV-SH-PARIS-CORNER-MINISTRY-OF-OUD-STRICTLY-OUD-100-EDP",
+      "size_ml": 100,
+      "aliases": [
+        "Ministry of Oud - Strictly Oud 100 ml",
+        "Paris Corner Ministry of Oud - Strictly Oud 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ministry-of-oud-strictly-oud",
+      "concentration": "Eau de Parfum"
     }
   ]
 }

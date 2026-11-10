@@ -25,8 +25,19 @@ class ParisCornerCatalogParityTests(unittest.TestCase):
         registry_names = {normalized(p["canonical_name"]) for p in self.family["products"]}
         # Registry aliases can retain spelling/diacritic variants and discovery
         # identities that have not yet been promoted to the canonical seed.
-        self.assertTrue(catalog_names.issubset(registry_names))
-        self.assertEqual(len(self.products), 254)
+        self.assertEqual(catalog_names, registry_names)
+        self.assertEqual(len(self.products), 259)
+
+
+    def test_discovery_spelling_variants_are_aliases_not_duplicate_identities(self):
+        entries = {
+            row["canonical_name"]: row
+            for row in self.family["products"]
+        }
+        self.assertIn("Attratus", entries["Attractus"].get("aliases", []))
+        self.assertIn("Harrier Absoulte", entries["Harrier Absolute"].get("aliases", []))
+        self.assertNotIn("Attratus", entries)
+        self.assertNotIn("Harrier Absoulte", entries)
 
     def test_all_products_use_the_canonical_family_id(self):
         self.assertTrue(all(p.get("family_id") == "paris_corner_catalog" for p in self.products))

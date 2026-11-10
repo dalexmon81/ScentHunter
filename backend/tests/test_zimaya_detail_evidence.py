@@ -19,6 +19,8 @@ EXPECTED = {
     "Abadi Saga": "https://zimayaperfumes.com/products/abadi-saga-pour-homme-edp-100ml",
     "Al Barari Coral": "https://zimayaperfumes.com/products/al-barari-coral",
     "Al Barari Shore": "https://zimayaperfumes.com/products/al-barari-shore",
+    "Ghali Imperial": "https://fr.zimayaperfumes.com/products/ghali-imperial",
+    "Al Embratur Elixir": "https://fr.zimayaperfumes.com/products/al-embratur-elixir",
 }
 
 
@@ -30,7 +32,7 @@ class ZimayaDetailEvidenceTests(unittest.TestCase):
         cls.products = cls.catalog["products"]
         cls.variants = cls.catalog["variants"]
 
-    def test_ten_products_have_official_detail_evidence(self):
+    def test_sixteen_products_have_official_detail_evidence(self):
         for name, url in EXPECTED.items():
             with self.subTest(product=name):
                 matches = [
@@ -44,7 +46,7 @@ class ZimayaDetailEvidenceTests(unittest.TestCase):
                 self.assertEqual(product.get("source_url"), url)
                 self.assertIn(100, product.get("formats_ml", []))
 
-    def test_each_verified_product_has_one_100ml_edp_variant(self):
+    def test_each_verified_edp_product_has_one_100ml_edp_variant(self):
         for name in EXPECTED:
             with self.subTest(product=name):
                 product = next(
@@ -61,6 +63,30 @@ class ZimayaDetailEvidenceTests(unittest.TestCase):
                 self.assertEqual(variants[0].get("concentration"), "Eau de Parfum")
                 for forbidden in ("price", "stock", "shipping_cost", "store_url"):
                     self.assertNotIn(forbidden, variants[0])
+
+    def test_afrah_has_official_20ml_concentrated_oil_variant(self):
+        product = next(
+            p for p in self.products
+            if p.get("brand_name") == "Zimaya"
+            and p.get("canonical_name") == "Afrah"
+        )
+        self.assertEqual(product.get("identity_status"), "source_verified_name")
+        self.assertEqual(
+            product.get("source_url"),
+            "https://fr.zimayaperfumes.com/products/afrah",
+        )
+        self.assertIn(20, product.get("formats_ml", []))
+        variants = [
+            v for v in self.variants
+            if v.get("product_id") == product["product_id"]
+            and v.get("size_ml") == 20
+        ]
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].get("concentration"), "Concentrated Oil")
+        self.assertEqual(
+            variants[0].get("source_evidence_url"),
+            "https://fr.zimayaperfumes.com/products/afrah",
+        )
 
 
 if __name__ == "__main__":

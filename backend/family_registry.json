@@ -3794,18 +3794,12 @@
           "canonical_name": "Attractus",
           "aliases": [
             "Attractus",
-            "Paris Corner Attractus"
+            "Paris Corner Attractus",
+            "Attratus",
+            "Paris Corner Attratus"
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Attratus",
-          "aliases": [
-            "Attratus",
-            "Paris Corner Attratus",
-            "Paris Corner Attratus"
           ]
         },
         {
@@ -4244,14 +4238,9 @@
           "aliases": [
             "Green Bet",
             "Paris Corner Green Bet"
-          ]
-        },
-        {
-          "canonical_name": "Harrier Absoulte",
-          "aliases": [
-            "Harrier Absoulte",
-            "Paris Corner Harrier Absoulte",
-            "Paris Corner Harrier Absoulte"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4259,6 +4248,9 @@
           "aliases": [
             "Heer",
             "Paris Corner Heer"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4484,6 +4476,9 @@
             "Lueur D'Espoir Memories of Summer",
             "Paris Corner Lueur D'Espoir Memories of Summer",
             "Paris Corner Lueur d'Espoir Memories of Summer"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4649,6 +4644,9 @@
             "Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4693,6 +4691,9 @@
             "Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4701,6 +4702,9 @@
             "Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4709,6 +4713,9 @@
             "Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4726,6 +4733,9 @@
             "Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5298,6 +5308,9 @@
             "The Show Magnifique",
             "Paris Corner The Show Magnifique",
             "Paris Corner The Show Magnifique"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5584,6 +5597,9 @@
             "Zariya",
             "Paris Corner Zariya",
             "Paris Corner Zariya"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5618,7 +5634,9 @@
           "canonical_name": "Harrier Absolute",
           "aliases": [
             "Harrier Absolute",
-            "Paris Corner Harrier Absolute"
+            "Paris Corner Harrier Absolute",
+            "Harrier Absoulte",
+            "Paris Corner Harrier Absoulte"
           ]
         },
         {
@@ -15545,6 +15563,9 @@
           "aliases": [
             "Afrah",
             "Zimaya Afrah"
+          ],
+          "formats_ml": [
+            20
           ]
         },
         {
@@ -15579,6 +15600,9 @@
           "aliases": [
             "Al Embratur Elixir",
             "Zimaya Al Embratur Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15807,6 +15831,9 @@
           "aliases": [
             "Ghali Imperial",
             "Zimaya Ghali Imperial"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
