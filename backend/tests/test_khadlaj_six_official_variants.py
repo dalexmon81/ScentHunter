@@ -1,4 +1,4 @@
-"""Regression tests for nineteen Khadlaj official product-page variants."""
+"""Regression tests for twenty-three Khadlaj official product-page variants."""
 import json
 import unittest
 from pathlib import Path
@@ -27,6 +27,10 @@ EXPECTED = {
     "Nuha Bon Bon": ("SH-KHADLAJ-7ecbb58c", 85, "Eau de Parfum", "6298043070317", "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online"),
     "Nuha Vanilla Pearl": ("SH-KHADLAJ-76dd12b7", 85, "Eau de Parfum", "6291107979182", "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae"),
     "Onyx Silver": ("SH-KHADLAJ-ce66d76f", 100, "Eau de Parfum", "6298043071161", "https://khadlaj-perfumes.com/products/khadlaj-onyx-silver-100-ml-eau-de-parfum-for-men-and-women-online-dubai-uae"),
+    "Oud Pure Oud Barakat": ("SH-KHADLAJ-SPRAY-HARVEST-056", 60, "Eau de Parfum", "6291107979564", "https://khadlaj-perfumes.com/collections/unisex-1/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women"),
+    "Oud Pure Oud Galazaid": ("SH-KHADLAJ-SPRAY-HARVEST-057", 60, "Eau de Parfum", "6291107979588", "https://khadlaj-perfumes.com/products/oud-pure-oud-galazaid-60-ml-master-perfumer-collection-edp-spray-for-men-women"),
+    "Oud Pure Oud Jumeirah": ("SH-KHADLAJ-SPRAY-HARVEST-058", 60, "Eau de Parfum", "6291107979595", "https://khadlaj-perfumes.myshopify.com/collections/khadlaj-na-best-sellers/products/oud-pure-oud-barakat-60-ml-master-perfumer-collection-edp-spray-for-men-women-copy"),
+    "Fursan Brown": ("SH-KHADLAJ-SPRAY-HARVEST-065", 100, "Eau de Parfum", "6291107977768", "https://khadlaj-perfumes.com/products/khadlaj-fursan-brown-100-ml-edp-spray-perfume-for-him-and-her"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
@@ -57,19 +61,21 @@ class KhadlajOfficialVariantBatchTests(unittest.TestCase):
                 self.assertEqual(variant["source_url"], url)
                 self.assertEqual(variant["source_evidence_url"], url)
 
-    def test_khadlaj_family_registry_has_one_canonical_sueno_row(self):
-        family = next(f for f in REGISTRY["families"] if f.get("family_id") == "khadlaj_catalog")
-        sueno_rows = [p for p in family["products"] if p.get("canonical_name") in ("Sueno", "Sueño")]
+    def test_family_registry_matches_each_products_family_and_size(self):
+        for name, (product_id, size, _, _, _) in EXPECTED.items():
+            with self.subTest(product=name):
+                product = next(p for p in CATALOG["products"] if p.get("product_id") == product_id)
+                family = next(f for f in REGISTRY["families"] if f.get("family_id") == product.get("family_id"))
+                rows = [p for p in family["products"] if p.get("canonical_name") == name]
+                self.assertEqual(len(rows), 1)
+                self.assertEqual(rows[0].get("formats_ml"), [size])
+        main_family = next(f for f in REGISTRY["families"] if f.get("family_id") == "khadlaj_catalog")
+        sueno_rows = [p for p in main_family["products"] if p.get("canonical_name") in ("Sueno", "Sueño")]
         self.assertEqual(len(sueno_rows), 1)
         self.assertEqual(sueno_rows[0]["canonical_name"], "Sueno")
         self.assertIn("Sueño", sueno_rows[0].get("aliases", []))
-        private_blend = next(p for p in family["products"] if p.get("canonical_name") == "Private Blend")
+        private_blend = next(p for p in main_family["products"] if p.get("canonical_name") == "Private Blend")
         self.assertIn("Private Blend Tobac Extra", private_blend.get("aliases", []))
-        for name, (_, size, _, _, _) in EXPECTED.items():
-            with self.subTest(product=name):
-                matches = [p for p in family["products"] if p.get("canonical_name") == name]
-                self.assertEqual(len(matches), 1)
-                self.assertEqual(matches[0].get("formats_ml"), [size])
 
 if __name__ == "__main__":
     unittest.main()
