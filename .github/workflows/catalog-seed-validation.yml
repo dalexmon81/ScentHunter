@@ -3,7 +3,7 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/cumulative-official-audits-2026-11-10
+      - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
   push:
     branches:
       - catalog/cumulative-official-audits-2026-11-10
