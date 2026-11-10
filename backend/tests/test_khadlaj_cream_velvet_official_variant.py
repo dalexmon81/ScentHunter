@@ -1,4 +1,6 @@
 """Regression coverage for three Khadlaj official product-page reconciliations."""
+# NOTE: Keep this module and the workflow test list in sync; CI must not reference
+# an absent test module.
 import json
 import unittest
 from pathlib import Path
