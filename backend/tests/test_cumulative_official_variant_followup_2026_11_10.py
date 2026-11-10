@@ -14,7 +14,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-16266aa9-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/1963-eau-de-perfum-100ml"
     },
     {
@@ -24,7 +24,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-3d531ce4-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/adorable-eau-de-parfum-100-ml-for-women"
     },
     {
@@ -34,7 +34,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-9f818ff4-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/maison-asrar-alonoud-eau-de-parfum-100-ml-for-women"
     },
     {
@@ -44,7 +44,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-a39f5b0c-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/maison-asrar-basma-eau-de-parfum-100-ml-unisex"
     },
     {
@@ -54,7 +54,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-cc3d301b-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/black-eau-de-perfum-100ml"
     },
     {
@@ -64,7 +64,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-41bd4808-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/bloom-bloom-eau-de-parfum-100ml"
     },
     {
@@ -74,7 +74,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-50f4c721-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/bonita-eau-de-parfum-100ml"
     },
     {
@@ -84,7 +84,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-ad855115-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml"
     },
     {
@@ -94,7 +94,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-3e2cdf7a-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/maison-asrar-emessa-eau-de-parfum-for-women"
     },
     {
@@ -104,7 +104,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-21a61d03-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml"
     },
     {
@@ -114,7 +114,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-e94219a7-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women"
     },
     {
@@ -124,7 +124,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-f778e873-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml"
     },
     {
@@ -134,7 +134,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-a5a7cc49-80-EDP",
         "size": 80,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/maison-asrar-gentle-oud-eau-de-parfum-80-ml-for-men"
     },
     {
@@ -144,7 +144,7 @@ EXPECTED = [
         "variant_id": "SHV-SH-MAISON-ASRAR-9b703ddc-100-EDP",
         "size": 100,
         "concentration": "Eau de Parfum",
-        "gtin": null,
+        "gtin": None,
         "url": "https://maisonasrar.com/products/maison-asrar-hamsat-gharam-eau-de-parfum-100-ml-for-women"
     },
     {
