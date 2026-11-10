@@ -39431,7 +39431,10 @@
       "source_product_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
       "concentration": "Extrait de Parfum",
-      "gender": "Women"
+      "gender": "Women",
+      "formats_ml": [
+        70
+      ]
     },
     {
       "product_id": "SH-FRENCH-AVENUE-ECLAIR-AFFAIR",
@@ -55421,6 +55424,19 @@
       "gender": "Men",
       "source_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr"
+    },
+    {
+      "product_id": "SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT",
+      "size_ml": 70,
+      "aliases": [
+        "Club de Nuit Woman Extrait de Parfum 70 ml",
+        "Armaf Club de Nuit Woman Extrait de Parfum 70 ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT-70-000",
+      "concentration": "Extrait de Parfum",
+      "gender": "Women",
+      "source_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr"
     }
   ]
 }
