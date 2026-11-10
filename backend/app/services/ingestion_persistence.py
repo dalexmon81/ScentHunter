@@ -136,7 +136,8 @@ def record_legacy_match(
 
 def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
                   currency: str, url: str, availability: str, source: str,
-                  confidence: Decimal | None = None) -> UUID:
+                  confidence: Decimal | None = None,
+                  match_existing_by_variant: bool = True) -> UUID:
     """Idempotently create/update one store offer and append price history."""
     row = session.get(IngestionRaw, ingestion_raw_id)
     if row is None:
@@ -168,7 +169,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
             Offer.store_id == row.store_id,
             Offer.external_product_id == row.external_product_id,
         ).order_by(Offer.captured_at.desc()).limit(1))
-    if existing is None:
+    if existing is None and match_existing_by_variant:
         existing = session.scalar(select(Offer).where(
             Offer.store_id == row.store_id,
             Offer.product_variant_id == row.product_variant_id,
