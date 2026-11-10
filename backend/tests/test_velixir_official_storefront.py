@@ -12,7 +12,7 @@ EXPECTED = {
     "Comus": ("SH-VELIXIR-50b87cfb", "https://velixirparfums.store/products/comus", "Extrait de Parfum", [35,100]),
     "Ether": ("SH-VELIXIR-36e7a5ca", "https://velixirparfums.store/products/ether", "Extrait de Parfum", [35,100]),
     "Orpheus": ("SH-VELIXIR-7e147c46", "https://velixirparfums.store/products/orpheus", "Extrait de Parfum", [35,100]),
-    "Comus": ("SH-VELIXIR-50b87cfb", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
+    "Comus": ("SH-VELIXIR-50b87cfb", "https://velixirparfums.store/products/comus", "Extrait de Parfum", [35,100]),
     "Harmonia": ("SH-VELIXIR-e49794d3", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-harmonia", "Eau de Parfum", [35,100]),
     "Nyx": ("SH-VELIXIR-153bbbed", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-nyx-eau-de-parfum-for-unisex", "Eau de Parfum", [35,100]),
     "Morpheus": ("SH-VELIXIR-21cface3", "https://velixirparfums.com/collections/frontpage/products/velixir-morpheus-for-unisex-eau-de-parfum", "Eau de Parfum", [35,100]),
@@ -29,8 +29,8 @@ EXPECTED = {
     "Poseidon": ("SH-VELIXIR-c43f9b63", "https://velixirparfums.com/collections/frontpage/products/velixir-poseidon-for-unisex-eau-de-parfum", "Eau de Parfum", [35,100]),
     "Uranus": ("SH-VELIXIR-029d80ce", "https://velixirparfums.com/collections/frontpage/products/velixir-uranus-for-unisex-eau-de-parfum", "Eau de Parfum", [35,100]),
     "Selene": ("SH-VELIXIR-bc687534", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-selene-eau-de-parfum-for-unisex", "Eau de Parfum", [35,100]),
-    "Orpheus": ("SH-VELIXIR-7e147c46", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
-    "Ether": ("SH-VELIXIR-36e7a5ca", "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex", "Extrait de Parfum", []),
+    "Orpheus": ("SH-VELIXIR-7e147c46", "https://velixirparfums.store/products/orpheus", "Extrait de Parfum", [35,100]),
+    "Ether": ("SH-VELIXIR-36e7a5ca", "https://velixirparfums.store/products/ether", "Extrait de Parfum", [35,100]),
 }
 
 
