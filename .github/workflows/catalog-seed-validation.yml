@@ -3,6 +3,7 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
+      - catalog/catalog-finish-followup-2026-11-10
       - catalog/official-brand-audit-2026-11-10
       - catalog/brand-expansion-2026-11
       - catalog/complete-brand-expansion-2026-11
@@ -23,6 +24,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/catalog-finish-followup-2026-11-10
       - catalog/cumulative-catalog-resume-2026-11-10
       - catalog/cumulative-brand-variants-rebased-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
