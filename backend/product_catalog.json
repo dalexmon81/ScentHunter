@@ -1616,9 +1616,10 @@
         "Coffee Blend",
         "Maison Asrar Coffee Blend"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum",
+      "source_product_url": "https://maisonasrar.com/products/coffee-blend-eau-de-parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-0c9a3533",
@@ -2343,9 +2344,10 @@
         "Soirée",
         "Maison Asrar Soirée"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/soiree",
+      "source_evidence_url": "https://maisonasrar.com/products/soiree",
+      "source_product_url": "https://maisonasrar.com/products/soiree"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6210ceb2",
@@ -2439,9 +2441,10 @@
         "Tornado",
         "Maison Asrar Tornado"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/tornado",
+      "source_evidence_url": "https://maisonasrar.com/products/tornado",
+      "source_product_url": "https://maisonasrar.com/products/tornado"
     },
     {
       "product_id": "SH-MAISON-ASRAR-055193ca",
@@ -2535,9 +2538,10 @@
         "Vision",
         "Maison Asrar Vision"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/vision",
+      "source_evidence_url": "https://maisonasrar.com/products/vision",
+      "source_product_url": "https://maisonasrar.com/products/vision"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6390bbbb",
@@ -3477,7 +3481,10 @@
       "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
       "formats_ml": [
         35
-      ]
+      ],
+      "concentration": "Concentrated Oil",
+      "source_product_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml"
     },
     {
       "product_id": "SH-KHADLAJ-f26d9535",
@@ -3562,7 +3569,8 @@
       "formats_ml": [
         100
       ],
-      "gender": "Women"
+      "gender": "Women",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-cdaa81f2",
@@ -40825,7 +40833,8 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-f492c4b4-35-000",
       "source_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
-      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml"
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/hareem-al-sultan-gold-35ml",
+      "concentration": "Concentrated Oil"
     },
     {
       "product_id": "SH-KHADLAJ-d348f0b3",
@@ -51337,7 +51346,8 @@
       "gtin": "6298043070768",
       "source_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/sawaar-vanille-blanc-100-ml-eau-de-parfum-spray-for-women",
-      "gender": "Women"
+      "gender": "Women",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-061",
