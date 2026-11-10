@@ -28,6 +28,7 @@ on:
       - catalog/catalog-audit-integrate-khadlaj-2026-11-10
       - catalog/zimaya-four-official-100ml-variants-2026-11-10
       - catalog/zimaya-afrah-alembratur-ghali-official-details-2026-11-10
+      - catalog/catalog-final-continuation-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -60,6 +61,7 @@ on:
       - catalog/catalog-audit-resume-2026-11-10
       - catalog/catalog-audit-integrate-khadlaj-2026-11-10
       - catalog/zimaya-four-official-100ml-variants-2026-11-10
+      - catalog/catalog-final-continuation-2026-11-10
       - catalog/zimaya-afrah-alembratur-ghali-official-details-2026-11-10
 
 permissions:
