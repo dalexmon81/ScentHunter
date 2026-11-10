@@ -24,6 +24,10 @@ class PromotionRejected(ValueError):
     """A staged retailer row failed the publication contract."""
 
 
+class StaleObservation(PromotionRejected):
+    """A source observation is not newer than the currently stored offer."""
+
+
 @dataclass(frozen=True)
 class ResolvedLegacyIds:
     fragrance_id: UUID
@@ -137,8 +141,9 @@ def record_legacy_match(
 def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
                   currency: str, url: str, availability: str, source: str,
                   confidence: Decimal | None = None,
-                  match_existing_by_variant: bool = True) -> UUID:
-    """Idempotently create/update one store offer and append price history."""
+                  match_existing_by_variant: bool = True,
+                  observed_at: datetime | None = None) -> UUID:
+    """Idempotently create/update one store offer using source observation time."""
     row = session.get(IngestionRaw, ingestion_raw_id)
     if row is None:
         raise ValueError("unknown ingestion_raw_id")
@@ -162,6 +167,10 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected("source is required")
     if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
         raise PromotionRejected("confidence must be between 0 and 1")
+    if observed_at is not None:
+        if not isinstance(observed_at, datetime) or observed_at.tzinfo is None or observed_at.utcoffset() is None:
+            raise PromotionRejected("source observation timestamp must be timezone-aware")
+        observed_at = observed_at.astimezone(timezone.utc)
 
     existing = None
     if row.external_product_id:
@@ -178,27 +187,38 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected(
             "external product identity is already linked to a different canonical variant"
         )
+    if existing is not None and observed_at is not None:
+        stored_at = existing.captured_at
+        if stored_at.tzinfo is None or stored_at.utcoffset() is None:
+            stored_at = stored_at.replace(tzinfo=timezone.utc)
+        else:
+            stored_at = stored_at.astimezone(timezone.utc)
+        if observed_at <= stored_at:
+            raise StaleObservation("source observation is not newer than the stored offer")
 
+    captured_at = observed_at or datetime.now(timezone.utc)
     if existing is None:
         offer = Offer(
             ingestion_raw_id=row.id, store_id=row.store_id,
             product_variant_id=row.product_variant_id,
             external_product_id=row.external_product_id, url=url, price=price,
             currency=currency, availability=availability, source=source,
+            captured_at=captured_at,
             confidence=confidence if confidence is not None else row.match_confidence,
             status="active",
         )
         session.add(offer)
         session.flush()
         session.add(PriceHistory(offer_id=offer.id, price=price,
-                                 currency=currency, availability=availability))
+                                 currency=currency, availability=availability,
+                                 captured_at=captured_at))
         offer_id = offer.id
     else:
         existing.ingestion_raw_id = row.id
         existing.external_product_id = row.external_product_id or existing.external_product_id
         existing.product_variant_id = row.product_variant_id
         existing.url = url
-        existing.captured_at = datetime.now(timezone.utc)
+        existing.captured_at = captured_at
         existing.price = price
         existing.currency = currency
         existing.availability = availability
@@ -211,6 +231,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         session.add(PriceHistory(
             offer_id=existing.id, price=price,
             currency=currency, availability=availability,
+            captured_at=captured_at,
         ))
         offer_id = existing.id
         session.flush()
