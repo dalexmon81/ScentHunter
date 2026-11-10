@@ -703,9 +703,10 @@
         "Vanilla Aura",
         "Maison Asrar Vanilla Aura"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/vanilla-aura",
+      "source_evidence_url": "https://maisonasrar.com/products/vanilla-aura",
+      "source_product_url": "https://maisonasrar.com/products/vanilla-aura"
     },
     {
       "product_id": "SH-MAISON-ASRAR-9dfce2f6",
@@ -719,9 +720,10 @@
         "Faris Al Arab",
         "Maison Asrar Faris Al Arab"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/faris-al-arab",
+      "source_evidence_url": "https://maisonasrar.com/products/faris-al-arab",
+      "source_product_url": "https://maisonasrar.com/products/faris-al-arab"
     },
     {
       "product_id": "SH-MAISON-ASRAR-19d98178",
@@ -735,9 +737,10 @@
         "Vanilla Voyage",
         "Maison Asrar Vanilla Voyage"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum",
+      "source_product_url": "https://maisonasrar.com/products/vanilla-voyage-eau-de-parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-6d0c1431",
