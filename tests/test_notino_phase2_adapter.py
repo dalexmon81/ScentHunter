@@ -159,7 +159,7 @@ def test_duplicate_gtin_stays_pending_for_manual_review():
             duplicate = ProductVariant(
                 fragrance_id=original.fragrance_id,
                 concentration="EDT", size_ml=100,
-                gtin="1234567890123",
+                gtin="4006381333931",
                 canonical_key="test|fragrance|edt|100",
             )
             session.add(duplicate)
