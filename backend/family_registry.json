@@ -13484,6 +13484,9 @@
           "aliases": [
             "9 PM Pour Femme",
             "Afnan 9 PM Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13626,6 +13629,9 @@
           "aliases": [
             "Turathi Purple",
             "Afnan Turathi Purple"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {
@@ -13688,6 +13694,10 @@
           "aliases": [
             "Supremacy Silver",
             "Afnan Supremacy Silver"
+          ],
+          "formats_ml": [
+            100,
+            150
           ]
         },
         {
@@ -13952,6 +13962,9 @@
           "aliases": [
             "TURATHI RED",
             "Afnan TURATHI RED"
+          ],
+          "formats_ml": [
+            90
           ]
         },
         {

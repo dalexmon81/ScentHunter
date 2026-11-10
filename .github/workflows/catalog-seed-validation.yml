@@ -16,6 +16,7 @@ on:
       - catalog/armaf-cdn-woman-extrait-70ml-2026-11-10
       - catalog/afnan-official-evidence-batch-2026-11-10
       - catalog/afnan-official-evidence-followup-2026-11-10
+      - catalog/afnan-official-evidence-third-batch-2026-11-10
   push:
     branches:
       - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
@@ -31,6 +32,7 @@ on:
       - catalog/armaf-cdn-woman-extrait-70ml-2026-11-10
       - catalog/afnan-official-evidence-batch-2026-11-10
       - catalog/afnan-official-evidence-followup-2026-11-10
+      - catalog/afnan-official-evidence-third-batch-2026-11-10
 
 permissions:
   contents: read
