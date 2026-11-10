@@ -1,4 +1,4 @@
-"""Regression tests for nine Khadlaj official product-page variants."""
+"""Regression tests for thirteen Khadlaj official product-page variants."""
 import json
 import unittest
 from pathlib import Path
@@ -17,6 +17,10 @@ EXPECTED = {
     "Zayaan Silver": ("SH-KHADLAJ-ZAYAAN-SILVER", 100, "Eau de Parfum", "6298043070058", "https://khadlaj-perfumes.com/products/zayaan-silver-fresh-aquatic-spicy-woody-eau-de-parfum-for-men"),
     "Onyx Gold": ("SH-KHADLAJ-6494ea68", 100, "Eau de Parfum", "6298043070140", "https://khadlaj-perfumes.com/products/khadlaj-onyx-gold-100-ml-eau-de-parfum-for-men-luxury-perfume-online-dubai-uae"),
     "Peach Velvet": ("SH-KHADLAJ-PEACH-VELVET", 100, "Extrait de Parfum", "6298043070034", "https://khadlaj-perfumes.com/collections/all/products/peach-velvet-100-ml-extrait-de-parfum-for-women-top-women-fragrance-brand-uae"),
+    "Strawberry Shake": ("SH-KHADLAJ-STRAWBERRY-SHAKE", 100, "Eau de Parfum", "6298043070652", "https://khadlaj-perfumes.com/collections/best-selling-perfumes/products/strawberry-shake-eau-de-parfum-spray-for-women-dubai-uae-online"),
+    "Nafais Magrib": ("SH-KHADLAJ-NAFAIS-MAGRIB", 100, "Eau de Parfum", "6298043070010", "https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-nafais-magrib-100-ml-eau-de-parfum-for-men-women"),
+    "Mansion": ("SH-KHADLAJ-MANSION", 100, "Eau de Parfum", "6298043070331", "https://khadlaj-perfumes.com/collections/unisex-1/products/mansion-eau-de-parfum-spray-for-unisex-scents-by-khadlaj-dubai-uae"),
+    "Private Blend": ("SH-KHADLAJ-PRIVATE-BLEND", 100, "Extrait de Parfum", "6291107979403", "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/private-blend-tobac-extra-extrait-de-parfum-100-ml-for-men"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
@@ -53,12 +57,13 @@ class KhadlajOfficialVariantBatchTests(unittest.TestCase):
         self.assertEqual(len(sueno_rows), 1)
         self.assertEqual(sueno_rows[0]["canonical_name"], "Sueno")
         self.assertIn("Sueño", sueno_rows[0].get("aliases", []))
+        private_blend = next(p for p in family["products"] if p.get("canonical_name") == "Private Blend")
+        self.assertIn("Private Blend Tobac Extra", private_blend.get("aliases", []))
         for name, (_, size, _, _, _) in EXPECTED.items():
             with self.subTest(product=name):
                 matches = [p for p in family["products"] if p.get("canonical_name") == name]
                 self.assertEqual(len(matches), 1)
                 self.assertEqual(matches[0].get("formats_ml"), [size])
-
 
 if __name__ == "__main__":
     unittest.main()
