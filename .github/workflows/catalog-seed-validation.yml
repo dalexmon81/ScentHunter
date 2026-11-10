@@ -24,6 +24,7 @@ on:
       - catalog/cumulative-verified-variants-followup-2026-11-10
       - catalog/khadlaj-shiyaaka-and-gourmand-detail-audit-2026-11-10
       - catalog/maison-asrar-official-pages-batch-2026-11-10
+      - catalog/catalog-audit-resume-2026-11-10
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
@@ -53,6 +54,7 @@ on:
       - catalog/cumulative-verified-variants-followup-2026-11-10
       - catalog/khadlaj-shiyaaka-and-gourmand-detail-audit-2026-11-10
       - catalog/maison-asrar-official-pages-batch-2026-11-10
+      - catalog/catalog-audit-resume-2026-11-10
 
 permissions:
   contents: read
