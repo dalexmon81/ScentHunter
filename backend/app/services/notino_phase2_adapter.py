@@ -42,6 +42,19 @@ def persist_notino_record(
         external_product_id=external_id,
     )
 
+    # A retailer-specific identifier is required for safe idempotent updates.
+    # Keep malformed rows in the raw queue rather than publishing an offer whose
+    # identity cannot be refreshed without falling back to variant-level matching.
+    if external_id is None:
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method="notino_external_id", reason="missing_external_product_id",
+            unresolved_status="pending",
+        )
+        return NotinoPhase2Result(
+            raw_id, "pending", reason="missing_external_product_id",
+        )
+
     gtin = str(raw_record.get("gtin") or "").strip()
     variants = session.scalars(
         select(ProductVariant).where(ProductVariant.gtin == gtin)
