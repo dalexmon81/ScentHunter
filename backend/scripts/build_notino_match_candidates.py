@@ -20,6 +20,8 @@ from pathlib import Path
 GTIN_LENGTHS = {8, 12, 13, 14}
 CONCENTRATIONS = {
     "eau de parfum intense": "EDP_INTENSE",
+    "eau de toilette intense": "EDT_INTENSE",
+    "pure parfum": "PARFUM",
     "eau de parfum": "EDP",
     "eau de toilette": "EDT",
     "eau de cologne": "EDC",
@@ -29,6 +31,7 @@ CONCENTRATIONS = {
     "edp": "EDP",
     "edt": "EDT",
     "edc": "EDC",
+    "extrait": "EXTRAIT",
 }
 
 
@@ -149,7 +152,7 @@ def build_catalog_index(catalog: dict) -> list[dict]:
                 "brand_key": brand_key,
                 "names": sorted(set(normalized_names + [n for n in variant_names if n])),
                 "size_ml": variant.get("size_ml"),
-                "concentration": extract_concentration(product.get("concentration", "")),
+                "concentration": extract_concentration(\n                    variant.get("concentration") or product.get("concentration", "")\n                ),
                 "gender": _catalog_gender(product, names),
                 "gtins": variant.get("gtins") or [],
             })
