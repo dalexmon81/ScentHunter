@@ -14718,6 +14718,9 @@
           "aliases": [
             "Florenza",
             "Maison Alhambra Florenza"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -14763,9 +14766,6 @@
           "aliases": [
             "Galactic Men Intense",
             "Maison Alhambra Galactic Men Intense"
-          ],
-          "formats_ml": [
-            100
           ]
         },
         {
@@ -14878,7 +14878,12 @@
           "canonical_name": "III L'Impressio",
           "aliases": [
             "III L'Impressio",
-            "Maison Alhambra III L'Impressio"
+            "Maison Alhambra III L'Impressio",
+            "L'impressio III",
+            "Maison Alhambra L'impressio III"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15046,9 +15051,6 @@
           "aliases": [
             "Jorge di Profumo",
             "Maison Alhambra Jorge di Profumo"
-          ],
-          "formats_ml": [
-            100
           ]
         },
         {
@@ -15268,6 +15270,9 @@
           "aliases": [
             "Luxe Chic",
             "Maison Alhambra Luxe Chic"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15331,6 +15336,9 @@
           "aliases": [
             "Mia Dolcezza",
             "Maison Alhambra Mia Dolcezza"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15338,6 +15346,9 @@
           "aliases": [
             "Mia Dolcezza Verde",
             "Maison Alhambra Mia Dolcezza Verde"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15906,53 +15917,13 @@
           ]
         },
         {
-          "canonical_name": "Yeah",
+          "canonical_name": "Pink Velvet",
           "aliases": [
-            "Yeah",
-            "Maison Alhambra Yeah"
+            "Pink Velvet",
+            "Maison Alhambra Pink Velvet"
           ],
           "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Yeah! Man Parfum",
-          "aliases": [
-            "Yeah! Man Parfum",
-            "Maison Alhambra Yeah! Man Parfum"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Toro Pour Homme Glace",
-          "aliases": [
-            "Toro Pour Homme Glace",
-            "Maison Alhambra Toro Pour Homme Glace"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Your Touch Amber",
-          "aliases": [
-            "Your Touch Amber",
-            "Maison Alhambra Your Touch Amber"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Opulence Leather",
-          "aliases": [
-            "Opulence Leather",
-            "Maison Alhambra Opulence Leather"
-          ],
-          "formats_ml": [
-            100
+            80
           ]
         }
       ]

@@ -36,7 +36,7 @@ MINIMUM_BRAND_COUNTS = {
     "Zimaya": 76,
     "Al Haramain": 149,
     "Games of Spades": 32,
-    "Maison Alhambra": 237,
+    "Maison Alhambra": 238,
     "Mykonos": 72,
     "Armaf": 218,
 }
