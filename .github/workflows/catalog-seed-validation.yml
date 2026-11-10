@@ -23,6 +23,7 @@ on:
       - ".github/workflows/catalog-seed-validation.yml"
   push:
     branches:
+      - catalog/cumulative-catalog-resume-2026-11-10
       - catalog/cumulative-brand-variants-rebased-2026-11-10
       - catalog/khadlaj-cream-velvet-verified-2026-11-10
       - catalog/complete-brand-expansion-2026-11
