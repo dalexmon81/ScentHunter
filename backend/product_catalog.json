@@ -719,9 +719,11 @@
         "Faris Al Arab",
         "Maison Asrar Faris Al Arab"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/faris-al-arab",
+      "source_evidence_url": "https://maisonasrar.com/products/faris-al-arab",
+      "source_product_url": "https://maisonasrar.com/products/faris-al-arab",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-19d98178",
@@ -1638,9 +1640,11 @@
         "Dubai Milano",
         "Maison Asrar Dubai Milano"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dubai-milano",
+      "source_evidence_url": "https://maisonasrar.com/products/dubai-milano",
+      "source_product_url": "https://maisonasrar.com/products/dubai-milano",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-256772f2",
@@ -1654,9 +1658,11 @@
         "DXB",
         "Maison Asrar DXB"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/dxb",
+      "source_evidence_url": "https://maisonasrar.com/products/dxb",
+      "source_product_url": "https://maisonasrar.com/products/dxb",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-MAISON-ASRAR-e0b0738b",
@@ -1703,9 +1709,14 @@
         "Emessa",
         "Maison Asrar Emessa"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-emessa-eau-de-parfum-for-women",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-emessa-eau-de-parfum-for-women",
+      "source_product_url": "https://maisonasrar.com/products/maison-asrar-emessa-eau-de-parfum-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-21a61d03",
@@ -1719,9 +1730,14 @@
         "Fairy Tale",
         "Maison Asrar Fairy Tale"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml",
+      "source_evidence_url": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml",
+      "source_product_url": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-b0a32a7c",
@@ -1752,9 +1768,14 @@
         "Fakhama",
         "Maison Asrar Fakhama"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+      "source_product_url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-ba877706",
@@ -1784,9 +1805,14 @@
         "Fresh Iris",
         "Maison Asrar Fresh Iris"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonasrar.com/collections/all",
-      "source_evidence_url": "https://maisonasrarperfumes.eu/perfumes/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml",
+      "source_evidence_url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml",
+      "source_product_url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ASRAR-a5a7cc49",
@@ -49210,6 +49236,50 @@
       "variant_id": "SHV-SH-MAISON-ASRAR-ad855115-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://maisonasrar.com/products/casablanca-maison-asrar-eau-de-perfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-3e2cdf7a",
+      "size_ml": 100,
+      "aliases": [
+        "Emessa 100 ml",
+        "Maison Asrar Emessa 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-3e2cdf7a-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-emessa-eau-de-parfum-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-21a61d03",
+      "size_ml": 100,
+      "aliases": [
+        "Fairy Tale 100 ml",
+        "Maison Asrar Fairy Tale 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-21a61d03-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/fairy-tale-eau-de-perfum-100ml"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-e94219a7",
+      "size_ml": 100,
+      "aliases": [
+        "Fakhama 100 ml",
+        "Maison Asrar Fakhama 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-e94219a7-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/maison-asrar-fakhama-eau-de-parfum-100-ml-for-women"
+    },
+    {
+      "product_id": "SH-MAISON-ASRAR-f778e873",
+      "size_ml": 100,
+      "aliases": [
+        "Fresh Iris 100 ml",
+        "Maison Asrar Fresh Iris 100ml"
+      ],
+      "variant_id": "SHV-SH-MAISON-ASRAR-f778e873-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://maisonasrar.com/products/fresh-iris-maison-asrar-eau-de-perfum-100-ml"
     }
   ]
 }
