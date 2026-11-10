@@ -23,7 +23,7 @@ MINIMUM_BRAND_COUNTS = {
     "Maison Asrar": 120,
     "Swiss Arabian": 41,
     "Paris Corner": 254,
-    "Khadlaj": 115  # one duplicate Musk Pure identity consolidated,
+    "Khadlaj": 115,  # one duplicate Musk Pure identity consolidated
     "Bujairami": 142,
     "Assaf": 140,
     "Al Wataniah": 86,
