@@ -7811,9 +7811,14 @@
         "Jean Lowe Immortal",
         "Maison Alhambra Jean Lowe Immortal"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-immortal",
+      "source_evidence_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-immortal",
+      "source_product_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-immortal",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-8f3b9e79",
@@ -10124,9 +10129,14 @@
         "Jean Lowe Vibe",
         "Maison Alhambra Jean Lowe Vibe"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-vibe",
+      "source_evidence_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-vibe",
+      "source_product_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-vibe",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-c5de1648",
@@ -11048,9 +11058,14 @@
         "Mysterious Amber",
         "Maison Alhambra Mysterious Amber"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://maisonalhambra-usa.com/collections/all",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Maison-Alhambra.html"
+      "identity_status": "source_verified_name",
+      "source_url": "https://lattafaparfum.eu/de-de/products/mysterious-amber",
+      "source_evidence_url": "https://lattafaparfum.eu/de-de/products/mysterious-amber",
+      "source_product_url": "https://lattafaparfum.eu/de-de/products/mysterious-amber",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        80
+      ]
     },
     {
       "product_id": "SH-MAISON-ALHAMBRA-7c532d35",
@@ -50788,6 +50803,42 @@
       ],
       "source_url": "https://lattafa.com/product/amoura-concentrated-oil/",
       "source_evidence_url": "https://lattafa.com/product/amoura-concentrated-oil/"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-e51860be-80-000",
+      "product_id": "SH-MAISON-ALHAMBRA-e51860be",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Mysterious Amber 80 ml Eau de Parfum",
+        "Maison Alhambra Mysterious Amber 80ml"
+      ],
+      "source_url": "https://lattafaparfum.eu/de-de/products/mysterious-amber",
+      "source_evidence_url": "https://lattafaparfum.eu/de-de/products/mysterious-amber"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-615f53ba-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-615f53ba",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Jean Lowe Vibe 100 ml Eau de Parfum",
+        "Maison Alhambra Jean Lowe Vibe 100ml"
+      ],
+      "source_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-vibe",
+      "source_evidence_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-vibe"
+    },
+    {
+      "variant_id": "SHV-SH-MAISON-ALHAMBRA-14a18233-100-000",
+      "product_id": "SH-MAISON-ALHAMBRA-14a18233",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Jean Lowe Immortal 100 ml Eau de Parfum",
+        "Maison Alhambra Jean Lowe Immortal 100ml"
+      ],
+      "source_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-immortal",
+      "source_evidence_url": "https://lattafaparfum.eu/de-de/products/jean-lowe-immortal"
     }
   ]
 }
