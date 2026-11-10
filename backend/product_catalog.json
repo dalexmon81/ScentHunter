@@ -14102,7 +14102,11 @@
       "source_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr",
       "source_evidence_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr",
       "concentration": "Extrait de Parfum",
-      "gender": "Men"
+      "gender": "Men",
+      "formats_ml": [
+        70
+      ],
+      "source_product_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr"
     },
     {
       "product_id": "SH-ARMAF-58e48fd1",
@@ -55404,6 +55408,19 @@
       "gender": "Unisex",
       "source_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-pacific-blue-eau-de-parfum-for-everyone",
       "source_evidence_url": "https://maisonalhambra-usa.com/collections/unisex-fragrance/products/maison-alhambra-pacific-blue-eau-de-parfum-for-everyone"
+    },
+    {
+      "variant_id": "SHV-SH-ARMAF-909fec22-70-000",
+      "product_id": "SH-ARMAF-909fec22",
+      "size_ml": 70,
+      "aliases": [
+        "Club de Nuit Intense Man Extrait de Parfum 70 ml",
+        "Armaf Club de Nuit Intense Man Extrait de Parfum 70 ml"
+      ],
+      "concentration": "Extrait de Parfum",
+      "gender": "Men",
+      "source_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-intense-extrait-de-parfum-spr"
     }
   ]
 }
