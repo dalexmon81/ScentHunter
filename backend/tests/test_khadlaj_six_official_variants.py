@@ -48,6 +48,7 @@ EXPECTED = {
     "Musk Al Sabah": ("SH-KHADLAJ-SPRAY-HARVEST-108", 100, "Eau de Parfum", "6291107977027", "https://khadlaj-perfumes.com/products/musk-al-sabah-100-ml-edp-spray-buy-online-best-price-dubai-uae"),
     "Oud Al Sabah": ("SH-KHADLAJ-SPRAY-HARVEST-109", 100, "Eau de Parfum", "6291107977034", "https://khadlaj-perfumes.com/collections/all-products-exception/products/oud-al-sabah-100-ml-edp-spray-dubai-uae-amber-oud-fragrance"),
     "Shahi Oud": ("SH-KHADLAJ-SPRAY-HARVEST-113", 100, "Eau de Parfum", "6291107971032", "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae"),
+    "Oud Pour Noble": ("SH-KHADLAJ-SPRAY-HARVEST-096", 100, "Eau de Parfum", "6291107971025", "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae"),
 }
 
 class KhadlajOfficialVariantBatchTests(unittest.TestCase):
