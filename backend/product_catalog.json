@@ -4302,8 +4302,15 @@
         "Alex Enable",
         "Assaf Alex Enable"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/alex-enable",
+      "source_product_url": "https://assaf.ae/products/alex-enable",
+      "source_evidence_url": "https://assaf.ae/products/alex-enable",
+      "formats_ml": [
+        100,
+        150
+      ],
+      "gender": "Men"
     },
     {
       "product_id": "SH-ASSAF-004d8117",
@@ -4497,8 +4504,14 @@
         "Wild Colt",
         "Assaf Wild Colt"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://assaf.ae/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://assaf.ae/products/wild-colt-125-ml",
+      "source_product_url": "https://assaf.ae/products/wild-colt-125-ml",
+      "source_evidence_url": "https://assaf.ae/products/wild-colt-125-ml",
+      "formats_ml": [
+        125
+      ],
+      "gender": "Unisex"
     },
     {
       "product_id": "SH-ASSAF-3887c2b6",
@@ -53036,6 +53049,27 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://www.alwataniah.com/products/redaa",
       "source_evidence_url": "https://www.alwataniah.com/products/redaa"
+    },
+    {
+      "variant_id": "SHV-SH-ASSAF-05c40179-125-000",
+      "product_id": "SH-ASSAF-05c40179",
+      "size_ml": 125,
+      "source_url": "https://assaf.ae/products/wild-colt-125-ml",
+      "source_evidence_url": "https://assaf.ae/products/wild-colt-125-ml"
+    },
+    {
+      "variant_id": "SHV-SH-ASSAF-342a7ff8-100-000",
+      "product_id": "SH-ASSAF-342a7ff8",
+      "size_ml": 100,
+      "source_url": "https://assaf.ae/products/alex-enable",
+      "source_evidence_url": "https://assaf.ae/products/alex-enable"
+    },
+    {
+      "variant_id": "SHV-SH-ASSAF-342a7ff8-150-000",
+      "product_id": "SH-ASSAF-342a7ff8",
+      "size_ml": 150,
+      "source_url": "https://assaf.ae/products/alex-enable-150ml",
+      "source_evidence_url": "https://assaf.ae/products/alex-enable-150ml"
     }
   ]
 }
