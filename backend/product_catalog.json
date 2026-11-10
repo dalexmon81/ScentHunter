@@ -16,7 +16,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/adonis",
+      "source_product_url": "https://velixirparfums.com/products/adonis",
+      "source_evidence_url": "https://velixirparfums.com/products/adonis"
     },
     {
       "product_id": "SH-VELIXIR-8b429b66",
@@ -54,7 +56,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/apollo",
+      "source_product_url": "https://velixirparfums.com/products/apollo",
+      "source_evidence_url": "https://velixirparfums.com/products/apollo"
     },
     {
       "product_id": "SH-VELIXIR-599e6e9d",
@@ -70,7 +74,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/ares",
+      "source_product_url": "https://velixirparfums.com/products/ares",
+      "source_evidence_url": "https://velixirparfums.com/products/ares"
     },
     {
       "product_id": "SH-VELIXIR-058bec99",
@@ -130,7 +136,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/athena",
+      "source_product_url": "https://velixirparfums.com/products/athena",
+      "source_evidence_url": "https://velixirparfums.com/products/athena"
     },
     {
       "product_id": "SH-VELIXIR-50b87cfb",
@@ -278,7 +286,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/helios",
+      "source_product_url": "https://velixirparfums.com/products/helios",
+      "source_evidence_url": "https://velixirparfums.com/products/helios"
     },
     {
       "product_id": "SH-VELIXIR-06211958",
@@ -382,7 +392,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/narcisus",
+      "source_product_url": "https://velixirparfums.com/products/narcisus",
+      "source_evidence_url": "https://velixirparfums.com/products/narcisus"
     },
     {
       "product_id": "SH-VELIXIR-153bbbed",
@@ -420,7 +432,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/orion",
+      "source_product_url": "https://velixirparfums.com/products/orion",
+      "source_evidence_url": "https://velixirparfums.com/products/orion"
     },
     {
       "product_id": "SH-VELIXIR-7e147c46",
@@ -458,7 +472,9 @@
       ],
       "concentration": "Eau de Parfum",
       "identity_status": "source_verified_name",
-      "source_url": "https://velixirparfums.com/collections/all"
+      "source_url": "https://velixirparfums.com/products/paladin",
+      "source_product_url": "https://velixirparfums.com/products/paladin",
+      "source_evidence_url": "https://velixirparfums.com/products/paladin"
     },
     {
       "product_id": "SH-VELIXIR-1738e7af",
