@@ -11,7 +11,7 @@ EXPECTED = {
     "Onyx Galaxy": {
         "product_id": "SH-KHADLAJ-ONYX-GALAXY",
         "variant_id": "SHV-SH-KHADLAJ-ONYX-GALAXY-100-EDP",
-        "url": "https://khadlaj-perfumes.com/products/onyx-galaxy-100-ml-eau-de-parfum-for-men",
+        "url": "https://khadlaj-perfumes.com/products/khadlaj-onyx-galaxy-100-ml-eau-de-parfum-for-men",
         "size": 100, "concentration": "Eau de Parfum", "gender": "Men",
         "gtin": "6298043072762",
     },
