@@ -135,6 +135,39 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         self.assertTrue(candidate["gender_conflict"])
         self.assertEqual(candidate["confidence_band"], "low")
 
+
+    def test_gender_extraction_detects_men_and_women_terms(self):
+        from backend.scripts.build_notino_match_candidates import extract_gender
+        self.assertEqual(extract_gender("Burberry London for Women"), "women")
+        self.assertEqual(extract_gender("Burberry London for Men"), "men")
+        self.assertEqual(extract_gender("pour homme"), "men")
+        self.assertEqual(extract_gender("pour femme"), "women")
+
+    def test_wrong_concentration_cannot_be_high_confidence(self):
+        row = {
+            "id": "SKU-EDT",
+            "brand": "Dior",
+            "title": "Dior Sauvage Eau de Toilette 100 ml",
+            "size": "100 ml",
+        }
+        candidates = score_row(row, self.index)
+        self.assertTrue(candidates)
+        self.assertFalse(candidates[0]["concentration_match"])
+        self.assertEqual(candidates[0]["confidence_band"], "low")
+
+    def test_size_is_read_from_title_when_feed_size_field_is_empty(self):
+        row = {
+            "id": "SKU-TITLE-SIZE",
+            "brand": "Dior",
+            "title": "Dior Sauvage Eau de Parfum 50 ml",
+            "size": "",
+        }
+        candidates = score_row(row, self.index)
+        self.assertTrue(candidates)
+        self.assertEqual(candidates[0]["feed_size_ml"], 50.0)
+        self.assertFalse(candidates[0]["size_match"])
+        self.assertEqual(candidates[0]["confidence_band"], "low")
+
     def test_brand_mismatch_never_generates_candidate(self):
         row = {
             "id": "SKU-2",
