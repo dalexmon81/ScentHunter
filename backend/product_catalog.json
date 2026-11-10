@@ -3498,13 +3498,14 @@
         "Khadlaj Empire Victor"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "source_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
       "formats_ml": [
         100
       ],
       "concentration": "Eau de Parfum",
-      "source_product_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"
+      "source_product_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "gtin_source_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-c7ff964c",
@@ -39425,9 +39426,10 @@
       ],
       "variant_id": "SHV-SH-KHADLAJ-935bcf95-100-000",
       "concentration": "Eau de Parfum",
-      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
-      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
-      "gtin": "6291107975917"
+      "source_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women",
+      "gtin": "6291107975917",
+      "gtin_source_url": "https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women"
     },
     {
       "product_id": "SH-KHADLAJ-c7ff964c",
