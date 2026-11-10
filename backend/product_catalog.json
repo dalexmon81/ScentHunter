@@ -569,7 +569,8 @@
       "identity_status": "source_verified_name",
       "source_url": "https://maisonasrar.com/products/belgravia",
       "source_evidence_url": "https://maisonasrar.com/products/belgravia",
-      "collection_name": "Royal Collection"
+      "collection_name": "Royal Collection",
+      "source_product_url": "https://maisonasrar.com/products/belgravia"
     },
     {
       "product_id": "SH-MAISON-ASRAR-a81d6d27",
@@ -620,7 +621,8 @@
       "identity_status": "source_verified_name",
       "source_url": "https://maisonasrar.com/products/regent",
       "source_evidence_url": "https://maisonasrar.com/products/regent",
-      "collection_name": "Royal Collection"
+      "collection_name": "Royal Collection",
+      "source_product_url": "https://maisonasrar.com/products/regent"
     },
     {
       "product_id": "SH-MAISON-ASRAR-37ff8816",
