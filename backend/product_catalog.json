@@ -148,11 +148,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",
-      "formats_ml": [
-        35,
-        100
-      ]
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-6f7b377c",
@@ -214,11 +210,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",
-      "formats_ml": [
-        35,
-        100
-      ]
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-76046795",
@@ -438,11 +430,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex",
-      "formats_ml": [
-        35,
-        100
-      ]
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-orpheus-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-8c915ae1",
@@ -476,11 +464,7 @@
       "identity_status": "source_verified_name",
       "source_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
       "source_product_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
-      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",
-      "formats_ml": [
-        35,
-        100
-      ]
+      "source_evidence_url": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex"
     },
     {
       "product_id": "SH-VELIXIR-12baca03",
@@ -28644,10 +28628,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://eu.myperfumes.ae/en-de/collections/arabiyat-prestige/products/kohl-opulence",
-      "source_evidence_url": "https://www.fragrantica.com/designers/Arabiyat-Prestige.html",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex",
       "formats_ml": [
         100
-      ]
+      ],
+      "source_product_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex",
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-e688d8ec",
@@ -41886,7 +41872,8 @@
         "Arabiyat Prestige Kohl Opulence 100 ml"
       ],
       "variant_id": "SHV-SH-ARABIYAT-PRESTIGE-113b2420-100-EDP",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://arabiyatprestige.com/collections/new-launch/products/arabiyat-prestige-kohl-opulence-edp-100-ml-unisex"
     },
     {
       "product_id": "SH-ARABIYAT-PRESTIGE-adfcef73",
