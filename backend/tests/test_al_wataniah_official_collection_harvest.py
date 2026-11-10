@@ -462,14 +462,14 @@ class AlWataniahOfficialCollectionHarvestTests(unittest.TestCase):
                     self.assertEqual(product.get("identity_status"), "source_verified_name")
                     self.assertEqual(product.get("source_product_url"), VERIFIED_DETAIL_URLS[name])
                     self.assertEqual(product.get("source_evidence_url"), VERIFIED_DETAIL_URLS[name])
-                    self.assertEqual(product.get("source_url"), listing_url)
+                    self.assertEqual(product.get("source_url"), VERIFIED_DETAIL_URLS[name])
                     self.assertEqual(product.get("concentration"), "Eau de Parfum")
                     self.assertIn(100, product.get("formats_ml", []))
                 elif name in VERIFIED_IDENTITY_ONLY_URLS:
                     self.assertEqual(product.get("identity_status"), "source_verified_name")
                     self.assertEqual(product.get("source_product_url"), VERIFIED_IDENTITY_ONLY_URLS[name])
                     self.assertEqual(product.get("source_evidence_url"), VERIFIED_IDENTITY_ONLY_URLS[name])
-                    self.assertEqual(product.get("source_url"), listing_url)
+                    self.assertEqual(product.get("source_url"), VERIFIED_IDENTITY_ONLY_URLS[name])
                     self.assertNotIn("concentration", product)
                     self.assertNotIn("formats_ml", product)
                 else:
