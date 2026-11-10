@@ -3794,18 +3794,12 @@
           "canonical_name": "Attractus",
           "aliases": [
             "Attractus",
-            "Paris Corner Attractus"
+            "Paris Corner Attractus",
+            "Attratus",
+            "Paris Corner Attratus"
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Attratus",
-          "aliases": [
-            "Attratus",
-            "Paris Corner Attratus",
-            "Paris Corner Attratus"
           ]
         },
         {
@@ -4250,14 +4244,6 @@
           ]
         },
         {
-          "canonical_name": "Harrier Absoulte",
-          "aliases": [
-            "Harrier Absoulte",
-            "Paris Corner Harrier Absoulte",
-            "Paris Corner Harrier Absoulte"
-          ]
-        },
-        {
           "canonical_name": "Heer",
           "aliases": [
             "Heer",
@@ -4658,6 +4644,9 @@
             "Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4702,6 +4691,9 @@
             "Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4710,6 +4702,9 @@
             "Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4718,6 +4713,9 @@
             "Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -4735,6 +4733,9 @@
             "Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -5633,7 +5634,9 @@
           "canonical_name": "Harrier Absolute",
           "aliases": [
             "Harrier Absolute",
-            "Paris Corner Harrier Absolute"
+            "Paris Corner Harrier Absolute",
+            "Harrier Absoulte",
+            "Paris Corner Harrier Absoulte"
           ]
         },
         {
