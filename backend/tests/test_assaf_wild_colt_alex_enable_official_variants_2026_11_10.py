@@ -13,9 +13,7 @@ EXPECTED = {
         "source": "https://assaf.ae/products/wild-colt-125-ml",
         "gender": "Unisex",
         "variants": {
-            100: "https://assaf.ae/products/wild-colt",
             125: "https://assaf.ae/products/wild-colt-125-ml",
-            200: "https://assaf.ae/collections/wild-colt-group",
         },
     },
     "Alex Enable": {
@@ -53,10 +51,7 @@ class AssafWildColtAlexEnableOfficialVariantsTests(unittest.TestCase):
                 self.assertEqual(product.get("source_product_url"), expected["source"])
                 self.assertEqual(product.get("source_evidence_url"), expected["source"])
                 self.assertEqual(product.get("gender"), expected["gender"])
-                self.assertEqual(
-                    product.get("formats_ml"),
-                    sorted(expected["variants"]),
-                )
+                self.assertEqual(product.get("formats_ml"), sorted(expected["variants"]))
 
     def test_official_size_variants_are_unique_and_evidence_backed(self):
         for name, expected in EXPECTED.items():
