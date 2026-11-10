@@ -94,14 +94,14 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
                 "variant_id": "V-G",
                 "product_id": "P-G",
                 "size_ml": 100,
-                "gtins": ["1234567890123"],
+                "gtins": ["8011003809202"],
                 "aliases": [],
             }],
         }
         index = build_catalog_index(catalog)
         row = {
             "id": "SKU-GTIN",
-            "gtin": "1234567890123",
+            "gtin": "8011003809202",
             "brand": "Dior",
             "title": "Dior Sauvage Eau de Parfum 100 ml",
             "size": "100 ml",
