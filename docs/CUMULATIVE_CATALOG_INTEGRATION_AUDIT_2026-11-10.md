@@ -19,7 +19,7 @@ All other records from the latest #649 head are preserved, including the newest 
 ## Final snapshot validation
 
 - 2,208 canonical products.
-- 981 variants.
+- 984 variants.
 - 34 family-registry records.
 - Zero duplicate product IDs.
 - Zero duplicate variant IDs.
@@ -35,5 +35,13 @@ All other records from the latest #649 head are preserved, including the newest 
 - Abraaj, Haakim and Amoura now have official 20 ml Concentrated Oil variants, each linked to its individual Lattafa product page.
 - Maitha is now a source-verified Concentrated Oil name, but its official page does not state a size; no variant is created.
 - No GTIN was visible for these items.
+
+## Maison Alhambra follow-up
+
+- Mysterious Amber: 80 ml Eau de Parfum.
+- Jean Lowe Vibe: 100 ml Eau de Parfum.
+- Jean Lowe Immortal: 100 ml Eau de Parfum.
+
+All three sizes and concentrations are visible on individual product pages in Lattafa's official European store. Existing canonical IDs are reused; no GTINs or offer data are added.
 
 These figures describe this branch's snapshot and must be confirmed by CI on the exact PR head.
