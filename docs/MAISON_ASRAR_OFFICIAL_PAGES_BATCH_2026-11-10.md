@@ -17,3 +17,8 @@ Base: cumulative catalog PR #680.
 - Magic Night: 100 ml Eau de Parfum — [official Maison Asrar product page](https://maisonasrar.com/products/magic-night-eau-de-perfum-100ml).
 
 No sizes or concentrations were invented for Milky Way, Mohra or Nada. Existing canonical product IDs were retained. No prices, availability or retailer-offer data was imported.
+
+
+## Family registry identity check
+
+The final cumulative registry also removes the ambiguous `Confidential 100ML` alias from the separate `Confidential` family row. A regression test now requires exactly one normalized family-registry mapping for every canonical catalog product.
