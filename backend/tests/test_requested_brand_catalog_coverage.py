@@ -1828,11 +1828,11 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Club de Nuit Bling": (
                 "https://armaf.com/products/club-de-nuit-bling",
-                "Eau de Parfum", "Men", [],
+                "Eau de Parfum", "Men", [75],
             ),
             "Club de Nuit Maleka": (
                 "https://armaf.com/products/club-de-nuit-maleka",
-                "Eau de Parfum", "Women", [],
+                "Eau de Parfum", "Women", [105],
             ),
             "Dunescape": (
                 "https://armaf.com/products/dunescape-1",
@@ -1840,7 +1840,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Odyssey Artisto": (
                 "https://armaf.com/products/odyssey-artisto",
-                None, "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Odyssey Mega": (
                 "https://armaf.com/products/odyssey-mega-man",
@@ -1881,7 +1881,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         expected = {
             "Odyssey Go Mango": (
                 "https://armaf.com/products/odyssey-go-mango",
-                None, "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Club de Nuit Oud": (
                 "https://armaf.com/products/club-de-nuit-oud",
@@ -1889,11 +1889,11 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Odyssey Ba Ha Mas": (
                 "https://armaf.com/products/odyssey-ba-ha-mas",
-                "Eau de Parfum", "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Odyssey Marshmallow": (
                 "https://armaf.com/products/odyssey-marshmallow",
-                "Eau de Parfum", "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Club de Nuit Intense Woman": (
                 "https://armaf.com/products/club-de-nuit-intense-woman",
@@ -1905,15 +1905,15 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             ),
             "Yum Yum": (
                 "https://armaf.com/products/yum-yum-spr",
-                None, "Unisex", [],
+                "Eau de Parfum", "Unisex", [100],
             ),
             "Club de Nuit Lionheart Man": (
                 "https://armaf.com/products/cdn-lion-heart-man-spr",
-                "Eau de Parfum", "Men", [],
+                "Eau de Parfum", "Men", [100],
             ),
             "Infinity Silver": (
                 "https://armaf.com/products/infinity-spr-1",
-                "Eau de Parfum", "Men", [],
+                "Eau de Parfum", "Men", [105],
             ),
             "Ombre Oud Intense Man": (
                 "https://armaf.com/products/ombre-oud-intense",
@@ -2014,7 +2014,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
             "Ventana Marine": ("https://armaf.com/products/ventana-marine", "Eau de Parfum", "Unisex", [10, 105]),
             "Club de Nuit Intense Man Extreme Edition": ("https://armaf.com/products/club-de-nuit-intense-man-parfum-extreme-edition", "Parfum", "Men", [105]),
             "Club de Nuit Man": ("https://armaf.com/products/club-de-nuit-man1", "Eau de Toilette", "Men", [10, 105]),
-            "Odyssey French Kiss": ("https://armaf.com/products/odyssey-french-kiss", "Eau de Parfum", "Women", [100]),
+            "Odyssey French Kiss": ("https://armaf.com/products/odyssey-french-kiss", "Eau de Parfum", "Women", [60, 100]),
         }
         products = {
             row.get("canonical_name"): row
@@ -2051,14 +2051,14 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
     def test_armaf_page_six_official_reconciliation(self):
         expected = {
             "Delights Dubai Delicacy Cotton Candy": ("https://armaf.com/products/cotton-candy", "Eau de Parfum", "Unisex", []),
-            "Ombre D'Or": ("https://armaf.com/products/ombre-dor", None, "Men", []),
-            "Odyssey Toffee Coffee": ("https://armaf.com/products/odyssey-toffee-coffee", "Eau de Parfum", "Unisex", []),
-            "Odyssey Black Forest": ("https://armaf.com/products/odyssey-toffee-coffee-copy-1", "Eau de Parfum", "Unisex", []),
+            "Ombre D'Or": ("https://armaf.com/products/ombre-dor", "Eau de Parfum", "Men", [75]),
+            "Odyssey Toffee Coffee": ("https://armaf.com/products/odyssey-toffee-coffee", "Eau de Parfum", "Unisex", [100]),
+            "Odyssey Black Forest": ("https://armaf.com/products/odyssey-toffee-coffee-copy-1", "Eau de Parfum", "Unisex", [100]),
             "Beach Party": ("https://armaf.com/products/beach-party-spr", "Eau de Parfum", "Unisex", []),
             "Miss Armaf Chic": ("https://armaf.com/products/miss-armaf-chic", "Eau de Parfum", "Women", [100]),
             "Club de Nuit Precieux IV": ("https://armaf.com/products/club-de-nuit-precieux-iv", "Eau de Toilette", "Women", []),
-            "Club de Nuit Lionheart Woman": ("https://armaf.com/products/cdn-lion-heart-spr", "Eau de Parfum", "Women", []),
-            "Odyssey Eau de Montagne": ("https://armaf.com/products/odyssey-eau-de-montagne", None, "Unisex", []),
+            "Club de Nuit Lionheart Woman": ("https://armaf.com/products/cdn-lion-heart-spr", "Eau de Parfum", "Women", [100]),
+            "Odyssey Eau de Montagne": ("https://armaf.com/products/odyssey-eau-de-montagne", "Eau de Parfum", "Unisex", [100]),
             "Profumi D'Art 13 Tanta Roba": ("https://armaf.com/products/profumi-dart-13-e-tanta-roba", "Eau de Parfum", "Unisex", [100]),
         }
         products = {
@@ -2101,7 +2101,7 @@ class RequestedBrandCatalogCoverageTests(unittest.TestCase):
         expected = {
             "Odyssey Spectra": ("https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition", "Eau de Parfum", "Men", [60, 100, 200]),
             "Old Money": ("https://armaf.com/products/old-money", "Eau de Parfum", "Unisex", [100]),
-            "Island Bliss": ("https://armaf.com/products/island-bliss-delights-spr", "Eau de Parfum", "Unisex", []),
+            "Island Bliss": ("https://armaf.com/products/island-bliss-delights-spr", "Eau de Parfum", "Unisex", [100]),
             "Island Breeze": ("https://armaf.com/products/island-breeze", "Eau de Parfum", "Women", []),
             "Perle D'Or": ("https://armaf.com/products/perle-dor", None, "Unisex", []),
             "Craze Man Parfum": ("https://armaf.com/products/armaf-craze", "Eau de Parfum", "Men", [100]),
