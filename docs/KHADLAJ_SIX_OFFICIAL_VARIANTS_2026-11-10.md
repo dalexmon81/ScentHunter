@@ -75,7 +75,8 @@ This change completes thirty-seven existing Khadlaj canonical identities using o
 - Le Prestige Empress: https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae
 - Le Prestige Bold: https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women
 - Le Prestige Royal: https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray
-- Empire Victor: https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women
+- Empire Victor product page: https://khadlaj-perfumes.com/products/empire-victor-100-ml-edp-spray-best-perfume-for-women
+- Empire Victor GTIN evidence from Khadlaj's official regional storefront: https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women
 - Empire Empress: https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae
 - Empire Crown: https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae
 - Empire Regent: https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae
