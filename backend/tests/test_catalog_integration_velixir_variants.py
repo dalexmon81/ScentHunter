@@ -7,7 +7,7 @@ BACKEND = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((BACKEND / "product_catalog.json").read_text(encoding="utf-8"))
 REGISTRY = json.loads((BACKEND / "family_registry.json").read_text(encoding="utf-8"))
 
-EXPECTED = {
+EXPECTED_SOURCE_URLS = {\n    "Comus": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-comus-extrait-de-parfum-for-unisex",\n    "Ether": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-ether-extrait-de-parfum-for-unisex",\n    "Panacea": "https://velixirparfums.com/collections/frontpage/products/velixir-parfums-panacea-extrait-de-parfum-for-unisex",\n}\n\nEXPECTED = {
     "Comus": ("SH-VELIXIR-50b87cfb", {35, 100}),
     "Ether": ("SH-VELIXIR-36e7a5ca", {35, 100}),
     "Panacea": ("SH-VELIXIR-1738e7af", {35, 100}),
@@ -28,7 +28,7 @@ class IntegratedVelixirVariantTests(unittest.TestCase):
                 self.assertEqual({v["size_ml"] for v in variants}, sizes)
                 self.assertEqual(len(variants), len(sizes))
                 self.assertTrue(all(v.get("concentration") == "Extrait de Parfum" for v in variants))
-                self.assertTrue(all(v.get("source_evidence_url") == f"https://velixirparfums.store/products/{name.lower()}" for v in variants))
+                self.assertTrue(all(v.get("source_evidence_url") == EXPECTED_SOURCE_URLS[name] for v in variants))
 
     def test_family_registry_matches_verified_sizes(self):
         family = next(f for f in REGISTRY["families"] if f.get("family_id") == "velixir_catalog")
