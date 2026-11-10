@@ -3,35 +3,11 @@ name: Catalog seed validation
 
 on:
   pull_request:
-    branches:
-      - catalog/brand-expansion-2026-11
-      - catalog/complete-brand-expansion-2026-11
-      - catalog/assaf-range-harvest-2026-11-08
-      - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
-      - catalog/afnan-lattafa-official-harvest-2026-11-08
-      - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
-      - catalog/consolidated-brand-catalog-2026-11-08
-      - catalog/requested-brand-harvest-2026-11-08
-      - catalog/verified-incense-fragrances-2026-11-08
-      - catalog/lattafa-official-launches-2026-11-08
-      - catalog/paris-corner-official-pages-2026-11-08
     paths:
       - "backend/product_catalog.json"
       - "backend/family_registry.json"
       - "backend/tests/**"
       - ".github/workflows/catalog-seed-validation.yml"
-  push:
-    branches:
-      - catalog/complete-brand-expansion-2026-11
-      - catalog/assaf-range-harvest-2026-11-08
-      - catalog/al-haramain-gulf-orchid-harvest-2026-11-08
-      - catalog/afnan-lattafa-official-harvest-2026-11-08
-      - catalog/khadlaj-paris-corner-official-harvest-2026-11-08
-      - catalog/consolidated-brand-catalog-2026-11-08
-      - catalog/requested-brand-harvest-2026-11-08
-      - catalog/verified-incense-fragrances-2026-11-08
-      - catalog/lattafa-official-launches-2026-11-08
-      - catalog/paris-corner-official-pages-2026-11-08
 
 permissions:
   contents: read
@@ -79,4 +55,5 @@ jobs:
           backend.tests.test_arabiyat_prestige_official_store
           backend.tests.test_al_wataniah_official_collection_harvest
           backend.tests.test_requested_brand_catalog_coverage
+          backend.tests.test_catalog_cross_pr_uniqueness
           -v
