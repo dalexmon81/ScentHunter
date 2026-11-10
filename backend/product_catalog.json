@@ -4103,8 +4103,10 @@
         100
       ],
       "concentration": "Eau de Parfum",
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/shiyaaka"
+      "identity_status": "source_verified_name",
+      "source_url": "https://kw.khadlaj-perfumes.com/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://kw.khadlaj-perfumes.com/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://kw.khadlaj-perfumes.com/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-04a500ea",
@@ -40661,7 +40663,10 @@
         "Khadlaj Shiyaaka Rose Gold 100ml"
       ],
       "variant_id": "SHV-SH-KHADLAJ-afe1f6d4-100-000",
-      "concentration": "Eau de Parfum"
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107971186",
+      "source_url": "https://kw.khadlaj-perfumes.com/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://kw.khadlaj-perfumes.com/products/shiyaaka-for-women-spray-shop-online-best-price-in-dubai-uae"
     },
     {
       "product_id": "SH-KHADLAJ-04a500ea",

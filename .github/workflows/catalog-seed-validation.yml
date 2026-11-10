@@ -3,10 +3,10 @@ name: Catalog seed validation
 on:
   pull_request:
     branches:
-      - catalog/catalog-audit-continuation-2026-11-10
+      - catalog/khadlaj-shiyaaka-rose-gold-verified-2026-11-10
   push:
     branches:
-      - catalog/catalog-audit-continuation-2026-11-10
+      - catalog/khadlaj-shiyaaka-rose-gold-verified-2026-11-10
 
 permissions:
   contents: read
@@ -34,6 +34,7 @@ jobs:
             backend.tests.test_family_registry_identity_normalization \
             backend.tests.test_requested_brand_catalog_coverage \
             backend.tests.test_official_afnan_armaf_variant_batch_2026_11_10 \
+            backend.tests.test_khadlaj_shiyaaka_rose_gold_official_2026_11_10 \
             backend.tests.test_khadlaj_cumulative_catalog_integrity \
             backend.tests.test_al_haramain_catalog \
             backend.tests.test_bujairami_catalog \
