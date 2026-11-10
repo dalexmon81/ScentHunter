@@ -87,4 +87,5 @@ jobs:
           backend.tests.test_maison_asrar_official_detail_reconciliation
           backend.tests.test_catalog_integration_velixir_variants
           backend.tests.test_catalog_integration_global_integrity
+          backend.tests.test_catalog_integration_arabiyat_prestige
           -v
