@@ -37,7 +37,7 @@ class KhadlajOfficialSprayHarvestTests(unittest.TestCase):
             if not product["product_id"].startswith("SH-KHADLAJ-SPRAY-HARVEST-"):
                 continue
             if product["identity_status"] == "source_verified_name":
-                self.assertRegex(product["source_url"], r"^https://(?:kw\\.)?khadlaj-perfumes\\.")
+                                self.assertTrue(product["source_url"].startswith(("https://khadlaj-perfumes.", "https://kw.khadlaj-perfumes.")))
                 self.assertEqual(product["source_product_url"], product["source_url"])
                 self.assertEqual(product["source_evidence_url"], product["source_url"])
                 self.assertTrue(product.get("formats_ml") or product.get("concentration"))
