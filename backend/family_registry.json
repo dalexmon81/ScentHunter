@@ -15005,6 +15005,9 @@
           "aliases": [
             "Luxe Bold",
             "Maison Alhambra Luxe Bold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15089,6 +15092,9 @@
           "aliases": [
             "Mindset",
             "Maison Alhambra Mindset"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
