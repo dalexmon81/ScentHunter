@@ -32,3 +32,7 @@ No new product identity was added in this pass because all twelve were already r
 ## Automated protection
 
 `backend/tests/test_maison_asrar_new_arrivals_2026_11_10.py` asserts unique canonical identities, official product-page provenance, and basic category hygiene for these twelve entries.
+
+## CI trigger
+
+The parent catalog-validation workflow now explicitly includes `catalog/gulf-orchid-new-arrivals-2026-11-10` as an allowed pull-request target branch, so this stacked audit PR is covered by the same catalog validation workflow.
