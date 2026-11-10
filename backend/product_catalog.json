@@ -3651,8 +3651,14 @@
         "Nuha Bon Bon",
         "Khadlaj Nuha Bon Bon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online",
+      "source_product_url": "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-37d5907b",
@@ -3687,8 +3693,14 @@
         "Nuha Vanilla Pearl",
         "Khadlaj Nuha Vanilla Pearl"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae",
+      "formats_ml": [
+        85
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-c0a0f7d9",
@@ -49070,6 +49082,32 @@
       "gtin": "6291107977843",
       "source_url": "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pour-leather-100ml-edp-spray-for-men-and-women"
+    },
+    {
+      "product_id": "SH-KHADLAJ-7ecbb58c",
+      "size_ml": 85,
+      "aliases": [
+        "Nuha Bon Bon 85 ml",
+        "Khadlaj Nuha Bon Bon 85 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-7ecbb58c-85-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6298043070317",
+      "source_url": "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online",
+      "source_evidence_url": "https://khadlaj-perfumes.myshopify.com/collections/for-her/products/nuha-bon-bon-strawberry-vanilla-ice-cream-gourmand-perfume-for-women-online"
+    },
+    {
+      "product_id": "SH-KHADLAJ-76dd12b7",
+      "size_ml": 85,
+      "aliases": [
+        "Nuha Vanilla Pearl 85 ml",
+        "Khadlaj Nuha Vanilla Pearl 85 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-76dd12b7-85-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107979182",
+      "source_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/collections/khadlaj-na-best-sellers/products/nuha-vanilla-pearl-85-ml-edp-spray-for-women-online-dubai-uae"
     }
   ]
 }
