@@ -39603,6 +39603,90 @@
         100
       ],
       "gender": "Unisex"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MAZE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Maze",
+      "name": "Maze",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Maze",
+      "aliases": [
+        "Maze",
+        "Gulf Orchid Maze"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/maze",
+      "source_product_url": "https://shop-gulforchid.com/products/maze",
+      "source_evidence_url": "https://shop-gulforchid.com/products/maze",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MOSAIC",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Mosaic",
+      "name": "Mosaic",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Mosaic",
+      "aliases": [
+        "Mosaic",
+        "Gulf Orchid Mosaic"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/mosaic",
+      "source_product_url": "https://shop-gulforchid.com/products/mosaic",
+      "source_evidence_url": "https://shop-gulforchid.com/products/mosaic",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-RICE-MILK",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Rice Milk",
+      "name": "Rice Milk",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Rice Milk",
+      "aliases": [
+        "Rice Milk",
+        "Gulf Orchid Rice Milk"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/rice-milk",
+      "source_product_url": "https://shop-gulforchid.com/products/rice-milk",
+      "source_evidence_url": "https://shop-gulforchid.com/products/rice-milk",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ROYAL-ROSE",
+      "brand": "Gulf Orchid",
+      "brand_name": "Gulf Orchid",
+      "canonical_name": "Royal Rose",
+      "name": "Royal Rose",
+      "family_id": "gulf_orchid_catalog",
+      "family_name": "Royal Rose",
+      "aliases": [
+        "Royal Rose",
+        "Gulf Orchid Royal Rose"
+      ],
+      "identity_status": "source_verified_name",
+      "source_url": "https://shop-gulforchid.com/products/royal-rose",
+      "source_product_url": "https://shop-gulforchid.com/products/royal-rose",
+      "source_evidence_url": "https://shop-gulforchid.com/products/royal-rose",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     }
   ],
   "variants": [
@@ -50300,6 +50384,50 @@
       "gtin": "6291107971032",
       "source_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MAZE",
+      "size_ml": 100,
+      "aliases": [
+        "Maze 100 ml",
+        "Gulf Orchid Maze 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-MAZE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/maze"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-MOSAIC",
+      "size_ml": 100,
+      "aliases": [
+        "Mosaic 100 ml",
+        "Gulf Orchid Mosaic 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-MOSAIC-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/mosaic"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-RICE-MILK",
+      "size_ml": 100,
+      "aliases": [
+        "Rice Milk 100 ml",
+        "Gulf Orchid Rice Milk 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-RICE-MILK-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/rice-milk"
+    },
+    {
+      "product_id": "SH-GULF-ORCHID-ROYAL-ROSE",
+      "size_ml": 100,
+      "aliases": [
+        "Royal Rose 100 ml",
+        "Gulf Orchid Royal Rose 100ml"
+      ],
+      "variant_id": "SHV-SH-GULF-ORCHID-ROYAL-ROSE-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://shop-gulforchid.com/products/royal-rose"
     }
   ]
 }
