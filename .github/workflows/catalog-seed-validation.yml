@@ -11,6 +11,8 @@ on:
       - catalog/al-wataniah-cumulative-ci-docs-2026-11-10
       - catalog/maison-alhambra-mens-detail-batch-2026-11-10
       - catalog/maison-alhambra-womens-detail-batch-2026-11-10
+      - catalog/maison-alhambra-unisex-detail-batch-2026-11-10
+      - catalog/armaf-cdn-intense-extrait-70ml-2026-11-10
   push:
     branches:
       - catalog/khadlaj-official-gtin-gender-audit-2026-11-10
@@ -22,6 +24,7 @@ on:
       - catalog/maison-alhambra-mens-detail-batch-2026-11-10
       - catalog/maison-alhambra-womens-detail-batch-2026-11-10
       - catalog/maison-alhambra-unisex-detail-batch-2026-11-10
+      - catalog/armaf-cdn-intense-extrait-70ml-2026-11-10
 
 permissions:
   contents: read
@@ -70,6 +73,7 @@ jobs:
             backend.tests.test_maison_alhambra_mens_detail_batch_2026_11_10 \
             backend.tests.test_maison_alhambra_womens_detail_batch_2026_11_10 \
             backend.tests.test_maison_alhambra_unisex_detail_batch_2026_11_10 \
+            backend.tests.test_armaf_cdn_intense_extrait_70ml_2026_11_10 \
             backend.tests.test_maison_asrar_official_name_audit_2026_11_10 \
             backend.tests.test_maison_asrar_official_identity_pages_2026_11_10 \
             backend.tests.test_khadlaj_hareem_al_sultan_gold_oil_2026_11_10 \
