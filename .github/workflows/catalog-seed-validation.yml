@@ -88,5 +88,6 @@ jobs:
           backend.tests.test_maison_asrar_official_product_page_batch
           backend.tests.test_maison_asrar_official_product_page_batch_two
           backend.tests.test_maison_asrar_official_size_variant_batch_three
-          backend.tests.test_maison_asrar_new_arrivals_2026_11_10
+
+          backend.tests.test_maison_asrar_official_product_page_batch_four          backend.tests.test_maison_asrar_new_arrivals_2026_11_10
           -v
