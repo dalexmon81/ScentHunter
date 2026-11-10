@@ -5314,9 +5314,14 @@
         "Mystique Bouquet",
         "Afnan Mystique Bouquet"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.de.afnan.com/en/products/mystique-bouquet",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/mystique-bouquet",
+      "source_product_url": "https://www.de.afnan.com/en/products/mystique-bouquet",
+      "formats_ml": [
+        80
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-bdb31951",
@@ -5346,9 +5351,14 @@
         "Supremacy Pink",
         "Afnan Supremacy Pink"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/products/supremacy-pink",
+      "source_evidence_url": "https://www.fr.afnan.com/products/supremacy-pink",
+      "source_product_url": "https://www.fr.afnan.com/products/supremacy-pink",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-aa93308c",
@@ -5471,9 +5481,14 @@
         "Turathi Blue",
         "Afnan Turathi Blue"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.fr.afnan.com/products/turathi-blue-homme",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-blue-homme",
+      "source_product_url": "https://www.fr.afnan.com/products/turathi-blue-homme",
+      "formats_ml": [
+        90
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-dc43e01b",
@@ -5503,9 +5518,14 @@
         "Rare Carbon",
         "Afnan Rare Carbon"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://www.at.afnan.com/en/products/rare-carbon",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-carbon",
+      "source_product_url": "https://www.at.afnan.com/en/products/rare-carbon",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-AFNAN-e9a9f75b",
@@ -53604,6 +53624,50 @@
       "variant_id": "SHV-SH-AFNAN-62b409e4-100-EDP",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.at.afnan.com/products/historic-olmeda"
+    },
+    {
+      "product_id": "SH-AFNAN-4e32c3b3",
+      "size_ml": 80,
+      "aliases": [
+        "Mystique Bouquet 80 ml Eau de Parfum",
+        "Afnan Mystique Bouquet 80ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-4e32c3b3-80-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.de.afnan.com/en/products/mystique-bouquet"
+    },
+    {
+      "product_id": "SH-AFNAN-d587de8a",
+      "size_ml": 100,
+      "aliases": [
+        "Supremacy Pink 100 ml Eau de Parfum",
+        "Afnan Supremacy Pink 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-d587de8a-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/supremacy-pink"
+    },
+    {
+      "product_id": "SH-AFNAN-d0bee594",
+      "size_ml": 100,
+      "aliases": [
+        "Rare Carbon 100 ml Eau de Parfum",
+        "Afnan Rare Carbon 100ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-d0bee594-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.at.afnan.com/en/products/rare-carbon"
+    },
+    {
+      "product_id": "SH-AFNAN-e9bc6ab8",
+      "size_ml": 90,
+      "aliases": [
+        "Turathi Blue 90 ml Eau de Parfum",
+        "Afnan Turathi Blue 90ml"
+      ],
+      "variant_id": "SHV-SH-AFNAN-e9bc6ab8-90-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://www.fr.afnan.com/products/turathi-blue-homme"
     }
   ]
 }
