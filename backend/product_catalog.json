@@ -17310,7 +17310,13 @@
         "Paris Corner Coconut Lagoon"
       ],
       "identity_status": "source_verified_name",
-      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml"
+      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-CORNFLOWER-DELIGHT",
@@ -17571,11 +17577,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-eshal-vanilla-edp-u-100-ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-ETERNAL-COFFEE",
@@ -17835,11 +17842,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/hurriya",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/hurriya",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-hurriya-edp-u-100-ml",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/hurriya",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-IBISCO-NIRVANA",
@@ -17855,8 +17863,12 @@
       ],
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/ibisco-nirvana",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        65
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT",
@@ -18887,10 +18899,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/fayora",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-edp-w-100-ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-FAYORA-OSHINO",
@@ -18907,10 +18920,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-oshino-edp-w-100-ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-GLORIFY",
@@ -19452,7 +19466,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-BLUE",
@@ -19485,7 +19503,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa-delicious"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-delicious",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-GALA",
@@ -19502,10 +19524,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-qissa-gala-edp-w-100-ml",
       "formats_ml": [
         100
-      ]
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-PARIS-CORNER-QISSA-PINK",
@@ -19522,7 +19545,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/qissa-pink"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-pink",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-RIFAAQAT-ADORN",
@@ -25685,7 +25712,11 @@
       "identity_status": "source_verified_name",
       "source_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
       "source_evidence_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
-      "source_product_url": "https://www.pariscornerperfumes.com/products/miel-vanille"
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-miel-vanille-edp-u-100-ml",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ]
     },
     {
       "product_id": "SH-PARIS-CORNER-d38ec45d",
@@ -44529,10 +44560,13 @@
       "size_ml": 100,
       "aliases": [
         "Eshal Vanilla 100 ml",
-        "Paris Corner Eshal Vanilla 100ml"
+        "Paris Corner Eshal Vanilla 100ml",
+        "Paris Corner Eshal Vanilla 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/eshal-vanilla",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-eshal-vanilla-edp-u-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-FARAH",
@@ -44551,10 +44585,13 @@
       "size_ml": 100,
       "aliases": [
         "Fayora 100 ml",
-        "Paris Corner Fayora 100ml"
+        "Paris Corner Fayora 100ml",
+        "Paris Corner Fayora 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/fayora",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-edp-w-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-FAYORA-OSHINO",
@@ -44562,10 +44599,13 @@
       "size_ml": 100,
       "aliases": [
         "Fayora Oshino 100 ml",
-        "Paris Corner Fayora Oshino 100ml"
+        "Paris Corner Fayora Oshino 100ml",
+        "Paris Corner Fayora Oshino 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/fayora-oshino",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-fayora-oshino-edp-w-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-FIG-FETE",
@@ -44782,10 +44822,13 @@
       "size_ml": 100,
       "aliases": [
         "Hurriya 100 ml",
-        "Paris Corner Hurriya 100ml"
+        "Paris Corner Hurriya 100ml",
+        "Paris Corner Hurriya 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/hurriya",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/hurriya"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/hurriya",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/paris-corner-hurriya-edp-u-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-IDENTITY-OUD-CRESCENT",
@@ -45651,10 +45694,13 @@
       "size_ml": 100,
       "aliases": [
         "Qissa Gala 100 ml",
-        "Paris Corner Qissa Gala 100ml"
+        "Paris Corner Qissa Gala 100ml",
+        "Paris Corner Qissa Gala 100 ml"
       ],
       "source_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
-      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-gala"
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-gala",
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-qissa-gala-edp-w-100-ml"
     },
     {
       "product_id": "SH-PARIS-CORNER-dbb9189e",
@@ -52037,6 +52083,84 @@
       "variant_id": "SHV-SH-AL-WATANIAH-SUGAR-RUSH-100-000",
       "concentration": "Eau de Parfum",
       "source_evidence_url": "https://www.alwataniah.com/products/sugar-rush"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-COCONUT-LAGOON",
+      "variant_id": "SHV-SH-PARIS-CORNER-COCONUT-LAGOON-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Coconut Lagoon 100 ml",
+        "Paris Corner Coconut Lagoon 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/coconut-lagoon-100ml",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/coconut-lagoon"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-IBISCO-NIRVANA",
+      "variant_id": "SHV-SH-PARIS-CORNER-IBISCO-NIRVANA-65-EDP",
+      "size_ml": 65,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ibisco Nirvana 65 ml",
+        "Paris Corner Ibisco Nirvana 65 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/ibisco-nirvana",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/ibisco-nirvana"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-4036ddf3",
+      "variant_id": "SHV-SH-PARIS-CORNER-4036ddf3-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Miel Vanille 100 ml",
+        "Paris Corner Miel Vanille 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/miel-vanille",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/pc-miel-vanille-edp-u-100-ml"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-QISSA",
+      "variant_id": "SHV-SH-PARIS-CORNER-QISSA-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Qissa 100 ml",
+        "Paris Corner Qissa 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/qissa",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-QISSA-DELICIOUS",
+      "variant_id": "SHV-SH-PARIS-CORNER-QISSA-DELICIOUS-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Qissa Delicious 100 ml",
+        "Paris Corner Qissa Delicious 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-delicious",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-delicious"
+    },
+    {
+      "product_id": "SH-PARIS-CORNER-QISSA-PINK",
+      "variant_id": "SHV-SH-PARIS-CORNER-QISSA-PINK-100-EDP",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Qissa Pink 100 ml",
+        "Paris Corner Qissa Pink 100 ml"
+      ],
+      "source_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
+      "source_evidence_url": "https://www.pariscornerperfumes.com/products/qissa-pink",
+      "source_product_url": "https://de.pariscornereurope.com/en/products/qissa-pink"
     }
   ]
 }
