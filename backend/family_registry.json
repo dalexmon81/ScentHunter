@@ -847,6 +847,10 @@
           "aliases": [
             "Comus",
             "Velixir Comus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -876,6 +880,10 @@
           "aliases": [
             "Ether",
             "Velixir Ether"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -981,6 +989,10 @@
           "aliases": [
             "Orpheus",
             "Velixir Orpheus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -995,6 +1007,10 @@
           "aliases": [
             "Panacea",
             "Velixir Panacea"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
