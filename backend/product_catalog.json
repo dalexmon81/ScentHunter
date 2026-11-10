@@ -39433,7 +39433,10 @@
       "concentration": "Extrait de Parfum",
       "gender": "Women",
       "formats_ml": [
-        70
+        30,
+        105,
+        200,
+        250
       ]
     },
     {
@@ -55427,12 +55430,51 @@
     },
     {
       "product_id": "SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT",
-      "size_ml": 70,
+      "size_ml": 30,
       "aliases": [
-        "Club de Nuit Woman Extrait de Parfum 70 ml",
-        "Armaf Club de Nuit Woman Extrait de Parfum 70 ml"
+        "Club de Nuit Woman Extrait de Parfum 30 ml",
+        "Armaf Club de Nuit Woman Extrait de Parfum 30 ml"
       ],
-      "variant_id": "SHV-SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT-70-000",
+      "variant_id": "SHV-SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT-30-000",
+      "concentration": "Extrait de Parfum",
+      "gender": "Women",
+      "source_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr"
+    },
+    {
+      "product_id": "SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT",
+      "size_ml": 105,
+      "aliases": [
+        "Club de Nuit Woman Extrait de Parfum 105 ml",
+        "Armaf Club de Nuit Woman Extrait de Parfum 105 ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT-105-000",
+      "concentration": "Extrait de Parfum",
+      "gender": "Women",
+      "source_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr"
+    },
+    {
+      "product_id": "SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT",
+      "size_ml": 200,
+      "aliases": [
+        "Club de Nuit Woman Extrait de Parfum 200 ml",
+        "Armaf Club de Nuit Woman Extrait de Parfum 200 ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT-200-000",
+      "concentration": "Extrait de Parfum",
+      "gender": "Women",
+      "source_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
+      "source_evidence_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr"
+    },
+    {
+      "product_id": "SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT",
+      "size_ml": 250,
+      "aliases": [
+        "Club de Nuit Woman Extrait de Parfum 250 ml",
+        "Armaf Club de Nuit Woman Extrait de Parfum 250 ml"
+      ],
+      "variant_id": "SHV-SH-ARMAF-CLUB-DE-NUIT-WOMAN-EXTRAIT-250-000",
       "concentration": "Extrait de Parfum",
       "gender": "Women",
       "source_url": "https://armaf.com/products/cdn-club-de-nuit-extrait-de-parfum-spr",
