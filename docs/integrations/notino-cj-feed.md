@@ -24,6 +24,31 @@ It does not import data or connect to the database. **Accepted GTIN length is
 only a format check**; the audit does not validate check digits or prove that
 an identifier belongs to the listed product.
 
+## Review-only candidate generation
+
+After extracting the CJ XML and obtaining the current canonical JSON catalog,
+run:
+
+```bash
+python -m backend.scripts.build_notino_match_candidates \
+  /path/to/NOTINO_fr-NotinoFR_google_all-shopping.xml \
+  backend/product_catalog.json \
+  --output /tmp/notino-match-candidates.csv
+```
+
+The CSV ranks up to five candidate variants per retailer row using:
+- exact normalized brand as a mandatory gate;
+- perfume name similarity across canonical names and aliases;
+- size agreement when both sides provide a size;
+- concentration agreement when both sides provide a concentration.
+
+Rows are labeled `review_high`, `review_medium`, `review_low` or
+`no_candidate`. These are **review priorities, not automatic match approvals**.
+Known size or concentration conflicts are downgraded. The tool deliberately
+does not auto-accept any candidate and does not modify catalog, database,
+offers or GTINs. A reviewer must verify the actual product and variant before
+a GTIN or offer can be attached.
+
 ## Import safety
 1. Preserve the original CJ XML export as a source artifact outside the public web root.
 2. Stream entries; do not load the complete XML document into memory.
@@ -31,7 +56,7 @@ an identifier belongs to the listed product.
 4. Match exact GTIN only when the canonical catalog contains exactly one
    variant for that GTIN. Ambiguous or absent GTIN matches remain staged.
 5. Do not invent canonical products or variants from retailer listings.
-   Brand/name/size matching is a separate candidate-generation and review step.
+   Brand/name/size matching is a separate candidate-generation and review step. The review-only candidate generator is documented below; it never writes matches back to the catalog.
 6. Quarantine duplicate GTIN collisions; never merge products solely because
    titles look similar.
 7. Upsert offers by (store, external_id), retaining price history and feed timestamp.
