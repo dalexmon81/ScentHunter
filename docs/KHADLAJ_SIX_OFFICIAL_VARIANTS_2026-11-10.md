@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes thirty-six existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes thirty-seven existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -42,6 +42,7 @@ This change completes thirty-six existing Khadlaj canonical identities using off
 | 25 Integrity | SH-KHADLAJ-SPRAY-HARVEST-078 | 100 ml | Eau de Parfum | 6291107975375 |
 | 25 Heritage | SH-KHADLAJ-SPRAY-HARVEST-077 | 100 ml | Eau de Parfum | 6291107975368 |
 | 25 Loyalty | SH-KHADLAJ-SPRAY-HARVEST-076 | 100 ml | Eau de Parfum | 6291107975382 |
+| 25 Trust | SH-KHADLAJ-SPRAY-HARVEST-075 | 100 ml | Eau de Parfum | 6291107975399 |
 
 ## Official evidence
 
@@ -81,6 +82,7 @@ This change completes thirty-six existing Khadlaj canonical identities using off
 - 25 Integrity: https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-integrity-100-ml-edp-spray
 - 25 Heritage: https://khadlaj-perfumes.com/collections/unisex-1/products/khadlaj-25-heritage-100-ml-edp-spray
 - 25 Loyalty: https://my.khadlaj-perfumes.com/products/khadlaj-25-loyalty-100-ml-edp-spray-best-women-perfume-to-shop-online-dubai-uae
+- 25 Trust: https://khadlaj-perfumes.com/collections/unisex-1/products/buy-khadlaj-25-trust-100-ml-edp-spray-best-gourmand-perfume-for-women
 
 ## Data integrity
 
