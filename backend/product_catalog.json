@@ -5048,9 +5048,14 @@
         "9 AM",
         "Afnan 9 AM"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.afnan.com/products/9-am",
+      "source_evidence_url": "https://fr.afnan.com/products/9-am",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://fr.afnan.com/products/9-am"
     },
     {
       "product_id": "SH-AFNAN-5de78540",
@@ -5064,9 +5069,14 @@
         "9 AM Pour Femme",
         "Afnan 9 AM Pour Femme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.afnan.com/products/9-am-pour-femme",
+      "source_evidence_url": "https://fr.afnan.com/products/9-am-pour-femme",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://fr.afnan.com/products/9-am-pour-femme"
     },
     {
       "product_id": "SH-AFNAN-9e3c80fa",
@@ -5096,9 +5106,14 @@
         "Supremacy Gold",
         "Afnan Supremacy Gold"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.afnan.com/products/supremacy-gold",
+      "source_evidence_url": "https://fr.afnan.com/products/supremacy-gold",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://fr.afnan.com/products/supremacy-gold"
     },
     {
       "product_id": "SH-AFNAN-d1fee769",
@@ -5574,9 +5589,14 @@
         "Rare",
         "Afnan Rare"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all",
-      "source_evidence_url": "https://afnan.com/collections/all"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.afnan.com/products/rare",
+      "source_evidence_url": "https://fr.afnan.com/products/rare",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum",
+      "source_product_url": "https://fr.afnan.com/products/rare"
     },
     {
       "product_id": "SH-AFNAN-0e31617f",
@@ -14816,10 +14836,16 @@
         "Odyssey Candee Special Edition",
         "Armaf Odyssey Candee Special Edition"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=4",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=4",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/en/products/odyssey-candee-special-edition",
+      "source_evidence_url": "https://cz.armaf.eu/en/products/odyssey-candee-special-edition",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        60,
+        100,
+        200
+      ],
+      "source_product_url": "https://cz.armaf.eu/en/products/odyssey-candee-special-edition"
     },
     {
       "product_id": "SH-ARMAF-43900532",
@@ -15540,10 +15566,14 @@
         "Luna",
         "Armaf Luna"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=13",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=13",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/luna",
+      "source_evidence_url": "https://cz.armaf.eu/products/luna",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://cz.armaf.eu/products/luna"
     },
     {
       "product_id": "SH-ARMAF-28746548",
@@ -15590,10 +15620,14 @@
         "Miss Armaf Attitude",
         "Armaf Miss Armaf Attitude"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=15",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=15",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/miss-armaf-attitude",
+      "source_evidence_url": "https://cz.armaf.eu/products/miss-armaf-attitude",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://cz.armaf.eu/products/miss-armaf-attitude"
     },
     {
       "product_id": "SH-ARMAF-a20ace34",
@@ -15765,10 +15799,14 @@
         "Miss Armaf Grandeur",
         "Armaf Miss Armaf Grandeur"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=16",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=16",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://cz.armaf.eu/products/miss-armaf-grandeur",
+      "source_evidence_url": "https://cz.armaf.eu/products/miss-armaf-grandeur",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://cz.armaf.eu/products/miss-armaf-grandeur"
     },
     {
       "product_id": "SH-ARMAF-56924738",
@@ -16085,10 +16123,14 @@
         "The Pride of Armaf Pour Homme",
         "Armaf The Pride of Armaf Pour Homme"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://armaf.com/collections/all-perfumes?page=21",
-      "source_evidence_url": "https://armaf.com/collections/all-perfumes?page=21",
-      "concentration": "Eau de Parfum"
+      "identity_status": "source_verified_name",
+      "source_url": "https://armaf.com/products/the-pride-of-armaf-pour-homme",
+      "source_evidence_url": "https://armaf.com/products/the-pride-of-armaf-pour-homme",
+      "concentration": "Eau de Parfum",
+      "formats_ml": [
+        100
+      ],
+      "source_product_url": "https://armaf.com/products/the-pride-of-armaf-pour-homme"
     },
     {
       "product_id": "SH-ARMAF-2d65354a",
@@ -24282,9 +24324,14 @@
         "Stardust",
         "Afnan Stardust"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://afnan.com/collections/all?page=2",
-      "source_evidence_url": "https://afnan.com/collections/all?page=2"
+      "identity_status": "source_verified_name",
+      "source_url": "https://us.afnan.com/products/stardust",
+      "source_evidence_url": "https://us.afnan.com/products/stardust",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Extrait de Parfum",
+      "source_product_url": "https://us.afnan.com/products/stardust"
     },
     {
       "product_id": "SH-AFNAN-SUPREMACY-IN-OUD-LUXURY-COLLECTION",
@@ -52861,6 +52908,90 @@
       ],
       "source_url": "https://fr.zimayaperfumes.com/products/ghali-imperial",
       "source_evidence_url": "https://fr.zimayaperfumes.com/products/ghali-imperial"
+    },
+    {
+      "product_id": "SH-AFNAN-be149290",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-AFNAN-be149290-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://fr.afnan.com/products/9-am"
+    },
+    {
+      "product_id": "SH-AFNAN-5de78540",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-AFNAN-5de78540-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://fr.afnan.com/products/9-am-pour-femme"
+    },
+    {
+      "product_id": "SH-AFNAN-985458b7",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-AFNAN-985458b7-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://fr.afnan.com/products/rare"
+    },
+    {
+      "product_id": "SH-AFNAN-816ce12c",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-AFNAN-816ce12c-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://fr.afnan.com/products/supremacy-gold"
+    },
+    {
+      "product_id": "SH-AFNAN-STARDUST",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-AFNAN-STARDUST-100-EXDP",
+      "concentration": "Extrait de Parfum",
+      "source_evidence_url": "https://us.afnan.com/products/stardust"
+    },
+    {
+      "product_id": "SH-ARMAF-df3e27f4",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-ARMAF-df3e27f4-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://cz.armaf.eu/products/luna"
+    },
+    {
+      "product_id": "SH-ARMAF-753cde8b",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-ARMAF-753cde8b-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://cz.armaf.eu/products/miss-armaf-attitude"
+    },
+    {
+      "product_id": "SH-ARMAF-c65a3513",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-ARMAF-c65a3513-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://cz.armaf.eu/products/miss-armaf-grandeur"
+    },
+    {
+      "product_id": "SH-ARMAF-54070d49",
+      "size_ml": 60,
+      "variant_id": "SHV-SH-ARMAF-54070d49-060-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://cz.armaf.eu/en/products/odyssey-candee-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-54070d49",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-ARMAF-54070d49-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://cz.armaf.eu/en/products/odyssey-candee-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-54070d49",
+      "size_ml": 200,
+      "variant_id": "SHV-SH-ARMAF-54070d49-200-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://cz.armaf.eu/en/products/odyssey-candee-special-edition"
+    },
+    {
+      "product_id": "SH-ARMAF-d89393b7",
+      "size_ml": 100,
+      "variant_id": "SHV-SH-ARMAF-d89393b7-100-EDP",
+      "concentration": "Eau de Parfum",
+      "source_evidence_url": "https://armaf.com/products/the-pride-of-armaf-pour-homme"
     }
   ]
 }

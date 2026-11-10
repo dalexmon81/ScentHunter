@@ -8145,6 +8145,11 @@
           "aliases": [
             "Odyssey Candee Special Edition",
             "Armaf Odyssey Candee Special Edition"
+          ],
+          "formats_ml": [
+            60,
+            100,
+            200
           ]
         },
         {
@@ -8437,6 +8442,9 @@
           "aliases": [
             "Luna",
             "Armaf Luna"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8458,6 +8466,9 @@
           "aliases": [
             "Miss Armaf Attitude",
             "Armaf Miss Armaf Attitude"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8528,6 +8539,9 @@
           "aliases": [
             "Miss Armaf Grandeur",
             "Armaf Miss Armaf Grandeur"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -8661,6 +8675,9 @@
           "aliases": [
             "The Pride of Armaf Pour Homme",
             "Armaf The Pride of Armaf Pour Homme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13073,6 +13090,9 @@
           "aliases": [
             "9 AM",
             "Afnan 9 AM"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13080,6 +13100,9 @@
           "aliases": [
             "9 AM Pour Femme",
             "Afnan 9 AM Pour Femme"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13094,6 +13117,9 @@
           "aliases": [
             "Supremacy Gold",
             "Afnan Supremacy Gold"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13297,6 +13323,9 @@
           "aliases": [
             "Rare",
             "Afnan Rare"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -13563,6 +13592,9 @@
           "aliases": [
             "Stardust",
             "Afnan Stardust"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
