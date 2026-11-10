@@ -137,7 +137,8 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
     # candidate generation where canonical GTINs are absent or incomplete.
     results = []
     for item in catalog_index:
-        if not brand_key or item["brand_key"] != brand_key:
+        gtin_match = bool(feed_gtin and feed_gtin in {str(value) for value in item.get("gtins", [])})
+        if not gtin_match and (not brand_key or item["brand_key"] != brand_key):
             continue
         best_name = max(
             (SequenceMatcher(None, feed_name, candidate).ratio() for candidate in item["names"]),
@@ -152,20 +153,22 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
         concentration_match = bool(feed_concentration and canonical_concentration and feed_concentration == canonical_concentration)
         concentration_conflict = bool(feed_concentration and canonical_concentration and feed_concentration != canonical_concentration)
 
-        score = 0.72 * best_name
-        if size_match:
+        score = 1.0 if gtin_match else 0.72 * best_name
+        if not gtin_match and size_match:
             score += 0.20
-        elif size_conflict:
+        elif not gtin_match and size_conflict:
             score -= 0.18
-        if concentration_match:
+        if not gtin_match and concentration_match:
             score += 0.08
-        elif concentration_conflict:
+        elif not gtin_match and concentration_conflict:
             score -= 0.15
 
         # Hard safety gate: a known size mismatch or concentration mismatch
         # cannot be labeled high confidence.
         if size_conflict or concentration_conflict:
             confidence = "low"
+        elif gtin_match:
+            confidence = "review_high"
         elif score >= 0.92 and size_match and concentration_match:
             confidence = "review_high"
         elif score >= 0.78 and size_match:
@@ -189,6 +192,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             "canonical_size_ml": item["size_ml"],
             "canonical_concentration": canonical_concentration or "",
             "name_similarity": round(best_name, 4),
+            "gtin_match": gtin_match,
             "size_match": size_match,
             "concentration_match": concentration_match,
             "review_status": "needs_human_review",
@@ -223,6 +227,7 @@ def generate_candidates(feed_path: str | Path, catalog_path: str | Path) -> list
                 "canonical_size_ml": "",
                 "canonical_concentration": "",
                 "name_similarity": 0.0,
+                "gtin_match": False,
                 "size_match": False,
                 "concentration_match": False,
                 "review_status": "no_candidate",
@@ -243,7 +248,7 @@ def main() -> None:
         "feed_brand", "feed_title", "feed_size_ml", "feed_concentration",
         "canonical_product_id", "canonical_variant_id", "canonical_brand",
         "canonical_names", "canonical_size_ml", "canonical_concentration",
-        "name_similarity", "size_match", "concentration_match", "review_status",
+        "name_similarity", "gtin_match", "size_match", "concentration_match", "review_status",
     ]
     with args.output.open("w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
