@@ -4537,7 +4537,8 @@
           "aliases": [
             "Ministry of Oud - Gladiators Oath",
             "Paris Corner Ministry of Oud - Gladiators Oath",
-            "Paris Corner Ministry of Oud - Gladiators Oath"
+            "Ministry of Oud Gladiators Oath",
+            "Paris Corner Ministry of Oud Gladiators Oath"
           ]
         },
         {
@@ -4545,7 +4546,8 @@
           "aliases": [
             "Ministry of Oud - Maestro's Symphony",
             "Paris Corner Ministry of Oud - Maestro's Symphony",
-            "Paris Corner Ministry of Oud - Maestro's Symphony"
+            "Ministry of Oud Maestro's Symphony",
+            "Paris Corner Ministry of Oud Maestro's Symphony"
           ]
         },
         {
@@ -4553,7 +4555,8 @@
           "aliases": [
             "Ministry of Oud - Nile Whispers",
             "Paris Corner Ministry of Oud - Nile Whispers",
-            "Paris Corner Ministry of Oud - Nile Whispers"
+            "Ministry of Oud Nile Whispers",
+            "Paris Corner Ministry of Oud Nile Whispers"
           ]
         },
         {
@@ -4561,7 +4564,8 @@
           "aliases": [
             "Ministry of Oud - Oud Beyond the Wall",
             "Paris Corner Ministry of Oud - Oud Beyond the Wall",
-            "Paris Corner Ministry of Oud - Oud Beyond the Wall"
+            "Ministry of Oud Oud Beyond the Wall",
+            "Paris Corner Ministry of Oud Oud Beyond the Wall"
           ]
         },
         {
@@ -4593,7 +4597,8 @@
           "aliases": [
             "Ministry of Oud - Romance Reverie",
             "Paris Corner Ministry of Oud - Romance Reverie",
-            "Paris Corner Ministry of Oud - Romance Reverie"
+            "Ministry of Oud Romance Reverie",
+            "Paris Corner Ministry of Oud Romance Reverie"
           ]
         },
         {
@@ -4616,7 +4621,6 @@
           "canonical_name": "Ministry of Oud Greatest",
           "aliases": [
             "Ministry of Oud Greatest",
-            "Paris Corner Ministry of Oud Greatest",
             "Paris Corner Ministry of Oud Greatest"
           ]
         },
@@ -5179,7 +5183,6 @@
           "canonical_name": "Tiramisu Speculoos",
           "aliases": [
             "Tiramisu Speculoos",
-            "Paris Corner Tiramisu Speculoos",
             "Paris Corner Tiramisu Speculoos"
           ]
         },
@@ -5533,104 +5536,6 @@
           ]
         },
         {
-          "canonical_name": "Jardin des Papillons",
-          "aliases": [
-            "Jardin des Papillons",
-            "Paris Corner Jardin des Papillons"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Arena Intense",
-          "aliases": [
-            "Lueur d'Espoir Arena Intense",
-            "Paris Corner Lueur d'Espoir Arena Intense"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Memories of Summer",
-          "aliases": [
-            "Lueur d'Espoir Memories of Summer",
-            "Paris Corner Lueur d'Espoir Memories of Summer"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Serene Grove",
-          "aliases": [
-            "Lueur d'Espoir Serene Grove",
-            "Paris Corner Lueur d'Espoir Serene Grove"
-          ]
-        },
-        {
-          "canonical_name": "Lueur d'Espoir Silhouette",
-          "aliases": [
-            "Lueur d'Espoir Silhouette",
-            "Paris Corner Lueur d'Espoir Silhouette"
-          ]
-        },
-        {
-          "canonical_name": "Noir d'Arabie",
-          "aliases": [
-            "Noir d'Arabie",
-            "Paris Corner Noir d'Arabie"
-          ]
-        },
-        {
-          "canonical_name": "RUA",
-          "aliases": [
-            "RUA",
-            "Paris Corner RUA"
-          ]
-        },
-        {
-          "canonical_name": "Taskeen Lactéa Divina",
-          "aliases": [
-            "Taskeen Lactéa Divina",
-            "Paris Corner Taskeen Lactéa Divina"
-          ]
-        },
-        {
-          "canonical_name": "Deux II Expressions North Stag",
-          "aliases": [
-            "Deux II Expressions North Stag",
-            "Paris Corner Deux II Expressions North Stag"
-          ]
-        },
-        {
-          "canonical_name": "Midnight Sin by Daniel René",
-          "aliases": [
-            "Midnight Sin by Daniel René",
-            "Paris Corner Midnight Sin by Daniel René"
-          ]
-        },
-        {
-          "canonical_name": "Papillon des Vents",
-          "aliases": [
-            "Papillon des Vents",
-            "Paris Corner Papillon des Vents"
-          ]
-        },
-        {
-          "canonical_name": "Quatre IV Expressions North Stag",
-          "aliases": [
-            "Quatre IV Expressions North Stag",
-            "Paris Corner Quatre IV Expressions North Stag"
-          ]
-        },
-        {
-          "canonical_name": "Trois III Expressions North Stag",
-          "aliases": [
-            "Trois III Expressions North Stag",
-            "Paris Corner Trois III Expressions North Stag"
-          ]
-        },
-        {
-          "canonical_name": "Un I Expressions North Stag",
-          "aliases": [
-            "Un I Expressions North Stag",
-            "Paris Corner Un I Expressions North Stag"
-          ]
-        },
-        {
           "canonical_name": "Confidential 100ML",
           "aliases": [
             "Confidential 100ML",
@@ -5638,55 +5543,6 @@
           ],
           "formats_ml": [
             100
-          ]
-        },
-        {
-          "canonical_name": "Ministry of Oud Greatest",
-          "aliases": [
-            "Ministry of Oud Greatest",
-            "Paris Corner Ministry of Oud Greatest"
-          ]
-        },
-        {
-          "canonical_name": "Ministry of Oud Gladiators Oath",
-          "aliases": [
-            "Ministry of Oud Gladiators Oath",
-            "Paris Corner Ministry of Oud Gladiators Oath"
-          ]
-        },
-        {
-          "canonical_name": "Ministry of Oud Maestro's Symphony",
-          "aliases": [
-            "Ministry of Oud Maestro's Symphony",
-            "Paris Corner Ministry of Oud Maestro's Symphony"
-          ]
-        },
-        {
-          "canonical_name": "Ministry of Oud Nile Whispers",
-          "aliases": [
-            "Ministry of Oud Nile Whispers",
-            "Paris Corner Ministry of Oud Nile Whispers"
-          ]
-        },
-        {
-          "canonical_name": "Ministry of Oud Oud Beyond the Wall",
-          "aliases": [
-            "Ministry of Oud Oud Beyond the Wall",
-            "Paris Corner Ministry of Oud Oud Beyond the Wall"
-          ]
-        },
-        {
-          "canonical_name": "Ministry of Oud Romance Reverie",
-          "aliases": [
-            "Ministry of Oud Romance Reverie",
-            "Paris Corner Ministry of Oud Romance Reverie"
-          ]
-        },
-        {
-          "canonical_name": "Tiramisu Speculoos",
-          "aliases": [
-            "Tiramisu Speculoos",
-            "Paris Corner Tiramisu Speculoos"
           ]
         }
       ]
@@ -10793,20 +10649,6 @@
             "Lutfah The Seventh Heaven",
             "Arabiyat Prestige Lutfah The Seventh Heaven"
           ]
-        },
-        {
-          "canonical_name": "Noirè",
-          "aliases": [
-            "Noirè",
-            "Arabiyat Prestige Noirè"
-          ]
-        },
-        {
-          "canonical_name": "Nyla Vani-Elle",
-          "aliases": [
-            "Nyla Vani-Elle",
-            "Arabiyat Prestige Nyla Vani-Elle"
-          ]
         }
       ]
     },
@@ -12590,13 +12432,6 @@
           "aliases": [
             "Fakhar Women",
             "Lattafa Fakhar Women"
-          ]
-        },
-        {
-          "canonical_name": "Ajwad Pink to Pink",
-          "aliases": [
-            "Ajwad Pink to Pink",
-            "Lattafa Ajwad Pink to Pink"
           ]
         },
         {
@@ -17603,13 +17438,6 @@
           "aliases": [
             "Private Blend",
             "Khadlaj Private Blend"
-          ]
-        },
-        {
-          "canonical_name": "Sueno",
-          "aliases": [
-            "Sueno",
-            "Khadlaj Sueno"
           ]
         }
       ]
