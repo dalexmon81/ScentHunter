@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change completes twenty-nine existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
+This change completes thirty-three existing Khadlaj canonical identities using official Khadlaj product detail pages. It does not create new product identities and does not import retailer offers, prices, stock, or shipping data.
 
 | Product | Canonical ID | Size | Concentration | GTIN |
 |---|---|---:|---|---|
@@ -35,6 +35,10 @@ This change completes twenty-nine existing Khadlaj canonical identities using of
 | Le Prestige Empress | SH-KHADLAJ-SPRAY-HARVEST-071 | 100 ml | Eau de Parfum | 6291107975948 |
 | Le Prestige Bold | SH-KHADLAJ-SPRAY-HARVEST-072 | 100 ml | Eau de Parfum | 6291107975924 |
 | Le Prestige Royal | SH-KHADLAJ-SPRAY-HARVEST-070 | 100 ml | Eau de Parfum | 6291107975931 |
+| Empire Victor | SH-KHADLAJ-935bcf95 | 100 ml | Eau de Parfum | 6291107975917 |
+| Empire Empress | SH-KHADLAJ-SPRAY-HARVEST-083 | 100 ml | Eau de Parfum | 6291107975894 |
+| Empire Crown | SH-KHADLAJ-SPRAY-HARVEST-084 | 100 ml | Eau de Parfum | 6291107975887 |
+| Empire Regent | SH-KHADLAJ-SPRAY-HARVEST-085 | 100 ml | Eau de Parfum | 6291107975900 |
 
 ## Official evidence
 
@@ -67,6 +71,10 @@ This change completes twenty-nine existing Khadlaj canonical identities using of
 - Le Prestige Empress: https://khadlaj-perfumes.com/products/le-prestige-empress-100-ml-edp-spray-elegant-women-perfume-online-dubai-uae
 - Le Prestige Bold: https://khadlaj-perfumes.com/collections/unisex-1/products/le-prestige-bold-100-ml-edp-spray-trending-perfume-for-women
 - Le Prestige Royal: https://khadlaj-perfumes.com/products/le-prestige-royal-100-ml-edp-spray
+- Empire Victor: https://khadlaj-perfumes.myshopify.com/collections/best-selling-perfumes/products/empire-victor-100-ml-edp-spray-best-perfume-for-women
+- Empire Empress: https://khadlaj-perfumes.com/products/empire-empress-100-ml-edp-spray-buy-top-women-perfume-online-dubai-uae
+- Empire Crown: https://khadlaj-perfumes.com/collections/unisex-1/products/empire-crown-100-ml-edp-spray-best-perfume-spray-for-men-online-dubai-uae
+- Empire Regent: https://khadlaj-perfumes.com/products/empire-regent-100-ml-edp-spray-luxury-perfume-for-men-and-women-dubai-uae
 
 ## Data integrity
 
