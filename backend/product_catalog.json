@@ -6303,8 +6303,12 @@
         "Afrah",
         "Zimaya Afrah"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.zimayaperfumes.com/products/afrah",
+      "formats_ml": [
+        20
+      ],
+      "concentration": "Concentrated Oil"
     },
     {
       "product_id": "SH-ZIMAYA-2b27b427",
@@ -6375,8 +6379,12 @@
         "Al Embratur Elixir",
         "Zimaya Al Embratur Elixir"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.zimayaperfumes.com/products/al-embratur-elixir",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-ea2d6ea1",
@@ -6849,8 +6857,12 @@
         "Ghali Imperial",
         "Zimaya Ghali Imperial"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://zimayaperfumes.com/"
+      "identity_status": "source_verified_name",
+      "source_url": "https://fr.zimayaperfumes.com/products/ghali-imperial",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-ZIMAYA-5be47ef4",
@@ -52805,6 +52817,42 @@
       "concentration": "Eau de Parfum",
       "source_url": "https://zimayaperfumes.com/products/al-barari-shore",
       "source_evidence_url": "https://zimayaperfumes.com/products/al-barari-shore"
+    },
+    {
+      "product_id": "SH-ZIMAYA-ae998c26",
+      "variant_id": "SHV-SH-ZIMAYA-ae998c26-20-CO",
+      "size_ml": 20,
+      "concentration": "Concentrated Oil",
+      "aliases": [
+        "Afrah 20 ml Concentrated Oil",
+        "Zimaya Afrah 20 ml"
+      ],
+      "source_url": "https://fr.zimayaperfumes.com/products/afrah",
+      "source_evidence_url": "https://fr.zimayaperfumes.com/products/afrah"
+    },
+    {
+      "product_id": "SH-ZIMAYA-dcc2773e",
+      "variant_id": "SHV-SH-ZIMAYA-dcc2773e-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Al Embratur Elixir 100 ml",
+        "Zimaya Al Embratur Elixir 100 ml"
+      ],
+      "source_url": "https://fr.zimayaperfumes.com/products/al-embratur-elixir",
+      "source_evidence_url": "https://fr.zimayaperfumes.com/products/al-embratur-elixir"
+    },
+    {
+      "product_id": "SH-ZIMAYA-00b7385e",
+      "variant_id": "SHV-SH-ZIMAYA-00b7385e-100-000",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "aliases": [
+        "Ghali Imperial 100 ml",
+        "Zimaya Ghali Imperial 100 ml"
+      ],
+      "source_url": "https://fr.zimayaperfumes.com/products/ghali-imperial",
+      "source_evidence_url": "https://fr.zimayaperfumes.com/products/ghali-imperial"
     }
   ]
 }

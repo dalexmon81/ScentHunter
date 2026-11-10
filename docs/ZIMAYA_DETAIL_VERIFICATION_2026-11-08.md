@@ -55,3 +55,20 @@ Four existing Zimaya identities were verified against their individual first-par
 - Added four 100 ml Eau de Parfum variants and synchronized parent formats in the family registry.
 - No GTIN was visible on the inspected official product detail pages; none was inferred.
 - No prices, stock, availability, retailer offers or shipping data were added.
+
+
+## Additional official product-detail batch — 2026-11-10 (Europe storefront)
+
+Three existing Zimaya canonical identities were checked against their individual official European product pages:
+
+| Canonical name | Official product page | Explicit detail |
+|---|---|---|
+| Afrah | https://fr.zimayaperfumes.com/products/afrah | 20 ml, concentrated perfume oil (CPO), Unisex |
+| Al Embratur Elixir | https://fr.zimayaperfumes.com/products/al-embratur-elixir | 100 ml, EDP, Pour Homme |
+| Ghali Imperial | https://fr.zimayaperfumes.com/products/ghali-imperial | 100 ml, EDP, Pour Homme |
+
+- Reused the three existing canonical product IDs; no new identities were created.
+- Added two 100 ml EDP variants and one 20 ml concentrated-oil variant.
+- Updated product-level format/concentration fields and the matching Zimaya family-registry formats.
+- Afrah is a concentrated perfume oil, not an EDP; its 20 ml CPO variant is represented separately.
+- No GTIN, SKU, retailer offer, stock or shipping data was inferred.

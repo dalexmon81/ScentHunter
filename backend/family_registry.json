@@ -15545,6 +15545,9 @@
           "aliases": [
             "Afrah",
             "Zimaya Afrah"
+          ],
+          "formats_ml": [
+            20
           ]
         },
         {
@@ -15579,6 +15582,9 @@
           "aliases": [
             "Al Embratur Elixir",
             "Zimaya Al Embratur Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -15807,6 +15813,9 @@
           "aliases": [
             "Ghali Imperial",
             "Zimaya Ghali Imperial"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
