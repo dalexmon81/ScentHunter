@@ -34405,8 +34405,14 @@
         "Oud Pour Noble",
         "Khadlaj Oud Pour Noble"
       ],
-      "identity_status": "source_listed_name",
-      "source_url": "https://khadlaj-perfumes.com/collections/perfumes-spray"
+      "identity_status": "source_verified_name",
+      "source_url": "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae",
+      "source_product_url": "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae",
+      "formats_ml": [
+        100
+      ],
+      "concentration": "Eau de Parfum"
     },
     {
       "product_id": "SH-KHADLAJ-SPRAY-HARVEST-097",
@@ -49512,6 +49518,19 @@
       "gtin": "6291107971032",
       "source_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae",
       "source_evidence_url": "https://khadlaj-perfumes.com/products/shahi-oud-edp-spray-shop-online-best-price-in-dubai-uae"
+    },
+    {
+      "product_id": "SH-KHADLAJ-SPRAY-HARVEST-096",
+      "size_ml": 100,
+      "aliases": [
+        "Oud Pour Noble 100 ml",
+        "Khadlaj Oud Pour Noble 100 ml"
+      ],
+      "variant_id": "SHV-SH-KHADLAJ-SPRAY-HARVEST-096-100-000",
+      "concentration": "Eau de Parfum",
+      "gtin": "6291107971025",
+      "source_url": "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae",
+      "source_evidence_url": "https://khadlaj-perfumes.com/products/oud-pour-noble-spray-shop-online-best-price-in-dubai-uae"
     }
   ]
 }
