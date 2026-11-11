@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -19,18 +20,20 @@ AMBIGUITY_MARGIN_THRESHOLD = 0.05
 PRIORITY = {
     "0_HOLD_INVALID_GTIN": 1,
     "0_HOLD_DUPLICATE_GTIN": 2,
-    "A_AMBIGUOUS_CANDIDATES": 3,
-    "B_HIGH_CONFIDENCE_MANUAL_REVIEW": 4,
-    "C_MEDIUM_CONFIDENCE_MANUAL_REVIEW": 5,
-    "D_CONFLICT_OR_ATTRIBUTE_MISMATCH": 6,
-    "E_LOW_CONFIDENCE_MANUAL_REVIEW": 7,
-    "F_PRODUCT_ONLY_REQUIRES_NEW_VARIANT": 8,
-    "G_NO_CANDIDATE": 9,
+    "0_HOLD_VARIANT_FORMAT": 3,
+    "A_AMBIGUOUS_CANDIDATES": 4,
+    "B_HIGH_CONFIDENCE_MANUAL_REVIEW": 5,
+    "C_MEDIUM_CONFIDENCE_MANUAL_REVIEW": 6,
+    "D_CONFLICT_OR_ATTRIBUTE_MISMATCH": 7,
+    "E_LOW_CONFIDENCE_MANUAL_REVIEW": 8,
+    "F_PRODUCT_ONLY_REQUIRES_NEW_VARIANT": 9,
+    "G_NO_CANDIDATE": 10,
 }
 
 INSTRUCTIONS = {
     "0_HOLD_INVALID_GTIN": "Hold: GTIN check digit is invalid. Do not map or publish until corrected by the source.",
     "0_HOLD_DUPLICATE_GTIN": "Hold: this GTIN occurs on multiple feed external IDs. Resolve duplicate identity before mapping.",
+    "0_HOLD_VARIANT_FORMAT": "Hold: feed listing is an explicit refill/recharge format. Do not map it to a standard bottle variant; verify or create the matching refill variant.",
     "A_AMBIGUOUS_CANDIDATES": "Ambiguous: the runner-up is a different canonical identity and is within 0.05 score points. Compare both before mapping.",
     "B_HIGH_CONFIDENCE_MANUAL_REVIEW": "Strong title, exact size and concentration candidate with a clear score lead. Verify identity and GTIN before approval.",
     "C_MEDIUM_CONFIDENCE_MANUAL_REVIEW": "Promising candidate; compare title, size, concentration and competing candidates.",
@@ -95,6 +98,10 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
 
         gtin = str(feed.get("gtin") or "").strip()
         gtin_valid = _truth(feed.get("gtin_valid"))
+        title_folded = str(feed.get("title") or "").casefold()
+        # Explicit refill/recharge listings are separate sellable formats.
+        # "rechargeable" describes a refillable bottle, not necessarily a refill SKU.
+        refill_format = bool(re.search(r"\\b(?:refill|recharge)\\b", title_folded)) and not bool(re.search(r"\\bfull\\s+recharge\\b", title_folded))
         duplicate_count = gtin_counts.get(gtin, 0) if gtin else 0
         best_score = _number(best.get("candidate_score"))
         runner_score = _number(runner.get("candidate_score"))
@@ -118,11 +125,9 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
             scope = str(best.get("candidate_scope") or "")
             band = str(best.get("confidence_band") or "")
             gender_conflict = _truth(best.get("gender_conflict"))
-            # A refill/recharge is a distinct purchasable format, not interchangeable
-            # with the standard bottle even when brand, name, concentration and ml match.
-            title_folded = str(feed.get("title") or "").casefold()
-            refill_format = any(token in title_folded for token in ("refill", "recharge", "rechargeable"))
-            if ambiguous:
+            if refill_format and scope == "variant":
+                priority = "0_HOLD_VARIANT_FORMAT"
+            elif ambiguous:
                 priority = "A_AMBIGUOUS_CANDIDATES"
             elif not best or str(best.get("review_status") or "") == "no_candidate":
                 priority = "G_NO_CANDIDATE"
@@ -156,7 +161,7 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
             "size_match": best.get("size_match", "False"),
             "concentration_match": best.get("concentration_match", "False"),
             "gender_conflict": best.get("gender_conflict", "False"),
-            "variant_format_conflict": refill_format if gtin_valid and duplicate_count <= 1 else False,
+            "variant_format_conflict": refill_format,
             "runner_up_score": runner.get("candidate_score", ""),
             "runner_up_product_id": runner.get("canonical_product_id", ""),
             "runner_up_variant_id": runner.get("canonical_variant_id", ""),
