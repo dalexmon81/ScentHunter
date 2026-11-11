@@ -295,6 +295,7 @@ def main() -> int:
                             gtin=selected_gtin,
                             canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
+                        session.add(variant_row)
                     elif not variant_row.gtin and selected_gtin:
                         variant_row.gtin = selected_gtin
                         session.add(variant_row)
