@@ -1,11 +1,11 @@
-# Isolated web staging for PR #726. Ephemeral SQLite only; no production DB or volume.
+# Isolated web staging for PR #726. Dedicated persistent SQLite volume; no production DB.
 app = "scenthunter-pr726-staging"
 primary_region = "ams"
 
 [build]
 
 [env]
-  SCENTHUNTER_CATALOG_DB = "/tmp/store_catalog.sqlite3"
+  SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
 
 [http_service]
@@ -15,6 +15,10 @@ primary_region = "ams"
   auto_start_machines = true
   min_machines_running = 1
   processes = ["app"]
+
+[[mounts]]
+  source = "scenthunter_pr726_data"
+  destination = "/data"
 
 [[vm]]
   memory = "2gb"
