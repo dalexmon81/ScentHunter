@@ -10,19 +10,25 @@ def test_notino_is_configured_for_france_only():
     assert all("notino.de" not in url for url in catalog.HTML_DISCOVERY_SEEDS["notino"])
 
 
-def test_notino_slug_product_urls_keep_french_host_and_drop_tracking_query():
+def test_notino_canonical_product_urls_keep_french_host_and_drop_tracking_query():
     fr = catalog._html_product_url(
         "notino",
-        "https://www.notino.fr/brand/fragrance-name/?utm_source=test",
+        "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/?utm_source=test",
         "https://www.notino.fr/",
     )
     de = catalog._html_product_url(
         "notino",
-        "https://www.notino.de/marke/duft-name/?utm_campaign=test",
+        "https://www.notino.de/marke/duft-name/p-16289640/?utm_campaign=test",
         "https://www.notino.fr/",
     )
-    assert fr == "https://www.notino.fr/brand/fragrance-name/"
+    category = catalog._html_product_url(
+        "notino",
+        "https://www.notino.fr/brand/fragrance-name/?utm_source=test",
+        "https://www.notino.fr/",
+    )
+    assert fr == "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
     assert de is None
+    assert category is None
 
 
 def test_notino_rejects_non_product_and_foreign_host_urls():
