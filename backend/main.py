@@ -487,8 +487,14 @@ def _catalog_bootstrap_worker():
     try:
         if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_sync_all):
             raise RuntimeError('catalog_engine_unavailable')
-        result = catalog_sync_all()
+        # Start hydration before the full-store discovery pass completes.
+        # Discovery persists URLs incrementally; the hydrator can consume those
+        # batches immediately instead of leaving every discovered URL queued
+        # until the slowest retailer (often a large sitemap/HTML fallback) ends.
+        # Keep hydration concurrency deliberately low because discovery and
+        # hydration share the same SQLite volume and writer coordination lock.
         _start_catalog_hydration()
+        result = catalog_sync_all()
         _start_catalog_discovery()
         ready = _catalog_is_ready()
         with _CATALOG_BOOTSTRAP_LOCK:
