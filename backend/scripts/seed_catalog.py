@@ -302,6 +302,9 @@ def main() -> int:
                     elif variant_row.fragrance_id != fragrance.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
 
+                    # Ensure the referenced variant row exists before inserting
+                    # its legacy ID map (SQLite enforces this FK immediately).
+                    session.flush()
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
                         session.add(LegacyVariantIdMap(
