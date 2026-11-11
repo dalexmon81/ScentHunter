@@ -1,0 +1,99 @@
+name: Notino authorized feed review
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/notino-cj-feed-ingestion-2026-11-10
+    paths:
+      - ".github/workflows/notino-feed-review.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notino-feed-review
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: Download and rebuild Notino review artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
+      CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - name: Check out the PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Verify CJ credentials are configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CJ_HTTP_USERNAME}" || -z "${CJ_HTTP_PASSWORD}" ]]; then
+            echo "::error::Missing repository Actions secrets CJ_HTTP_USERNAME and/or CJ_HTTP_PASSWORD. Add them under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "CJ HTTP credentials are configured (values are not displayed)."
+
+      - name: Download the authorized CJ XML feed
+        run: |
+          python -m backend.scripts.download_notino_cj_feed --output-dir /tmp/notino-feed
+          find /tmp/notino-feed -maxdepth 1 -type f -name "*.xml" -printf "Downloaded XML: %f (%s bytes)\n"
+
+      - name: Audit feed and export core fragrance rows
+        run: |
+          XML="$(find /tmp/notino-feed -maxdepth 1 -type f -name "*.xml" -print -quit)"
+          test -n "$XML"
+          python -m backend.scripts.audit_notino_cj_feed "$XML" --output /tmp/notino-feed-audit.json
+          python -m backend.scripts.export_notino_core_feed_csv "$XML" \
+            --csv /tmp/notino-core-fragrances.csv \
+            --json /tmp/notino-core-fragrances-summary.json
+
+      - name: Rebuild catalog candidates and prioritized review queue
+        run: |
+          XML="$(find /tmp/notino-feed -maxdepth 1 -type f -name "*.xml" -print -quit)"
+          python -m backend.scripts.build_notino_match_candidates "$XML" backend/product_catalog.json \
+            --output /tmp/notino-match-candidates.csv
+          python -m backend.scripts.build_notino_review_priority \
+            /tmp/notino-core-fragrances.csv /tmp/notino-match-candidates.csv \
+            --csv /tmp/notino-review-priority.csv \
+            --json /tmp/notino-review-priority-summary.json
+          python -m backend.scripts.audit_notino_catalog_coverage "$XML" backend/product_catalog.json \
+            --candidates /tmp/notino-match-candidates.csv \
+            --csv /tmp/notino-brand-coverage.csv \
+            --json /tmp/notino-brand-coverage-summary.json
+          python -m backend.scripts.build_notino_catalog_expansion_review "$XML" backend/product_catalog.json \
+            --csv /tmp/notino-catalog-expansion-review.csv \
+            --json /tmp/notino-catalog-expansion-review-summary.json
+
+      - name: Upload review artifacts (source XML and credentials are excluded)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notino-feed-review-${{ github.run_number }}
+          path: |
+            /tmp/notino-feed-audit.json
+            /tmp/notino-core-fragrances.csv
+            /tmp/notino-core-fragrances-summary.json
+            /tmp/notino-match-candidates.csv
+            /tmp/notino-review-priority.csv
+            /tmp/notino-review-priority-summary.json
+            /tmp/notino-brand-coverage.csv
+            /tmp/notino-brand-coverage-summary.json
+            /tmp/notino-catalog-expansion-review.csv
+            /tmp/notino-catalog-expansion-review-summary.json
+          if-no-files-found: warn
+          retention-days: 7
