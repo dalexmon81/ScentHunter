@@ -363,17 +363,110 @@ def _search_report(query):
 
 
 
-def extract_product_page(session, url, slug, html=None):
-    """Extract a Shopify product page from its structured product JSON.
+def _jsonld_product_records(value):
+    """Yield Product objects from common schema.org JSON-LD containers."""
+    if isinstance(value, list):
+        for child in value:
+            yield from _jsonld_product_records(child)
+    elif isinstance(value, dict):
+        kind = value.get("@type")
+        kinds = kind if isinstance(kind, list) else [kind]
+        if any(str(x).casefold() == "product" for x in kinds):
+            yield value
+        for key in ("@graph", "mainEntity", "itemListElement"):
+            if key in value:
+                yield from _jsonld_product_records(value[key])
 
-    The generic HTML parser cannot reliably distinguish Shopify variant price
-    and availability. Use the same public .js product endpoint as discovery,
-    and return one row per real variant for the catalog adapter to validate.
+
+def _product_from_html(html, canonical_url):
+    """Build a single conservative variant from public product-page markup."""
+    if not html:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    records = []
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            records.extend(_jsonld_product_records(json.loads(script.string or script.get_text())))
+        except (TypeError, ValueError):
+            continue
+
+    record = next((x for x in records if clean(x.get("name"))), {})
+    title_node = soup.find("h1")
+    title = clean(record.get("name")) or clean(title_node.get_text(" ", strip=True) if title_node else "")
+    if not title:
+        return None
+
+    offers = record.get("offers") or {}
+    if isinstance(offers, list):
+        offers = next((x for x in offers if isinstance(x, dict)), {})
+    if not isinstance(offers, dict):
+        offers = {}
+
+    price = offers.get("price") or offers.get("lowPrice")
+    currency = clean(offers.get("priceCurrency")) or "EUR"
+    availability_text = clean(offers.get("availability")).casefold()
+    if availability_text:
+        available = not any(x in availability_text for x in ("outofstock", "soldout", "discontinued"))
+    else:
+        page_text = clean(soup.get_text(" ", strip=True)).casefold()
+        sold_out_markers = ("épuisé", "uitverkocht", "sold out", "ausverkauft", "agotado")
+        available = False if any(x in page_text for x in sold_out_markers) else None
+
+    if price is None:
+        for selector in (
+            'meta[property="product:price:amount"]',
+            'meta[property="og:price:amount"]',
+            'meta[itemprop="price"]',
+        ):
+            node = soup.select_one(selector)
+            if node and node.get("content"):
+                price = node.get("content")
+                break
+
+    brand = record.get("brand") or {}
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+    sku = record.get("sku") or record.get("mpn")
+    gtin = record.get("gtin13") or record.get("gtin12") or record.get("gtin14")
+    product = {
+        "title": title,
+        "vendor": clean(brand),
+        "id": record.get("productID"),
+        "featured_image": record.get("image"),
+    }
+    variant = {
+        "title": clean(record.get("size") or record.get("description")),
+        "price": price,
+        "available": available,
+        "sku": sku,
+        "id": None,
+        "barcode": gtin,
+    }
+    item = make_item(product, variant, canonical_url, title)
+    if not item:
+        return None
+    item["identity"]["gtin"] = str(gtin) if gtin else None
+    item["offer"]["currency"] = currency
+    item["provenance"]["product_source"] = "shopify_product_page_jsonld"
+    item["provenance"]["variant_source"] = "shopify_product_page_jsonld"
+    item["raw_data"] = {"jsonld": record}
+    return item
+
+
+def extract_product_page(session, url, slug, html=None):
+    """Extract Shopify variants from public structured page data.
+
+    Prefer JSON-LD embedded in the already-fetched product page. This avoids
+    a second network request and still exposes the listed price and explicit
+    stock state when Shopify's optional .js endpoint is unavailable.
     """
-    # Shopify's localized storefront paths can serve the HTML page but
-    # do not consistently expose the product JSON endpoint. Resolve the
-    # canonical root product URL before requesting its structured .js data.
     canonical_url = _canonical_product_url(url)
+    page_item = _product_from_html(html, canonical_url)
+    if page_item:
+        return [page_item]
+
+    # Fall back to Shopify's public product JSON endpoint when the page does
+    # not contain usable Product JSON-LD.
     data = product_json(session, canonical_url)
     if not isinstance(data, dict):
         return None
