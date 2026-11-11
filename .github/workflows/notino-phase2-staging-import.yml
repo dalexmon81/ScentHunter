@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: notino-phase2-staging-import
+  group: notino-phase2-staging-import-v2
   cancel-in-progress: true
 
 jobs:
