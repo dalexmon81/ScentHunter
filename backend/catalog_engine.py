@@ -5933,6 +5933,17 @@ def _queue_mark_done(task):
         conn.close()
 
 
+def _hydration_retry_delay(attempts, http_status=None):
+    """Choose a bounded retry delay, respecting retailer rate limits."""
+    if http_status == 429:
+        # A retailer rate limit is store-side backpressure, not a transient
+        # parser failure. Pause this URL for six hours instead of retrying
+        # repeatedly and worsening the block.
+        return 6 * 60 * 60
+    idx = min(max(int(attempts or 1) - 1, 0), len(HYDRATION_BACKOFF_SECONDS) - 1)
+    return float(HYDRATION_BACKOFF_SECONDS[idx])
+
+
 def _queue_mark_error(task, error, http_status=None):
     """Record a retryable error using bounded exponential backoff."""
     now = time.time()
@@ -5947,8 +5958,7 @@ def _queue_mark_error(task, error, http_status=None):
             return
 
         attempts = int(row['attempts'] or 0)
-        idx = min(max(attempts - 1, 0), len(HYDRATION_BACKOFF_SECONDS) - 1)
-        delay = float(HYDRATION_BACKOFF_SECONDS[idx])
+        delay = _hydration_retry_delay(attempts, http_status=http_status)
         jitter = delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         next_time = now + delay + jitter
 
