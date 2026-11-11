@@ -78,6 +78,25 @@ jobs:
       - name: Deploy isolated staging app
         run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
 
+      - name: Hydrate Liquid Brun offers before staging search verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://scenthunter-pr726-staging.fly.dev"
+          refresh() {
+            local store="$1"
+            local url="$2"
+            echo "TARGETED_REFRESH store=${store} url=${url}"
+            curl --connect-timeout 10 --max-time 45 -fsS -G \
+              --data-urlencode "store=${store}" \
+              --data-urlencode "url=${url}" \
+              "${BASE}/catalog/refresh-store-url"
+            echo
+          }
+          # Populate the isolated staging catalog before asserting that search can find the offers.
+          refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
+          refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
+
       - name: Verify staging health and search
         shell: bash
         run: |
