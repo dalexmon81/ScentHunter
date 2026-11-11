@@ -89,6 +89,23 @@ jobs:
             echo "::endgroup::"
           }
           fetch "/catalog-status"
+          echo "::group::LIQUID_BRUN_TARGETED_REFRESH"
+          refresh() {
+            local store="$1"
+            local url="$2"
+            echo "TARGETED_REFRESH store=${store} url=${url}"
+            curl --connect-timeout 10 --max-time 35 -sS -G \
+              --data-urlencode "store=${store}" \
+              --data-urlencode "url=${url}" \
+              "${BASE}/catalog/refresh-store-url"
+            echo
+          }
+          refresh "bplatz" "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
+          refresh "parfumcity" "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
+          refresh "notino" "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/"
+          refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
+          refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
+          echo "::endgroup::"
           echo "::group::LIQUID_BRUN_CATALOG_SEARCH"
           curl --connect-timeout 10 --max-time 45 -sS -G --data-urlencode "q=Liquid Brun" "${BASE}/search"
           echo
