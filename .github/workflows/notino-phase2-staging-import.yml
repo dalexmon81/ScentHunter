@@ -12,6 +12,8 @@ on:
       - "backend/scripts/seed_catalog.py"
       - "backend/scripts/build_notino_match_candidates.py"
       - "backend/app/models/**"
+      - "backend/app/services/notino_phase2_search.py"
+      - "backend/main.py"
   workflow_dispatch:
     inputs:
       confirm:
