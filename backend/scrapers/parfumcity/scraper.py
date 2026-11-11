@@ -394,6 +394,16 @@ def _product_from_html(html, canonical_url):
     title_node = soup.find("h1")
     title = clean(record.get("name")) or clean(title_node.get_text(" ", strip=True) if title_node else "")
     if not title:
+        for selector in (
+            'meta[property="og:title"]',
+            'meta[name="twitter:title"]',
+            'meta[name="title"]',
+        ):
+            node = soup.select_one(selector)
+            if node and clean(node.get("content")):
+                title = clean(node.get("content"))
+                break
+    if not title:
         return None
 
     offers = record.get("offers") or {}
@@ -405,8 +415,19 @@ def _product_from_html(html, canonical_url):
     price = offers.get("price") or offers.get("lowPrice")
     currency = clean(offers.get("priceCurrency")) or "EUR"
     availability_text = clean(offers.get("availability")).casefold()
+    if not availability_text:
+        for selector in (
+            'meta[property="product:availability"]',
+            'meta[itemprop="availability"]',
+            'link[itemprop="availability"]',
+        ):
+            node = soup.select_one(selector)
+            if node:
+                availability_text = clean(node.get("content") or node.get("href"))
+                if availability_text:
+                    break
     if availability_text:
-        available = not any(x in availability_text for x in ("outofstock", "soldout", "discontinued"))
+        available = not any(x in availability_text.casefold() for x in ("outofstock", "out_of_stock", "soldout", "discontinued"))
     else:
         page_text = clean(soup.get_text(" ", strip=True)).casefold()
         sold_out_markers = ("épuisé", "uitverkocht", "sold out", "ausverkauft", "agotado")
