@@ -122,22 +122,45 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import time, urllib.error, urllib.request
+          import json, time, urllib.error, urllib.request
           base = "https://scenthunter-pr726-staging.fly.dev"
           last = None
           for attempt in range(1, 25):
               try:
-                  for path in ("/health", "/search?q=Hawas", "/search?q=Liquid%20Brun"):
+                  for path in ("/health", "/search?q=Hawas"):
                       req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
                       with urllib.request.urlopen(req, timeout=15) as response:
                           if response.status != 200:
                               raise RuntimeError(f"{path}: HTTP {response.status}")
                           response.read()
+                  req = urllib.request.Request(base + "/search?q=Liquid%20Brun", headers={"Accept": "application/json"})
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      if response.status != 200:
+                          raise RuntimeError(f"/search?q=Liquid%20Brun: HTTP {response.status}")
+                      payload = json.loads(response.read().decode("utf-8"))
+                  results = payload.get("results") or []
+                  limited = [
+                      product for product in results
+                      if "limited edition" in str(product.get("canonical_name") or product.get("name") or "").lower()
+                  ]
+                  if not limited:
+                      raise RuntimeError("Liquid Brun Limited Edition missing from catalog search")
+                  stores = {
+                      str(offer.get("store") or offer.get("shop") or "").strip().casefold()
+                      for product in limited
+                      for offer in (product.get("offers") or [])
+                  }
+                  if "parfumcity" not in stores:
+                      raise RuntimeError(
+                          "ParfumCity targeted refresh was not indexed in Limited Edition search; "
+                          f"stores={sorted(stores)}"
+                      )
                   print("STAGING_HEALTH_AND_SEARCH=PASS")
                   print("STAGING_LIQUID_BRUN_SEARCH=PASS")
+                  print("STAGING_LIMITED_EDITION_PARFUMCITY_INDEX=PASS")
                   print("STAGING_URL=" + base)
                   break
-              except (OSError, RuntimeError, urllib.error.URLError) as exc:
+              except (OSError, RuntimeError, urllib.error.URLError, ValueError) as exc:
                   last = f"{type(exc).__name__}: {exc}"
                   print(f"Attempt {attempt}/24: {last}", flush=True)
                   if attempt < 24:
