@@ -247,3 +247,34 @@ Then run the audit and review tools against the downloaded XML. For a daily
 production refresh, store the two credentials as deployment secrets and invoke
 the downloader from a scheduled background worker. No CJ credentials belong
 in GitHub source, logs, or the public frontend.
+
+
+## End-to-end read-only feed review
+
+After downloading the XML, the complete review-only pipeline is:
+
+```bash
+XML=/data/feeds/notino/NOTINO_fr-NotinoFR_google_all-shopping.xml
+
+python -m backend.scripts.audit_notino_cj_feed \
+  "$XML" --output /tmp/notino-feed-audit.json
+
+python -m backend.scripts.export_notino_core_feed_csv \
+  "$XML" --csv /tmp/notino-core-fragrances.csv \
+  --json /tmp/notino-core-fragrances.json
+
+python -m backend.scripts.build_notino_match_candidates \
+  "$XML" backend/product_catalog.json \
+  --output /tmp/notino-match-candidates.csv
+
+python -m backend.scripts.build_notino_review_priority \
+  /tmp/notino-core-fragrances.csv /tmp/notino-match-candidates.csv \
+  --csv /tmp/notino-catalog-review-priority.csv \
+  --json /tmp/notino-catalog-review-priority.json
+```
+
+The chain audits the XML, exports the core fragrance rows with GTIN validity
+and duplicate flags, generates up to five candidate rows per feed item, then
+reduces them to a single prioritized review row with runner-up and ambiguity
+information. All steps are offline/read-only after download; they do not
+promote offers or write catalog/database records.
