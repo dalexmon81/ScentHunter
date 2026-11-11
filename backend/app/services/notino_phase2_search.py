@@ -84,6 +84,7 @@ def search_notino_phase2(query: str, limit: int = 30) -> list[dict]:
                     "shop": "notino",
                     "price": float(offer.price),
                     "price_num": float(offer.price),
+                    "currency": offer.currency,
                     "format": f"{variant.size_ml} ml" if variant.size_ml else None,
                     "size_ml": variant.size_ml,
                     "url": offer.url,

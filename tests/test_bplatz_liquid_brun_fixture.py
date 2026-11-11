@@ -176,8 +176,8 @@ def test_positive_controlled_association_promotes_offer_from_fixture():
     assert offer.product_url == record["product_url"]
     assert offer.availability == "in_stock"
 
-    # Explicit test-only association. Not a production matcher result:
-    # the catalog GTIN is empty, so the Bplatz GTIN alone cannot prove identity.
+    # This isolated legacy-schema fixture uses an explicit association; the
+    # production matcher is exercised against the canonical catalog below.
     controlled_variant_id = VARIANT_ID
     with tempfile.TemporaryDirectory(prefix="scenthunter-liquid-brun-") as tmp:
         db = Path(tmp) / "isolated.sqlite3"
@@ -218,8 +218,9 @@ def test_positive_controlled_association_promotes_offer_from_fixture():
             connection.close()
 
 
-def test_negative_without_certain_association_stays_raw_and_not_offers():
+def test_unknown_gtin_without_certain_association_stays_raw_and_not_offers():
     record = parse_liquid_brun_fixture()
+    record["gtin"] = "6290360375687"
     offer = normalize(record)
     with tempfile.TemporaryDirectory(prefix="scenthunter-liquid-brun-negative-") as tmp:
         connection = make_db(Path(tmp) / "isolated.sqlite3")
@@ -229,7 +230,7 @@ def test_negative_without_certain_association_stays_raw_and_not_offers():
                 ("Bplatz", json.dumps(record), "pending"),
             )
             raw_id = cursor.lastrowid
-            # No canonical association: GTIN is not a match because catalog GTIN is empty.
+            # An unrelated GTIN cannot be attached to the Liquid Brun variant.
             product_variant_id = None
             assert product_variant_id is None
             connection.commit()

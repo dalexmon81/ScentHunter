@@ -2538,17 +2538,27 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
     requested = list(stores)
     if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
         try:
+            phase2_offers = []
+            phase2_error = None
+            try:
+                from app.services.notino_phase2_search import search_notino_phase2
+                phase2_offers = search_notino_phase2(query)
+            except Exception as phase2_exc:
+                phase2_error = type(phase2_exc).__name__
+                print(
+                    f"NOTINO PHASE2 SEARCH BRIDGE ERROR: "
+                    f"{phase2_error}: {phase2_exc}",
+                    flush=True,
+                )
             reports = _collect_catalog_reports_isolated(
                 query, requested, on_report=on_report, on_result=on_result,
                 cancel_event=cancel_event, job_id=job_id,
-                allow_live_fallback=allow_live_fallback,
+                allow_live_fallback=allow_live_fallback and not phase2_offers,
             )
             # Merge the separately persisted CJ Phase 2 offers into the same
             # authoritative Notino report consumed by /search and /search-start.
             # The bridge is read-only and never calls a retailer endpoint.
             try:
-                from app.services.notino_phase2_search import search_notino_phase2
-                phase2_offers = search_notino_phase2(query)
                 if phase2_offers:
                     notino_report = next(
                         (item for item in reports if item.get("store") == "notino"),
@@ -2593,6 +2603,13 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                     notino_report.setdefault("details", {})["phase2_error"] = (
                         type(phase2_exc).__name__
                     )
+            if phase2_error and not phase2_offers:
+                notino_report = next(
+                    (item for item in reports if item.get("store") == "notino"),
+                    None,
+                )
+                if notino_report is not None:
+                    notino_report.setdefault("details", {})["phase2_error"] = phase2_error
             return reports
         except Exception as exc:
             # Normal search is catalog-only. Never fall back to the legacy live

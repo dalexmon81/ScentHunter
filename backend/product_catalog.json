@@ -29568,7 +29568,9 @@
       "variant_id": "VAR-f87146c82d167f4c",
       "product_id": "SH-0030",
       "size_ml": 100,
-      "gtins": [],
+      "gtins": [
+        "6290360375694"
+      ],
       "mpns": [],
       "aliases": [
         "French Avenue Liquid Brun",

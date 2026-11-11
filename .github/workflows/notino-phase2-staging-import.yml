@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/notino-phase2-staging-import.yml"
       - "backend/scripts/import_notino_phase2_persistent.py"
+      - "backend/scripts/verify_notino_phase2_persistent.py"
+      - "backend/product_catalog.json"
       - "backend/app/services/notino_phase2_adapter.py"
       - "backend/app/services/ingestion_persistence.py"
       - "backend/scripts/seed_catalog.py"
@@ -27,7 +29,8 @@ permissions:
 
 concurrency:
   group: scenthunter-pr726-staging
-  cancel-in-progress: true
+  # Never cancel a staging deploy mid-rollout; the image must be current before import.
+  cancel-in-progress: false
 
 jobs:
   import:
@@ -50,18 +53,141 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$FLY_API_TOKEN"
-          test -n "$CJ_HTTP_USERNAME"
-          test -n "$CJ_HTTP_PASSWORD"
-          echo "Validated required credentials without displaying their values."
+          echo "Validated the isolated staging credential without displaying its value."
 
-      - name: Set up Python and download the authorized CJ feed
+      - name: Set up Python for authorized CJ feed handling
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Download current Notino XML snapshot
+      - name: Install Fly CLI and normalize isolated staging token
+        shell: bash
         run: |
           set -euo pipefail
+          normalized_token="$FLY_API_TOKEN"
+          case "$normalized_token" in
+            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
+          esac
+          echo "::add-mask::$normalized_token"
+          echo "FLY_API_TOKEN=$normalized_token" >> "$GITHUB_ENV"
+          curl -L https://fly.io/install.sh | sh
+          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+
+      - name: Select every PR staging machine with a mounted data volume
+        id: machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          machines="$(flyctl machine list --app "$FLY_APP" --json)"
+          machine_ids="$(jq -r '[.[] | select(.state != "destroyed") | .id] | join(",")' <<< "$machines")"
+          if [ -z "$machine_ids" ]; then
+            echo "::error::No machine exists in the isolated staging app."
+            exit 1
+          fi
+          IFS=',' read -ra ids <<< "$machine_ids"
+          for machine_id in "${ids[@]}"; do
+            state="$(jq -r --arg id "$machine_id" '.[] | select(.id == $id) | .state' <<< "$machines")"
+            if [ "$state" != "started" ]; then
+              flyctl machine start "$machine_id" --app "$FLY_APP"
+            fi
+            status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
+            if ! grep -Eq "Volume[[:space:]]*│[[:space:]]*vol_" <<< "$status"; then
+              echo "::error::Staging machine $machine_id does not report an attached persistent Fly volume."
+              printf '%s\n' "$status"
+              exit 1
+            fi
+          done
+          echo "machine_ids=$machine_ids" >> "$GITHUB_OUTPUT"
+          echo "machine_id=${ids[0]}" >> "$GITHUB_OUTPUT"
+          echo "Selected all isolated staging machines with mounted /data volumes."
+
+      - name: Verify the staging image contains this import script
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          EXPECTED_IMPORTER_SHA="$(sha256sum backend/scripts/import_notino_phase2_persistent.py | cut -d ' ' -f 1)"
+          EXPECTED_VERIFIER_SHA="$(sha256sum backend/scripts/verify_notino_phase2_persistent.py | cut -d ' ' -f 1)"
+          EXPECTED_MAIN_SHA="$(sha256sum backend/main.py | cut -d ' ' -f 1)"
+          EXPECTED_CATALOG_SHA="$(sha256sum backend/product_catalog.json | cut -d ' ' -f 1)"
+          for machine_id in "${ids[@]}"; do
+            REMOTE_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib; from pathlib import Path; root=Path(\"/app/backend\"); files=(\"scripts/import_notino_phase2_persistent.py\",\"scripts/verify_notino_phase2_persistent.py\",\"main.py\",\"product_catalog.json\"); [print(path+\"=\"+hashlib.sha256((root/path).read_bytes()).hexdigest()) for path in files]'")"
+            if ! grep -Fq "scripts/import_notino_phase2_persistent.py=$EXPECTED_IMPORTER_SHA" <<< "$REMOTE_OUTPUT" \
+              || ! grep -Fq "scripts/verify_notino_phase2_persistent.py=$EXPECTED_VERIFIER_SHA" <<< "$REMOTE_OUTPUT" \
+              || ! grep -Fq "main.py=$EXPECTED_MAIN_SHA" <<< "$REMOTE_OUTPUT" \
+              || ! grep -Fq "product_catalog.json=$EXPECTED_CATALOG_SHA" <<< "$REMOTE_OUTPUT"; then
+              echo "::error::Staging machine $machine_id does not contain this branch's importer, verifier, search path, and canonical catalog."
+              printf '%s\n' "$REMOTE_OUTPUT"
+              exit 1
+            fi
+          done
+          echo "Verified importer, verifier, public search, and canonical catalog hashes on all staging machines."
+
+      - name: Find a valid persistent snapshot on the staging volumes
+        id: snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          snapshot_available=false
+          snapshot_complete=true
+          source_machine=""
+          expected_sha=""
+          for machine_id in "${ids[@]}"; do
+            if ! flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib,sys; from pathlib import Path; sys.path.insert(0,\"/app/backend\"); from scripts.build_notino_match_candidates import iter_perfume_rows; p=Path(\"/data/notino-phase2/notino-cj-feed.xml\"); marker=Path(str(p)+\".sha256\"); n=sum(1 for _ in iter_perfume_rows(p)); assert n>0; digest=hashlib.file_digest(p.open(\"rb\"),\"sha256\").hexdigest(); assert not marker.exists() or marker.read_text().strip()==digest; marker.write_text(digest+\"\\n\"); print(\"Validated existing feed rows=\"+str(n)+\" sha256=\"+digest)'"; then
+              snapshot_complete=false
+              continue
+            fi
+            machine_sha="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "cat /data/notino-phase2/notino-cj-feed.xml.sha256" | tr -d '\r\n')"
+            if [ -z "$source_machine" ]; then
+              source_machine="$machine_id"
+              expected_sha="$machine_sha"
+              snapshot_available=true
+            elif [ "$machine_sha" != "$expected_sha" ]; then
+              echo "::error::Valid snapshots on staging volumes have different checksums."
+              exit 1
+            fi
+          done
+          if [ -z "$source_machine" ]; then
+            snapshot_complete=false
+          fi
+          echo "available=$snapshot_available" >> "$GITHUB_OUTPUT"
+          echo "complete=$snapshot_complete" >> "$GITHUB_OUTPUT"
+          echo "source_machine=$source_machine" >> "$GITHUB_OUTPUT"
+          echo "sha256=$expected_sha" >> "$GITHUB_OUTPUT"
+          if [ "$snapshot_complete" = true ]; then
+            echo "Every staging volume contains the same validated CJ XML snapshot; download skipped."
+          elif [ "$snapshot_available" = true ]; then
+            echo "A validated CJ XML snapshot exists on $source_machine and will be copied to missing volumes."
+          else
+            echo "No valid snapshot exists on staging; downloading an authorized CJ snapshot."
+          fi
+
+      - name: Reuse the existing snapshot from its persistent volume
+        if: steps.snapshot.outputs.available == 'true' && steps.snapshot.outputs.complete != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_MACHINE="${{ steps.snapshot.outputs.source_machine }}"
+          flyctl ssh console --app "$FLY_APP" --machine "$SOURCE_MACHINE" -C "test -s /data/notino-phase2/notino-cj-feed.xml.gz || gzip -c /data/notino-phase2/notino-cj-feed.xml > /data/notino-phase2/notino-cj-feed.xml.gz"
+          mkdir -p /tmp/notino-reused-snapshot
+          XML_GZ=/tmp/notino-reused-snapshot/notino-cj-feed.xml.gz
+          XML=/tmp/notino-reused-snapshot/notino-cj-feed.xml
+          flyctl ssh sftp get /data/notino-phase2/notino-cj-feed.xml.gz "$XML_GZ" --app "$FLY_APP" --machine "$SOURCE_MACHINE"
+          gzip -t "$XML_GZ"
+          gzip -dc "$XML_GZ" > "$XML"
+          ACTUAL_SHA="$(sha256sum "$XML" | cut -d ' ' -f 1)"
+          test "$ACTUAL_SHA" = "${{ steps.snapshot.outputs.sha256 }}"
+          echo "NOTINO_XML_PATH=$XML" >> "$GITHUB_ENV"
+          echo "NOTINO_XML_GZ_PATH=$XML_GZ" >> "$GITHUB_ENV"
+          echo "Reused the validated CJ snapshot from machine $SOURCE_MACHINE (sha256=$ACTUAL_SHA)."
+
+      - name: Download current Notino XML snapshot
+        if: steps.snapshot.outputs.available != 'true'
+        run: |
+          set -euo pipefail
+          test -n "$CJ_HTTP_USERNAME"
+          test -n "$CJ_HTTP_PASSWORD"
           python -m pip install -r backend/requirements.txt
           python -m backend.scripts.download_notino_cj_feed --output-dir /tmp/notino-feed
           XML="$(find /tmp/notino-feed -maxdepth 1 -type f -name "*.xml" -print -quit)"
@@ -84,97 +210,70 @@ jobs:
               print({k: row.get(k) for k in ("id", "gtin", "brand", "title", "price", "sale_price", "availability", "link")})
           PY
 
-      - name: Install Fly CLI and normalize isolated staging token
-        shell: bash
-        run: |
-          set -euo pipefail
-          normalized_token="$FLY_API_TOKEN"
-          case "$normalized_token" in
-            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
-          esac
-          echo "::add-mask::$normalized_token"
-          echo "FLY_API_TOKEN=$normalized_token" >> "$GITHUB_ENV"
-          curl -L https://fly.io/install.sh | sh
-          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
-
-      - name: Select a running PR staging machine and confirm mounted data volume
-        id: machine
-        shell: bash
-        run: |
-          set -euo pipefail
-          machines="$(flyctl machine list --app "$FLY_APP" --json)"
-          machine_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started")][0].id // [.[]][0].id // empty')"
-          if [ -z "$machine_id" ]; then
-            echo "::error::No machine exists in the isolated staging app."
-            exit 1
-          fi
-          state="$(printf '%s' "$machines" | jq -r --arg id "$machine_id" '.[] | select(.id == $id) | .state')"
-          if [ "$state" != "started" ]; then
-            flyctl machine start "$machine_id" --app "$FLY_APP"
-          fi
-          status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
-          if ! grep -Eq "Volume[[:space:]]*│[[:space:]]*vol_" <<< "$status"; then
-            echo "::error::Selected staging machine does not report an attached persistent Fly volume."
-            printf '%s\\n' "$status"
-            exit 1
-          fi
-          echo "machine_id=$machine_id" >> "$GITHUB_OUTPUT"
-          echo "Selected isolated staging machine $machine_id with /data volume mount."
-
       - name: Upload XML to isolated staging volume using Fly SFTP
+        if: steps.snapshot.outputs.complete != 'true'
         shell: bash
         run: |
           set -euo pipefail
-          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mkdir -p /data/notino-phase2"
-          REMOTE_TMP="/data/notino-phase2/notino-cj-feed-${GITHUB_RUN_ID}.xml.gz"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh sftp put "$NOTINO_XML_GZ_PATH" "$REMOTE_TMP" --app "$FLY_APP" --machine "$MACHINE_ID"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s $REMOTE_TMP"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mv -f $REMOTE_TMP /data/notino-phase2/notino-cj-feed.xml.gz"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import gzip,shutil; src=gzip.open(\"/data/notino-phase2/notino-cj-feed.xml.gz\",\"rb\"); dst=open(\"/data/notino-phase2/notino-cj-feed.xml\",\"wb\"); shutil.copyfileobj(src,dst); src.close(); dst.close()'"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s /data/notino-phase2/notino-cj-feed.xml"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "sha256sum /data/notino-phase2/notino-cj-feed.xml"
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          EXPECTED_SHA="$(sha256sum "$NOTINO_XML_PATH" | cut -d ' ' -f 1)"
+          for machine_id in "${ids[@]}"; do
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "mkdir -p /data/notino-phase2"
+            REMOTE_TMP="/data/notino-phase2/notino-cj-feed-${GITHUB_RUN_ID}.xml.gz"
+            flyctl ssh sftp put "$NOTINO_XML_GZ_PATH" "$REMOTE_TMP" --app "$FLY_APP" --machine "$machine_id"
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "test -s $REMOTE_TMP && mv -f $REMOTE_TMP /data/notino-phase2/notino-cj-feed.xml.gz"
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import gzip,shutil; src=gzip.open(\"/data/notino-phase2/notino-cj-feed.xml.gz\",\"rb\"); dst=open(\"/data/notino-phase2/notino-cj-feed.xml\",\"wb\"); shutil.copyfileobj(src,dst); src.close(); dst.close()'"
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "test -s /data/notino-phase2/notino-cj-feed.xml && test \"\$(sha256sum /data/notino-phase2/notino-cj-feed.xml | cut -d ' ' -f 1)\" = \"$EXPECTED_SHA\" && printf '%s\\n' '$EXPECTED_SHA' > /data/notino-phase2/notino-cj-feed.xml.sha256"
+          done
 
       - name: Import into the dedicated persistent Phase 2 SQLite database
         shell: bash
         run: |
           set -euo pipefail
-          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          for machine_id in "${ids[@]}"; do
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
+          done
+
+      - name: Capture offer baseline before re-import
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          for machine_id in "${ids[@]}"; do
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3 --write-baseline /tmp/notino-phase2-before.json"
+          done
 
       - name: Re-import same snapshot and verify offer idempotency
         shell: bash
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          FLY_APP: scenthunter-pr726-staging
         run: |
           set -euo pipefail
-          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
-          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import sqlite3,json; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); q=lambda s:c.execute(s).fetchone()[0]; out={\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicates\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"offers\"]==83 and out[\"history\"]>=166 and out[\"duplicates\"]==0'"
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          for machine_id in "${ids[@]}"; do
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
+          done
+
+      - name: Verify offer count is stable and re-import adds observations only
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          for machine_id in "${ids[@]}"; do
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3 --compare-baseline /tmp/notino-phase2-before.json"
+          done
 
       - name: Verify Phase 2 and public catalog-first Notino search
         shell: bash
         run: |
           set -euo pipefail
-          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
-          QUERY="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); r=c.execute(\"select f.name from offers o join stores s on s.id=o.store_id join product_variants v on v.id=o.product_variant_id join fragrances f on f.id=v.fragrance_id where s.slug=\\\"notino-fr\\\" and o.status=\\\"active\\\" and o.availability=\\\"in_stock\\\" limit 1\").fetchone(); print(r[0].split()[0] if r else \"\")'")"
-          test -n "$QUERY"
-          echo "Testing a real feed-matched Notino product: $QUERY"
-          OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/search_notino_phase2_catalog.py '$QUERY' --database /data/notino-phase2/catalog.sqlite3 --limit 20")"
-          printf '%s\\n' "$OUTPUT"
-          python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("{"); end=raw.rfind("}"); assert start >= 0 and end > start, f"No JSON object in search output: {raw[-2000:]}"; d=json.loads(raw[start:end+1]); assert d["source"]=="notino_phase2_catalog_sqlite", d; assert d["live_scraping"] is False, d; assert d["count"]>0, d; print("PHASE2_NOTINO_SEARCH=PASS")' <<< "$OUTPUT"
+          QUERY="Liquid Brun"
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          for machine_id in "${ids[@]}"; do
+            echo "Testing $QUERY against machine $machine_id"
+            OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/search_notino_phase2_catalog.py '$QUERY' --database /data/notino-phase2/catalog.sqlite3 --limit 20")"
+            printf '%s\\n' "$OUTPUT"
+            python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("{"); end=raw.rfind("}"); assert start >= 0 and end > start, f"No JSON object in search output: {raw[-2000:]}"; d=json.loads(raw[start:end+1]); assert d["source"]=="notino_phase2_catalog_sqlite", d; assert d["live_scraping"] is False, d; assert any("liquid brun" in (x["fragrance"] + " " + x["brand"]).casefold() for x in d["offers"]), d; print("PHASE2_NOTINO_SEARCH=PASS")' <<< "$OUTPUT"
+          done
           python - "$QUERY" <<'PY'
           import json, sys, urllib.parse, urllib.request
           query = sys.argv[1]
@@ -185,13 +284,70 @@ jobs:
           offers = [offer for product in (payload.get("results") or []) for offer in (product.get("offers") or [])]
           notino = [offer for offer in offers if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"]
           assert notino, {"query": query, "stores": sorted({str(o.get("store") or o.get("shop")) for o in offers}), "payload": payload}
-          valid = [o for o in notino if float(o.get("price") or o.get("price_num") or 0) > 0 and str(o.get("url") or "").startswith("http")]
+          valid = [o for o in notino if float(o.get("price") or o.get("price_num") or 0) > 0 and o.get("currency") == "EUR" and str(o.get("url") or "").startswith("http") and o.get("availability") and o.get("source") == "cj_notino_fr_feed"]
           assert valid, {"query": query, "notino": notino}
+          assert "liquid brun" in str(valid[0].get("name") or "").casefold(), valid[0]
           print("PUBLIC_NOTINO_SEARCH=PASS")
           print("PUBLIC_NOTINO_PRODUCT=" + str(valid[0].get("name")))
           print("PUBLIC_NOTINO_PRICE=" + str(valid[0].get("price") or valid[0].get("price_num")))
+          print("PUBLIC_NOTINO_CURRENCY=" + str(valid[0].get("currency")))
+          print("PUBLIC_NOTINO_AVAILABILITY=" + str(valid[0].get("availability")))
           print("PUBLIC_NOTINO_URL=" + str(valid[0].get("url")))
           PY
+
+          python - <<'PY'
+          import json, time, urllib.parse, urllib.request
+          base = "https://scenthunter-pr726-staging.fly.dev"
+          query = "Liquid Brun"
+          def get(path):
+              with urllib.request.urlopen(base + path, timeout=60) as response:
+                  return json.loads(response.read().decode("utf-8"))
+          start_url = "/search-start?" + urllib.parse.urlencode({"q": query})
+          deadline = time.time() + 30
+          while True:
+              payload = get(start_url)
+              if payload.get("status") != "busy":
+                  break
+              if time.time() >= deadline:
+                  raise TimeoutError("public /search-start remained busy")
+              time.sleep(float(payload.get("retry_after_ms", 250)) / 1000)
+          job_id = payload.get("job_id")
+          if job_id and not payload.get("completed"):
+              status_url = "/search-status?" + urllib.parse.urlencode({"job_id": job_id})
+              while time.time() < deadline:
+                  payload = get(status_url)
+                  if payload.get("completed"):
+                      break
+                  time.sleep(0.5)
+          assert payload.get("completed"), {"status": payload.get("status"), "errors": payload.get("errors")}
+          notino_report = (payload.get("stores") or {}).get("notino") or {}
+          details = notino_report.get("details") or {}
+          assert details.get("phase2_source") == "persistent_notino_cj_catalog", details
+          assert details.get("live_scraping") is False, details
+          assert not (details.get("live_fallback") or {}).get("attempted"), details
+          offers = [offer for group in (payload.get("results") or []) for offer in (group.get("offers") or [])]
+          notino = [offer for offer in offers if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"]
+          assert any(
+              "liquid brun" in str(offer.get("name") or "").casefold()
+              and float(offer.get("price") or offer.get("price_num") or 0) > 0
+              and offer.get("currency") == "EUR"
+              and offer.get("availability")
+              and str(offer.get("url") or "").startswith("http")
+              and offer.get("source") == "cj_notino_fr_feed"
+              for offer in notino
+          ), {"query": query, "notino_offers": notino}
+          print("PUBLIC_SEARCH_START_NOTINO_CATALOG_FIRST=PASS")
+          PY
+
+      - name: Restart machines and verify persistent database on every volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
+          for machine_id in "${ids[@]}"; do
+            flyctl machine restart "$machine_id" --app "$FLY_APP"
+            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3"
+          done
 
       - name: Verify persisted database and offer uniqueness
         shell: bash

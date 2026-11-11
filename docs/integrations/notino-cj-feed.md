@@ -92,9 +92,10 @@ a GTIN or offer can be attached.
 
 ## Important limitation
 The adapter and persistence tests do not activate production ingestion, change
-search behavior, seed/activate the Notino store, or schedule downloads. Phase 2
-uses an isolated SQLite database; PostgreSQL migration remains deferred.
-The feed has not been imported into any database.
+production ingestion, seed/activate the Notino store, or schedule production
+downloads. PR #726 has a separate, explicitly isolated staging workflow for
+Phase 2. The feed is never imported into the production database; PostgreSQL
+migration remains deferred.
 
 
 ## Packaging size normalization
@@ -313,16 +314,39 @@ to map products or publish offers.
 ## Canonical GTIN enrichment (2026-11-11)
 
 The PR branch catalog was enriched with 83 GTINs across 83 existing canonical
-variants. The selected rows required an exact candidate score of 1.0, exact
-name similarity of 1.0, exact size and concentration matches, no gender or
-variant-format conflict, a valid GS1 check digit, a unique GTIN and a unique
-target variant. These are deterministic high-evidence mappings derived from
-the CJ feed and canonical catalog; they are not represented as independent
-human confirmations.
+variants using exact candidate, name, size and concentration evidence. The
+Notino CJ feed additionally identifies Liquid Brun EDP 100 ml as GTIN
+`6290360375694`; this valid, unique GTIN is now attached to `SH-0030` /
+`VAR-f87146c82d167f4c`. It remains separate from the 150 ml Limited Edition
+variant, which has GTIN `6298042001831`. The PR branch now has 84 valid,
+unique GTINs across 84 existing variants. These are high-evidence identity
+mappings, not independent human confirmations.
 
-The committed catalog was re-read and checked: 511 variants, 83 GTIN values,
-83 unique GTIN values and no orphan variant references. The enrichment is on
-the PR branch only. No production catalog/database write or offer import was
-performed. The Notino Phase 2 adapter can now resolve those 83 exact GTINs
+The committed catalog was re-read and checked: 511 variants, 84 GTIN values,
+84 unique GTIN values and no orphan variant references. The mapping is on the
+PR branch only. The Notino Phase 2 adapter can now resolve those exact GTINs
 when run against a database seeded from this enriched catalog; all remaining
 feed rows continue to stage for review until a unique canonical GTIN exists.
+
+## PR #726 isolated persistent staging import
+
+The workflow `.github/workflows/notino-phase2-staging-import.yml` writes only
+to `/data/notino-phase2/catalog.sqlite3` on `scenthunter-pr726-staging`. It
+deploys the current branch before importing and verifies the importer script
+hash on every Fly machine. Since each Fly machine has a separate persistent
+volume, it copies the snapshot and imports/verifies the database on every
+machine, not just the first one.
+
+The workflow reuses a snapshot only when its checksum is verified on every
+volume; otherwise it downloads and transfers a fresh authorized CJ snapshot.
+Unmatched feed rows are bulk-staged, while exact unique GTIN matches use the
+normal validation and offer-promotion path. The workflow re-imports the same
+snapshot and requires a stable offer count, new price-history observations,
+valid canonical variant links and no duplicate retailer offer IDs. It then
+restarts each staging machine and rechecks the persistent database.
+
+Staging search reads the Phase 2 database in read-only mode. The isolated
+Fly configuration disables Notino's live search fallback, so `/search` and
+the frontend's `/search-start` path cannot scrape Notino when an imported
+catalog offer is available (or when the catalog has no match). This setting
+does not change production configuration.
