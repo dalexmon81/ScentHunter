@@ -71,7 +71,7 @@ class NotinoReviewPriorityTests(unittest.TestCase):
             self.assertEqual(by_id["PRODUCT"]["priority"], "F_PRODUCT_ONLY_REQUIRES_NEW_VARIANT")
             self.assertEqual(by_id["NONE"]["priority"], "G_NO_CANDIDATE")
             self.assertEqual(by_id["CONFLICT"]["priority"], "D_CONFLICT_OR_ATTRIBUTE_MISMATCH")
-            self.assertEqual(by_id["REFILL"]["priority"], "D_CONFLICT_OR_ATTRIBUTE_MISMATCH")
+            self.assertEqual(by_id["REFILL"]["priority"], "0_HOLD_VARIANT_FORMAT")
             self.assertTrue(by_id["REFILL"]["variant_format_conflict"])
             self.assertEqual(summary["automatic_matches_approved"], 0)
             self.assertEqual(summary["catalog_writes"], 0)
