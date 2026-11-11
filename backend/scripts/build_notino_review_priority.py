@@ -156,6 +156,7 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
             "runner_up_product_id": runner.get("canonical_product_id", ""),
             "runner_up_variant_id": runner.get("canonical_variant_id", ""),
             "score_margin": round(best_score - runner_score, 4),
+            "ambiguous": ambiguous,
             "_priority_order": PRIORITY[priority],
         })
         queue.append(row)

@@ -62,6 +62,7 @@ class NotinoReviewPriorityTests(unittest.TestCase):
             self.assertEqual(by_id["HIGH"]["priority"], "B_HIGH_CONFIDENCE_MANUAL_REVIEW")
             self.assertEqual(by_id["AMBIG"]["priority"], "A_AMBIGUOUS_CANDIDATES")
             self.assertEqual(by_id["AMBIG"]["score_margin"], 0.02)
+            self.assertTrue(by_id["AMBIG"]["ambiguous"])
             self.assertEqual(by_id["DUP-A"]["priority"], "0_HOLD_DUPLICATE_GTIN")
             self.assertEqual(by_id["DUP-B"]["priority"], "0_HOLD_DUPLICATE_GTIN")
             self.assertEqual(by_id["INVALID"]["priority"], "0_HOLD_INVALID_GTIN")
