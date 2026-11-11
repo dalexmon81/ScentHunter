@@ -362,6 +362,28 @@ def _search_report(query):
         session.close()
 
 
+
+def extract_product_page(session, url, slug, html=None):
+    """Extract a Shopify product page from its structured product JSON.
+
+    The generic HTML parser cannot reliably distinguish Shopify variant price
+    and availability. Use the same public .js product endpoint as discovery,
+    and return one row per real variant for the catalog adapter to validate.
+    """
+    data = product_json(session, url)
+    if not isinstance(data, dict):
+        return None
+    query = clean(data.get("title")) + " " + clean(data.get("vendor"))
+    rows = []
+    for variant in data.get("variants") or []:
+        if not isinstance(variant, dict):
+            continue
+        item = make_item(data, variant, _canonical_product_url(url), query)
+        if item:
+            rows.append(item)
+    return rows or None
+
+
 def search(query):
     return _search_report(query).get("results", [])
 
