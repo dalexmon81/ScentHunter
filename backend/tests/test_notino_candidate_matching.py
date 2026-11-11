@@ -214,6 +214,41 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         self.assertEqual(candidate["confidence_band"], "low")
 
 
+
+    def test_singular_man_woman_gender_terms_detect_conflicts(self):
+        from backend.scripts.build_notino_match_candidates import extract_gender
+        self.assertEqual(extract_gender("Armaf Club de Nuit Intense Man"), "men")
+        self.assertEqual(extract_gender("Armaf Club de Nuit Intense Woman"), "women")
+        self.assertEqual(extract_gender("Burberry for Him"), "men")
+        self.assertEqual(extract_gender("Burberry pour elle"), "women")
+
+    def test_man_woman_canonical_name_conflict_cannot_be_high_confidence(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-CLUB-MAN",
+                "brand_name": "Armaf",
+                "canonical_name": "Club de Nuit Intense Man",
+                "family_name": "Club de Nuit Intense Man",
+                "concentration": "Eau de Parfum",
+                "aliases": [],
+            }],
+            "variants": [{
+                "variant_id": "V-CLUB-MAN",
+                "product_id": "P-CLUB-MAN",
+                "size_ml": 105,
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        candidate = score_row({
+            "id": "SKU-CLUB-WOMAN",
+            "brand": "Armaf",
+            "title": "Armaf Club de Nuit Intense Woman Eau de Parfum 105 ml",
+            "size": "105 ml",
+        }, build_catalog_index(catalog))[0]
+        self.assertTrue(candidate["gender_conflict"])
+        self.assertEqual(candidate["confidence_band"], "low")
+
     def test_gender_extraction_detects_men_and_women_terms(self):
         from backend.scripts.build_notino_match_candidates import extract_gender
         self.assertEqual(extract_gender("Burberry London for Women"), "women")

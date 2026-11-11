@@ -84,8 +84,8 @@ def extract_concentration(value: str) -> str | None:
 
 def extract_gender(value: str) -> str | None:
     text = normalize(value)
-    has_men = bool(re.search(r"\b(?:for men|pour homme|homme|men)\b", text))
-    has_women = bool(re.search(r"\b(?:for women|pour femme|femme|women)\b", text))
+    has_men = bool(re.search(r"\b(?:for men|pour homme|homme|men|man|for him|pour lui)\b", text))
+    has_women = bool(re.search(r"\b(?:for women|pour femme|femme|women|woman|for her|pour elle)\b", text))
     if has_men and has_women:
         return "conflict"
     if has_men:
@@ -100,7 +100,7 @@ def strip_product_noise(value: str) -> str:
     text = re.sub(r"\b\d+(?:\.\d+)?\s*(?:ml|milliliters?|millilitres?)\b", " ", text)
     for phrase in sorted(CONCENTRATIONS, key=len, reverse=True):
         text = re.sub(rf"\b{re.escape(normalize(phrase))}\b", " ", text)
-    text = re.sub(r"\b(?:spray|vaporisateur|natural spray|tester|refill|recharge|gift set|coffret|for men|for women|pour homme|pour femme|homme|femme|men|women)\b", " ", text)
+    text = re.sub(r"\b(?:spray|vaporisateur|natural spray|tester|refill|recharge|gift set|coffret|for men|for women|for him|for her|pour homme|pour femme|pour lui|pour elle|homme|femme|men|women|man|woman)\b", " ", text)
     return " ".join(text.split())
 
 
