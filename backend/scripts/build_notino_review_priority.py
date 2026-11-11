@@ -101,7 +101,7 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
         title_folded = str(feed.get("title") or "").casefold()
         # Explicit refill/recharge listings are separate sellable formats.
         # "rechargeable" describes a refillable bottle, not necessarily a refill SKU.
-        refill_format = bool(re.search(r"\\b(?:refill|recharge)\\b", title_folded)) and not bool(re.search(r"\\bfull\\s+recharge\\b", title_folded))
+        refill_format = bool(re.search(r"\b(?:refill|recharge)\b", title_folded)) and not bool(re.search(r"\bfull\s+recharge\b", title_folded))
         duplicate_count = gtin_counts.get(gtin, 0) if gtin else 0
         best_score = _number(best.get("candidate_score"))
         runner_score = _number(runner.get("candidate_score"))
