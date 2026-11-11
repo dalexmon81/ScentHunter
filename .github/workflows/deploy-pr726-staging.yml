@@ -133,7 +133,8 @@ jobs:
                           if response.status != 200:
                               raise RuntimeError(f"{path}: HTTP {response.status}")
                           response.read()
-                  print("STAGING_HEALTH_AND_SEARCH=PASS\n                  print("STAGING_LIQUID_BRUN_SEARCH=PASS")")
+                  print("STAGING_HEALTH_AND_SEARCH=PASS")
+                  print("STAGING_LIQUID_BRUN_SEARCH=PASS")
                   print("STAGING_URL=" + base)
                   break
               except (OSError, RuntimeError, urllib.error.URLError) as exc:
