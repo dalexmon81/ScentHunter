@@ -1,4 +1,5 @@
 name: Deploy PR 726 isolated web staging
+# Trigger-only update: validate the latest isolated staging fix.
 
 on:
   push:
