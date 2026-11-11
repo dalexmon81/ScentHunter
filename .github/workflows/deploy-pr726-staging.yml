@@ -1,10 +1,19 @@
 name: Deploy PR 726 isolated web staging
 
 on:
+  push:
+    branches:
+      - feature/notino-cj-feed-ingestion-2026-11-10
+    paths:
+      - ".github/workflows/deploy-pr726-staging.yml"
+      - "fly.pr726.staging.toml"
+      - "Dockerfile"
+      - "backend/**"
+      - "requirements.txt"
   workflow_dispatch:
     inputs:
       confirm:
-        description: Type deploy-pr726 to deploy the isolated staging app
+        description: Type deploy-pr726 to deploy only the isolated PR 726 staging app
         required: true
         type: string
 
@@ -17,19 +26,19 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ inputs.confirm == 'deploy-pr726' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'deploy-pr726' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter-pr726-staging
     steps:
-      - name: Checkout the PR 726 branch only
+      - name: Checkout PR 726 staging branch only
         uses: actions/checkout@v4
         with:
           ref: feature/notino-cj-feed-ingestion-2026-11-10
 
-      - name: Validate isolated deployment target
+      - name: Validate isolated target and normalize Fly token
         shell: bash
         run: |
           set -euo pipefail
@@ -37,41 +46,40 @@ jobs:
           grep -Fq 'app = "scenthunter-pr726-staging"' fly.pr726.staging.toml
           ! grep -Fq 'app = "scenthunter"' fly.pr726.staging.toml
           ! grep -Fq 'source = ' fly.pr726.staging.toml
-          echo "Confirmed: deploy targets only the pre-created staging app; no production app or volume."
+          normalized_token="$FLY_API_TOKEN"
+          case "$normalized_token" in
+            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
+          esac
+          echo "::add-mask::$normalized_token"
+          printf 'FLY_API_TOKEN=%s\n' "$normalized_token" >> "$GITHUB_ENV"
+          echo "Validated isolated staging target; no production app or volume is used."
 
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy isolated web app
+      - name: Deploy isolated staging app
         run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
 
-      - name: Verify staging health and search endpoint
+      - name: Verify staging health and search
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, time, urllib.error, urllib.request
+          import time, urllib.error, urllib.request
           base = "https://scenthunter-pr726-staging.fly.dev"
           last = None
           for attempt in range(1, 25):
               try:
-                  def get(path):
+                  for path in ("/health", "/search?q=Hawas"):
                       req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
                       with urllib.request.urlopen(req, timeout=15) as response:
                           if response.status != 200:
                               raise RuntimeError(f"{path}: HTTP {response.status}")
-                          body = response.read().decode("utf-8")
-                          try:
-                              return json.loads(body)
-                          except json.JSONDecodeError:
-                              return body
-                  get("/health")
-                  get("/search?q=Hawas")
-                  print("STAGING_HEALTH=PASS")
-                  print("STAGING_SEARCH_ENDPOINT=PASS")
+                          response.read()
+                  print("STAGING_HEALTH_AND_SEARCH=PASS")
                   print("STAGING_URL=" + base)
                   break
-              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
+              except (OSError, RuntimeError, urllib.error.URLError) as exc:
                   last = f"{type(exc).__name__}: {exc}"
                   print(f"Attempt {attempt}/24: {last}", flush=True)
                   if attempt < 24:
