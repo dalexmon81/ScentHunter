@@ -66,6 +66,16 @@ jobs:
           test -s "$XML"
           echo "NOTINO_XML_PATH=$XML" >> "$GITHUB_ENV"
           sha256sum "$XML"
+          python - "$XML" <<'PY'
+          import sys
+          from pathlib import Path
+          from backend.scripts.build_notino_match_candidates import iter_perfume_rows
+          rows = list(iter_perfume_rows(Path(sys.argv[1])))
+          hits = [r for r in rows if "liquid brun" in " ".join(str(r.get(k) or "") for k in ("title", "brand", "gtin", "id")).casefold()]
+          print(f"NOTINO_FEED_ROWS={len(rows)} LIQUID_BRUN_MATCHES={len(hits)}")
+          for row in hits[:10]:
+              print({k: row.get(k) for k in ("id", "gtin", "brand", "title", "price", "sale_price", "availability", "link")})
+          PY
 
       - name: Install Fly CLI and normalize isolated staging token
         shell: bash
