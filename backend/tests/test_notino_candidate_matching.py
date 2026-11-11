@@ -184,6 +184,71 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         self.assertTrue(candidate["gender_unverified"])
         self.assertEqual(candidate["confidence_band"], "review_high")
 
+
+    def test_catalog_gender_metadata_is_used_when_product_name_has_no_gender_marker(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-ITALIAN-GENDER",
+                "brand_name": "Hermes",
+                "canonical_name": "Barenia",
+                "family_name": "Barenia",
+                "concentration": "Eau de Parfum",
+                "gender": "Donna",
+                "aliases": ["Hermes Barenia"],
+            }],
+            "variants": [{
+                "variant_id": "V-ITALIAN-GENDER",
+                "product_id": "P-ITALIAN-GENDER",
+                "size_ml": 100,
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        candidate = score_row({
+            "id": "SKU-BARENIA-WOMEN",
+            "brand": "Hermes",
+            "title": "Hermes Barenia Eau de Parfum pour femme 100 ml",
+            "size": "100 ml",
+        }, build_catalog_index(catalog))[0]
+        self.assertEqual(candidate["canonical_gender"], "women")
+        self.assertFalse(candidate["gender_conflict"])
+        self.assertEqual(candidate["confidence_band"], "review_high")
+
+    def test_catalog_gender_metadata_blocks_opposite_audience_candidate(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-ITALIAN-GENDER-CONFLICT",
+                "brand_name": "Hermes",
+                "canonical_name": "Barenia",
+                "family_name": "Barenia",
+                "concentration": "Eau de Parfum",
+                "gender": "Donna",
+                "aliases": ["Hermes Barenia"],
+            }],
+            "variants": [{
+                "variant_id": "V-ITALIAN-GENDER-CONFLICT",
+                "product_id": "P-ITALIAN-GENDER-CONFLICT",
+                "size_ml": 100,
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        candidate = score_row({
+            "id": "SKU-BARENIA-MEN",
+            "brand": "Hermes",
+            "title": "Hermes Barenia Eau de Parfum pour homme 100 ml",
+            "size": "100 ml",
+        }, build_catalog_index(catalog))[0]
+        self.assertEqual(candidate["canonical_gender"], "women")
+        self.assertTrue(candidate["gender_conflict"])
+        self.assertEqual(candidate["confidence_band"], "low")
+
+    def test_gender_extraction_supports_explicit_italian_and_unisex_markers(self):
+        from backend.scripts.build_notino_match_candidates import extract_gender
+        self.assertEqual(extract_gender("Barenia pour femme"), "women")
+        self.assertEqual(extract_gender("Profumo da uomo"), "men")
+        self.assertEqual(extract_gender("Fragrance unisex"), "unisex")
+
     def test_gender_conflict_cannot_be_high_confidence(self):
         catalog = {
             "products": [{
