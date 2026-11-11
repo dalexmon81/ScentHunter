@@ -91,8 +91,12 @@ jobs:
             echo "::error::No started machine exists in the isolated staging app."
             exit 1
           fi
-          status="$(flyctl machine status "$machine_id" --app "$FLY_APP" --json)"
-          printf '%s' "$status" | jq -e '.config.mounts | any(.destination == "/data" and (.volume != null or .name != null))' >/dev/null
+          status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
+          if ! grep -Fq "/data" <<< "$status"; then
+            echo "::error::Selected staging machine does not report the expected /data volume mount."
+            printf '%s\\n' "$status"
+            exit 1
+          fi
           echo "machine_id=$machine_id" >> "$GITHUB_OUTPUT"
           echo "Selected isolated staging machine $machine_id with /data volume mount."
 
