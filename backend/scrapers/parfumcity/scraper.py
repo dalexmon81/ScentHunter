@@ -22,8 +22,8 @@ STOPWORDS = {"eau", "de", "parfum", "perfume", "edp", "edt", "extrait", "spray",
 def clean(v): return re.sub(r"\s+", " ", str(v or "")).strip()
 def norm(v):
     text = re.sub(r"[^a-z0-9]+", " ", clean(v).lower())
-    text = re.sub(r"(?<=\\d)(?=[a-z])|(?<=[a-z])(?=\\d)", " ", text)
-    return re.sub(r"\\s+", " ", text).strip()
+    text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def tokens(q):
@@ -429,7 +429,7 @@ def _product_from_html(html, canonical_url):
     if price is None and title_node:
         for text_node in title_node.find_all_next(string=True):
             text_value = clean(text_node)
-            match = re.search(r"(?:€\\s*)?(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})\\s*(?:€|EUR)", text_value, re.I)
+            match = re.search(r"(?:€\s*)?(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*(?:€|EUR)", text_value, re.I)
             if match:
                 price = match.group(1)
                 break
