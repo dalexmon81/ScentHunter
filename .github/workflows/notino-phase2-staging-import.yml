@@ -126,9 +126,18 @@ jobs:
           FLY_APP: scenthunter-pr726-staging
         run: |
           set -euo pipefail
-          MACHINE_ID="${{ steps.staging.outputs.machine_id }}"
+          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import sqlite3,json; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); q=lambda s:c.execute(s).fetchone()[0]; out={\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicates\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"offers\"]==83 and out[\"history\"]>=166 and out[\"duplicates\"]==0'"
+
+      - name: Verify Phase 2 catalog-first Notino search
+        shell: bash
+        run: |
+          set -euo pipefail
+          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/search_notino_phase2_catalog.py 'Liquid Brun' --database /data/notino-phase2/catalog.sqlite3 --limit 20")"
+          printf '%s\\n' "$OUTPUT"
+          python -c 'import json,sys; d=json.loads(sys.stdin.read()); assert d["source"]=="notino_phase2_catalog_sqlite"; assert d["live_scraping"] is False; assert d["count"]>0; assert any("liquid brun" in x["fragrance"].lower() for x in d["offers"]); print("PHASE2_NOTINO_SEARCH=PASS")' <<< "$OUTPUT"
 
       - name: Verify persisted database and offer uniqueness
         shell: bash
