@@ -24,7 +24,7 @@ permissions:
 
 concurrency:
   group: scenthunter-pr726-staging
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
