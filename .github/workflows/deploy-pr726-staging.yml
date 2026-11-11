@@ -79,6 +79,7 @@ jobs:
         run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
 
       - name: Collect read-only catalog hydration diagnostics
+        continue-on-error: true
         shell: bash
         run: |
           set -u
