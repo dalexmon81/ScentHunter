@@ -7298,7 +7298,11 @@ def sync_all():
                error=excluded.error""",
                (store, 'DISCOVERY_QUEUED', now, None, 0, 0, 'waiting_for_discovery_worker'))
     conn.close()
-    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(ACTIVE_STORES))) as pool:
+    # SQLite has one WAL writer. Launching every retailer at once causes
+    # competing discovery transactions, writer-lock timeouts and starves
+    # hydration. Three concurrent retailers keep network discovery moving
+    # while bounding pressure on the shared persistent catalog.
+    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(3, SYNC_WORKERS, len(ACTIVE_STORES))) as pool:
         futures = {pool.submit(discover_store, store): store for store in ACTIVE_STORES}
         for future in as_completed(futures):
             store = futures[future]
