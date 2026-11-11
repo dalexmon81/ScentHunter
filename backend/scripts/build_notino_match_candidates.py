@@ -234,6 +234,10 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             feed_gender and item.get("gender")
             and (item["gender"] == "conflict" or feed_gender != item["gender"])
         )
+        # Missing canonical gender is unknown evidence, not agreement. Keep
+        # name/size/concentration candidates visible, but do not rank a
+        # name-based candidate as high confidence without gender validation.
+        gender_unverified = bool(feed_gender and not item.get("gender"))
 
         score = 1.0 if gtin_match else 0.72 * best_name
         if not gtin_match and size_match:
@@ -253,6 +257,8 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             confidence = "low"
         elif gtin_match:
             confidence = "review_high"
+        elif gender_unverified:
+            confidence = "review_medium" if score >= 0.78 and size_match else "review_low"
         elif score >= 0.92 and size_match and concentration_match:
             confidence = "review_high"
         elif score >= 0.78 and size_match:
@@ -272,6 +278,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             "feed_gender": feed_gender or "",
             "canonical_gender": item.get("gender") or "",
             "gender_conflict": gender_conflict,
+            "gender_unverified": gender_unverified,
             "canonical_product_id": item["product_id"],
             "canonical_variant_id": item["variant_id"],
             "candidate_scope": item["candidate_scope"],
@@ -311,6 +318,7 @@ def generate_candidates(feed_path: str | Path, catalog_path: str | Path) -> list
                 "feed_gender": extract_gender(row.get("title", "")) or "",
                 "canonical_gender": "",
                 "gender_conflict": False,
+                "gender_unverified": bool(extract_gender(row.get("title", ""))),
                 "canonical_product_id": "",
                 "canonical_variant_id": "",
                 "candidate_scope": "",
@@ -338,7 +346,7 @@ def main() -> None:
     fields = list(rows[0]) if rows else [
         "candidate_score", "confidence_band", "feed_external_id", "feed_gtin",
         "feed_brand", "feed_title", "feed_size_ml", "feed_concentration",
-        "feed_gender", "canonical_gender", "gender_conflict", "canonical_product_id", "canonical_variant_id", "candidate_scope", "canonical_brand",
+        "feed_gender", "canonical_gender", "gender_conflict", "gender_unverified", "canonical_product_id", "canonical_variant_id", "candidate_scope", "canonical_brand",
         "canonical_names", "canonical_size_ml", "canonical_concentration",
         "name_similarity", "gtin_match", "size_match", "concentration_match", "review_status",
     ]

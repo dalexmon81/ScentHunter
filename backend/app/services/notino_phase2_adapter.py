@@ -15,24 +15,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import IngestionRaw, ProductVariant
+from app.models import ProductVariant
 from gtin import is_valid_gtin
 from app.services.ingestion_persistence import (
     promote_offer, record_match, stage_raw_offer, StaleObservation,
 )
-
-
-def _held_matched_result(
-    session: Session, *, raw_id: UUID, variant_id: UUID, reason: str,
-) -> "NotinoPhase2Result":
-    """Persist why a canonically matched source row was not published."""
-    raw = session.get(IngestionRaw, raw_id)
-    if raw is not None:
-        raw.rejection_reason = reason
-        session.flush()
-    return NotinoPhase2Result(
-        raw_id, "matched", product_variant_id=variant_id, reason=reason,
-    )
 
 
 @dataclass(frozen=True)
@@ -116,26 +103,31 @@ def persist_notino_record(
     parsed = urlparse(url)
 
     if not price.is_finite() or price <= 0:
-        return _held_matched_result(
-            session, raw_id=raw_id, variant_id=variant.id, reason="invalid_price",
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="invalid_price",
         )
     if currency != "EUR":
-        return _held_matched_result(
-            session, raw_id=raw_id, variant_id=variant.id, reason="unexpected_currency",
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="unexpected_currency",
         )
     if availability is None:
-        return _held_matched_result(
-            session, raw_id=raw_id, variant_id=variant.id, reason="availability_not_explicit",
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="availability_not_explicit",
         )
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return _held_matched_result(
-            session, raw_id=raw_id, variant_id=variant.id, reason="invalid_affiliate_url",
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="invalid_affiliate_url",
         )
 
     source_timestamp = str(raw_record.get("captured_at") or "").strip()
     if not source_timestamp:
-        return _held_matched_result(
-            session, raw_id=raw_id, variant_id=variant.id, reason="missing_source_observation_timestamp",
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="missing_source_observation_timestamp",
         )
     try:
         observed_at = datetime.fromisoformat(source_timestamp.replace("Z", "+00:00"))
@@ -143,8 +135,9 @@ def persist_notino_record(
             raise ValueError("timestamp has no timezone")
         observed_at = observed_at.astimezone(timezone.utc)
     except (TypeError, ValueError):
-        return _held_matched_result(
-            session, raw_id=raw_id, variant_id=variant.id, reason="invalid_source_observation_timestamp",
+        return NotinoPhase2Result(
+            raw_id, "matched", product_variant_id=variant.id,
+            reason="invalid_source_observation_timestamp",
         )
 
     try:
@@ -155,13 +148,9 @@ def persist_notino_record(
             match_existing_by_variant=False, observed_at=observed_at,
         )
     except StaleObservation:
-        stale = _held_matched_result(
-            session, raw_id=raw_id, variant_id=variant.id,
-            reason="source_observation_not_newer_than_stored_offer",
-        )
         return NotinoPhase2Result(
-            stale.ingestion_raw_id, "stale",
-            product_variant_id=stale.product_variant_id, reason=stale.reason,
+            raw_id, "stale", product_variant_id=variant.id,
+            reason="source_observation_not_newer_than_stored_offer",
         )
     return NotinoPhase2Result(
         raw_id, "promoted", offer_id=offer_id,

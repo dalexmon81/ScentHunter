@@ -140,6 +140,50 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         }, index)[0]
         self.assertFalse(candidate["gtin_match"])
 
+
+    def test_missing_canonical_gender_cannot_be_name_ranked_as_high(self):
+        row = {
+            "id": "SKU-GENDER-UNKNOWN",
+            "brand": "Dior",
+            "title": "Dior Sauvage Eau de Parfum pour homme 100 ml",
+            "size": "100 ml",
+        }
+        candidates = score_row(row, self.index)
+        self.assertTrue(candidates)
+        self.assertTrue(candidates[0]["gender_unverified"])
+        self.assertFalse(candidates[0]["gender_conflict"])
+        self.assertEqual(candidates[0]["confidence_band"], "review_medium")
+        self.assertEqual(candidates[0]["review_status"], "needs_human_review")
+
+    def test_gender_unverified_does_not_override_valid_exact_gtin_evidence(self):
+        catalog = {
+            "products": [{
+                "product_id": "P-GENDER-GTIN",
+                "brand_name": "Dior",
+                "canonical_name": "Sauvage",
+                "family_name": "Sauvage",
+                "concentration": "Eau de Parfum",
+                "aliases": ["Sauvage"],
+            }],
+            "variants": [{
+                "variant_id": "V-GENDER-GTIN",
+                "product_id": "P-GENDER-GTIN",
+                "size_ml": 100,
+                "gtins": ["8011003809202"],
+                "aliases": [],
+            }],
+        }
+        candidate = score_row({
+            "id": "SKU-GENDER-GTIN",
+            "gtin": "8011003809202",
+            "brand": "Dior",
+            "title": "Dior Sauvage Eau de Parfum pour homme 100 ml",
+            "size": "100 ml",
+        }, build_catalog_index(catalog))[0]
+        self.assertTrue(candidate["gtin_match"])
+        self.assertTrue(candidate["gender_unverified"])
+        self.assertEqual(candidate["confidence_band"], "review_high")
+
     def test_gender_conflict_cannot_be_high_confidence(self):
         catalog = {
             "products": [{
