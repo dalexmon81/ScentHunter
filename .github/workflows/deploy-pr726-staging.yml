@@ -77,6 +77,23 @@ jobs:
       - name: Deploy isolated staging app
         run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
 
+      - name: Collect read-only catalog hydration diagnostics
+        shell: bash
+        run: |
+          set -u
+          BASE="https://scenthunter-pr726-staging.fly.dev"
+          fetch() {
+            local path="$1"
+            echo "::group::GET ${path}"
+            curl --connect-timeout 10 --max-time 45 -sS -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}${path}" || true
+            echo "::endgroup::"
+          }
+          fetch "/catalog-status"
+          fetch "/catalog/hydration-processing"
+          for store in bplatz parfumcity parfumzentrum perfumemarket sabina orioudh easycosmetic deloox notino; do
+            fetch "/catalog/hydration-errors?store=${store}&limit=30"
+          done
+
       - name: Verify staging health and search
         shell: bash
         run: |
