@@ -22,14 +22,15 @@ The candidate output contains 22,055 ranked candidate rows for 9,533 unique Noti
 |---|---:|---|
 | Invalid GTIN hold | 184 | Do not map or publish until source GTIN is corrected |
 | Duplicate GTIN hold | 2 | Resolve duplicate identity before mapping |
-| High-confidence variant candidate | 167 | Human identity verification required; never auto-approve |
-| Medium-confidence variant candidate | 292 | Manual comparison of title, size, concentration and alternatives |
-| Attribute conflict / mismatch | 219 | Hold for manual resolution |
-| Low-confidence variant candidate | 400 | Manual catalog research |
-| Product-only candidate | 2,297 | Product may exist, but no purchasable canonical variant is identified |
+| Ambiguous top candidate | 1,416 | A different runner-up is within 0.05 score points; compare both before mapping |
+| High-confidence variant candidate | 160 | Clear score lead; still requires human identity verification |
+| Medium-confidence variant candidate | 199 | Manual comparison of title, size, concentration and alternatives |
+| Attribute conflict / mismatch | 98 | Hold for manual resolution |
+| Low-confidence variant candidate | 211 | Manual catalog research |
+| Product-only candidate | 1,291 | Product may exist, but no purchasable canonical variant is identified |
 | No candidate | 5,972 | New product/brand discovery or later reprocessing |
 
-The queue contains one best-ranked candidate and its runner-up for each feed item, with score margin, candidate IDs, product attributes, GTIN hold status, price, availability and affiliate URL. It is a prioritization aid, not a set of approved mappings.
+The queue contains one best-ranked candidate and its runner-up for each feed item, with score margin, candidate IDs, product attributes, GTIN hold status, price, availability and affiliate URL. A different runner-up within 0.05 score points is explicitly classified as ambiguous; this is a conservative ranking heuristic, not a probability. It is a prioritization aid, not a set of approved mappings.
 
 ## Safety and next gate
 

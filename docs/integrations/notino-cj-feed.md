@@ -112,7 +112,7 @@ product-only identities for products without a variant.
 
 Results for the 9,533 core fragrance feed rows:
 - 3,379 rows received at least one brand/name candidate; 6,154 received none.
-- 167 top-ranked candidates were strong existing-variant review candidates.
+- 167 top-ranked candidates fell into the strongest existing-variant score band before comparing the runner-up; the reproducible priority queue now splits these into 160 with a clear lead and 7 ambiguous alternatives.
 - 1,017 rows were ambiguous; 292 medium-priority; 1,585 low-priority;
   318 were downgraded for known size, concentration or gender conflicts.
 - No exact GTIN matches were possible because no canonical variant has a GTIN.
@@ -212,3 +212,11 @@ product-only candidates and 5,972 with no candidate.
 The generated queue is a review artifact based on the saved 2026-11-10 feed
 extract. Re-download and audit the current CJ XML before treating any price,
 availability or timestamp as current.
+
+
+The review-priority builder also compares the best candidate with the runner-up.
+When the runner-up is a different canonical identity and the score gap is below
+0.05, the feed row is placed in an explicit ambiguous queue rather than being
+labelled high confidence. This threshold is a conservative ranking heuristic,
+not a probability. The 2026-11-11 queue therefore contains 1,416 ambiguous
+rows across variant and product-only candidates; no candidate is auto-approved.
