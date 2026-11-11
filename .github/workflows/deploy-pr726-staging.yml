@@ -57,13 +57,21 @@ jobs:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Ensure dedicated persistent staging volume exists
+      - name: Ensure two dedicated persistent staging volumes exist in ams
         shell: bash
         run: |
           set -euo pipefail
-          if ! flyctl volumes list --app "$FLY_APP" | grep -q "scenthunter_pr726_data"; then
-            flyctl volumes create scenthunter_pr726_data --region ams --size 10 --app "$FLY_APP" --yes
+          volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
+          existing="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
+          if [ "$existing" -lt 2 ]; then
+            missing=$((2 - existing))
+            echo "Creating $missing missing staging volume(s) in ams."
+            flyctl volumes create scenthunter_pr726_data --region ams --size 10 --count "$missing" --app "$FLY_APP" --yes
           fi
+          volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
+          verified="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
+          test "$verified" -ge 2
+          echo "Verified $verified dedicated staging volumes in ams."
 
       - name: Deploy isolated staging app
         run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
