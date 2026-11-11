@@ -102,51 +102,47 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, time, urllib.error, urllib.request
+          import json, urllib.request
           base = "https://scenthunter-pr726-staging.fly.dev"
-          last = None
-          for attempt in range(1, 4):
-              try:
-                  for path in ("/health", "/search?q=Hawas"):
-                      req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
-                      with urllib.request.urlopen(req, timeout=15) as response:
-                          if response.status != 200:
-                              raise RuntimeError(f"{path}: HTTP {response.status}")
-                          response.read()
-                  req = urllib.request.Request(base + "/search?q=Liquid%20Brun", headers={"Accept": "application/json"})
-                  with urllib.request.urlopen(req, timeout=12) as response:
-                      if response.status != 200:
-                          raise RuntimeError(f"/search?q=Liquid%20Brun: HTTP {response.status}")
-                      payload = json.loads(response.read().decode("utf-8"))
-                  results = payload.get("results") or []
-                  limited = [
-                      product for product in results
-                      if "limited edition" in str(product.get("canonical_name") or product.get("name") or "").lower()
-                  ]
-                  if not limited:
-                      raise RuntimeError("Liquid Brun Limited Edition missing from catalog search")
-                  stores = {
-                      str(offer.get("store") or offer.get("shop") or "").strip().casefold()
-                      for product in limited
-                      for offer in (product.get("offers") or [])
-                  }
-                  if "parfumcity" not in stores:
-                      raise RuntimeError(
-                          "ParfumCity targeted refresh was not indexed in Limited Edition search; "
-                          f"stores={sorted(stores)}"
-                      )
-                  print("STAGING_HEALTH_AND_SEARCH=PASS")
-                  print("STAGING_LIQUID_BRUN_SEARCH=PASS")
-                  print("STAGING_LIMITED_EDITION_PARFUMCITY_INDEX=PASS")
-                  print("STAGING_URL=" + base)
-                  break
-              except (OSError, RuntimeError, urllib.error.URLError, ValueError) as exc:
-                  last = f"{type(exc).__name__}: {exc}"
-                  print(f"Attempt {attempt}/3: {last}", flush=True)
-                  if attempt < 3:
-                      time.sleep(2)
-          else:
-              raise SystemExit("Staging smoke test failed: " + str(last))
+          def get(path, timeout=15):
+              req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
+              with urllib.request.urlopen(req, timeout=timeout) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path}: HTTP {response.status}")
+                  return response.read()
+          get("/health")
+          get("/search?q=Hawas", timeout=30)
+          payload = json.loads(get("/search?q=Liquid%20Brun%20Limited%20Edition", timeout=60).decode("utf-8"))
+          results = payload.get("results") or []
+          limited = [
+              product for product in results
+              if "limited edition" in str(product.get("canonical_name") or product.get("name") or "").lower()
+          ]
+          if not limited:
+              raise SystemExit("Liquid Brun Limited Edition missing from catalog search")
+          offers = [
+              offer for product in limited
+              for offer in (product.get("offers") or [])
+          ]
+          parfumcity = [
+              offer for offer in offers
+              if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "parfumcity"
+          ]
+          if not parfumcity:
+              stores = sorted({str(x.get("store") or x.get("shop") or "") for x in offers})
+              raise SystemExit(f"ParfumCity not indexed for Limited Edition; stores={stores}")
+          valid_price = [
+              offer for offer in parfumcity
+              if float(offer.get("price") or offer.get("price_num") or 0) > 0
+          ]
+          if not valid_price:
+              raise SystemExit("ParfumCity row indexed without a positive price")
+          print("STAGING_HEALTH=PASS")
+          print("STAGING_LIQUID_BRUN_SEARCH=PASS")
+          print("STAGING_LIMITED_EDITION_PARFUMCITY_INDEX=PASS")
+          print("STAGING_PARFUMCITY_PRICE=PASS")
+          print("STAGING_PARFUMCITY_AVAILABILITY=" + str(valid_price[0].get("availability")))
+          print("STAGING_URL=" + base)
           PY
 
       - name: Collect read-only catalog hydration diagnostics
