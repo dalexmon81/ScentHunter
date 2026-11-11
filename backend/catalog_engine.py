@@ -159,7 +159,7 @@ REFRESH_TIMEOUT = 10
 # Bootstrap discovery writes all retailers into one SQLite database. Keep
 # store-level writers serialized to avoid advisory-lock timeouts; each store
 # still uses bounded parallel HTTP workers for sitemap retrieval.
-SYNC_WORKERS = 1
+SYNC_WORKERS = 2
 REFRESH_WORKERS = 2
 
 # Persistent hydration queue configuration.
