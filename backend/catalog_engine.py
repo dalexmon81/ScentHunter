@@ -1128,21 +1128,21 @@ def _looks_product(url, store=None):
         return False
     # Sabina's /l/ and /s/ paths are landing/search/navigation pages, not
     # products. They can look like products to the generic slug heuristic
-    # because their slugs contain multiple words, so exclude them here while
-    # keeping the generic heuristic unchanged for the other stores.
+    # because their slugs contain multiple words, so exclude them here.
     if re.match(r'^/[a-z]{2}/(?:l|s)(?:/|$)', p.path, re.I):
         return False
-    # ParfumZentrum exposes product pages with a `_z<id>` suffix, while
-    # brand/category/navigation pages use a `_v<id>` suffix.
+    # ParfumZentrum product URLs use the _z<number> suffix.
     if store == 'parfumzentrum':
-        return bool(re.search(r'(?:^|_)z\d+/?
+        return bool(re.search(r'(?:^|_)z[0-9]+/?$', p.path, re.I))
+    # Notino category URLs can also have multi-word slugs. Only its canonical
+    # product URL grammar, ending in /p-<numeric-id>/, is admitted.
+    if store == 'notino':
+        return bool(re.search(r'(?:^|/)p-[0-9]+/?$', urllib.parse.unquote(p.path), re.I))
+    path = urllib.parse.unquote(p.path).rstrip('/')
     if not path or path == '/':
         return False
-    # Query-only product URLs are accepted if the path is meaningful.
     slug = url_slug(url)
     return len(slug.split()) >= 2
-
-
 def _fetch_sitemap(store, sm):
     try:
         resp = _http_fetch(sm, timeout=SITEMAP_TIMEOUT)
@@ -1631,10 +1631,12 @@ def _html_product_url(store, raw_url, base_url):
         return None
     if store == 'notino':
         # Notino product pages use a stable /p-<numeric-id>/ suffix.
-        # Do not enqueue category/landing pages merely because their slugs
-        # contain multiple words; those pages create huge useless hydration
-        # queues and starve actual product refreshes.
-        if not re.search(r'(?:^|/)p-\d+/?
+        # Reject category/landing pages even when their slugs contain several
+        # words; they must never enter the product hydration queue.
+        if not re.search(r'(?:^|/)p-[0-9]+/?$', urllib.parse.unquote(p.path), re.I):
+            return None
+        return urllib.parse.urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
+
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
         # a slug and end in .html. Sabina's legacy storefront also exposes
