@@ -86,16 +86,26 @@ jobs:
           refresh() {
             local store="$1"
             local url="$2"
+            local attempt response
             echo "TARGETED_REFRESH store=${store} url=${url}"
-            curl --connect-timeout 10 --max-time 45 -fsS -G \
-              --data-urlencode "store=${store}" \
-              --data-urlencode "url=${url}" \
-              "${BASE}/catalog/refresh-store-url"
-            echo
+            for attempt in 1 2 3; do
+              response="$(curl --connect-timeout 10 --max-time 45 -fsS -G \
+                --data-urlencode "store=${store}" \
+                --data-urlencode "url=${url}" \
+                "${BASE}/catalog/refresh-store-url")"
+              echo "${response}"
+              if printf '%s' "${response}" | grep -Eq '"refreshed"[[:space:]]*:[[:space:]]*true'; then
+                return 0
+              fi
+              echo "Refresh not confirmed (attempt ${attempt}/3); waiting before retry."
+              sleep $((attempt * 5))
+            done
+            echo "Targeted refresh did not confirm a fresh fetch: store=${store}" >&2
+            return 1
           }
-          # Populate the isolated staging catalog before asserting that search can find the offers.
+          # Populate the isolated staging catalog before asserting search results.
           refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
-          refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
+          refresh "parfumcity" "https://www.parfumcity.nl/en/products/liquid-brun-limited-edition-french-avenue-100-ml"
 
       - name: Verify staging health and search
         shell: bash
@@ -131,17 +141,24 @@ jobs:
           if not parfumcity:
               stores = sorted({str(x.get("store") or x.get("shop") or "") for x in offers})
               raise SystemExit(f"ParfumCity not indexed for Limited Edition; stores={stores}")
-          valid_price = [
+          priced = [
               offer for offer in parfumcity
               if float(offer.get("price") or offer.get("price_num") or 0) > 0
           ]
-          if not valid_price:
-              raise SystemExit("ParfumCity row indexed without a positive price")
+          if not priced:
+              raise SystemExit("ParfumCity Limited Edition missing its displayed product price")
+          availability = str(priced[0].get("availability") or "").strip().casefold()
+          if availability not in {"out_of_stock", "outofstock", "sold_out", "soldout"}:
+              raise SystemExit(f"Unexpected ParfumCity stock state: {availability!r}")
+          size = float(priced[0].get("size_ml") or 0)
+          if size and size != 150:
+              raise SystemExit(f"ParfumCity Limited Edition size mismatch: {size} ml")
           print("STAGING_HEALTH=PASS")
           print("STAGING_LIQUID_BRUN_SEARCH=PASS")
           print("STAGING_LIMITED_EDITION_PARFUMCITY_INDEX=PASS")
           print("STAGING_PARFUMCITY_PRICE=PASS")
-          print("STAGING_PARFUMCITY_AVAILABILITY=" + str(valid_price[0].get("availability")))
+          print("STAGING_PARFUMCITY_AVAILABILITY=" + availability)
+          print("STAGING_PARFUMCITY_SIZE_ML=" + str(size or "not supplied"))
           print("STAGING_URL=" + base)
           PY
 
