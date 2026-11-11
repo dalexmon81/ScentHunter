@@ -89,6 +89,10 @@ jobs:
             echo "::endgroup::"
           }
           fetch "/catalog-status"
+          echo "::group::LIQUID_BRUN_CATALOG_SEARCH"
+          curl --connect-timeout 10 --max-time 45 -sS -G --data-urlencode "q=Liquid Brun" "${BASE}/search"
+          echo
+          echo "::endgroup::"
           fetch "/catalog/hydration-processing"
           for store in bplatz parfumcity parfumzentrum perfumemarket sabina orioudh easycosmetic deloox notino; do
             fetch "/catalog/hydration-errors?store=${store}&limit=30"
