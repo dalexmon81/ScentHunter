@@ -452,8 +452,11 @@ def _start_catalog_hydration():
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
             # Queue enough stale rows to keep the bounded worker pool busy.
-            'batch_size': 4,
-            'workers': 2,
+            # Keep the durable queue full and use the catalog engine's
+            # bounded worker ceiling. SQLite writes remain coordinated by
+            # the writer lock; network fetches can run concurrently.
+            'batch_size': 24,
+            'workers': 6,
             'pause_seconds': 0.25,
         },
         daemon=True,
