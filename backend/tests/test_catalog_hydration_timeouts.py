@@ -48,6 +48,20 @@ class CatalogHydrationTimeoutTests(unittest.TestCase):
         self.assertEqual(result["status"], 200)
         self.assertEqual(session.get.call_args.kwargs["headers"], catalog_engine.DELOOX_HEADERS)
 
+    def test_http_429_uses_six_hour_store_backoff(self):
+        self.assertEqual(catalog_engine._hydration_retry_delay(1, 429), 21600)
+        self.assertEqual(catalog_engine._hydration_retry_delay(8, 429), 21600)
+
+    def test_non_rate_limit_errors_keep_exponential_backoff(self):
+        self.assertEqual(
+            catalog_engine._hydration_retry_delay(1, 503),
+            catalog_engine.HYDRATION_BACKOFF_SECONDS[0],
+        )
+        self.assertEqual(
+            catalog_engine._hydration_retry_delay(3, 503),
+            catalog_engine.HYDRATION_BACKOFF_SECONDS[2],
+        )
+
     def test_other_stores_keep_the_default_refresh_timeout(self):
         self.assertEqual(
             catalog_engine._refresh_timeout_for_store("parfumzentrum"),
