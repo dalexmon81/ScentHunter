@@ -29,6 +29,7 @@ class NotinoReviewPriorityTests(unittest.TestCase):
                 {"id": "NONE", "title": "No match", "brand": "None", "gtin": "555", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
                 {"id": "CONFLICT", "title": "Wrong size", "brand": "Conflict", "gtin": "666", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
                 {"id": "REFILL", "title": "Known Eau de Parfum Recharge Refill 100 ml", "brand": "Known", "gtin": "888", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
+                {"id": "REFILLABLE", "title": "Known Eau de Parfum rechargeable 100 ml", "brand": "Known", "gtin": "889", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
             ]
             with feed_path.open("w", newline="", encoding="utf-8") as handle:
                 writer = csv.DictWriter(handle, fieldnames=feed_fields)
@@ -53,6 +54,7 @@ class NotinoReviewPriorityTests(unittest.TestCase):
                 {"feed_external_id":"NONE","candidate_score":"0","confidence_band":"no_candidate","review_status":"no_candidate","canonical_product_id":"","canonical_variant_id":"","candidate_scope":"","canonical_brand":"","canonical_names":"","canonical_size_ml":"","canonical_concentration":"","name_similarity":"0","gtin_match":"False","size_match":"False","concentration_match":"False","gender_conflict":"False"},
                 {"feed_external_id":"CONFLICT","candidate_score":"0.4","confidence_band":"low","review_status":"needs_human_review","canonical_product_id":"P5","canonical_variant_id":"V5","candidate_scope":"variant","canonical_brand":"Conflict","canonical_names":"conflict","canonical_size_ml":"50","canonical_concentration":"EDT","name_similarity":"0.7","gtin_match":"False","size_match":"False","concentration_match":"False","gender_conflict":"True"},
                 {"feed_external_id":"REFILL","candidate_score":"1.0","confidence_band":"review_high","review_status":"needs_human_review","canonical_product_id":"P1","canonical_variant_id":"V1","candidate_scope":"variant","canonical_brand":"Known","canonical_names":"known perfume","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"1.0","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
+                {"feed_external_id":"REFILLABLE","candidate_score":"1.0","confidence_band":"review_high","review_status":"needs_human_review","canonical_product_id":"P1","canonical_variant_id":"V1","candidate_scope":"variant","canonical_brand":"Known","canonical_names":"known perfume","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"1.0","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
             ]
             with candidates_path.open("w", newline="", encoding="utf-8") as handle:
                 writer = csv.DictWriter(handle, fieldnames=candidate_fields)
@@ -73,10 +75,14 @@ class NotinoReviewPriorityTests(unittest.TestCase):
             self.assertEqual(by_id["CONFLICT"]["priority"], "D_CONFLICT_OR_ATTRIBUTE_MISMATCH")
             self.assertEqual(by_id["REFILL"]["priority"], "0_HOLD_VARIANT_FORMAT")
             self.assertTrue(by_id["REFILL"]["variant_format_conflict"])
+            self.assertEqual(by_id["REFILLABLE"]["priority"], "B_HIGH_CONFIDENCE_MANUAL_REVIEW")
+            self.assertFalse(by_id["REFILLABLE"]["variant_format_conflict"])
             self.assertEqual(summary["automatic_matches_approved"], 0)
             self.assertEqual(summary["catalog_writes"], 0)
             self.assertEqual(summary["invalid_gtin_hold_rows"], 1)
             self.assertEqual(summary["duplicate_gtin_hold_rows"], 2)
+            self.assertEqual(summary["variant_format_hold_rows"], 1)
+            self.assertEqual(summary["explicit_refill_recharge_rows"], 1)
 
 
 if __name__ == "__main__":
