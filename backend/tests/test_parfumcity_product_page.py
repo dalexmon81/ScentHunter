@@ -5,6 +5,28 @@ from scrapers.parfumcity import scraper
 
 
 class ParfumCityProductPageTests(unittest.TestCase):
+
+    def test_extracts_visible_price_when_jsonld_has_no_offer_price(self):
+        html = """<!doctype html><html><head>
+        <script type="application/ld+json">{
+          "@context":"https://schema.org","@type":"Product",
+          "name":"Liquid Brun Limited Edition French Avenue 150ML",
+          "brand":{"@type":"Brand","name":"French Avenue"},
+          "gtin13":"6298042001831"
+        }</script></head><body>
+        <h1>Liquid Brun Limited Edition French Avenue 150ML</h1>
+        <div class="price"><span>€39,99 EUR</span><del>€44,99 EUR</del></div>
+        <div>Épuisé</div></body></html>"""
+        rows = scraper.extract_product_page(
+            None,
+            "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml",
+            "liquid-brun-limited-edition",
+            html=html,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["price_num"], 39.99)
+        self.assertEqual(rows[0]["availability"], "out_of_stock")
+
     def test_extracts_price_and_out_of_stock_from_embedded_jsonld(self):
         html = """<!doctype html><html><head>
         <script type="application/ld+json">{
