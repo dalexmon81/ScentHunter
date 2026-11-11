@@ -220,3 +220,30 @@ When the runner-up is a different canonical identity and the score gap is below
 labelled high confidence. This threshold is a conservative ranking heuristic,
 not a probability. The 2026-11-11 queue therefore contains 1,414 ambiguous
 rows across variant and product-only candidates; no candidate is auto-approved.
+
+
+## Secure CJ HTTP/S export download
+
+The Notino CJ export subscription is `324587` for publisher CID `8115142`.
+VIVnetworks documents the CJ HTTP/S URL format and confirms that the HTTP
+username/password are delivered separately by `datatransfer@cj.com`. The
+download utility uses HTTP Basic Authentication headers; it never puts the
+password in the URL or prints/stores credentials.
+
+Set these environment variables from the CJ HTTP Server Information email:
+
+```bash
+export CJ_HTTP_USERNAME=8115142
+export CJ_HTTP_PASSWORD='(use the password from the CJ email; do not commit it)'
+python -m backend.scripts.download_notino_cj_feed \
+  --output-dir /data/feeds/notino
+```
+
+The utility downloads the ZIP over HTTPS, checks the ZIP integrity, requires
+exactly one XML member, rejects unsafe archive paths and atomically writes the
+XML file. It does not import data into the catalog or offers database.
+
+Then run the audit and review tools against the downloaded XML. For a daily
+production refresh, store the two credentials as deployment secrets and invoke
+the downloader from a scheduled background worker. No CJ credentials belong
+in GitHub source, logs, or the public frontend.
