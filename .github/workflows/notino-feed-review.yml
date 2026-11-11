@@ -83,6 +83,13 @@ jobs:
             --csv /tmp/notino-catalog-expansion-review.csv \
             --json /tmp/notino-catalog-expansion-review-summary.json
 
+      - name: Export focused high-confidence manual review queue
+        run: |
+          python -m backend.scripts.export_notino_high_confidence_review \
+            /tmp/notino-review-priority.csv \
+            --csv /tmp/notino-high-confidence-review.csv \
+            --json /tmp/notino-high-confidence-review-summary.json
+
       - name: Upload review artifacts (source XML and credentials are excluded)
         if: always()
         uses: actions/upload-artifact@v4
@@ -99,5 +106,7 @@ jobs:
             /tmp/notino-brand-coverage-summary.json
             /tmp/notino-catalog-expansion-review.csv
             /tmp/notino-catalog-expansion-review-summary.json
+            /tmp/notino-high-confidence-review.csv
+            /tmp/notino-high-confidence-review-summary.json
           if-no-files-found: warn
           retention-days: 7
