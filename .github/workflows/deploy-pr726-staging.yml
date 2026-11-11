@@ -59,21 +59,25 @@ jobs:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Ensure two dedicated persistent staging volumes exist in ams
+      - name: Enforce one SQLite staging machine and one persistent volume
         shell: bash
         run: |
           set -euo pipefail
           volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
           existing="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
-          if [ "$existing" -lt 2 ]; then
-            missing=$((2 - existing))
-            echo "Creating $missing missing staging volume(s) in ams."
-            flyctl volumes create scenthunter_pr726_data --region ams --size 10 --count "$missing" --app "$FLY_APP" --yes
+          if [ "$existing" -lt 1 ]; then
+            echo "Creating the single dedicated staging volume in ams."
+            flyctl volumes create scenthunter_pr726_data --region ams --size 10 --count 1 --app "$FLY_APP" --yes
           fi
+          # SQLite is a single-host database. Fly volumes are machine-local,
+          # not a shared filesystem: two machines would maintain divergent
+          # catalogs and independent writer locks. Keep this staging app at
+          # exactly one machine until the catalog moves to PostgreSQL.
+          flyctl scale count 1 --app "$FLY_APP" --yes
           volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
           verified="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
-          test "$verified" -ge 2
-          echo "Verified $verified dedicated staging volumes in ams."
+          test "$verified" -ge 1
+          echo "Verified a dedicated persistent staging volume; machine count is pinned to one."
 
       - name: Deploy isolated staging app
         run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
