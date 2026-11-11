@@ -1,0 +1,120 @@
+name: Notino Phase 2 persistent staging import
+
+on:
+  push:
+    branches:
+      - feature/notino-cj-feed-ingestion-2026-11-10
+    paths:
+      - ".github/workflows/notino-phase2-staging-import.yml"
+      - "backend/scripts/import_notino_phase2_persistent.py"
+      - "backend/app/services/notino_phase2_adapter.py"
+      - "backend/app/services/ingestion_persistence.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/scripts/build_notino_match_candidates.py"
+      - "backend/app/models/**"
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type import-notino-staging to write only to the isolated PR 726 staging volume
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notino-phase2-staging-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'import-notino-staging' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
+      CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
+      FLY_APP: scenthunter-pr726-staging
+    steps:
+      - name: Checkout isolated PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/notino-cj-feed-ingestion-2026-11-10
+
+      - name: Validate credentials and isolated target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          test -n "$CJ_HTTP_USERNAME"
+          test -n "$CJ_HTTP_PASSWORD"
+          echo "Validated required credentials without displaying their values."
+
+      - name: Set up Python and download the authorized CJ feed
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download current Notino XML snapshot
+        run: |
+          set -euo pipefail
+          python -m pip install -r backend/requirements.txt
+          python -m backend.scripts.download_notino_cj_feed --output-dir /tmp/notino-feed
+          XML="$(find /tmp/notino-feed -maxdepth 1 -type f -name "*.xml" -print -quit)"
+          test -n "$XML"
+          test -s "$XML"
+          echo "NOTINO_XML_PATH=$XML" >> "$GITHUB_ENV"
+          sha256sum "$XML"
+
+      - name: Install Fly CLI and normalize isolated staging token
+        shell: bash
+        run: |
+          set -euo pipefail
+          normalized_token="$FLY_API_TOKEN"
+          case "$normalized_token" in
+            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
+          esac
+          echo "::add-mask::$normalized_token"
+          echo "FLY_API_TOKEN=$normalized_token" >> "$GITHUB_ENV"
+          curl -L https://fly.io/install.sh | sh
+          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+
+      - name: Select a running PR staging machine and confirm mounted data volume
+        id: machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          machines="$(flyctl machine list --app "$FLY_APP" --json)"
+          machine_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started")][0].id // empty')"
+          if [ -z "$machine_id" ]; then
+            echo "::error::No started machine exists in the isolated staging app."
+            exit 1
+          fi
+          status="$(flyctl machine status "$machine_id" --app "$FLY_APP" --json)"
+          printf '%s' "$status" | jq -e '.config.mounts | any(.destination == "/data" and (.volume != null or .name != null))' >/dev/null
+          echo "machine_id=$machine_id" >> "$GITHUB_OUTPUT"
+          echo "Selected isolated staging machine $machine_id with /data volume mount."
+
+      - name: Upload XML to isolated staging volume using Fly SFTP
+        shell: bash
+        run: |
+          set -euo pipefail
+          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mkdir -p /data/notino-phase2"
+          flyctl ssh sftp put "$NOTINO_XML_PATH" "/data/notino-phase2/notino-cj-feed.xml" --app "$FLY_APP" --machine "$MACHINE_ID"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s /data/notino-phase2/notino-cj-feed.xml && sha256sum /data/notino-phase2/notino-cj-feed.xml"
+
+      - name: Import into the dedicated persistent Phase 2 SQLite database
+        shell: bash
+        run: |
+          set -euo pipefail
+          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
+
+      - name: Verify persisted database and offer uniqueness
+        shell: bash
+        run: |
+          set -euo pipefail
+          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import os,sqlite3,json; p=\"/data/notino-phase2/catalog.sqlite3\"; c=sqlite3.connect(p); q=lambda s:c.execute(s).fetchone()[0]; out={\"db_exists\":os.path.isfile(p),\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"price_history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicate_external_ids\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"db_exists\"] and out[\"offers\"]>0 and out[\"price_history\"]>=out[\"offers\"] and out[\"duplicate_external_ids\"]==0'"
