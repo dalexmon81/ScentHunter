@@ -2,10 +2,27 @@
 
 import unittest
 
-from main import dedupe_results, result_key
+from main import _public_offer, dedupe_results, result_key
 
 
 class ResultDeduplicationTests(unittest.TestCase):
+    def test_public_offer_preserves_currency_and_cj_feed_source(self):
+        offer = _public_offer({
+            "catalog_id": "SH-0030",
+            "name": "Liquid Brun",
+            "brand": "French Avenue",
+            "store": "notino",
+            "price": 36.70,
+            "price_num": 36.70,
+            "currency": "EUR",
+            "availability": "in_stock",
+            "url": "https://www.anrdoezrs.net/click?url=https%3A%2F%2Fnotino.fr%2Fp",
+            "source": "cj_notino_fr_feed",
+        })
+
+        self.assertEqual(offer["currency"], "EUR")
+        self.assertEqual(offer["source"], "cj_notino_fr_feed")
+
     def test_same_retailer_url_is_deduplicated_across_catalog_ids(self):
         first = {
             "store": "sabina",
