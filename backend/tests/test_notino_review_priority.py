@@ -21,6 +21,7 @@ class NotinoReviewPriorityTests(unittest.TestCase):
             feed_fields = ["id", "title", "brand", "gtin", "gtin_valid", "price", "availability"]
             feed_rows = [
                 {"id": "HIGH", "title": "Known EDP 100 ml", "brand": "Known", "gtin": "111", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
+                {"id": "AMBIG", "title": "Close match EDP 100 ml", "brand": "Close", "gtin": "777", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
                 {"id": "DUP-A", "title": "Duplicate A", "brand": "Dup", "gtin": "222", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
                 {"id": "DUP-B", "title": "Duplicate B", "brand": "Dup", "gtin": "222", "gtin_valid": "True", "price": "20 EUR", "availability": "in stock"},
                 {"id": "INVALID", "title": "Invalid GTIN", "brand": "Invalid", "gtin": "333", "gtin_valid": "False", "price": "20 EUR", "availability": "in stock"},
@@ -42,6 +43,8 @@ class NotinoReviewPriorityTests(unittest.TestCase):
             ]
             candidate_rows = [
                 {"feed_external_id":"HIGH","candidate_score":"1.0","confidence_band":"review_high","review_status":"needs_human_review","canonical_product_id":"P1","canonical_variant_id":"V1","candidate_scope":"variant","canonical_brand":"Known","canonical_names":"known perfume","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"1.0","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
+                {"feed_external_id":"AMBIG","candidate_score":"0.93","confidence_band":"review_high","review_status":"needs_human_review","canonical_product_id":"PA","canonical_variant_id":"VA","candidate_scope":"variant","canonical_brand":"Close","canonical_names":"close perfume","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"0.93","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
+                {"feed_external_id":"AMBIG","candidate_score":"0.91","confidence_band":"review_high","review_status":"needs_human_review","canonical_product_id":"PB","canonical_variant_id":"VB","candidate_scope":"variant","canonical_brand":"Close","canonical_names":"close perfume alt","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"0.91","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
                 {"feed_external_id":"DUP-A","candidate_score":"0.9","confidence_band":"review_high","review_status":"needs_human_review","canonical_product_id":"P2","canonical_variant_id":"V2","candidate_scope":"variant","canonical_brand":"Dup","canonical_names":"dup","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"0.9","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
                 {"feed_external_id":"DUP-B","candidate_score":"0.9","confidence_band":"review_high","review_status":"needs_human_review","canonical_product_id":"P2","canonical_variant_id":"V2","candidate_scope":"variant","canonical_brand":"Dup","canonical_names":"dup","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"0.9","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
                 {"feed_external_id":"INVALID","candidate_score":"0.8","confidence_band":"review_medium","review_status":"needs_human_review","canonical_product_id":"P3","canonical_variant_id":"V3","candidate_scope":"variant","canonical_brand":"Invalid","canonical_names":"invalid","canonical_size_ml":"100","canonical_concentration":"EDP","name_similarity":"0.8","gtin_match":"False","size_match":"True","concentration_match":"True","gender_conflict":"False"},
@@ -56,7 +59,9 @@ class NotinoReviewPriorityTests(unittest.TestCase):
 
             rows, summary = build_review_queue(feed_path, candidates_path)
             by_id = {row["id"]: row for row in rows}
-            self.assertEqual(by_id["HIGH"]["priority"], "A_HIGH_CONFIDENCE_MANUAL_REVIEW")
+            self.assertEqual(by_id["HIGH"]["priority"], "B_HIGH_CONFIDENCE_MANUAL_REVIEW")
+            self.assertEqual(by_id["AMBIG"]["priority"], "A_AMBIGUOUS_CANDIDATES")
+            self.assertEqual(by_id["AMBIG"]["score_margin"], 0.02)
             self.assertEqual(by_id["DUP-A"]["priority"], "0_HOLD_DUPLICATE_GTIN")
             self.assertEqual(by_id["DUP-B"]["priority"], "0_HOLD_DUPLICATE_GTIN")
             self.assertEqual(by_id["INVALID"]["priority"], "0_HOLD_INVALID_GTIN")

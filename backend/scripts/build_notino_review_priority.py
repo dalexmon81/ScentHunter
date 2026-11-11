@@ -14,26 +14,30 @@ from pathlib import Path
 from typing import Any
 
 
+AMBIGUITY_MARGIN_THRESHOLD = 0.05
+
 PRIORITY = {
     "0_HOLD_INVALID_GTIN": 1,
     "0_HOLD_DUPLICATE_GTIN": 2,
-    "A_HIGH_CONFIDENCE_MANUAL_REVIEW": 3,
-    "B_MEDIUM_CONFIDENCE_MANUAL_REVIEW": 4,
-    "C_CONFLICT_OR_ATTRIBUTE_MISMATCH": 5,
-    "D_LOW_CONFIDENCE_MANUAL_REVIEW": 6,
-    "E_PRODUCT_ONLY_REQUIRES_NEW_VARIANT": 7,
-    "F_NO_CANDIDATE": 8,
+    "A_AMBIGUOUS_CANDIDATES": 3,
+    "B_HIGH_CONFIDENCE_MANUAL_REVIEW": 4,
+    "C_MEDIUM_CONFIDENCE_MANUAL_REVIEW": 5,
+    "D_CONFLICT_OR_ATTRIBUTE_MISMATCH": 6,
+    "E_LOW_CONFIDENCE_MANUAL_REVIEW": 7,
+    "F_PRODUCT_ONLY_REQUIRES_NEW_VARIANT": 8,
+    "G_NO_CANDIDATE": 9,
 }
 
 INSTRUCTIONS = {
     "0_HOLD_INVALID_GTIN": "Hold: GTIN check digit is invalid. Do not map or publish until corrected by the source.",
     "0_HOLD_DUPLICATE_GTIN": "Hold: this GTIN occurs on multiple feed external IDs. Resolve duplicate identity before mapping.",
-    "A_HIGH_CONFIDENCE_MANUAL_REVIEW": "Strong title, exact size and concentration candidate. Verify identity and GTIN before approval; no automatic match.",
-    "B_MEDIUM_CONFIDENCE_MANUAL_REVIEW": "Promising candidate; compare title, size, concentration and competing candidates.",
-    "C_CONFLICT_OR_ATTRIBUTE_MISMATCH": "Attribute conflict; do not map automatically. Inspect gender, size or concentration.",
-    "D_LOW_CONFIDENCE_MANUAL_REVIEW": "Weak variant evidence; manual catalog research required.",
-    "E_PRODUCT_ONLY_REQUIRES_NEW_VARIANT": "Product identity candidate only; current catalog has no purchasable variant match.",
-    "F_NO_CANDIDATE": "No safe candidate in the current canonical catalog.",
+    "A_AMBIGUOUS_CANDIDATES": "Ambiguous: the runner-up is a different canonical identity and is within 0.05 score points. Compare both before mapping.",
+    "B_HIGH_CONFIDENCE_MANUAL_REVIEW": "Strong title, exact size and concentration candidate with a clear score lead. Verify identity and GTIN before approval.",
+    "C_MEDIUM_CONFIDENCE_MANUAL_REVIEW": "Promising candidate; compare title, size, concentration and competing candidates.",
+    "D_CONFLICT_OR_ATTRIBUTE_MISMATCH": "Attribute conflict; do not map automatically. Inspect gender, size or concentration.",
+    "E_LOW_CONFIDENCE_MANUAL_REVIEW": "Weak variant evidence; manual catalog research required.",
+    "F_PRODUCT_ONLY_REQUIRES_NEW_VARIANT": "Product identity candidate only; current catalog has no purchasable variant match.",
+    "G_NO_CANDIDATE": "No safe candidate in the current canonical catalog.",
 }
 
 
@@ -92,6 +96,17 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
         gtin = str(feed.get("gtin") or "").strip()
         gtin_valid = _truth(feed.get("gtin_valid"))
         duplicate_count = gtin_counts.get(gtin, 0) if gtin else 0
+        best_score = _number(best.get("candidate_score"))
+        runner_score = _number(runner.get("candidate_score"))
+        different_runner_identity = bool(runner) and (
+            str(best.get("canonical_variant_id") or "") != str(runner.get("canonical_variant_id") or "")
+            or str(best.get("canonical_product_id") or "") != str(runner.get("canonical_product_id") or "")
+        )
+        ambiguous = (
+            different_runner_identity
+            and (best_score - runner_score) < AMBIGUITY_MARGIN_THRESHOLD
+        )
+
         if not gtin_valid:
             gtin_status = "hold_invalid_checksum"
             priority = "0_HOLD_INVALID_GTIN"
@@ -103,21 +118,21 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
             scope = str(best.get("candidate_scope") or "")
             band = str(best.get("confidence_band") or "")
             gender_conflict = _truth(best.get("gender_conflict"))
-            if not best or str(best.get("review_status") or "") == "no_candidate":
-                priority = "F_NO_CANDIDATE"
+            if ambiguous:
+                priority = "A_AMBIGUOUS_CANDIDATES"
+            elif not best or str(best.get("review_status") or "") == "no_candidate":
+                priority = "G_NO_CANDIDATE"
             elif scope == "product_only":
-                priority = "E_PRODUCT_ONLY_REQUIRES_NEW_VARIANT"
+                priority = "F_PRODUCT_ONLY_REQUIRES_NEW_VARIANT"
             elif scope == "variant" and (band == "low" or gender_conflict):
-                priority = "C_CONFLICT_OR_ATTRIBUTE_MISMATCH"
+                priority = "D_CONFLICT_OR_ATTRIBUTE_MISMATCH"
             elif scope == "variant" and band == "review_high":
-                priority = "A_HIGH_CONFIDENCE_MANUAL_REVIEW"
+                priority = "B_HIGH_CONFIDENCE_MANUAL_REVIEW"
             elif scope == "variant" and band == "review_medium":
-                priority = "B_MEDIUM_CONFIDENCE_MANUAL_REVIEW"
+                priority = "C_MEDIUM_CONFIDENCE_MANUAL_REVIEW"
             else:
-                priority = "D_LOW_CONFIDENCE_MANUAL_REVIEW"
+                priority = "E_LOW_CONFIDENCE_MANUAL_REVIEW"
 
-        best_score = _number(best.get("candidate_score"))
-        runner_score = _number(runner.get("candidate_score"))
         row = dict(feed)
         row.update({
             "gtin_review_status": gtin_status,
@@ -165,6 +180,8 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
         "exact_gtin_matches_to_catalog": len(exact_gtin_ids),
         "invalid_gtin_hold_rows": counts["0_HOLD_INVALID_GTIN"],
         "duplicate_gtin_hold_rows": counts["0_HOLD_DUPLICATE_GTIN"],
+        "ambiguous_candidate_rows": counts["A_AMBIGUOUS_CANDIDATES"],
+        "ambiguity_margin_threshold": AMBIGUITY_MARGIN_THRESHOLD,
         "priority_counts": dict(counts),
         "automatic_matches_approved": 0,
         "catalog_writes": 0,
