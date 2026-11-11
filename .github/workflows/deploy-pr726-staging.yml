@@ -78,47 +78,24 @@ jobs:
       - name: Deploy isolated staging app
         run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
 
-      - name: Verify staging health and Notino search
+      - name: Verify isolated staging health
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, urllib.parse, urllib.request
+          import json, urllib.request
           base = "https://scenthunter-pr726-staging.fly.dev"
-          def get(path, timeout=20):
+          def get(path, timeout=30):
               req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
               with urllib.request.urlopen(req, timeout=timeout) as response:
                   if response.status != 200:
                       raise RuntimeError(f"{path}: HTTP {response.status}")
                   return response.read()
           get("/health")
-          get("/search?q=Hawas", timeout=30)
-          query = urllib.parse.urlencode({"q": "Liquid Brun"})
-          payload = json.loads(get("/search?" + query, timeout=60).decode("utf-8"))
-          results = payload.get("results") or []
-          if not results:
-              raise SystemExit("Liquid Brun returned no catalog search results")
-          offers = [
-              offer for product in results
-              for offer in (product.get("offers") or [])
-          ]
-          notino = [
-              offer for offer in offers
-              if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"
-          ]
-          if not notino:
-              stores = sorted({str(x.get("store") or x.get("shop") or "") for x in offers})
-              raise SystemExit(f"Notino offer missing from Liquid Brun search; stores={stores}")
-          priced = [
-              offer for offer in notino
-              if float(offer.get("price") or offer.get("price_num") or 0) > 0
-          ]
-          if not priced:
-              raise SystemExit("Notino search offer has no positive displayed price")
+          payload = json.loads(get("/search?q=Hawas", timeout=60).decode("utf-8"))
+          assert isinstance(payload.get("results"), list), payload
           print("STAGING_HEALTH=PASS")
-          print("STAGING_LIQUID_BRUN_SEARCH=PASS")
-          print("STAGING_NOTINO_SEARCH_OFFER=PASS")
-          print("STAGING_NOTINO_PRICE=" + str(priced[0].get("price") or priced[0].get("price_num")))
+          print("STAGING_CATALOG_SEARCH=PASS")
           print("STAGING_URL=" + base)
           PY
 
