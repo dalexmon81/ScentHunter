@@ -2538,7 +2538,62 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
     requested = list(stores)
     if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
         try:
-            return _collect_catalog_reports_isolated(query, requested, on_report=on_report, on_result=on_result, cancel_event=cancel_event, job_id=job_id, allow_live_fallback=allow_live_fallback)
+            reports = _collect_catalog_reports_isolated(
+                query, requested, on_report=on_report, on_result=on_result,
+                cancel_event=cancel_event, job_id=job_id,
+                allow_live_fallback=allow_live_fallback,
+            )
+            # Merge the separately persisted CJ Phase 2 offers into the same
+            # authoritative Notino report consumed by /search and /search-start.
+            # The bridge is read-only and never calls a retailer endpoint.
+            try:
+                from app.services.notino_phase2_search import search_notino_phase2
+                phase2_offers = search_notino_phase2(query)
+                if phase2_offers:
+                    notino_report = next(
+                        (item for item in reports if item.get("store") == "notino"),
+                        None,
+                    )
+                    if notino_report is None:
+                        notino_report = _empty_report("notino", status="success")
+                        reports.append(notino_report)
+                    existing = [
+                        item for item in (notino_report.get("results") or [])
+                        if isinstance(item, dict)
+                    ]
+                    notino_report["results"] = existing + phase2_offers
+                    notino_report["count"] = len(notino_report["results"])
+                    notino_report["status"] = "success"
+                    notino_report["verified"] = True
+                    notino_report["error"] = None
+                    notino_report["details"] = {
+                        **(notino_report.get("details") or {}),
+                        "phase2_source": "persistent_notino_cj_catalog",
+                        "phase2_offer_count": len(phase2_offers),
+                        "live_scraping": False,
+                    }
+                    if callable(on_report):
+                        on_report(notino_report)
+                    for offer in phase2_offers:
+                        if callable(on_result):
+                            on_result(offer)
+            except Exception as phase2_exc:
+                # Preserve the rest of the catalog search if the isolated
+                # Notino database is unavailable; expose the issue explicitly.
+                print(
+                    f"NOTINO PHASE2 SEARCH BRIDGE ERROR: "
+                    f"{type(phase2_exc).__name__}: {phase2_exc}",
+                    flush=True,
+                )
+                notino_report = next(
+                    (item for item in reports if item.get("store") == "notino"),
+                    None,
+                )
+                if notino_report is not None:
+                    notino_report.setdefault("details", {})["phase2_error"] = (
+                        type(phase2_exc).__name__
+                    )
+            return reports
         except Exception as exc:
             # Normal search is catalog-only. Never fall back to the legacy live
             # scraper here: that path is what caused one slow search to occupy
