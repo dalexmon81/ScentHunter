@@ -278,3 +278,34 @@ and duplicate flags, generates up to five candidate rows per feed item, then
 reduces them to a single prioritized review row with runner-up and ambiguity
 information. All steps are offline/read-only after download; they do not
 promote offers or write catalog/database records.
+
+## GitHub Actions review workflow
+
+The repository workflow `.github/workflows/notino-feed-review.yml` can download the
+authorized CJ XML and rebuild the complete read-only review package on demand.
+It runs on manual dispatch, and its initial branch-file commit also triggers one
+bootstrap run. Before it can download, configure these repository Actions
+secrets under **Settings → Secrets and variables → Actions**:
+
+- `CJ_HTTP_USERNAME`: the HTTP username supplied by CJ for the data-transfer
+  subscription (normally the publisher CID shown in the CJ setup email).
+- `CJ_HTTP_PASSWORD`: the separate CJ HTTP/S password supplied by
+  `datatransfer@cj.com`.
+
+Do not paste either value into source files, workflow inputs, issues, or logs.
+The workflow checks that both secrets exist without printing their values. If
+either is absent, it stops before making a network request.
+
+When configured, the workflow downloads the ZIP/XML into the ephemeral GitHub
+runner, then rebuilds the feed audit, core-fragrance CSV, match candidates,
+prioritized review queue, brand-coverage report and catalog-expansion review.
+It uploads only these review outputs as a seven-day Actions artifact; the raw
+XML and credentials are excluded. The workflow has no database credentials and
+does not write to the catalog, Phase 2 database, production offers or store
+activation state.
+
+Open **Actions → Notino authorized feed review → Run workflow** to refresh the
+review package after the secrets are configured. Every generated candidate
+remains human-review-only; a successful download or audit is not an approval
+to map products or publish offers.
+
