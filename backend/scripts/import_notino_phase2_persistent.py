@@ -88,18 +88,25 @@ def main() -> int:
                 session.add(store)
                 session.flush()
             store_id = store.id
+            # Read the existing retailer IDs once. Per-row SELECTs made repeat
+            # imports perform ~19,000 SQLite round trips for a 9.5k-row feed.
+            existing_offer_ids = set(session.scalars(
+                select(Offer.external_product_id).where(
+                    Offer.store_id == store_id,
+                    Offer.external_product_id.is_not(None),
+                )
+            ).all())
+            existing_raw_ids = set(session.scalars(
+                select(IngestionRaw.external_product_id).where(
+                    IngestionRaw.store_id == store_id,
+                    IngestionRaw.external_product_id.is_not(None),
+                )
+            ).all())
             for row in rows:
                 external_id = str(row.get("id") or "").strip()
-                existing_offer = session.scalar(select(Offer.id).where(
-                    Offer.store_id == store_id, Offer.external_product_id == external_id
-                ).limit(1))
-                existing_raw = session.scalar(select(IngestionRaw.id).where(
-                    IngestionRaw.store_id == store_id,
-                    IngestionRaw.external_product_id == external_id
-                ).limit(1))
                 # Do not re-stage thousands of unchanged unmatched feed rows.
                 # Existing published offers are re-observed to refresh price/stock.
-                if existing_raw and not existing_offer:
+                if external_id in existing_raw_ids and external_id not in existing_offer_ids:
                     counts["unchanged_unmatched_skipped"] += 1
                     continue
 
