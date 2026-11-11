@@ -4324,15 +4324,36 @@ def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
 
 @app.get('/catalog/hydration-errors')
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
-    """Read-only diagnostic view of recent hydration errors."""
+    """Read-only diagnostic view of recent hydration errors.
+
+    Use a read-only SQLite connection: diagnostics must not initialize schema
+    or compete with the hydration workers for SQLite's single writer.
+    """
+    import sqlite3
     store_key = str(store or '').strip().lower()
     if store_key not in STORES:
         return {'error': f'unknown_store:{store_key}', 'stores': STORES}
-    limit_value = max(1, min(int(limit or 20), 100))
+    try:
+        limit_value = max(1, min(int(limit or 20), 100))
+    except (TypeError, ValueError):
+        limit_value = 20
     if not callable(catalog_db):
         return {'store': store_key, 'errors': [], 'error': 'catalog_db_unavailable'}
-    conn = catalog_db()
+
+    db_path = os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )
+    conn = None
     try:
+        conn = sqlite3.connect(
+            'file:' + str(Path(db_path).resolve()) + '?mode=ro',
+            uri=True,
+            timeout=2.0,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        conn.execute('PRAGMA query_only=ON')
         rows = conn.execute(
             """SELECT store,url,state,attempts,last_error,last_http_status,
                               last_started_at,last_finished_at,available_at
@@ -4346,9 +4367,18 @@ def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int =
             'store': store_key,
             'count': len(rows),
             'errors': [dict(row) for row in rows],
+            'read_only': True,
+        }
+    except sqlite3.Error as exc:
+        return {
+            'store': store_key,
+            'errors': [],
+            'read_only': True,
+            'diagnostic_error': f'{type(exc).__name__}: {exc}',
         }
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 @app.get('/catalog/hydration-processing')
