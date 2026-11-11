@@ -14,6 +14,7 @@ on:
       - "backend/app/models/**"
       - "backend/app/services/notino_phase2_search.py"
       - "backend/main.py"
+      - "fly.pr726.staging.toml"
   workflow_dispatch:
     inputs:
       confirm:
