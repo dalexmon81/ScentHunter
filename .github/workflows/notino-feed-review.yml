@@ -86,6 +86,13 @@ jobs:
             --csv /tmp/notino-catalog-expansion-review.csv \
             --json /tmp/notino-catalog-expansion-review-summary.json
 
+      - name: Verify real CJ feed through the Phase 2 adapter in disposable SQLite
+        run: |
+          XML="$(find /tmp/notino-feed -maxdepth 1 -type f -name "*.xml" -print -quit)"
+          test -n "$XML"
+          python -m backend.scripts.verify_notino_phase2_feed_import "$XML" \
+            --output /tmp/notino-phase2-import-verification.json
+
       - name: Export focused high-confidence manual review queue
         run: |
           python -m backend.scripts.export_notino_high_confidence_review \
@@ -111,5 +118,6 @@ jobs:
             /tmp/notino-catalog-expansion-review-summary.json
             /tmp/notino-high-confidence-review.csv
             /tmp/notino-high-confidence-review-summary.json
+            /tmp/notino-phase2-import-verification.json
           if-no-files-found: warn
           retention-days: 7
