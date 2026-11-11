@@ -130,6 +130,7 @@ body{position:relative}
 .bestline{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:4px 0 12px}
 .bestlabel{font-size:11px;color:#a9aaa9;text-transform:uppercase;font-weight:800;letter-spacing:.5px}
 .bestprice{font-size:24px;color:#55ce78;font-weight:950}
+.bestprice.no-price{color:#a9aaa9;font-size:18px}
 .offer{padding:13px 0}
 .offer.best{margin:5px -8px 0;padding:13px 8px;border-radius:13px;background:rgba(73,176,108,.08);border-top:1px solid #31583e}
 .offer-link{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:9px 14px;border:1px solid #6d5620;border-radius:22px;background:#19150b}
@@ -913,7 +914,7 @@ function showProducts(groups){
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
-      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
+      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best&&Number.isFinite(shNum(best))?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:best?`<div class="bestprice no-price">Prezzo non disponibile</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
@@ -937,7 +938,7 @@ function renderFormatChoiceCard(gi,g,sizes){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
     const sg=getSizeGroups(g).find(x=>x.size===String(size));
     const best=sg?.best||null;
-    return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))})'><div class="format-icon">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
+    return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))})'><div class="format-icon">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best&&Number.isFinite(shNum(best))?`da ${esc(shPrice(best))}`:`Prezzo non disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
   }).join("")}</article>`;
 }
 
