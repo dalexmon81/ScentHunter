@@ -10,6 +10,7 @@ on:
       - "fly.pr726.staging.toml"
       - "Dockerfile"
       - "backend/**"
+      - "frontend/**"
       - "requirements.txt"
   workflow_dispatch:
     inputs:
