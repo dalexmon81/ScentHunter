@@ -218,5 +218,5 @@ The review-priority builder also compares the best candidate with the runner-up.
 When the runner-up is a different canonical identity and the score gap is below
 0.05, the feed row is placed in an explicit ambiguous queue rather than being
 labelled high confidence. This threshold is a conservative ranking heuristic,
-not a probability. The 2026-11-11 queue therefore contains 1,416 ambiguous
+not a probability. The 2026-11-11 queue therefore contains 1,414 ambiguous
 rows across variant and product-only candidates; no candidate is auto-approved.
