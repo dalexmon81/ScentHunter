@@ -1,0 +1,35 @@
+name: PR 726 catalog diagnostics
+
+on:
+  push:
+    branches:
+      - feature/notino-cj-feed-ingestion-2026-11-10
+    paths:
+      - ".github/workflows/pr726-catalog-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read isolated staging catalog and hydration diagnostics
+        shell: bash
+        run: |
+          set -u
+          BASE="https://scenthunter-pr726-staging.fly.dev"
+          fetch() {
+            local path="$1"
+            echo "::group::GET ${path}"
+            curl --connect-timeout 10 --max-time 45 -sS -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}${path}" || true
+            echo "::endgroup::"
+          }
+          fetch "/health"
+          fetch "/catalog-status"
+          fetch "/catalog/hydration-processing"
+          for store in bplatz parfumcity parfumzentrum perfumemarket sabina orioudh easycosmetic deloox notino; do
+            fetch "/catalog/hydration-errors?store=${store}&limit=30"
+          done
