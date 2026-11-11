@@ -900,6 +900,12 @@ function getSizeGroups(g){
 function productGroupKey(g){return String(g?.catalog_id||"").trim()}
 function clearOpenProduct(){currentOpenProductKey="";currentOpenSizeKey=null}
 
+function getBestPricedOffer(offers){
+  return (Array.isArray(offers)?offers:[])
+    .filter(o=>!isOfferOutOfStock(o)&&Number.isFinite(shNum(o)))
+    .sort((a,b)=>shNum(a)-shNum(b))[0]||null;
+}
+
 function showProducts(groups){
   const list=[...(Array.isArray(groups)?groups:[])].sort((a,b)=>{
     const aa=displayPerfumeName(a?.name||"",a?.brand||"");
@@ -910,11 +916,14 @@ function showProducts(groups){
   clearOpenProduct();
   statusBox.textContent=list.length?`${list.length}${list.length===1?" prodotto trovato.":" prodotti trovati."}`:"";
   resultsBox.innerHTML=list.map((g,i)=>{
-    const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
+    const offers=Array.isArray(g.offers)?g.offers:[];
+    const best=getBestPricedOffer(offers);
+    const hasAvailableOffer=offers.some(o=>!isOfferOutOfStock(o));
+    const priceLabel=best?`da ${esc(shPrice(best))}`:hasAvailableOffer?"Prezzo non disponibile":offers.length?"OUT OF STOCK":"Nessuna offerta verificata";
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
-      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best&&Number.isFinite(shNum(best))?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:best?`<div class="bestprice no-price">Prezzo non disponibile</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
+       <div class="product-choice-main"><div class="name">${esc(title)}</div><div class="bestprice ${best?"":"no-price"}">${esc(priceLabel)}</div></div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
