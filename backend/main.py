@@ -4307,6 +4307,29 @@ def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
             (store_key, target),
         ).fetchone()
         persisted = dict(row) if row else None
+
+        # A targeted refresh must make a successfully verified product part
+        # of the searchable catalog. refresh_url() persists page data, but
+        # /search enumerates active store_urls; without this row a fresh
+        # out-of-stock variant (or a product absent from the last sitemap)
+        # remains invisible even though its retailer page was parsed.
+        if item and persisted and persisted.get('fetch_status') == 'OK':
+            with conn:
+                conn.execute(
+                    """INSERT INTO store_urls(
+                           store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           slug=excluded.slug,
+                           discovered_at=excluded.discovered_at,
+                           active=1""",
+                    (
+                        store_key, target, catalog_engine.url_slug(target),
+                        None, time.time(),
+                    ),
+                )
+            with catalog_engine._LOCAL_SEARCH_INDEX_LOCK:
+                catalog_engine._LOCAL_SEARCH_INDEX_CACHE.pop(store_key, None)
     finally:
         conn.close()
 
