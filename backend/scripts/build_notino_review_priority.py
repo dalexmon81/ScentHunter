@@ -192,6 +192,8 @@ def build_review_queue(feed_path: str | Path, candidates_path: str | Path) -> tu
         "invalid_gtin_hold_rows": counts["0_HOLD_INVALID_GTIN"],
         "duplicate_gtin_hold_rows": counts["0_HOLD_DUPLICATE_GTIN"],
         "ambiguous_candidate_rows": counts["A_AMBIGUOUS_CANDIDATES"],
+        "explicit_refill_recharge_rows": sum(_truth(row.get("variant_format_conflict")) for row in queue),
+        "variant_format_hold_rows": counts["0_HOLD_VARIANT_FORMAT"],
         "ambiguity_margin_threshold": AMBIGUITY_MARGIN_THRESHOLD,
         "priority_counts": dict(counts),
         "automatic_matches_approved": 0,
